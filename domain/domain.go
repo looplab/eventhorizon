@@ -12,20 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package repository contains read model implementations.
-package repository
-
-import (
-	"github.com/looplab/eventhorizon/domain"
-)
-
-type Repository interface {
-	Save(domain.UUID, interface{})
-	Find(domain.UUID) (interface{}, error)
-	FindAll() ([]interface{}, error)
-	Remove(domain.UUID) error
-}
-
-func NewRepository(name string) Repository {
-	return NewInMemory()
-}
+// Package domain contains core CQRS/ES interfaces and objects.
+package domain

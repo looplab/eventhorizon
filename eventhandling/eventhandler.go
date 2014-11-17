@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package eventhandling contains event handlers for the ES part.
 package eventhandling
 
 import (

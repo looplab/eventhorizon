@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package dispatcher contains CQRS/ES command and event dispatchers.
 package dispatcher
 
 import (
