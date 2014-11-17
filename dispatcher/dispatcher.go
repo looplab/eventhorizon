@@ -15,8 +15,7 @@
 package dispatcher
 
 import (
-	"github.com/maxpersson/otis2/master/eventhorizon/domain"
-	// "github.com/maxpersson/otis2/master/eventhorizon/eventhandling"
+	"github.com/looplab/eventhorizon/domain"
 )
 
 // Dispatcher is a interface defining a command and event dispatcher.
@@ -32,19 +31,3 @@ type Dispatcher interface {
 	// Dispatch dispatches a command to the registered command handler.
 	Dispatch(domain.Command)
 }
-
-// type  interface {
-// 	// AddHandler adds an aggregate as a handler for a command.
-// 	AddHandler(domain.Command, interface{})
-
-// 	// AddAllHandlers scans an aggregate for command handling methods and adds
-// 	// it for every event it can handle.
-// 	AddAllHandlers(interface{})
-
-// 	// AddSubscriber adds a subscriber as a handler for a specific event.
-// 	AddSubscriber(domain.Event, eventhandling.EventHandler)
-
-// 	// AddAllSubscribers scans a event handler for handling methods and adds
-// 	// it for every event it detects in the method name.
-// 	AddAllSubscribers(eventhandling.EventHandler)
-// }

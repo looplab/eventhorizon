@@ -15,7 +15,7 @@
 package eventhandling
 
 import (
-	"github.com/maxpersson/otis2/master/eventhorizon/domain"
+	"github.com/looplab/eventhorizon/domain"
 )
 
 // EventHandler is an interface that all handlers of events should implement.

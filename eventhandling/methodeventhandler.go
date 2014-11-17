@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/maxpersson/otis2/master/eventhorizon/domain"
+	"github.com/looplab/eventhorizon/domain"
 )
 
 var (

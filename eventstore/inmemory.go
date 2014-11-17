@@ -17,7 +17,7 @@ package eventstore
 import (
 	"fmt"
 
-	"github.com/maxpersson/otis2/master/eventhorizon/domain"
+	"github.com/looplab/eventhorizon/domain"
 )
 
 type InMemory struct {

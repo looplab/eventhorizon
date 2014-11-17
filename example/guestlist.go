@@ -15,9 +15,9 @@
 package main
 
 import (
-	"github.com/maxpersson/otis2/master/eventhorizon/domain"
-	"github.com/maxpersson/otis2/master/eventhorizon/eventhandling"
-	"github.com/maxpersson/otis2/master/eventhorizon/repository"
+	"github.com/looplab/eventhorizon/domain"
+	"github.com/looplab/eventhorizon/eventhandling"
+	"github.com/looplab/eventhorizon/repository"
 )
 
 type GuestList struct {

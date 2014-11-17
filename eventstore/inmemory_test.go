@@ -19,7 +19,7 @@ import (
 
 	. "gopkg.in/check.v1"
 
-	"github.com/maxpersson/otis2/master/eventhorizon/domain"
+	"github.com/looplab/eventhorizon/domain"
 )
 
 // Hook up gocheck into the "go test" runner.

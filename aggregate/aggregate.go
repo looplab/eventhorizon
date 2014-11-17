@@ -15,7 +15,7 @@
 package aggregate
 
 import (
-	"github.com/maxpersson/otis2/master/eventhorizon/domain"
+	"github.com/looplab/eventhorizon/domain"
 )
 
 // Aggregate is a CQRS aggregate base to embedd in domain specific aggregates.

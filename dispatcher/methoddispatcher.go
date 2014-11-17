@@ -18,10 +18,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/maxpersson/otis2/master/eventhorizon/aggregate"
-	"github.com/maxpersson/otis2/master/eventhorizon/domain"
-	"github.com/maxpersson/otis2/master/eventhorizon/eventhandling"
-	"github.com/maxpersson/otis2/master/eventhorizon/eventstore"
+	"github.com/looplab/eventhorizon/aggregate"
+	"github.com/looplab/eventhorizon/domain"
+	"github.com/looplab/eventhorizon/eventhandling"
+	"github.com/looplab/eventhorizon/eventstore"
 )
 
 // MethodDispatcher is a dispather that dispatches commands and publishes events

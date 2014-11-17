@@ -17,8 +17,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/maxpersson/otis2/master/eventhorizon/aggregate"
-	"github.com/maxpersson/otis2/master/eventhorizon/domain"
+	"github.com/looplab/eventhorizon/aggregate"
+	"github.com/looplab/eventhorizon/domain"
 )
 
 // Invitation aggregate root.

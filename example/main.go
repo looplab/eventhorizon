@@ -17,10 +17,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/maxpersson/otis2/master/eventhorizon/dispatcher"
-	"github.com/maxpersson/otis2/master/eventhorizon/domain"
-	"github.com/maxpersson/otis2/master/eventhorizon/eventstore"
-	"github.com/maxpersson/otis2/master/eventhorizon/repository"
+	"github.com/looplab/eventhorizon/dispatcher"
+	"github.com/looplab/eventhorizon/domain"
+	"github.com/looplab/eventhorizon/eventstore"
+	"github.com/looplab/eventhorizon/repository"
 )
 
 func main() {

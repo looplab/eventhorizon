@@ -15,7 +15,7 @@
 package eventstore
 
 import (
-	"github.com/maxpersson/otis2/master/eventhorizon/domain"
+	"github.com/looplab/eventhorizon/domain"
 )
 
 type EventStore interface {
