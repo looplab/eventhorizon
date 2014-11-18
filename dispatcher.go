@@ -160,10 +160,9 @@ func (d *ReflectDispatcher) AddAllSubscribers(subscriber EventHandler) {
 
 func (d *ReflectDispatcher) handleCommand(sourceType reflect.Type, method reflect.Method, command Command) {
 	// Create aggregate from source type
-	aggregate := d.createAggregate(sourceType)
+	aggregate := d.createAggregate(command.AggregateID(), sourceType)
 
 	// Load aggregate events
-	aggregate.SetAggregateID(command.AggregateID())
 	events, _ := d.eventStore.Load(aggregate.AggregateID())
 	aggregate.ApplyEvents(events)
 
@@ -186,9 +185,9 @@ func (d *ReflectDispatcher) handleCommand(sourceType reflect.Type, method reflec
 	}
 }
 
-func (d *ReflectDispatcher) createAggregate(sourceType reflect.Type) Aggregate {
+func (d *ReflectDispatcher) createAggregate(id UUID, sourceType reflect.Type) Aggregate {
 	sourceObj := reflect.New(sourceType)
-	aggregateValue := reflect.ValueOf(NewReflectAggregate(sourceObj.Interface()))
+	aggregateValue := reflect.ValueOf(NewReflectAggregate(id, sourceObj.Interface()))
 	sourceObj.Elem().FieldByName("Aggregate").Set(aggregateValue)
 	aggregate := sourceObj.Interface().(Aggregate)
 	return aggregate

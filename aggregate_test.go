@@ -23,9 +23,9 @@ type ReflectAggregateSuite struct{}
 var _ = Suite(&ReflectAggregateSuite{})
 
 func (s *ReflectAggregateSuite) TestNewReflectAggregate(c *C) {
-	agg := NewReflectAggregate(EmptyAggregate{})
-	c.Assert(agg, Not(Equals), nil)
 	var nilID UUID
+	agg := NewReflectAggregate(nilID, EmptyAggregate{})
+	c.Assert(agg, Not(Equals), nil)
 	c.Assert(agg.id, Equals, nilID)
 	c.Assert(agg.eventsLoaded, Equals, 0)
 	c.Assert(agg.handler, Not(Equals), nil)
@@ -33,23 +33,16 @@ func (s *ReflectAggregateSuite) TestNewReflectAggregate(c *C) {
 }
 
 func (s *ReflectAggregateSuite) TestAggregateID(c *C) {
-	agg := NewReflectAggregate(nil)
 	id := NewUUID()
-	agg.id = id
+	agg := NewReflectAggregate(id, nil)
 	result := agg.AggregateID()
 	c.Assert(result, Equals, id)
 }
 
-func (s *ReflectAggregateSuite) TestSetAggregateID(c *C) {
-	agg := NewReflectAggregate(nil)
-	id := NewUUID()
-	agg.SetAggregateID(id)
-	c.Assert(agg.id, Equals, id)
-}
-
 func (s *ReflectAggregateSuite) TestApplyEvent(c *C) {
 	// Apply one event.
-	agg := NewReflectAggregate(nil)
+	id := NewUUID()
+	agg := NewReflectAggregate(id, nil)
 	mockHandler := &MockEventHandler{
 		events: make(EventStream, 0),
 	}
@@ -60,7 +53,7 @@ func (s *ReflectAggregateSuite) TestApplyEvent(c *C) {
 	c.Assert(mockHandler.events, DeepEquals, EventStream{event1})
 
 	// Apply two events.
-	agg = NewReflectAggregate(nil)
+	agg = NewReflectAggregate(id, nil)
 	mockHandler = &MockEventHandler{
 		events: make(EventStream, 0),
 	}
@@ -74,7 +67,8 @@ func (s *ReflectAggregateSuite) TestApplyEvent(c *C) {
 
 func (s *ReflectAggregateSuite) TestApplyEvents(c *C) {
 	// Apply one event.
-	agg := NewReflectAggregate(nil)
+	id := NewUUID()
+	agg := NewReflectAggregate(id, nil)
 	mockHandler := &MockEventHandler{
 		events: make(EventStream, 0),
 	}
@@ -85,7 +79,7 @@ func (s *ReflectAggregateSuite) TestApplyEvents(c *C) {
 	c.Assert(mockHandler.events, DeepEquals, EventStream{event1})
 
 	// Apply two events.
-	agg = NewReflectAggregate(nil)
+	agg = NewReflectAggregate(id, nil)
 	mockHandler = &MockEventHandler{
 		events: make(EventStream, 0),
 	}
@@ -96,7 +90,7 @@ func (s *ReflectAggregateSuite) TestApplyEvents(c *C) {
 	c.Assert(mockHandler.events, DeepEquals, EventStream{event1, event2})
 
 	// Apply no event.
-	agg = NewReflectAggregate(nil)
+	agg = NewReflectAggregate(id, nil)
 	mockHandler = &MockEventHandler{
 		events: make(EventStream, 0),
 	}

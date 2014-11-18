@@ -19,9 +19,6 @@ type Aggregate interface {
 	// AggregateID returns the id of the aggregate.
 	AggregateID() UUID
 
-	// SetAggregateID sets the id of the aggregate.
-	SetAggregateID(id UUID)
-
 	// ApplyEvent applies an event to the aggregate by setting it's values.
 	ApplyEvent(event Event)
 
@@ -37,8 +34,9 @@ type ReflectAggregate struct {
 
 // NewMethodAggregate creates an aggregate wich applies it's events by using
 // methods detected with reflection by the methodApplier.
-func NewReflectAggregate(source interface{}) *ReflectAggregate {
+func NewReflectAggregate(id UUID, source interface{}) *ReflectAggregate {
 	return &ReflectAggregate{
+		id:           id,
 		eventsLoaded: 0,
 		handler:      NewReflectEventHandler(source, "Apply"),
 	}
@@ -46,10 +44,6 @@ func NewReflectAggregate(source interface{}) *ReflectAggregate {
 
 func (a *ReflectAggregate) AggregateID() UUID {
 	return a.id
-}
-
-func (a *ReflectAggregate) SetAggregateID(id UUID) {
-	a.id = id
 }
 
 func (a *ReflectAggregate) ApplyEvent(event Event) {
