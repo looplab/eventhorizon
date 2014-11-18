@@ -36,8 +36,8 @@ type cacheItem struct {
 
 type handlersMap map[reflect.Type]func(source interface{}, event Event)
 
-// Routes events to methods of an struct by convention. There should be one
-// router per event source instance.
+// ReflectEventHandler routes events to methods of a struct by convention.
+// There should be one router per event source instance.
 //
 // The convention is: func(s MySource) HandleXXX(e EventType)
 type ReflectEventHandler struct {
@@ -49,7 +49,7 @@ func init() {
 	cache = make(map[cacheItem]handlersMap)
 }
 
-// NewMethodEventHandler returns an EventHandler that uses reflection to handle
+// NewReflectEventHandler returns an EventHandler that uses reflection to handle
 // events based on method names.
 func NewReflectEventHandler(source interface{}, methodPrefix string) *ReflectEventHandler {
 	if source == nil {
@@ -77,6 +77,7 @@ func NewReflectEventHandler(source interface{}, methodPrefix string) *ReflectEve
 	}
 }
 
+// HandleEvent handles an event by routing it to the handler method of the source.
 func (h *ReflectEventHandler) HandleEvent(event Event) {
 	// log.Printf("Routing %+v", event)
 	// TODO: Add error return.

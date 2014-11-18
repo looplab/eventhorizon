@@ -46,7 +46,7 @@ type handler struct {
 	method     reflect.Method
 }
 
-// NewMethodDispatcher creates a dispather and associates it with an event store.
+// NewReflectDispatcher creates a dispather and associates it with an event store.
 func NewReflectDispatcher(store EventStore) *ReflectDispatcher {
 	d := &ReflectDispatcher{
 		eventStore:       store,

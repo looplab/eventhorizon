@@ -18,15 +18,21 @@ import (
 	"fmt"
 )
 
+// EventStore is an interface for an event sourcing event store.
 type EventStore interface {
+	// Append appends all events in the event stream to the store.
 	Append(EventStream)
+
+	// Load loads all events for the aggregate id from the store.
 	Load(UUID) (EventStream, error)
 }
 
+// MemoryEventStore implements EventStore as an in memory structure.
 type MemoryEventStore struct {
 	events map[UUID]EventStream
 }
 
+// NewMemoryEventStore creates a new MemoryEventStore.
 func NewMemoryEventStore() *MemoryEventStore {
 	s := &MemoryEventStore{
 		events: make(map[UUID]EventStream),
@@ -34,6 +40,7 @@ func NewMemoryEventStore() *MemoryEventStore {
 	return s
 }
 
+// Append appends all events in the event stream to the memory store.
 func (s *MemoryEventStore) Append(events EventStream) {
 	for _, event := range events {
 		id := event.AggregateID()
@@ -45,6 +52,7 @@ func (s *MemoryEventStore) Append(events EventStream) {
 	}
 }
 
+// Load loads all events for the aggregate id from the memory store.
 func (s *MemoryEventStore) Load(id UUID) (EventStream, error) {
 	if events, ok := s.events[id]; ok {
 		// log.Printf("event store: loaded %#v", events)

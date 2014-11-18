@@ -18,17 +18,27 @@ import (
 	"fmt"
 )
 
+// Repository is a storage for read models.
 type Repository interface {
+	// Save saves a read model with id to the repository.
 	Save(UUID, interface{})
+
+	// Find returns one read model with using an id.
 	Find(UUID) (interface{}, error)
+
+	// FindAll returns all read models in the repository.
 	FindAll() ([]interface{}, error)
+
+	// Remove removes a read model with id from the repository.
 	Remove(UUID) error
 }
 
+// MemoryRepository implements a in memory repository of read models.
 type MemoryRepository struct {
 	data map[UUID]interface{}
 }
 
+// NewMemoryRepository creates a new MemoryRepository.
 func NewMemoryRepository() *MemoryRepository {
 	r := &MemoryRepository{
 		data: make(map[UUID]interface{}),
@@ -36,11 +46,13 @@ func NewMemoryRepository() *MemoryRepository {
 	return r
 }
 
+// Save saves a read model with id to the repository.
 func (r *MemoryRepository) Save(id UUID, model interface{}) {
 	// log.Printf("read model: saving %#v", model)
 	r.data[id] = model
 }
 
+// Find returns one read model with using an id.
 func (r *MemoryRepository) Find(id UUID) (interface{}, error) {
 	if model, ok := r.data[id]; ok {
 		// log.Printf("read model: found %#v", model)
@@ -50,14 +62,16 @@ func (r *MemoryRepository) Find(id UUID) (interface{}, error) {
 	return nil, fmt.Errorf("could not find model")
 }
 
+// FindAll returns all read models in the repository.
 func (r *MemoryRepository) FindAll() ([]interface{}, error) {
-	models := make([]interface{}, 0)
+	models := []interface{}{}
 	for _, model := range r.data {
 		models = append(models, model)
 	}
 	return models, nil
 }
 
+// Remove removes a read model with id from the repository.
 func (r *MemoryRepository) Remove(id UUID) error {
 	if _, ok := r.data[id]; ok {
 		delete(r.data, id)

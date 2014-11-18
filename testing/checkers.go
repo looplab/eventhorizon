@@ -15,11 +15,12 @@
 package testing
 
 import (
-	. "gopkg.in/check.v1"
+	"gopkg.in/check.v1"
 )
 
-var Contains Checker = &containsChecker{
-	&CheckerInfo{
+// Contains is a checker for gocheck that asserts if an item is in a slice.
+var Contains = &containsChecker{
+	&check.CheckerInfo{
 		Name: "Contains",
 		Params: []string{
 			"Container",
@@ -29,7 +30,7 @@ var Contains Checker = &containsChecker{
 }
 
 type containsChecker struct {
-	*CheckerInfo
+	*check.CheckerInfo
 }
 
 func (c *containsChecker) Check(params []interface{}, names []string) (result bool, error string) {

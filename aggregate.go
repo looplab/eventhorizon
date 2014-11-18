@@ -15,6 +15,16 @@
 package eventhorizon
 
 // Aggregate is a CQRS aggregate base to embedd in domain specific aggregates.
+//
+// A domain specific aggregate is any struct that implements the Aggregate
+// interface, often by embedding. A typical aggregate examyple:
+//   type UserAggregate struct {
+//       eventhorizon.Aggregate
+//
+//       name string
+//   }
+// The embeddde aggregate is then initialized by the dispatcher with for exapmle
+// ReflectAggregate, depending on the type of dispatcher.
 type Aggregate interface {
 	// AggregateID returns the id of the aggregate.
 	AggregateID() UUID
@@ -26,13 +36,18 @@ type Aggregate interface {
 	ApplyEvents(events EventStream)
 }
 
+// ReflectAggregate is an implementation of Aggregate using method reflection.
+//
+// This implementation is used by the ReflectDispatcher and will add handler
+// based on the aggregate's methods prefixed with "Apply". See docs for
+// ReflectEventHandler for more info.
 type ReflectAggregate struct {
 	id           UUID
 	eventsLoaded int
 	handler      EventHandler
 }
 
-// NewMethodAggregate creates an aggregate wich applies it's events by using
+// NewReflectAggregate creates an aggregate wich applies it's events by using
 // methods detected with reflection by the methodApplier.
 func NewReflectAggregate(id UUID, source interface{}) *ReflectAggregate {
 	return &ReflectAggregate{
@@ -42,15 +57,18 @@ func NewReflectAggregate(id UUID, source interface{}) *ReflectAggregate {
 	}
 }
 
+// AggregateID returnes the ID of the aggregate.
 func (a *ReflectAggregate) AggregateID() UUID {
 	return a.id
 }
 
+// ApplyEvent applies an event using the handler.
 func (a *ReflectAggregate) ApplyEvent(event Event) {
 	a.handler.HandleEvent(event)
 	a.eventsLoaded++
 }
 
+// ApplyEvents applies an event stream using the handler.
 func (a *ReflectAggregate) ApplyEvents(events EventStream) {
 	for _, event := range events {
 		a.ApplyEvent(event)

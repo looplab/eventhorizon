@@ -72,7 +72,7 @@ func (s *MethodDispatcherSuite) TestDispatch(c *C) {
 	disp.Dispatch(command1)
 }
 
-var callCount int = 0
+var callCount int
 
 type BenchmarkAggregate struct {
 	Aggregate
