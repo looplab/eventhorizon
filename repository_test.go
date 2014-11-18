@@ -12,109 +12,102 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package repository
+package eventhorizon
 
 import (
-	"testing"
-
 	. "gopkg.in/check.v1"
 
 	t "github.com/looplab/eventhorizon/testing"
-
-	"github.com/looplab/eventhorizon/domain"
 )
 
-// Hook up gocheck into the "go test" runner.
-func Test(t *testing.T) { TestingT(t) }
+type MemoryRepositorySuite struct{}
 
-type InMemorySuite struct{}
+var _ = Suite(&MemoryRepositorySuite{})
 
-var _ = Suite(&InMemorySuite{})
-
-func (s *InMemorySuite) TestNewInMemory(c *C) {
-	repo := NewInMemory()
+func (s *MemoryRepositorySuite) TestNewMemoryRepository(c *C) {
+	repo := NewMemoryRepository()
 	c.Assert(repo, Not(Equals), nil)
 	c.Assert(repo.data, Not(Equals), nil)
 	c.Assert(len(repo.data), Equals, 0)
 }
 
-func (s *InMemorySuite) TestSave(c *C) {
+func (s *MemoryRepositorySuite) TestSave(c *C) {
 	// Simple save.
-	repo := NewInMemory()
-	id := domain.NewUUID()
+	repo := NewMemoryRepository()
+	id := NewUUID()
 	repo.Save(id, 42)
 	c.Assert(len(repo.data), Equals, 1)
 	c.Assert(repo.data[id], Equals, 42)
 
 	// Overwrite with same ID.
-	repo = NewInMemory()
-	id = domain.NewUUID()
+	repo = NewMemoryRepository()
+	id = NewUUID()
 	repo.Save(id, 42)
 	repo.Save(id, 43)
 	c.Assert(len(repo.data), Equals, 1)
 	c.Assert(repo.data[id], Equals, 43)
 }
 
-func (s *InMemorySuite) TestFind(c *C) {
+func (s *MemoryRepositorySuite) TestFind(c *C) {
 	// Simple find.
-	repo := NewInMemory()
-	id := domain.NewUUID()
+	repo := NewMemoryRepository()
+	id := NewUUID()
 	repo.data[id] = 42
 	result, err := repo.Find(id)
 	c.Assert(err, Equals, nil)
 	c.Assert(result, Equals, 42)
 
 	// Empty repo.
-	repo = NewInMemory()
-	result, err = repo.Find(domain.NewUUID())
+	repo = NewMemoryRepository()
+	result, err = repo.Find(NewUUID())
 	c.Assert(err, ErrorMatches, "could not find model")
 	c.Assert(result, Equals, nil)
 
 	// Non existing ID.
-	repo = NewInMemory()
-	repo.data[domain.NewUUID()] = 42
-	result, err = repo.Find(domain.NewUUID())
+	repo = NewMemoryRepository()
+	repo.data[NewUUID()] = 42
+	result, err = repo.Find(NewUUID())
 	c.Assert(err, ErrorMatches, "could not find model")
 	c.Assert(result, Equals, nil)
 }
 
-func (s *InMemorySuite) TestFindAll(c *C) {
+func (s *MemoryRepositorySuite) TestFindAll(c *C) {
 	// Find one.
-	repo := NewInMemory()
-	repo.data[domain.NewUUID()] = 42
+	repo := NewMemoryRepository()
+	repo.data[NewUUID()] = 42
 	result, err := repo.FindAll()
 	c.Assert(err, Equals, nil)
 	c.Assert(result, DeepEquals, []interface{}{42})
 
 	// Find two.
-	repo = NewInMemory()
-	repo.data[domain.NewUUID()] = 42
-	repo.data[domain.NewUUID()] = 43
+	repo = NewMemoryRepository()
+	repo.data[NewUUID()] = 42
+	repo.data[NewUUID()] = 43
 	result, err = repo.FindAll()
 	c.Assert(err, Equals, nil)
 	c.Assert(result, t.Contains, 42)
 	c.Assert(result, t.Contains, 43)
 
 	// Find none.
-	repo = NewInMemory()
+	repo = NewMemoryRepository()
 	result, err = repo.FindAll()
 	c.Assert(err, Equals, nil)
 	c.Assert(result, DeepEquals, []interface{}{})
 }
 
-func (s *InMemorySuite) TestRemove(c *C) {
+func (s *MemoryRepositorySuite) TestRemove(c *C) {
 	// Simple remove.
-	repo := NewInMemory()
-	id := domain.NewUUID()
+	repo := NewMemoryRepository()
+	id := NewUUID()
 	repo.data[id] = 42
 	err := repo.Remove(id)
 	c.Assert(err, Equals, nil)
 	c.Assert(len(repo.data), Equals, 0)
 
 	// Non existing ID.
-	repo = NewInMemory()
+	repo = NewMemoryRepository()
 	repo.data[id] = 42
-	err = repo.Remove(domain.NewUUID())
+	err = repo.Remove(NewUUID())
 	c.Assert(err, ErrorMatches, "could not find model")
 	c.Assert(len(repo.data), Equals, 1)
 }

@@ -15,9 +15,7 @@
 package main
 
 import (
-	"github.com/looplab/eventhorizon/domain"
-	"github.com/looplab/eventhorizon/eventhandling"
-	"github.com/looplab/eventhorizon/repository"
+	"github.com/looplab/eventhorizon"
 )
 
 type GuestList struct {
@@ -29,18 +27,18 @@ type GuestList struct {
 // Projector that writes to a read model
 
 type GuestListProjector struct {
-	repository repository.Repository
-	eventID    domain.UUID
+	repository eventhorizon.Repository
+	eventID    eventhorizon.UUID
 
-	eventhandling.EventHandler
+	eventhorizon.EventHandler
 }
 
-func NewGuestListProjector(repository repository.Repository, eventID domain.UUID) *GuestListProjector {
+func NewGuestListProjector(repository eventhorizon.Repository, eventID eventhorizon.UUID) *GuestListProjector {
 	p := &GuestListProjector{
 		repository: repository,
 		eventID:    eventID,
 	}
-	p.EventHandler = eventhandling.NewMethodEventHandler(p, "Handle")
+	p.EventHandler = eventhorizon.NewReflectEventHandler(p, "Handle")
 	return p
 }
 

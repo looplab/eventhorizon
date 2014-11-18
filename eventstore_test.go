@@ -12,64 +12,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package eventstore
+package eventhorizon
 
 import (
-	"testing"
-
 	. "gopkg.in/check.v1"
-
-	"github.com/looplab/eventhorizon/domain"
 )
 
-// Hook up gocheck into the "go test" runner.
-func Test(t *testing.T) { TestingT(t) }
+type MemoryEventStoreSuite struct{}
 
-type InMemorySuite struct{}
+var _ = Suite(&MemoryEventStoreSuite{})
 
-var _ = Suite(&InMemorySuite{})
-
-type TestEvent struct {
-	TestID  domain.UUID
-	Content string
-}
-
-func (t TestEvent) AggregateID() domain.UUID {
-	return t.TestID
-}
-
-func (s *InMemorySuite) TestNewInMemory(c *C) {
-	store := NewInMemory()
+func (s *MemoryEventStoreSuite) TestNewMemoryEventStore(c *C) {
+	store := NewMemoryEventStore()
 	c.Assert(store, Not(Equals), nil)
 	c.Assert(store.events, Not(Equals), nil)
 	c.Assert(len(store.events), Equals, 0)
 }
 
-func (s *InMemorySuite) TestAppend(c *C) {
+func (s *MemoryEventStoreSuite) TestAppend(c *C) {
 	// No events.
-	store := NewInMemory()
-	store.Append(domain.EventStream{})
+	store := NewMemoryEventStore()
+	store.Append(EventStream{})
 
 	// One event.
-	store = NewInMemory()
-	event1 := TestEvent{domain.NewUUID(), "event1"}
-	store.Append(domain.EventStream{event1})
+	store = NewMemoryEventStore()
+	event1 := TestEvent{NewUUID(), "event1"}
+	store.Append(EventStream{event1})
 	c.Assert(len(store.events), Equals, 1)
 	c.Assert(store.events[event1.TestID][0], Equals, event1)
 
 	// Two events, same aggregate.
-	store = NewInMemory()
+	store = NewMemoryEventStore()
 	event2 := TestEvent{event1.TestID, "event2"}
-	store.Append(domain.EventStream{event1, event2})
+	store.Append(EventStream{event1, event2})
 	c.Assert(len(store.events), Equals, 1)
 	c.Assert(len(store.events[event1.TestID]), Equals, 2)
 	c.Assert(store.events[event1.TestID][0], Equals, event1)
 	c.Assert(store.events[event2.TestID][1], Equals, event2)
 
 	// Two events, different aggregates.
-	store = NewInMemory()
-	event3 := TestEvent{domain.NewUUID(), "event3"}
-	store.Append(domain.EventStream{event1, event3})
+	store = NewMemoryEventStore()
+	event3 := TestEvent{NewUUID(), "event3"}
+	store.Append(EventStream{event1, event3})
 	c.Assert(len(store.events), Equals, 2)
 	c.Assert(len(store.events[event1.TestID]), Equals, 1)
 	c.Assert(len(store.events[event3.TestID]), Equals, 1)
@@ -77,35 +61,35 @@ func (s *InMemorySuite) TestAppend(c *C) {
 	c.Assert(store.events[event3.TestID][0], Equals, event3)
 }
 
-func (s *InMemorySuite) TestLoad(c *C) {
+func (s *MemoryEventStoreSuite) TestLoad(c *C) {
 	// No events.
-	store := NewInMemory()
-	events, err := store.Load(domain.NewUUID())
+	store := NewMemoryEventStore()
+	events, err := store.Load(NewUUID())
 	c.Assert(err, ErrorMatches, "could not find events")
-	c.Assert(events, DeepEquals, domain.EventStream(nil))
+	c.Assert(events, DeepEquals, EventStream(nil))
 
 	// One event.
-	store = NewInMemory()
-	event1 := TestEvent{domain.NewUUID(), "event1"}
-	store.events[event1.TestID] = domain.EventStream{event1}
+	store = NewMemoryEventStore()
+	event1 := TestEvent{NewUUID(), "event1"}
+	store.events[event1.TestID] = EventStream{event1}
 	events, err = store.Load(event1.TestID)
 	c.Assert(err, Equals, nil)
-	c.Assert(events, DeepEquals, domain.EventStream{event1})
+	c.Assert(events, DeepEquals, EventStream{event1})
 
 	// Two events, same aggregate.
-	store = NewInMemory()
+	store = NewMemoryEventStore()
 	event2 := TestEvent{event1.TestID, "event2"}
-	store.events[event1.TestID] = domain.EventStream{event1, event2}
+	store.events[event1.TestID] = EventStream{event1, event2}
 	events, err = store.Load(event1.TestID)
 	c.Assert(err, Equals, nil)
-	c.Assert(events, DeepEquals, domain.EventStream{event1, event2})
+	c.Assert(events, DeepEquals, EventStream{event1, event2})
 
 	// Two events, different aggregates.
-	store = NewInMemory()
-	event3 := TestEvent{domain.NewUUID(), "event3"}
-	store.events[event1.TestID] = domain.EventStream{event1}
-	store.events[event3.TestID] = domain.EventStream{event3}
+	store = NewMemoryEventStore()
+	event3 := TestEvent{NewUUID(), "event3"}
+	store.events[event1.TestID] = EventStream{event1}
+	store.events[event3.TestID] = EventStream{event3}
 	events, err = store.Load(event1.TestID)
 	c.Assert(err, Equals, nil)
-	c.Assert(events, DeepEquals, domain.EventStream{event1})
+	c.Assert(events, DeepEquals, EventStream{event1})
 }

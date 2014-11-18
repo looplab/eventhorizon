@@ -15,30 +15,30 @@
 package main
 
 import (
-	"github.com/looplab/eventhorizon/domain"
+	"github.com/looplab/eventhorizon"
 )
 
 type InviteCreated struct {
-	InvitationID domain.UUID
+	InvitationID eventhorizon.UUID
 	Name         string
 }
 
-func (c InviteCreated) AggregateID() domain.UUID {
+func (c InviteCreated) AggregateID() eventhorizon.UUID {
 	return c.InvitationID
 }
 
 type InviteAccepted struct {
-	InvitationID domain.UUID
+	InvitationID eventhorizon.UUID
 }
 
-func (c InviteAccepted) AggregateID() domain.UUID {
+func (c InviteAccepted) AggregateID() eventhorizon.UUID {
 	return c.InvitationID
 }
 
 type InviteDeclined struct {
-	InvitationID domain.UUID
+	InvitationID eventhorizon.UUID
 }
 
-func (c InviteDeclined) AggregateID() domain.UUID {
+func (c InviteDeclined) AggregateID() eventhorizon.UUID {
 	return c.InvitationID
 }

@@ -12,24 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dispatcher
+package eventhorizon
 
 import (
 	"reflect"
 	"strings"
-
-	"github.com/looplab/eventhorizon/aggregate"
-	"github.com/looplab/eventhorizon/domain"
-	"github.com/looplab/eventhorizon/eventhandling"
-	"github.com/looplab/eventhorizon/eventstore"
 )
 
-// MethodDispatcher is a dispather that dispatches commands and publishes events
+// Dispatcher is a interface defining a command and event dispatcher.
+//
+// The dispatch process is as follows:
+// 1. The dispather receives a command
+// 2. An aggregate is created or rebuilt from previous events in event store
+// 3. The aggregate's command handler is called
+// 4. The aggregate generates events in response to the command
+// 5. The events are stored in the event store
+// 6. The events are published to all subscribers
+type Dispatcher interface {
+	// Dispatch dispatches a command to the registered command handler.
+	Dispatch(Command)
+}
+
+// ReflectDispatcher is a dispather that dispatches commands and publishes events
 // based on method names.
-type MethodDispatcher struct {
-	eventStore       eventstore.EventStore
+type ReflectDispatcher struct {
+	eventStore       EventStore
 	commandHandlers  map[reflect.Type]handler
-	eventSubscribers map[reflect.Type][]eventhandling.EventHandler
+	eventSubscribers map[reflect.Type][]EventHandler
 }
 
 type handler struct {
@@ -38,17 +47,17 @@ type handler struct {
 }
 
 // NewMethodDispatcher creates a dispather and associates it with an event store.
-func NewMethodDispatcher(store eventstore.EventStore) *MethodDispatcher {
-	d := &MethodDispatcher{
+func NewReflectDispatcher(store EventStore) *ReflectDispatcher {
+	d := &ReflectDispatcher{
 		eventStore:       store,
 		commandHandlers:  make(map[reflect.Type]handler),
-		eventSubscribers: make(map[reflect.Type][]eventhandling.EventHandler),
+		eventSubscribers: make(map[reflect.Type][]EventHandler),
 	}
 	return d
 }
 
 // Dispatch dispatches a command to the registered command handler.
-func (d *MethodDispatcher) Dispatch(command domain.Command) {
+func (d *ReflectDispatcher) Dispatch(command Command) {
 	commandType := reflect.TypeOf(command)
 	if handler, ok := d.commandHandlers[commandType]; ok {
 		d.handleCommand(handler.sourceType, handler.method, command)
@@ -64,7 +73,7 @@ func (d *MethodDispatcher) Dispatch(command domain.Command) {
 // is as following:
 //   func HandleMyCommand(source *MySource, c MyCommand).
 // Only add method that has the correct type.
-func (d *MethodDispatcher) AddHandler(command domain.Command, source interface{}) {
+func (d *ReflectDispatcher) AddHandler(command Command, source interface{}) {
 	// Check for already existing handler.
 	commandType := reflect.TypeOf(command)
 	if _, ok := d.commandHandlers[commandType]; ok {
@@ -95,7 +104,7 @@ func (d *MethodDispatcher) AddHandler(command domain.Command, source interface{}
 
 // AddAllHandlers scans an aggregate for command handling methods and adds
 // it for every event it can handle.
-func (d *MethodDispatcher) AddAllHandlers(source interface{}) {
+func (d *ReflectDispatcher) AddAllHandlers(source interface{}) {
 	sourceType := reflect.TypeOf(source)
 	for i := 0; i < sourceType.NumMethod(); i++ {
 		method := sourceType.Method(i)
@@ -107,7 +116,7 @@ func (d *MethodDispatcher) AddAllHandlers(source interface{}) {
 
 			// Only accept methods wich takes an acctual command type.
 			commandType := method.Type.In(1)
-			if command, ok := reflect.Zero(commandType).Interface().(domain.Command); ok {
+			if command, ok := reflect.Zero(commandType).Interface().(Command); ok {
 				d.AddHandler(command, source)
 			}
 		}
@@ -115,12 +124,12 @@ func (d *MethodDispatcher) AddAllHandlers(source interface{}) {
 }
 
 // AddSubscriber adds the subscriber as a handler for a specific event.
-func (d *MethodDispatcher) AddSubscriber(event domain.Event, subscriber eventhandling.EventHandler) {
+func (d *ReflectDispatcher) AddSubscriber(event Event, subscriber EventHandler) {
 	eventType := reflect.TypeOf(event)
 
 	// Create subscriber list for new event types.
 	if _, ok := d.eventSubscribers[eventType]; !ok {
-		d.eventSubscribers[eventType] = make([]eventhandling.EventHandler, 0)
+		d.eventSubscribers[eventType] = make([]EventHandler, 0)
 	}
 
 	// Add subscriber to event type.
@@ -129,7 +138,7 @@ func (d *MethodDispatcher) AddSubscriber(event domain.Event, subscriber eventhan
 
 // AddAllSubscribers scans a event handler for handling methods and adds
 // it for every event it detects in the method name.
-func (d *MethodDispatcher) AddAllSubscribers(subscriber eventhandling.EventHandler) {
+func (d *ReflectDispatcher) AddAllSubscribers(subscriber EventHandler) {
 	subscriberType := reflect.TypeOf(subscriber)
 	for i := 0; i < subscriberType.NumMethod(); i++ {
 		method := subscriberType.Method(i)
@@ -142,14 +151,14 @@ func (d *MethodDispatcher) AddAllSubscribers(subscriber eventhandling.EventHandl
 
 			// Only accept methods wich takes an acctual event type.
 			eventType := method.Type.In(1)
-			if event, ok := reflect.Zero(eventType).Interface().(domain.Event); ok {
+			if event, ok := reflect.Zero(eventType).Interface().(Event); ok {
 				d.AddSubscriber(event, subscriber)
 			}
 		}
 	}
 }
 
-func (d *MethodDispatcher) handleCommand(sourceType reflect.Type, method reflect.Method, command domain.Command) {
+func (d *ReflectDispatcher) handleCommand(sourceType reflect.Type, method reflect.Method, command Command) {
 	// Create aggregate from source type
 	aggregate := d.createAggregate(sourceType)
 
@@ -163,9 +172,9 @@ func (d *MethodDispatcher) handleCommand(sourceType reflect.Type, method reflect
 	commandValue := reflect.ValueOf(command)
 	values := method.Func.Call([]reflect.Value{sourceValue, commandValue})
 	eventValues := values[0]
-	resultEvents := make(domain.EventStream, eventValues.Len())
+	resultEvents := make(EventStream, eventValues.Len())
 	for i := 0; i < eventValues.Len(); i++ {
-		resultEvents[i] = eventValues.Index(i).Interface().(domain.Event)
+		resultEvents[i] = eventValues.Index(i).Interface().(Event)
 	}
 
 	// Store events
@@ -177,16 +186,16 @@ func (d *MethodDispatcher) handleCommand(sourceType reflect.Type, method reflect
 	}
 }
 
-func (d *MethodDispatcher) createAggregate(sourceType reflect.Type) aggregate.Aggregate {
+func (d *ReflectDispatcher) createAggregate(sourceType reflect.Type) Aggregate {
 	sourceObj := reflect.New(sourceType)
-	aggregateValue := reflect.ValueOf(aggregate.NewMethodAggregate(sourceObj.Interface()))
+	aggregateValue := reflect.ValueOf(NewReflectAggregate(sourceObj.Interface()))
 	sourceObj.Elem().FieldByName("Aggregate").Set(aggregateValue)
-	aggregate := sourceObj.Interface().(aggregate.Aggregate)
+	aggregate := sourceObj.Interface().(Aggregate)
 	return aggregate
 }
 
 // PublishEvent publishes an event to all subscribers capable of handling it.
-func (d *MethodDispatcher) publishEvent(event domain.Event) {
+func (d *ReflectDispatcher) publishEvent(event Event) {
 	eventType := reflect.TypeOf(event)
 	if _, ok := d.eventSubscribers[eventType]; !ok {
 		// TODO: Error here

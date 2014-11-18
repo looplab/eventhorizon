@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+// Package eventhorizon is a CQRS/ES toolkit.
+package eventhorizon
 
 // Command is a domain command that is sent to a Dispatcher.
 //
@@ -24,3 +25,17 @@ package domain
 type Command interface {
 	AggregateID() UUID
 }
+
+// Event is a domain event describing a change that has happened to an aggregate.
+//
+// An event name should:
+// * Be in past tense.
+// * Contain the intent (CustomerMoved vs CustomerAddressCorrected).
+//
+// The event should contain all the data needed when appling/handling it.
+type Event interface {
+	AggregateID() UUID
+}
+
+// EventStream is a series of events represented by a slice.
+type EventStream []Event

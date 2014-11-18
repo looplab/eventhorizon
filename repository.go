@@ -12,31 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package repository
+package eventhorizon
 
 import (
 	"fmt"
-
-	"github.com/looplab/eventhorizon/domain"
 )
 
-type InMemory struct {
-	data map[domain.UUID]interface{}
+type Repository interface {
+	Save(UUID, interface{})
+	Find(UUID) (interface{}, error)
+	FindAll() ([]interface{}, error)
+	Remove(UUID) error
 }
 
-func NewInMemory() *InMemory {
-	r := &InMemory{
-		data: make(map[domain.UUID]interface{}),
+type MemoryRepository struct {
+	data map[UUID]interface{}
+}
+
+func NewMemoryRepository() *MemoryRepository {
+	r := &MemoryRepository{
+		data: make(map[UUID]interface{}),
 	}
 	return r
 }
 
-func (r *InMemory) Save(id domain.UUID, model interface{}) {
+func (r *MemoryRepository) Save(id UUID, model interface{}) {
 	// log.Printf("read model: saving %#v", model)
 	r.data[id] = model
 }
 
-func (r *InMemory) Find(id domain.UUID) (interface{}, error) {
+func (r *MemoryRepository) Find(id UUID) (interface{}, error) {
 	if model, ok := r.data[id]; ok {
 		// log.Printf("read model: found %#v", model)
 		return model, nil
@@ -45,7 +50,7 @@ func (r *InMemory) Find(id domain.UUID) (interface{}, error) {
 	return nil, fmt.Errorf("could not find model")
 }
 
-func (r *InMemory) FindAll() ([]interface{}, error) {
+func (r *MemoryRepository) FindAll() ([]interface{}, error) {
 	models := make([]interface{}, 0)
 	for _, model := range r.data {
 		models = append(models, model)
@@ -53,7 +58,7 @@ func (r *InMemory) FindAll() ([]interface{}, error) {
 	return models, nil
 }
 
-func (r *InMemory) Remove(id domain.UUID) error {
+func (r *MemoryRepository) Remove(id UUID) error {
 	if _, ok := r.data[id]; ok {
 		delete(r.data, id)
 		// log.Printf("read model: removed %#v", model)

@@ -17,8 +17,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/looplab/eventhorizon/aggregate"
-	"github.com/looplab/eventhorizon/domain"
+	"github.com/looplab/eventhorizon"
 )
 
 // Invitation aggregate root.
@@ -27,18 +26,18 @@ import (
 // declined, but not both.
 
 type InvitationAggregate struct {
-	aggregate.Aggregate
+	eventhorizon.Aggregate
 
 	name     string
 	accepted bool
 	declined bool
 }
 
-func (i *InvitationAggregate) HandleCreateInvite(command CreateInvite) (domain.EventStream, error) {
-	return domain.EventStream{InviteCreated{command.InvitationID, command.Name}}, nil
+func (i *InvitationAggregate) HandleCreateInvite(command CreateInvite) (eventhorizon.EventStream, error) {
+	return eventhorizon.EventStream{InviteCreated{command.InvitationID, command.Name}}, nil
 }
 
-func (i *InvitationAggregate) HandleAcceptInvite(command AcceptInvite) (domain.EventStream, error) {
+func (i *InvitationAggregate) HandleAcceptInvite(command AcceptInvite) (eventhorizon.EventStream, error) {
 	if i.declined {
 		return nil, fmt.Errorf("Already declined")
 	}
@@ -47,10 +46,10 @@ func (i *InvitationAggregate) HandleAcceptInvite(command AcceptInvite) (domain.E
 		return nil, nil
 	}
 
-	return domain.EventStream{InviteAccepted{i.AggregateID()}}, nil
+	return eventhorizon.EventStream{InviteAccepted{i.AggregateID()}}, nil
 }
 
-func (i *InvitationAggregate) HandleDeclineInvite(command DeclineInvite) (domain.EventStream, error) {
+func (i *InvitationAggregate) HandleDeclineInvite(command DeclineInvite) (eventhorizon.EventStream, error) {
 	if i.accepted {
 		return nil, fmt.Errorf("Already accepted")
 	}
@@ -59,7 +58,7 @@ func (i *InvitationAggregate) HandleDeclineInvite(command DeclineInvite) (domain
 		return nil, nil
 	}
 
-	return domain.EventStream{InviteDeclined{i.AggregateID()}}, nil
+	return eventhorizon.EventStream{InviteDeclined{i.AggregateID()}}, nil
 }
 
 func (i *InvitationAggregate) ApplyInviteCreated(event InviteCreated) {

@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package eventhandling
+package eventhorizon
 
 import (
 	"log"
 	"reflect"
 	"strings"
-
-	"github.com/looplab/eventhorizon/domain"
 )
+
+// EventHandler is an interface that all handlers of events should implement.
+type EventHandler interface {
+	HandleEvent(Event)
+}
 
 var (
 	cache map[cacheItem]handlersMap
@@ -31,13 +34,13 @@ type cacheItem struct {
 	methodPrefix string
 }
 
-type handlersMap map[reflect.Type]func(source interface{}, event domain.Event)
+type handlersMap map[reflect.Type]func(source interface{}, event Event)
 
 // Routes events to methods of an struct by convention. There should be one
 // router per event source instance.
 //
 // The convention is: func(s MySource) HandleXXX(e EventType)
-type methodEventHandler struct {
+type ReflectEventHandler struct {
 	source   interface{}
 	handlers handlersMap
 }
@@ -48,13 +51,13 @@ func init() {
 
 // NewMethodEventHandler returns an EventHandler that uses reflection to handle
 // events based on method names.
-func NewMethodEventHandler(source interface{}, methodPrefix string) *methodEventHandler {
+func NewReflectEventHandler(source interface{}, methodPrefix string) *ReflectEventHandler {
 	if source == nil {
-		return &methodEventHandler{}
+		return &ReflectEventHandler{}
 	}
 
 	if methodPrefix == "" {
-		return &methodEventHandler{}
+		return &ReflectEventHandler{}
 	}
 
 	var handlers handlersMap
@@ -68,19 +71,19 @@ func NewMethodEventHandler(source interface{}, methodPrefix string) *methodEvent
 		// log.Printf("write to cache: %s", sourceType)
 	}
 
-	return &methodEventHandler{
+	return &ReflectEventHandler{
 		source:   source,
 		handlers: handlers,
 	}
 }
 
-func (h *methodEventHandler) HandleEvent(e domain.Event) {
-	// log.Printf("Routing %+v", e)
+func (h *ReflectEventHandler) HandleEvent(event Event) {
+	// log.Printf("Routing %+v", event)
 	// TODO: Add error return.
 
-	eventType := reflect.TypeOf(e)
+	eventType := reflect.TypeOf(event)
 	if handler, ok := h.handlers[eventType]; ok {
-		handler(h.source, e)
+		handler(h.source, event)
 	} else {
 		sourceType := reflect.TypeOf(h.source)
 		log.Printf("No handler found for event: %v in %v", eventType.String(), sourceType.String())
@@ -104,7 +107,7 @@ func createEventHandlersForType(sourceType reflect.Type, methodPrefix string) ha
 			//   func HandleMyEvent(source *MySource, e MyEvent).
 			if method.Type.NumIn() == 2 {
 				eventType := method.Type.In(1)
-				handler := func(source interface{}, event domain.Event) {
+				handler := func(source interface{}, event Event) {
 					sourceValue := reflect.ValueOf(source)
 					eventValue := reflect.ValueOf(event)
 

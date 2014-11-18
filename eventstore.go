@@ -12,37 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package eventstore
+package eventhorizon
 
 import (
 	"fmt"
-
-	"github.com/looplab/eventhorizon/domain"
 )
 
-type InMemory struct {
-	events map[domain.UUID]domain.EventStream
+type EventStore interface {
+	Append(EventStream)
+	Load(UUID) (EventStream, error)
 }
 
-func NewInMemory() *InMemory {
-	s := &InMemory{
-		events: make(map[domain.UUID]domain.EventStream),
+type MemoryEventStore struct {
+	events map[UUID]EventStream
+}
+
+func NewMemoryEventStore() *MemoryEventStore {
+	s := &MemoryEventStore{
+		events: make(map[UUID]EventStream),
 	}
 	return s
 }
 
-func (s *InMemory) Append(events domain.EventStream) {
+func (s *MemoryEventStore) Append(events EventStream) {
 	for _, event := range events {
 		id := event.AggregateID()
 		if _, ok := s.events[id]; !ok {
-			s.events[id] = make(domain.EventStream, 0)
+			s.events[id] = make(EventStream, 0)
 		}
 		// log.Printf("event store: appending %#v", event)
 		s.events[id] = append(s.events[id], event)
 	}
 }
 
-func (s *InMemory) Load(id domain.UUID) (domain.EventStream, error) {
+func (s *MemoryEventStore) Load(id UUID) (EventStream, error) {
 	if events, ok := s.events[id]; ok {
 		// log.Printf("event store: loaded %#v", events)
 		return events, nil

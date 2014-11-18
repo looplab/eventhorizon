@@ -12,42 +12,52 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package aggregate
+package eventhorizon
 
-import (
-	"github.com/looplab/eventhorizon/domain"
-	"github.com/looplab/eventhorizon/eventhandling"
-)
+// Aggregate is a CQRS aggregate base to embedd in domain specific aggregates.
+type Aggregate interface {
+	// AggregateID returns the id of the aggregate.
+	AggregateID() UUID
 
-type methodAggregate struct {
-	id           domain.UUID
+	// SetAggregateID sets the id of the aggregate.
+	SetAggregateID(id UUID)
+
+	// ApplyEvent applies an event to the aggregate by setting it's values.
+	ApplyEvent(event Event)
+
+	// ApplyEvents applies several events by calling ApplyEvent.
+	ApplyEvents(events EventStream)
+}
+
+type ReflectAggregate struct {
+	id           UUID
 	eventsLoaded int
-	handler      eventhandling.EventHandler
+	handler      EventHandler
 }
 
 // NewMethodAggregate creates an aggregate wich applies it's events by using
 // methods detected with reflection by the methodApplier.
-func NewMethodAggregate(source interface{}) *methodAggregate {
-	return &methodAggregate{
+func NewReflectAggregate(source interface{}) *ReflectAggregate {
+	return &ReflectAggregate{
 		eventsLoaded: 0,
-		handler:      eventhandling.NewMethodEventHandler(source, "Apply"),
+		handler:      NewReflectEventHandler(source, "Apply"),
 	}
 }
 
-func (a *methodAggregate) AggregateID() domain.UUID {
+func (a *ReflectAggregate) AggregateID() UUID {
 	return a.id
 }
 
-func (a *methodAggregate) SetAggregateID(id domain.UUID) {
+func (a *ReflectAggregate) SetAggregateID(id UUID) {
 	a.id = id
 }
 
-func (a *methodAggregate) ApplyEvent(event domain.Event) {
+func (a *ReflectAggregate) ApplyEvent(event Event) {
 	a.handler.HandleEvent(event)
 	a.eventsLoaded++
 }
 
-func (a *methodAggregate) ApplyEvents(events domain.EventStream) {
+func (a *ReflectAggregate) ApplyEvents(events EventStream) {
 	for _, event := range events {
 		a.ApplyEvent(event)
 	}

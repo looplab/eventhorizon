@@ -18,28 +18,25 @@ package main
 import (
 	"fmt"
 
-	"github.com/looplab/eventhorizon/dispatcher"
-	"github.com/looplab/eventhorizon/domain"
-	"github.com/looplab/eventhorizon/eventstore"
-	"github.com/looplab/eventhorizon/repository"
+	"github.com/looplab/eventhorizon"
 )
 
 func main() {
 	// Create the event store and dispatcher.
-	eventStore := eventstore.NewEventStore("MemoryEventStore")
-	disp := dispatcher.NewMethodDispatcher(eventStore)
+	eventStore := eventhorizon.NewMemoryEventStore()
+	disp := eventhorizon.NewReflectDispatcher(eventStore)
 
 	// Register the domain aggregates with the dispather.
 	disp.AddAllHandlers(&InvitationAggregate{})
 
 	// Create and register a read model for individual invitations.
-	invitationRepository := repository.NewRepository("MemoryReadModel")
+	invitationRepository := eventhorizon.NewMemoryRepository()
 	invitationProjector := NewInvitationProjector(invitationRepository)
 	disp.AddAllSubscribers(invitationProjector)
 
 	// Create and register a read model for a guest list.
-	eventID := domain.NewUUID()
-	guestListRepository := repository.NewRepository("MemoryReadModel")
+	eventID := eventhorizon.NewUUID()
+	guestListRepository := eventhorizon.NewMemoryRepository()
 	guestListProjector := NewGuestListProjector(guestListRepository, eventID)
 	disp.AddAllSubscribers(guestListProjector)
 
@@ -47,16 +44,16 @@ func main() {
 	// Note that Athena tries to decline the event, but that is not allowed
 	// by the domain logic in InvitationAggregate. The result is that she is
 	// still accepted.
-	athenaID := domain.NewUUID()
+	athenaID := eventhorizon.NewUUID()
 	disp.Dispatch(CreateInvite{athenaID, "Athena"})
 	disp.Dispatch(AcceptInvite{athenaID})
 	disp.Dispatch(DeclineInvite{athenaID})
 
-	hadesID := domain.NewUUID()
+	hadesID := eventhorizon.NewUUID()
 	disp.Dispatch(CreateInvite{hadesID, "Hades"})
 	disp.Dispatch(AcceptInvite{hadesID})
 
-	zeusID := domain.NewUUID()
+	zeusID := eventhorizon.NewUUID()
 	disp.Dispatch(CreateInvite{zeusID, "Zeus"})
 	disp.Dispatch(DeclineInvite{zeusID})
 

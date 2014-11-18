@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package eventhorizon
 
 import (
 	"regexp"
-	"testing"
 
 	. "gopkg.in/check.v1"
 )
-
-// Hook up gocheck into the "go test" runner.
-func Test(t *testing.T) { TestingT(t) }
 
 type UUIDSuite struct{}
 

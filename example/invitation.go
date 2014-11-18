@@ -15,13 +15,11 @@
 package main
 
 import (
-	"github.com/looplab/eventhorizon/domain"
-	"github.com/looplab/eventhorizon/eventhandling"
-	"github.com/looplab/eventhorizon/repository"
+	"github.com/looplab/eventhorizon"
 )
 
 type Invitation struct {
-	ID     domain.UUID
+	ID     eventhorizon.UUID
 	Name   string
 	Status string
 }
@@ -29,15 +27,15 @@ type Invitation struct {
 // Projector that writes to a read model
 
 type InvitationProjector struct {
-	repository repository.Repository
-	eventhandling.EventHandler
+	repository eventhorizon.Repository
+	eventhorizon.EventHandler
 }
 
-func NewInvitationProjector(repository repository.Repository) *InvitationProjector {
+func NewInvitationProjector(repository eventhorizon.Repository) *InvitationProjector {
 	p := &InvitationProjector{
 		repository: repository,
 	}
-	p.EventHandler = eventhandling.NewMethodEventHandler(p, "Handle")
+	p.EventHandler = eventhorizon.NewReflectEventHandler(p, "Handle")
 	return p
 }
 
