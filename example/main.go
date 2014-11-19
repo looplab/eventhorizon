@@ -47,7 +47,10 @@ func main() {
 	athenaID := eventhorizon.NewUUID()
 	disp.Dispatch(CreateInvite{athenaID, "Athena"})
 	disp.Dispatch(AcceptInvite{athenaID})
-	disp.Dispatch(DeclineInvite{athenaID})
+	err := disp.Dispatch(DeclineInvite{athenaID})
+	if err != nil {
+		fmt.Printf("error: %s\n", err)
+	}
 
 	hadesID := eventhorizon.NewUUID()
 	disp.Dispatch(CreateInvite{hadesID, "Hades"})

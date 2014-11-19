@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"fmt"
 	"reflect"
 
 	. "gopkg.in/check.v1"
@@ -44,6 +45,9 @@ type TestSource struct {
 
 func (t *TestSource) HandleTestCommand(command TestCommand) (EventStream, error) {
 	dispatchedCommand = command
+	if command.Content == "error" {
+		return nil, fmt.Errorf("command error")
+	}
 	return nil, nil
 }
 
@@ -61,15 +65,30 @@ func (s *MethodDispatcherSuite) TestDispatch(c *C) {
 		method:     method,
 	}
 	command1 := TestCommand{NewUUID(), "command1"}
-	disp.Dispatch(command1)
+	err := disp.Dispatch(command1)
 	c.Assert(dispatchedCommand, Equals, command1)
+	c.Assert(err, Equals, nil)
+
+	// With error in command handler.
+	mockStore = &MockEventStore{
+		events: make(EventStream, 0),
+	}
+	disp = NewReflectDispatcher(mockStore)
+	disp.commandHandlers[reflect.TypeOf(TestCommand{})] = handler{
+		sourceType: sourceType,
+		method:     method,
+	}
+	commandError := TestCommand{NewUUID(), "error"}
+	err = disp.Dispatch(commandError)
+	c.Assert(err, ErrorMatches, "command error")
 
 	// Without handlers.
 	mockStore = &MockEventStore{
 		events: make(EventStream, 0),
 	}
 	disp = NewReflectDispatcher(mockStore)
-	disp.Dispatch(command1)
+	err = disp.Dispatch(command1)
+	c.Assert(err, ErrorMatches, "no handlers for command")
 }
 
 var callCount int

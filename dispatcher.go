@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -30,7 +31,7 @@ import (
 // 6. The events are published to all subscribers
 type Dispatcher interface {
 	// Dispatch dispatches a command to the registered command handler.
-	Dispatch(Command)
+	Dispatch(Command) error
 }
 
 // ReflectDispatcher is a dispather that dispatches commands and publishes events
@@ -57,12 +58,12 @@ func NewReflectDispatcher(store EventStore) *ReflectDispatcher {
 }
 
 // Dispatch dispatches a command to the registered command handler.
-func (d *ReflectDispatcher) Dispatch(command Command) {
+func (d *ReflectDispatcher) Dispatch(command Command) error {
 	commandType := reflect.TypeOf(command)
 	if handler, ok := d.commandHandlers[commandType]; ok {
-		d.handleCommand(handler.sourceType, handler.method, command)
+		return d.handleCommand(handler.sourceType, handler.method, command)
 	}
-	// TODO: Error here
+	return fmt.Errorf("no handlers for command")
 }
 
 // AddHandler adds an aggregate as a handler for a command.
@@ -158,7 +159,7 @@ func (d *ReflectDispatcher) AddAllSubscribers(subscriber EventHandler) {
 	}
 }
 
-func (d *ReflectDispatcher) handleCommand(sourceType reflect.Type, method reflect.Method, command Command) {
+func (d *ReflectDispatcher) handleCommand(sourceType reflect.Type, method reflect.Method, command Command) error {
 	// Create aggregate from source type
 	aggregate := d.createAggregate(command.AggregateID(), sourceType)
 
@@ -170,10 +171,16 @@ func (d *ReflectDispatcher) handleCommand(sourceType reflect.Type, method reflec
 	sourceValue := reflect.ValueOf(aggregate)
 	commandValue := reflect.ValueOf(command)
 	values := method.Func.Call([]reflect.Value{sourceValue, commandValue})
-	eventValues := values[0]
-	resultEvents := make(EventStream, eventValues.Len())
-	for i := 0; i < eventValues.Len(); i++ {
-		resultEvents[i] = eventValues.Index(i).Interface().(Event)
+
+	err := values[1].Interface()
+	if err != nil {
+		return err.(error)
+	}
+
+	eventsValue := values[0]
+	resultEvents := make(EventStream, eventsValue.Len())
+	for i := 0; i < eventsValue.Len(); i++ {
+		resultEvents[i] = eventsValue.Index(i).Interface().(Event)
 	}
 
 	// Store events
@@ -183,6 +190,8 @@ func (d *ReflectDispatcher) handleCommand(sourceType reflect.Type, method reflec
 	for _, event := range resultEvents {
 		d.publishEvent(event)
 	}
+
+	return nil
 }
 
 func (d *ReflectDispatcher) createAggregate(id UUID, sourceType reflect.Type) Aggregate {

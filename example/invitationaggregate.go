@@ -39,7 +39,7 @@ func (i *InvitationAggregate) HandleCreateInvite(command CreateInvite) (eventhor
 
 func (i *InvitationAggregate) HandleAcceptInvite(command AcceptInvite) (eventhorizon.EventStream, error) {
 	if i.declined {
-		return nil, fmt.Errorf("Already declined")
+		return nil, fmt.Errorf("%s already declined", i.name)
 	}
 
 	if i.accepted {
@@ -51,7 +51,7 @@ func (i *InvitationAggregate) HandleAcceptInvite(command AcceptInvite) (eventhor
 
 func (i *InvitationAggregate) HandleDeclineInvite(command DeclineInvite) (eventhorizon.EventStream, error) {
 	if i.accepted {
-		return nil, fmt.Errorf("Already accepted")
+		return nil, fmt.Errorf("%s already accepted", i.name)
 	}
 
 	if i.declined {
