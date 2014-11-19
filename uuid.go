@@ -59,14 +59,14 @@ func (id *UUID) MarshalJSON() ([]byte, error) {
 func (id *UUID) UnmarshalJSON(data []byte) error {
 	// Data is expected to be a json string, like: "819c4ff4-31b4-4519-5d24-3c4a129b8649"
 	if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-		return fmt.Errorf("Invalid UUID in JSON, %v is not a valid JSON string", string(data))
+		return fmt.Errorf("invalid UUID in JSON, %v is not a valid JSON string", string(data))
 	}
 
 	// Grab string value without the surrounding " characters
 	value := string(data[1 : len(data)-1])
 	parsed, err := uuid.ParseHex(value)
 	if err != nil {
-		return fmt.Errorf("Invalid UUID in JSON, %v: %v", value, err)
+		return fmt.Errorf("invalid UUID in JSON, %v: %v", value, err)
 	}
 
 	// Dereference pointer value and store parsed

@@ -73,6 +73,6 @@ func (s *UUIDSuite) TestUnmarshalJSON(c *C) {
 
 	var jsonID3 UUID
 	err = jsonID3.UnmarshalJSON([]byte("\"819c4ff4-31b4-4519-xxxx-3c4a129b8649\""))
-	c.Assert(err.Error(), Equals, "nvalid UUID in JSON, 819c4ff4-31b4-4519-xxxx-3c4a129b8649: encoding/hex: invalid byte: U+0078 'x'")
+	c.Assert(err.Error(), Equals, "invalid UUID in JSON, 819c4ff4-31b4-4519-xxxx-3c4a129b8649: encoding/hex: invalid byte: U+0078 'x'")
 	c.Assert(jsonID3, Equals, nilID)
 }
