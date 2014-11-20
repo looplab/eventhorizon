@@ -19,13 +19,15 @@ import (
 	"reflect"
 
 	. "gopkg.in/check.v1"
+
+	t "github.com/looplab/eventhorizon/testing"
 )
 
-type MethodDispatcherSuite struct{}
+type ReflectDispatcherSuite struct{}
 
-var _ = Suite(&MethodDispatcherSuite{})
+var _ = Suite(&ReflectDispatcherSuite{})
 
-func (s *MethodDispatcherSuite) TestNewMethodAggregate(c *C) {
+func (s *ReflectDispatcherSuite) TestNewReflectAggregate(c *C) {
 	// With event store.
 	mockStore := &MockEventStore{
 		events: make(EventStream, 0),
@@ -51,7 +53,11 @@ func (t *TestSource) HandleTestCommand(command TestCommand) (EventStream, error)
 	return nil, nil
 }
 
-func (s *MethodDispatcherSuite) TestDispatch(c *C) {
+func (t *TestSource) HandleCommandOther2(command TestCommandOther2, invalidParam string) (EventStream, error) {
+	return nil, nil
+}
+
+func (s *ReflectDispatcherSuite) TestDispatch(c *C) {
 	// Simple dispatch, with raw handler.
 	mockStore := &MockEventStore{
 		events: make(EventStream, 0),
@@ -91,6 +97,64 @@ func (s *MethodDispatcherSuite) TestDispatch(c *C) {
 	c.Assert(err, ErrorMatches, "no handlers for command")
 }
 
+func (s *ReflectDispatcherSuite) TestAddHandler(c *C) {
+	// Adding simple handler.
+	mockStore := &MockEventStore{
+		events: make(EventStream, 0),
+	}
+	disp := NewReflectDispatcher(mockStore)
+	source := &TestSource{}
+	disp.AddHandler(TestCommand{}, source)
+	c.Assert(len(disp.commandHandlers), Equals, 1)
+	commandType := reflect.TypeOf(TestCommand{})
+	c.Assert(disp.commandHandlers, t.HasKey, commandType)
+	sourceType := reflect.ValueOf(source).Elem().Type()
+	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
+	sourceHandler := handler{
+		sourceType: sourceType,
+		method:     method,
+	}
+	c.Assert(disp.commandHandlers[commandType], Equals, sourceHandler)
+
+	// Adding another handler for the same command.
+	mockStore = &MockEventStore{
+		events: make(EventStream, 0),
+	}
+	disp = NewReflectDispatcher(mockStore)
+	source = &TestSource{}
+	disp.AddHandler(TestCommand{}, source)
+	source2 := &TestSource{}
+	disp.AddHandler(TestCommand{}, source2)
+	c.Assert(len(disp.commandHandlers), Equals, 1)
+	commandType = reflect.TypeOf(TestCommand{})
+	c.Assert(disp.commandHandlers, t.HasKey, commandType)
+	sourceType = reflect.ValueOf(source).Elem().Type()
+	method, _ = reflect.TypeOf(source).MethodByName("HandleTestCommand")
+	sourceHandler = handler{
+		sourceType: sourceType,
+		method:     method,
+	}
+	c.Assert(disp.commandHandlers[commandType], Equals, sourceHandler)
+
+	// Add handler with missing method.
+	mockStore = &MockEventStore{
+		events: make(EventStream, 0),
+	}
+	disp = NewReflectDispatcher(mockStore)
+	source = &TestSource{}
+	disp.AddHandler(TestCommandOther{}, source)
+	c.Assert(len(disp.commandHandlers), Equals, 0)
+
+	// Add handler with incorrect method signature.
+	mockStore = &MockEventStore{
+		events: make(EventStream, 0),
+	}
+	disp = NewReflectDispatcher(mockStore)
+	source = &TestSource{}
+	disp.AddHandler(TestCommandOther2{}, source)
+	c.Assert(len(disp.commandHandlers), Equals, 0)
+}
+
 var callCount int
 
 type BenchmarkAggregate struct {
@@ -102,7 +166,7 @@ func (t *BenchmarkAggregate) HandleTestCommand(command TestCommand) (EventStream
 	return nil, nil
 }
 
-func (s *MethodDispatcherSuite) BenchmarkDispatchDynamic(c *C) {
+func (s *ReflectDispatcherSuite) BenchmarkReflectDispatcher(c *C) {
 	mockStore := &MockEventStore{
 		events: make(EventStream, 0),
 	}

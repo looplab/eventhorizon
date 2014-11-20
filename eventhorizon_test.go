@@ -21,6 +21,8 @@ import (
 )
 
 // Hook up gocheck into the "go test" runner.
+//
+// Run benchmarks with "go test -check.b"
 func Test(t *testing.T) { TestingT(t) }
 
 type EmptyAggregate struct {
@@ -58,6 +60,24 @@ type TestCommand struct {
 }
 
 func (t TestCommand) AggregateID() UUID {
+	return t.TestID
+}
+
+type TestCommandOther struct {
+	TestID  UUID
+	Content string
+}
+
+func (t TestCommandOther) AggregateID() UUID {
+	return t.TestID
+}
+
+type TestCommandOther2 struct {
+	TestID  UUID
+	Content string
+}
+
+func (t TestCommandOther2) AggregateID() UUID {
 	return t.TestID
 }
 
