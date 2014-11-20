@@ -37,9 +37,10 @@ type Dispatcher interface {
 // ReflectDispatcher is a dispather that dispatches commands and publishes events
 // based on method names.
 type ReflectDispatcher struct {
-	eventStore       EventStore
-	commandHandlers  map[reflect.Type]handler
-	eventSubscribers map[reflect.Type][]EventHandler
+	eventStore        EventStore
+	commandHandlers   map[reflect.Type]handler
+	eventSubscribers  map[reflect.Type][]EventHandler
+	globalSubscribers []EventHandler
 }
 
 type handler struct {
@@ -50,9 +51,10 @@ type handler struct {
 // NewReflectDispatcher creates a dispather and associates it with an event store.
 func NewReflectDispatcher(store EventStore) *ReflectDispatcher {
 	d := &ReflectDispatcher{
-		eventStore:       store,
-		commandHandlers:  make(map[reflect.Type]handler),
-		eventSubscribers: make(map[reflect.Type][]EventHandler),
+		eventStore:        store,
+		commandHandlers:   make(map[reflect.Type]handler),
+		eventSubscribers:  make(map[reflect.Type][]EventHandler),
+		globalSubscribers: make([]EventHandler, 0),
 	}
 	return d
 }
@@ -159,6 +161,11 @@ func (d *ReflectDispatcher) AddAllSubscribers(subscriber EventHandler) {
 	}
 }
 
+// AddGlobalSubscriber adds the subscriber as a handler for a specific event.
+func (d *ReflectDispatcher) AddGlobalSubscriber(subscriber EventHandler) {
+	d.globalSubscribers = append(d.globalSubscribers, subscriber)
+}
+
 func (d *ReflectDispatcher) handleCommand(sourceType reflect.Type, method reflect.Method, command Command) error {
 	// Create aggregate from source type
 	aggregate := d.createAggregate(command.AggregateID(), sourceType)
@@ -204,6 +211,12 @@ func (d *ReflectDispatcher) createAggregate(id UUID, sourceType reflect.Type) Ag
 
 // PublishEvent publishes an event to all subscribers capable of handling it.
 func (d *ReflectDispatcher) publishEvent(event Event) {
+	// Publish to global subscribers.
+	for _, subscriber := range d.globalSubscribers {
+		subscriber.HandleEvent(event)
+	}
+
+	// Publish to specific subscribers.
 	eventType := reflect.TypeOf(event)
 	if _, ok := d.eventSubscribers[eventType]; !ok {
 		// TODO: Error here
