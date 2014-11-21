@@ -17,6 +17,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/looplab/eventhorizon"
 )
@@ -25,6 +26,7 @@ func main() {
 	// Create the event store and dispatcher.
 	eventStore := eventhorizon.NewMemoryEventStore()
 	disp := eventhorizon.NewReflectDispatcher(eventStore)
+	disp.AddGlobalSubscriber(&LoggerSubscriber{})
 
 	// Register the domain aggregates with the dispather.
 	disp.AddAllHandlers(&InvitationAggregate{})
@@ -69,4 +71,10 @@ func main() {
 	// Read the guest list.
 	guestList, _ := guestListRepository.Find(eventID)
 	fmt.Printf("guest list: %#v\n", guestList)
+}
+
+type LoggerSubscriber struct{}
+
+func (l *LoggerSubscriber) HandleEvent(event eventhorizon.Event) {
+	log.Printf("event: %#v\n", event)
 }

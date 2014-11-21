@@ -48,7 +48,6 @@ func (p *GuestListProjector) HandleInviteCreated(event InviteCreated) {
 		m = &GuestList{}
 	}
 	g := m.(*GuestList)
-	g.NumGuests++
 	p.repository.Save(p.eventID, g)
 }
 
