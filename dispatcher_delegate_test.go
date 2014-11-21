@@ -198,6 +198,9 @@ func (t *BenchmarkDelegateDispatcherAggregate) HandleCommand(command Command) (E
 	return nil, nil
 }
 
+func (t *BenchmarkDelegateDispatcherAggregate) HandleEvent(event Event) {
+}
+
 func (s *DelegateDispatcherSuite) BenchmarkDelegateDispatcher(c *C) {
 	mockStore := &MockEventStore{
 		events: make(EventStream, 0),
