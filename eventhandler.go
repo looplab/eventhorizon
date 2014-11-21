@@ -34,7 +34,7 @@ type cacheItem struct {
 	methodPrefix string
 }
 
-type handlersMap map[reflect.Type]func(source interface{}, event Event)
+type handlersMap map[reflect.Type]reflect.Method
 
 // ReflectEventHandler routes events to methods of a struct by convention.
 // There should be one router per event source instance.
@@ -84,11 +84,19 @@ func (h *ReflectEventHandler) HandleEvent(event Event) {
 
 	eventType := reflect.TypeOf(event)
 	if handler, ok := h.handlers[eventType]; ok {
-		handler(h.source, event)
+		h.handleEvent(handler, event)
 	} else {
 		sourceType := reflect.TypeOf(h.source)
 		log.Printf("No handler found for event: %v in %v", eventType.String(), sourceType.String())
 	}
+}
+
+func (h *ReflectEventHandler) handleEvent(method reflect.Method, event Event) {
+	sourceValue := reflect.ValueOf(h.source)
+	eventValue := reflect.ValueOf(event)
+
+	// Call actual event handling method.
+	method.Func.Call([]reflect.Value{sourceValue, eventValue})
 }
 
 func createEventHandlersForType(sourceType reflect.Type, methodPrefix string) handlersMap {
@@ -106,17 +114,11 @@ func createEventHandlersForType(sourceType reflect.Type, methodPrefix string) ha
 			// When getting the type of this methods by reflection the signature
 			// is as following:
 			//   func HandleMyEvent(source *MySource, e MyEvent).
-			if method.Type.NumIn() == 2 {
-				eventType := method.Type.In(1)
-				handler := func(source interface{}, event Event) {
-					sourceValue := reflect.ValueOf(source)
-					eventValue := reflect.ValueOf(event)
-
-					// Call actual event handling method.
-					method.Func.Call([]reflect.Value{sourceValue, eventValue})
-				}
-				handlers[eventType] = handler
+			eventType := method.Type.In(1)
+			if method.Type.NumIn() != 2 || eventType != method.Type.In(1) || !strings.HasSuffix(method.Name, eventType.Name()) {
+				continue
 			}
+			handlers[eventType] = method
 		}
 	}
 

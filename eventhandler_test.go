@@ -15,6 +15,8 @@
 package eventhorizon
 
 import (
+	"reflect"
+
 	. "gopkg.in/check.v1"
 )
 
@@ -30,6 +32,8 @@ func (s *ReflectEventHandlerSuite) TestNewReflectEventHandler(c *C) {
 	c.Assert(handler, Not(Equals), nil)
 	c.Assert(handler.handlers, Not(Equals), nil)
 	c.Assert(len(handler.handlers), Equals, 1)
+	method, _ := reflect.TypeOf(source).MethodByName("HandleTestEvent")
+	c.Assert(handler.handlers[reflect.TypeOf(TestEvent{})], Equals, method)
 	c.Assert(handler.source, DeepEquals, source)
 	c.Assert(len(cache), Equals, 1)
 
@@ -39,6 +43,7 @@ func (s *ReflectEventHandlerSuite) TestNewReflectEventHandler(c *C) {
 	c.Assert(handler, Not(Equals), nil)
 	c.Assert(handler.handlers, Not(Equals), nil)
 	c.Assert(len(handler.handlers), Equals, 1)
+	c.Assert(handler.handlers[reflect.TypeOf(TestEvent{})], Equals, method)
 	c.Assert(handler.source, DeepEquals, source)
 
 	// Nil source.
