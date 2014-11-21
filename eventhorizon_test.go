@@ -28,6 +28,14 @@ func Test(t *testing.T) { TestingT(t) }
 type EmptyAggregate struct {
 }
 
+type TestDelegateAggregate struct {
+	events EventStream
+}
+
+func (a *TestDelegateAggregate) HandleEvent(event Event) {
+	a.events = append(a.events, event)
+}
+
 type TestAggregate struct {
 	events EventStream
 }
