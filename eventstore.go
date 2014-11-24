@@ -21,31 +21,31 @@ import (
 // EventStore is an interface for an event sourcing event store.
 type EventStore interface {
 	// Append appends all events in the event stream to the store.
-	Append(EventStream)
+	Append([]Event)
 
 	// Load loads all events for the aggregate id from the store.
-	Load(UUID) (EventStream, error)
+	Load(UUID) ([]Event, error)
 }
 
 // MemoryEventStore implements EventStore as an in memory structure.
 type MemoryEventStore struct {
-	events map[UUID]EventStream
+	events map[UUID][]Event
 }
 
 // NewMemoryEventStore creates a new MemoryEventStore.
 func NewMemoryEventStore() *MemoryEventStore {
 	s := &MemoryEventStore{
-		events: make(map[UUID]EventStream),
+		events: make(map[UUID][]Event),
 	}
 	return s
 }
 
 // Append appends all events in the event stream to the memory store.
-func (s *MemoryEventStore) Append(events EventStream) {
+func (s *MemoryEventStore) Append(events []Event) {
 	for _, event := range events {
 		id := event.AggregateID()
 		if _, ok := s.events[id]; !ok {
-			s.events[id] = make(EventStream, 0)
+			s.events[id] = make([]Event, 0)
 		}
 		// log.Printf("event store: appending %#v", event)
 		s.events[id] = append(s.events[id], event)
@@ -53,7 +53,7 @@ func (s *MemoryEventStore) Append(events EventStream) {
 }
 
 // Load loads all events for the aggregate id from the memory store.
-func (s *MemoryEventStore) Load(id UUID) (EventStream, error) {
+func (s *MemoryEventStore) Load(id UUID) ([]Event, error) {
 	if events, ok := s.events[id]; ok {
 		// log.Printf("event store: loaded %#v", events)
 		return events, nil

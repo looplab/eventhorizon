@@ -81,17 +81,17 @@ func (s *ReflectEventHandlerSuite) TestHandleEvent(c *C) {
 	// Simple event handling.
 	cache = make(map[cacheItem]handlersMap)
 	source := &TestAggregate{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	handler := NewReflectEventHandler(source, "Handle")
 	event1 := TestEvent{NewUUID(), "event1"}
 	handler.HandleEvent(event1)
-	c.Assert(source.events, DeepEquals, EventStream{event1})
+	c.Assert(source.events, DeepEquals, []Event{event1})
 
 	// Non existing handler.
 	cache = make(map[cacheItem]handlersMap)
 	source = &TestAggregate{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	handler = NewReflectEventHandler(source, "Handle")
 	eventOther := TestEventOther{NewUUID(), "eventOther"}

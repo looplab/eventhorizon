@@ -171,7 +171,7 @@ func (d *ReflectDispatcher) handleCommand(sourceType reflect.Type, method reflec
 	}
 
 	eventsValue := values[0]
-	resultEvents := make(EventStream, eventsValue.Len())
+	resultEvents := make([]Event, eventsValue.Len())
 	for i := 0; i < eventsValue.Len(); i++ {
 		resultEvents[i] = eventsValue.Index(i).Interface().(Event)
 	}

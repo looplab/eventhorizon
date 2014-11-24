@@ -16,5 +16,5 @@ package eventhorizon
 
 // CommandHandler is an interface that all handlers of commands should implement.
 type CommandHandler interface {
-	HandleCommand(Command) (EventStream, error)
+	HandleCommand(Command) ([]Event, error)
 }

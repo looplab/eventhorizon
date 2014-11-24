@@ -33,5 +33,5 @@ type Aggregate interface {
 	ApplyEvent(event Event)
 
 	// ApplyEvents applies several events by calling ApplyEvent.
-	ApplyEvents(events EventStream)
+	ApplyEvents(events []Event)
 }

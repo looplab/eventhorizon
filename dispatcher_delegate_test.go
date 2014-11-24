@@ -30,7 +30,7 @@ var _ = Suite(&DelegateDispatcherSuite{})
 func (s *DelegateDispatcherSuite) TestNewDelegateAggregate(c *C) {
 	// With event store.
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewDelegateDispatcher(mockStore)
 	c.Assert(disp, Not(Equals), nil)
@@ -45,14 +45,14 @@ type TestDelegateDispatcherAggregate struct {
 	Aggregate
 }
 
-func (t *TestDelegateDispatcherAggregate) HandleCommand(command Command) (EventStream, error) {
+func (t *TestDelegateDispatcherAggregate) HandleCommand(command Command) ([]Event, error) {
 	dispatchedDelegateCommand = command
 	switch command := command.(type) {
 	case TestCommand:
 		if command.Content == "error" {
 			return nil, fmt.Errorf("command error")
 		}
-		return EventStream{TestEvent{command.TestID, command.Content}}, nil
+		return []Event{TestEvent{command.TestID, command.Content}}, nil
 	}
 	return nil, fmt.Errorf("couldn't handle command")
 }
@@ -63,7 +63,7 @@ func (t *TestDelegateDispatcherAggregate) HandleEvent(event Event) {
 func (s *DelegateDispatcherSuite) TestDispatch(c *C) {
 	// Simple dispatch, with raw handler.
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewDelegateDispatcher(mockStore)
 	aggregate := &TestDelegateDispatcherAggregate{}
@@ -76,7 +76,7 @@ func (s *DelegateDispatcherSuite) TestDispatch(c *C) {
 
 	// With error in command handler.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewDelegateDispatcher(mockStore)
 	disp.commandHandlers[reflect.TypeOf(TestCommand{})] = aggregateBaseType
@@ -87,7 +87,7 @@ func (s *DelegateDispatcherSuite) TestDispatch(c *C) {
 
 	// Without handlers.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewDelegateDispatcher(mockStore)
 	err = disp.Dispatch(command1)
@@ -97,7 +97,7 @@ func (s *DelegateDispatcherSuite) TestDispatch(c *C) {
 func (s *DelegateDispatcherSuite) TestAddHandler(c *C) {
 	// Adding simple handler.
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewDelegateDispatcher(mockStore)
 	aggregate := &TestDelegateDispatcherAggregate{}
@@ -110,7 +110,7 @@ func (s *DelegateDispatcherSuite) TestAddHandler(c *C) {
 
 	// Adding another handler for the same command.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewDelegateDispatcher(mockStore)
 	aggregate = &TestDelegateDispatcherAggregate{}
@@ -135,7 +135,7 @@ func (t *TestGlobalSubscriberDelegateDispatcher) HandleEvent(event Event) {
 func (s *DelegateDispatcherSuite) TestAddGlobalSubscriber(c *C) {
 	// Add global subscriber.
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewDelegateDispatcher(mockStore)
 	globalSubscriber := &TestGlobalSubscriberDelegateDispatcher{}
@@ -147,7 +147,7 @@ func (s *DelegateDispatcherSuite) TestAddGlobalSubscriber(c *C) {
 func (s *DelegateDispatcherSuite) TestHandleCommand(c *C) {
 	// Simple handler.
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewDelegateDispatcher(mockStore)
 	aggregate := &TestDelegateDispatcherAggregate{}
@@ -161,7 +161,7 @@ func (s *DelegateDispatcherSuite) TestHandleCommand(c *C) {
 
 	// Error in command handler.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewDelegateDispatcher(mockStore)
 	aggregate = &TestDelegateDispatcherAggregate{}
@@ -174,7 +174,7 @@ func (s *DelegateDispatcherSuite) TestHandleCommand(c *C) {
 
 	// Global subscribers notified.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewDelegateDispatcher(mockStore)
 	aggregate = &TestDelegateDispatcherAggregate{}
@@ -193,7 +193,7 @@ type BenchmarkDelegateDispatcherAggregate struct {
 	Aggregate
 }
 
-func (t *BenchmarkDelegateDispatcherAggregate) HandleCommand(command Command) (EventStream, error) {
+func (t *BenchmarkDelegateDispatcherAggregate) HandleCommand(command Command) ([]Event, error) {
 	callCountDelegateDispatcher++
 	return nil, nil
 }
@@ -203,7 +203,7 @@ func (t *BenchmarkDelegateDispatcherAggregate) HandleEvent(event Event) {
 
 func (s *DelegateDispatcherSuite) BenchmarkDelegateDispatcher(c *C) {
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewDelegateDispatcher(mockStore)
 	agg := &BenchmarkDelegateDispatcherAggregate{}

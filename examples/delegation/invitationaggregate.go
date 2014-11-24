@@ -33,10 +33,10 @@ type InvitationAggregate struct {
 	declined bool
 }
 
-func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) (eventhorizon.EventStream, error) {
+func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) ([]eventhorizon.Event, error) {
 	switch command := command.(type) {
 	case CreateInvite:
-		return eventhorizon.EventStream{
+		return []eventhorizon.Event{
 			InviteCreated{command.InvitationID, command.Name},
 		}, nil
 
@@ -49,7 +49,7 @@ func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) (event
 			return nil, nil
 		}
 
-		return eventhorizon.EventStream{
+		return []eventhorizon.Event{
 			InviteAccepted{i.AggregateID()},
 		}, nil
 
@@ -62,7 +62,7 @@ func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) (event
 			return nil, nil
 		}
 
-		return eventhorizon.EventStream{
+		return []eventhorizon.Event{
 			InviteDeclined{i.AggregateID()},
 		}, nil
 	}

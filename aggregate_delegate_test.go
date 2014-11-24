@@ -43,54 +43,54 @@ func (s *DelegateAggregateSuite) TestApplyEvent(c *C) {
 	// Apply one event.
 	id := NewUUID()
 	delegate := &TestDelegateAggregate{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	agg := NewDelegateAggregate(id, delegate)
 	event1 := TestEvent{NewUUID(), "event1"}
 	agg.ApplyEvent(event1)
 	c.Assert(agg.eventsLoaded, Equals, 1)
-	c.Assert(delegate.events, DeepEquals, EventStream{event1})
+	c.Assert(delegate.events, DeepEquals, []Event{event1})
 
 	// Apply two events.
 	delegate = &TestDelegateAggregate{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	agg = NewDelegateAggregate(id, delegate)
 	event2 := TestEvent{NewUUID(), "event2"}
 	agg.ApplyEvent(event1)
 	agg.ApplyEvent(event2)
 	c.Assert(agg.eventsLoaded, Equals, 2)
-	c.Assert(delegate.events, DeepEquals, EventStream{event1, event2})
+	c.Assert(delegate.events, DeepEquals, []Event{event1, event2})
 }
 
 func (s *DelegateAggregateSuite) TestApplyEvents(c *C) {
 	// Apply one event.
 	id := NewUUID()
 	delegate := &TestDelegateAggregate{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	agg := NewDelegateAggregate(id, delegate)
 	event1 := TestEvent{NewUUID(), "event1"}
-	agg.ApplyEvents(EventStream{event1})
+	agg.ApplyEvents([]Event{event1})
 	c.Assert(agg.eventsLoaded, Equals, 1)
-	c.Assert(delegate.events, DeepEquals, EventStream{event1})
+	c.Assert(delegate.events, DeepEquals, []Event{event1})
 
 	// Apply two events.
 	delegate = &TestDelegateAggregate{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	agg = NewDelegateAggregate(id, delegate)
 	event2 := TestEvent{NewUUID(), "event2"}
-	agg.ApplyEvents(EventStream{event1, event2})
+	agg.ApplyEvents([]Event{event1, event2})
 	c.Assert(agg.eventsLoaded, Equals, 2)
-	c.Assert(delegate.events, DeepEquals, EventStream{event1, event2})
+	c.Assert(delegate.events, DeepEquals, []Event{event1, event2})
 
 	// Apply no event.
 	delegate = &TestDelegateAggregate{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	agg = NewDelegateAggregate(id, delegate)
-	agg.ApplyEvents(EventStream{})
+	agg.ApplyEvents([]Event{})
 	c.Assert(agg.eventsLoaded, Equals, 0)
-	c.Assert(delegate.events, DeepEquals, EventStream{})
+	c.Assert(delegate.events, DeepEquals, []Event{})
 }

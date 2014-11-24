@@ -36,6 +36,3 @@ type Command interface {
 type Event interface {
 	AggregateID() UUID
 }
-
-// EventStream is a series of events represented by a slice.
-type EventStream []Event

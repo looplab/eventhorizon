@@ -29,7 +29,7 @@ type EmptyAggregate struct {
 }
 
 type TestDelegateAggregate struct {
-	events EventStream
+	events []Event
 }
 
 func (a *TestDelegateAggregate) HandleEvent(event Event) {
@@ -37,7 +37,7 @@ func (a *TestDelegateAggregate) HandleEvent(event Event) {
 }
 
 type TestAggregate struct {
-	events EventStream
+	events []Event
 }
 
 // HandleTestEvent is a valid handler with matching method and event name.
@@ -96,7 +96,7 @@ func (t TestCommandOther2) AggregateID() UUID {
 }
 
 type MockEventHandler struct {
-	events EventStream
+	events []Event
 }
 
 func (m *MockEventHandler) HandleEvent(event Event) {
@@ -104,15 +104,15 @@ func (m *MockEventHandler) HandleEvent(event Event) {
 }
 
 type MockEventStore struct {
-	events EventStream
+	events []Event
 	loaded UUID
 }
 
-func (m *MockEventStore) Append(events EventStream) {
+func (m *MockEventStore) Append(events []Event) {
 	m.events = append(m.events, events...)
 }
 
-func (m *MockEventStore) Load(id UUID) (EventStream, error) {
+func (m *MockEventStore) Load(id UUID) ([]Event, error) {
 	m.loaded = id
 	return m.events, nil
 }

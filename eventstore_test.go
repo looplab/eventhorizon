@@ -32,19 +32,19 @@ func (s *MemoryEventStoreSuite) TestNewMemoryEventStore(c *C) {
 func (s *MemoryEventStoreSuite) TestAppend(c *C) {
 	// No events.
 	store := NewMemoryEventStore()
-	store.Append(EventStream{})
+	store.Append([]Event{})
 
 	// One event.
 	store = NewMemoryEventStore()
 	event1 := TestEvent{NewUUID(), "event1"}
-	store.Append(EventStream{event1})
+	store.Append([]Event{event1})
 	c.Assert(len(store.events), Equals, 1)
 	c.Assert(store.events[event1.TestID][0], Equals, event1)
 
 	// Two events, same aggregate.
 	store = NewMemoryEventStore()
 	event2 := TestEvent{event1.TestID, "event2"}
-	store.Append(EventStream{event1, event2})
+	store.Append([]Event{event1, event2})
 	c.Assert(len(store.events), Equals, 1)
 	c.Assert(len(store.events[event1.TestID]), Equals, 2)
 	c.Assert(store.events[event1.TestID][0], Equals, event1)
@@ -53,7 +53,7 @@ func (s *MemoryEventStoreSuite) TestAppend(c *C) {
 	// Two events, different aggregates.
 	store = NewMemoryEventStore()
 	event3 := TestEvent{NewUUID(), "event3"}
-	store.Append(EventStream{event1, event3})
+	store.Append([]Event{event1, event3})
 	c.Assert(len(store.events), Equals, 2)
 	c.Assert(len(store.events[event1.TestID]), Equals, 1)
 	c.Assert(len(store.events[event3.TestID]), Equals, 1)
@@ -66,30 +66,30 @@ func (s *MemoryEventStoreSuite) TestLoad(c *C) {
 	store := NewMemoryEventStore()
 	events, err := store.Load(NewUUID())
 	c.Assert(err, ErrorMatches, "could not find events")
-	c.Assert(events, DeepEquals, EventStream(nil))
+	c.Assert(events, DeepEquals, []Event(nil))
 
 	// One event.
 	store = NewMemoryEventStore()
 	event1 := TestEvent{NewUUID(), "event1"}
-	store.events[event1.TestID] = EventStream{event1}
+	store.events[event1.TestID] = []Event{event1}
 	events, err = store.Load(event1.TestID)
 	c.Assert(err, Equals, nil)
-	c.Assert(events, DeepEquals, EventStream{event1})
+	c.Assert(events, DeepEquals, []Event{event1})
 
 	// Two events, same aggregate.
 	store = NewMemoryEventStore()
 	event2 := TestEvent{event1.TestID, "event2"}
-	store.events[event1.TestID] = EventStream{event1, event2}
+	store.events[event1.TestID] = []Event{event1, event2}
 	events, err = store.Load(event1.TestID)
 	c.Assert(err, Equals, nil)
-	c.Assert(events, DeepEquals, EventStream{event1, event2})
+	c.Assert(events, DeepEquals, []Event{event1, event2})
 
 	// Two events, different aggregates.
 	store = NewMemoryEventStore()
 	event3 := TestEvent{NewUUID(), "event3"}
-	store.events[event1.TestID] = EventStream{event1}
-	store.events[event3.TestID] = EventStream{event3}
+	store.events[event1.TestID] = []Event{event1}
+	store.events[event3.TestID] = []Event{event3}
 	events, err = store.Load(event1.TestID)
 	c.Assert(err, Equals, nil)
-	c.Assert(events, DeepEquals, EventStream{event1})
+	c.Assert(events, DeepEquals, []Event{event1})
 }

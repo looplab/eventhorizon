@@ -47,7 +47,7 @@ func (a *ReflectAggregate) ApplyEvent(event Event) {
 }
 
 // ApplyEvents applies an event stream using the handler.
-func (a *ReflectAggregate) ApplyEvents(events EventStream) {
+func (a *ReflectAggregate) ApplyEvents(events []Event) {
 	for _, event := range events {
 		a.ApplyEvent(event)
 	}

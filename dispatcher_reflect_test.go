@@ -30,7 +30,7 @@ var _ = Suite(&ReflectDispatcherSuite{})
 func (s *ReflectDispatcherSuite) TestNewReflectAggregate(c *C) {
 	// With event store.
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewReflectDispatcher(mockStore)
 	c.Assert(disp, Not(Equals), nil)
@@ -45,22 +45,22 @@ type TestSource struct {
 	Aggregate
 }
 
-func (t *TestSource) HandleTestCommand(command TestCommand) (EventStream, error) {
+func (t *TestSource) HandleTestCommand(command TestCommand) ([]Event, error) {
 	dispatchedCommand = command
 	if command.Content == "error" {
 		return nil, fmt.Errorf("command error")
 	}
-	return EventStream{TestEvent{command.TestID, command.Content}}, nil
+	return []Event{TestEvent{command.TestID, command.Content}}, nil
 }
 
-func (t *TestSource) HandleCommandOther2(command TestCommandOther2, invalidParam string) (EventStream, error) {
+func (t *TestSource) HandleCommandOther2(command TestCommandOther2, invalidParam string) ([]Event, error) {
 	return nil, nil
 }
 
 func (s *ReflectDispatcherSuite) TestDispatch(c *C) {
 	// Simple dispatch, with raw handler.
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewReflectDispatcher(mockStore)
 	source := &TestSource{}
@@ -77,7 +77,7 @@ func (s *ReflectDispatcherSuite) TestDispatch(c *C) {
 
 	// With error in command handler.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewReflectDispatcher(mockStore)
 	disp.commandHandlers[reflect.TypeOf(TestCommand{})] = handler{
@@ -91,7 +91,7 @@ func (s *ReflectDispatcherSuite) TestDispatch(c *C) {
 
 	// Without handlers.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewReflectDispatcher(mockStore)
 	err = disp.Dispatch(command1)
@@ -101,7 +101,7 @@ func (s *ReflectDispatcherSuite) TestDispatch(c *C) {
 func (s *ReflectDispatcherSuite) TestAddHandler(c *C) {
 	// Adding simple handler.
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewReflectDispatcher(mockStore)
 	source := &TestSource{}
@@ -119,7 +119,7 @@ func (s *ReflectDispatcherSuite) TestAddHandler(c *C) {
 
 	// Adding another handler for the same command.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewReflectDispatcher(mockStore)
 	source = &TestSource{}
@@ -139,7 +139,7 @@ func (s *ReflectDispatcherSuite) TestAddHandler(c *C) {
 
 	// Add handler with missing method.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewReflectDispatcher(mockStore)
 	source = &TestSource{}
@@ -148,7 +148,7 @@ func (s *ReflectDispatcherSuite) TestAddHandler(c *C) {
 
 	// Add handler with incorrect method signature.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewReflectDispatcher(mockStore)
 	source = &TestSource{}
@@ -167,7 +167,7 @@ func (t *TestGlobalSubscriber) HandleEvent(event Event) {
 func (s *ReflectDispatcherSuite) TestAddGlobalSubscriber(c *C) {
 	// Add global subscriber.
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewReflectDispatcher(mockStore)
 	globalSubscriber := &TestGlobalSubscriber{}
@@ -179,7 +179,7 @@ func (s *ReflectDispatcherSuite) TestAddGlobalSubscriber(c *C) {
 func (s *ReflectDispatcherSuite) TestHandleCommand(c *C) {
 	// Simple handler.
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewReflectDispatcher(mockStore)
 	source := &TestSource{}
@@ -193,7 +193,7 @@ func (s *ReflectDispatcherSuite) TestHandleCommand(c *C) {
 
 	// Error in command handler.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewReflectDispatcher(mockStore)
 	source = &TestSource{}
@@ -206,7 +206,7 @@ func (s *ReflectDispatcherSuite) TestHandleCommand(c *C) {
 
 	// Global subscribers notified.
 	mockStore = &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp = NewReflectDispatcher(mockStore)
 	source = &TestSource{}
@@ -225,14 +225,14 @@ type BenchmarkAggregate struct {
 	Aggregate
 }
 
-func (t *BenchmarkAggregate) HandleTestCommand(command TestCommand) (EventStream, error) {
+func (t *BenchmarkAggregate) HandleTestCommand(command TestCommand) ([]Event, error) {
 	callCount++
 	return nil, nil
 }
 
 func (s *ReflectDispatcherSuite) BenchmarkReflectDispatcher(c *C) {
 	mockStore := &MockEventStore{
-		events: make(EventStream, 0),
+		events: make([]Event, 0),
 	}
 	disp := NewReflectDispatcher(mockStore)
 	agg := &BenchmarkAggregate{}

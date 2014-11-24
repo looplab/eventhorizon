@@ -46,7 +46,7 @@ func (a *DelegateAggregate) ApplyEvent(event Event) {
 }
 
 // ApplyEvents applies an event stream using the handler.
-func (a *DelegateAggregate) ApplyEvents(events EventStream) {
+func (a *DelegateAggregate) ApplyEvents(events []Event) {
 	for _, event := range events {
 		a.ApplyEvent(event)
 	}
