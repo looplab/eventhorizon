@@ -18,78 +18,85 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-type MemoryEventStoreSuite struct{}
+type MemoryEventStoreSuite struct {
+	store *MemoryEventStore
+}
 
 var _ = Suite(&MemoryEventStoreSuite{})
 
-func (s *MemoryEventStoreSuite) TestNewMemoryEventStore(c *C) {
+func (s *MemoryEventStoreSuite) SetUpTest(c *C) {
+	s.store = NewMemoryEventStore()
+}
+
+func (s *MemoryEventStoreSuite) Test_NewMemoryEventStore(c *C) {
 	store := NewMemoryEventStore()
 	c.Assert(store, Not(Equals), nil)
 	c.Assert(store.events, Not(Equals), nil)
 	c.Assert(len(store.events), Equals, 0)
 }
 
-func (s *MemoryEventStoreSuite) TestAppend(c *C) {
-	// No events.
-	store := NewMemoryEventStore()
-	store.Append([]Event{})
-
-	// One event.
-	store = NewMemoryEventStore()
-	event1 := TestEvent{NewUUID(), "event1"}
-	store.Append([]Event{event1})
-	c.Assert(len(store.events), Equals, 1)
-	c.Assert(store.events[event1.TestID][0], Equals, event1)
-
-	// Two events, same aggregate.
-	store = NewMemoryEventStore()
-	event2 := TestEvent{event1.TestID, "event2"}
-	store.Append([]Event{event1, event2})
-	c.Assert(len(store.events), Equals, 1)
-	c.Assert(len(store.events[event1.TestID]), Equals, 2)
-	c.Assert(store.events[event1.TestID][0], Equals, event1)
-	c.Assert(store.events[event2.TestID][1], Equals, event2)
-
-	// Two events, different aggregates.
-	store = NewMemoryEventStore()
-	event3 := TestEvent{NewUUID(), "event3"}
-	store.Append([]Event{event1, event3})
-	c.Assert(len(store.events), Equals, 2)
-	c.Assert(len(store.events[event1.TestID]), Equals, 1)
-	c.Assert(len(store.events[event3.TestID]), Equals, 1)
-	c.Assert(store.events[event1.TestID][0], Equals, event1)
-	c.Assert(store.events[event3.TestID][0], Equals, event3)
+func (s *MemoryEventStoreSuite) Test_Append_NoEvents(c *C) {
+	s.store.Append([]Event{})
+	c.Assert(len(s.store.events), Equals, 0)
 }
 
-func (s *MemoryEventStoreSuite) TestLoad(c *C) {
-	// No events.
-	store := NewMemoryEventStore()
-	events, err := store.Load(NewUUID())
+func (s *MemoryEventStoreSuite) Test_Append_OneEvent(c *C) {
+	event1 := TestEvent{NewUUID(), "event1"}
+	s.store.Append([]Event{event1})
+	c.Assert(len(s.store.events), Equals, 1)
+	c.Assert(s.store.events[event1.TestID][0], Equals, event1)
+}
+
+func (s *MemoryEventStoreSuite) Test_Append_TwoEvents(c *C) {
+	event1 := TestEvent{NewUUID(), "event1"}
+	event2 := TestEvent{event1.TestID, "event2"}
+	s.store.Append([]Event{event1, event2})
+	c.Assert(len(s.store.events), Equals, 1)
+	c.Assert(len(s.store.events[event1.TestID]), Equals, 2)
+	c.Assert(s.store.events[event1.TestID][0], Equals, event1)
+	c.Assert(s.store.events[event2.TestID][1], Equals, event2)
+}
+
+func (s *MemoryEventStoreSuite) Test_Append_DifferentAggregates(c *C) {
+	event1 := TestEvent{NewUUID(), "event1"}
+	event3 := TestEvent{NewUUID(), "event3"}
+	s.store.Append([]Event{event1, event3})
+	c.Assert(len(s.store.events), Equals, 2)
+	c.Assert(len(s.store.events[event1.TestID]), Equals, 1)
+	c.Assert(len(s.store.events[event3.TestID]), Equals, 1)
+	c.Assert(s.store.events[event1.TestID][0], Equals, event1)
+	c.Assert(s.store.events[event3.TestID][0], Equals, event3)
+}
+
+func (s *MemoryEventStoreSuite) Test_Load_NoEvents(c *C) {
+	events, err := s.store.Load(NewUUID())
 	c.Assert(err, ErrorMatches, "could not find events")
 	c.Assert(events, DeepEquals, []Event(nil))
+}
 
-	// One event.
-	store = NewMemoryEventStore()
+func (s *MemoryEventStoreSuite) Test_Load_OneEvent(c *C) {
 	event1 := TestEvent{NewUUID(), "event1"}
-	store.events[event1.TestID] = []Event{event1}
-	events, err = store.Load(event1.TestID)
+	s.store.events[event1.TestID] = []Event{event1}
+	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, Equals, nil)
 	c.Assert(events, DeepEquals, []Event{event1})
+}
 
-	// Two events, same aggregate.
-	store = NewMemoryEventStore()
+func (s *MemoryEventStoreSuite) Test_Load_TwoEvents(c *C) {
+	event1 := TestEvent{NewUUID(), "event1"}
 	event2 := TestEvent{event1.TestID, "event2"}
-	store.events[event1.TestID] = []Event{event1, event2}
-	events, err = store.Load(event1.TestID)
+	s.store.events[event1.TestID] = []Event{event1, event2}
+	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, Equals, nil)
 	c.Assert(events, DeepEquals, []Event{event1, event2})
+}
 
-	// Two events, different aggregates.
-	store = NewMemoryEventStore()
+func (s *MemoryEventStoreSuite) Test_Load_DifferentAggregates(c *C) {
+	event1 := TestEvent{NewUUID(), "event1"}
 	event3 := TestEvent{NewUUID(), "event3"}
-	store.events[event1.TestID] = []Event{event1}
-	store.events[event3.TestID] = []Event{event3}
-	events, err = store.Load(event1.TestID)
+	s.store.events[event1.TestID] = []Event{event1}
+	s.store.events[event3.TestID] = []Event{event3}
+	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, Equals, nil)
 	c.Assert(events, DeepEquals, []Event{event1})
 }

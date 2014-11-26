@@ -22,7 +22,7 @@ var _ = Suite(&ReflectAggregateSuite{})
 
 type ReflectAggregateSuite struct{}
 
-func (s *ReflectAggregateSuite) TestNewReflectAggregate(c *C) {
+func (s *ReflectAggregateSuite) Test_NewReflectAggregate(c *C) {
 	var nilID UUID
 	agg := NewReflectAggregate(nilID, EmptyAggregate{})
 	c.Assert(agg, Not(Equals), nil)
@@ -32,15 +32,14 @@ func (s *ReflectAggregateSuite) TestNewReflectAggregate(c *C) {
 	c.Assert(agg.handler, FitsTypeOf, NewReflectEventHandler(nil, ""))
 }
 
-func (s *ReflectAggregateSuite) TestAggregateID(c *C) {
+func (s *ReflectAggregateSuite) Test_AggregateID(c *C) {
 	id := NewUUID()
 	agg := NewReflectAggregate(id, nil)
 	result := agg.AggregateID()
 	c.Assert(result, Equals, id)
 }
 
-func (s *ReflectAggregateSuite) TestApplyEvent(c *C) {
-	// Apply one event.
+func (s *ReflectAggregateSuite) Test_ApplyEvent_OneEvent(c *C) {
 	id := NewUUID()
 	agg := NewReflectAggregate(id, nil)
 	mockHandler := &MockEventHandler{
@@ -51,13 +50,16 @@ func (s *ReflectAggregateSuite) TestApplyEvent(c *C) {
 	agg.ApplyEvent(event1)
 	c.Assert(agg.eventsLoaded, Equals, 1)
 	c.Assert(mockHandler.events, DeepEquals, []Event{event1})
+}
 
-	// Apply two events.
-	agg = NewReflectAggregate(id, nil)
-	mockHandler = &MockEventHandler{
+func (s *ReflectAggregateSuite) Test_ApplyEvent_TwoEvents(c *C) {
+	id := NewUUID()
+	agg := NewReflectAggregate(id, nil)
+	mockHandler := &MockEventHandler{
 		events: make([]Event, 0),
 	}
 	agg.handler = mockHandler
+	event1 := TestEvent{NewUUID(), "event1"}
 	event2 := TestEvent{NewUUID(), "event2"}
 	agg.ApplyEvent(event1)
 	agg.ApplyEvent(event2)
@@ -65,8 +67,7 @@ func (s *ReflectAggregateSuite) TestApplyEvent(c *C) {
 	c.Assert(mockHandler.events, DeepEquals, []Event{event1, event2})
 }
 
-func (s *ReflectAggregateSuite) TestApplyEvents(c *C) {
-	// Apply one event.
+func (s *ReflectAggregateSuite) Test_ApplyEvents_OneEvent(c *C) {
 	id := NewUUID()
 	agg := NewReflectAggregate(id, nil)
 	mockHandler := &MockEventHandler{
@@ -77,21 +78,26 @@ func (s *ReflectAggregateSuite) TestApplyEvents(c *C) {
 	agg.ApplyEvents([]Event{event1})
 	c.Assert(agg.eventsLoaded, Equals, 1)
 	c.Assert(mockHandler.events, DeepEquals, []Event{event1})
+}
 
-	// Apply two events.
-	agg = NewReflectAggregate(id, nil)
-	mockHandler = &MockEventHandler{
+func (s *ReflectAggregateSuite) Test_ApplyEvents_TwoEvents(c *C) {
+	id := NewUUID()
+	agg := NewReflectAggregate(id, nil)
+	mockHandler := &MockEventHandler{
 		events: make([]Event, 0),
 	}
 	agg.handler = mockHandler
+	event1 := TestEvent{NewUUID(), "event1"}
 	event2 := TestEvent{NewUUID(), "event2"}
 	agg.ApplyEvents([]Event{event1, event2})
 	c.Assert(agg.eventsLoaded, Equals, 2)
 	c.Assert(mockHandler.events, DeepEquals, []Event{event1, event2})
+}
 
-	// Apply no event.
-	agg = NewReflectAggregate(id, nil)
-	mockHandler = &MockEventHandler{
+func (s *ReflectAggregateSuite) Test_ApplyEvents_NoEvent(c *C) {
+	id := NewUUID()
+	agg := NewReflectAggregate(id, nil)
+	mockHandler := &MockEventHandler{
 		events: make([]Event, 0),
 	}
 	agg.handler = mockHandler

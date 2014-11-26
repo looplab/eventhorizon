@@ -24,8 +24,7 @@ type ReflectEventHandlerSuite struct{}
 
 var _ = Suite(&ReflectEventHandlerSuite{})
 
-func (s *ReflectEventHandlerSuite) TestNewReflectEventHandler(c *C) {
-	// Simple new.
+func (s *ReflectEventHandlerSuite) Test_NewReflectEventHandler_Simple(c *C) {
 	cache = make(map[cacheItem]handlersMap)
 	source := &TestAggregate{}
 	handler := NewReflectEventHandler(source, "Handle")
@@ -36,40 +35,46 @@ func (s *ReflectEventHandlerSuite) TestNewReflectEventHandler(c *C) {
 	c.Assert(handler.handlers[reflect.TypeOf(TestEvent{})], Equals, method)
 	c.Assert(handler.source, DeepEquals, source)
 	c.Assert(len(cache), Equals, 1)
+}
 
-	// Cached handler.
+func (s *ReflectEventHandlerSuite) Test_NewReflectEventHandler_Cached(c *C) {
+	source := &TestAggregate{}
+	handler := NewReflectEventHandler(source, "Handle")
 	source2 := &TestAggregate{}
 	handler = NewReflectEventHandler(source2, "Handle")
 	c.Assert(handler, Not(Equals), nil)
 	c.Assert(handler.handlers, Not(Equals), nil)
 	c.Assert(len(handler.handlers), Equals, 1)
+	method, _ := reflect.TypeOf(source).MethodByName("HandleTestEvent")
 	c.Assert(handler.handlers[reflect.TypeOf(TestEvent{})], Equals, method)
 	c.Assert(handler.source, DeepEquals, source)
+}
 
-	// Nil source.
+func (s *ReflectEventHandlerSuite) Test_NewReflectEventHandler_NoSource(c *C) {
 	cache = make(map[cacheItem]handlersMap)
-	source = &TestAggregate{}
-	handler = NewReflectEventHandler(nil, "Handle")
+	handler := NewReflectEventHandler(nil, "Handle")
 	c.Assert(handler, Not(Equals), nil)
 	c.Assert(handler.handlers, Not(Equals), nil)
 	c.Assert(len(handler.handlers), Equals, 0)
 	c.Assert(handler.source, DeepEquals, nil)
 	c.Assert(len(cache), Equals, 0)
+}
 
-	// Empty prefix.
+func (s *ReflectEventHandlerSuite) Test_NewReflectEventHandler_EmptyPrefix(c *C) {
 	cache = make(map[cacheItem]handlersMap)
-	source = &TestAggregate{}
-	handler = NewReflectEventHandler(source, "")
+	source := &TestAggregate{}
+	handler := NewReflectEventHandler(source, "")
 	c.Assert(handler, Not(Equals), nil)
 	c.Assert(handler.handlers, Not(Equals), nil)
 	c.Assert(len(handler.handlers), Equals, 0)
 	c.Assert(handler.source, DeepEquals, nil)
 	c.Assert(len(cache), Equals, 0)
+}
 
-	// Unknown prefix.
+func (s *ReflectEventHandlerSuite) Test_NewReflectEventHandler_UnknownPrefix(c *C) {
 	cache = make(map[cacheItem]handlersMap)
-	source = &TestAggregate{}
-	handler = NewReflectEventHandler(source, "Unknown")
+	source := &TestAggregate{}
+	handler := NewReflectEventHandler(source, "Unknown")
 	c.Assert(handler, Not(Equals), nil)
 	c.Assert(handler.handlers, Not(Equals), nil)
 	c.Assert(len(handler.handlers), Equals, 0)
@@ -77,8 +82,7 @@ func (s *ReflectEventHandlerSuite) TestNewReflectEventHandler(c *C) {
 	c.Assert(len(cache), Equals, 1)
 }
 
-func (s *ReflectEventHandlerSuite) TestHandleEvent(c *C) {
-	// Simple event handling.
+func (s *ReflectEventHandlerSuite) Test_HandleEvent_Simple(c *C) {
 	cache = make(map[cacheItem]handlersMap)
 	source := &TestAggregate{
 		events: make([]Event, 0),
@@ -87,19 +91,20 @@ func (s *ReflectEventHandlerSuite) TestHandleEvent(c *C) {
 	event1 := TestEvent{NewUUID(), "event1"}
 	handler.HandleEvent(event1)
 	c.Assert(source.events, DeepEquals, []Event{event1})
+}
 
-	// Non existing handler.
+func (s *ReflectEventHandlerSuite) Test_HandleEvent_NoHandler(c *C) {
 	cache = make(map[cacheItem]handlersMap)
-	source = &TestAggregate{
+	source := &TestAggregate{
 		events: make([]Event, 0),
 	}
-	handler = NewReflectEventHandler(source, "Handle")
+	handler := NewReflectEventHandler(source, "Handle")
 	eventOther := TestEventOther{NewUUID(), "eventOther"}
 	handler.HandleEvent(eventOther)
 	c.Assert(len(source.events), Equals, 0)
 }
 
-func (s *ReflectEventHandlerSuite) BenchmarkNewMethodHandler(c *C) {
+func (s *ReflectEventHandlerSuite) Benchmark_NewMethodHandler(c *C) {
 	source := &TestAggregate{}
 	for i := 0; i < c.N; i++ {
 		// ~192 ns/op for cache clear.

@@ -27,8 +27,7 @@ type DelegateDispatcherSuite struct{}
 
 var _ = Suite(&DelegateDispatcherSuite{})
 
-func (s *DelegateDispatcherSuite) TestNewDelegateAggregate(c *C) {
-	// With event store.
+func (s *DelegateDispatcherSuite) Test_NewDelegateAggregate(c *C) {
 	mockStore := &MockEventStore{
 		events: make([]Event, 0),
 	}
@@ -60,8 +59,7 @@ func (t *TestDelegateDispatcherAggregate) HandleCommand(command Command) ([]Even
 func (t *TestDelegateDispatcherAggregate) HandleEvent(event Event) {
 }
 
-func (s *DelegateDispatcherSuite) TestDispatch(c *C) {
-	// Simple dispatch, with raw handler.
+func (s *DelegateDispatcherSuite) Test_Dispatch_Simple(c *C) {
 	mockStore := &MockEventStore{
 		events: make([]Event, 0),
 	}
@@ -73,29 +71,33 @@ func (s *DelegateDispatcherSuite) TestDispatch(c *C) {
 	err := disp.Dispatch(command1)
 	c.Assert(dispatchedDelegateCommand, Equals, command1)
 	c.Assert(err, Equals, nil)
+}
 
-	// With error in command handler.
-	mockStore = &MockEventStore{
+func (s *DelegateDispatcherSuite) Test_Dispatch_ErrorInHandler(c *C) {
+	mockStore := &MockEventStore{
 		events: make([]Event, 0),
 	}
-	disp = NewDelegateDispatcher(mockStore)
+	disp := NewDelegateDispatcher(mockStore)
+	aggregate := &TestDelegateDispatcherAggregate{}
+	aggregateBaseType := reflect.ValueOf(aggregate).Elem().Type()
 	disp.commandHandlers[reflect.TypeOf(TestCommand{})] = aggregateBaseType
 	commandError := TestCommand{NewUUID(), "error"}
-	err = disp.Dispatch(commandError)
+	err := disp.Dispatch(commandError)
 	c.Assert(err, ErrorMatches, "command error")
 	c.Assert(dispatchedDelegateCommand, Equals, commandError)
+}
 
-	// Without handlers.
-	mockStore = &MockEventStore{
+func (s *DelegateDispatcherSuite) Test_Dispatch_NoHandlers(c *C) {
+	mockStore := &MockEventStore{
 		events: make([]Event, 0),
 	}
-	disp = NewDelegateDispatcher(mockStore)
-	err = disp.Dispatch(command1)
+	disp := NewDelegateDispatcher(mockStore)
+	command1 := TestCommand{NewUUID(), "command1"}
+	err := disp.Dispatch(command1)
 	c.Assert(err, ErrorMatches, "no handlers for command")
 }
 
-func (s *DelegateDispatcherSuite) TestAddHandler(c *C) {
-	// Adding simple handler.
+func (s *DelegateDispatcherSuite) Test_AddHandler_Simple(c *C) {
 	mockStore := &MockEventStore{
 		events: make([]Event, 0),
 	}
@@ -107,20 +109,21 @@ func (s *DelegateDispatcherSuite) TestAddHandler(c *C) {
 	c.Assert(disp.commandHandlers, t.HasKey, commandType)
 	aggregateBaseType := reflect.ValueOf(aggregate).Elem().Type()
 	c.Assert(disp.commandHandlers[commandType], Equals, aggregateBaseType)
+}
 
-	// Adding another handler for the same command.
-	mockStore = &MockEventStore{
+func (s *DelegateDispatcherSuite) Test_AddHandler_Duplicate(c *C) {
+	mockStore := &MockEventStore{
 		events: make([]Event, 0),
 	}
-	disp = NewDelegateDispatcher(mockStore)
-	aggregate = &TestDelegateDispatcherAggregate{}
+	disp := NewDelegateDispatcher(mockStore)
+	aggregate := &TestDelegateDispatcherAggregate{}
 	disp.AddHandler(TestCommand{}, aggregate)
 	aggregate2 := &TestDelegateDispatcherAggregate{}
 	disp.AddHandler(TestCommand{}, aggregate2)
 	c.Assert(len(disp.commandHandlers), Equals, 1)
-	commandType = reflect.TypeOf(TestCommand{})
+	commandType := reflect.TypeOf(TestCommand{})
 	c.Assert(disp.commandHandlers, t.HasKey, commandType)
-	aggregateBaseType = reflect.ValueOf(aggregate).Elem().Type()
+	aggregateBaseType := reflect.ValueOf(aggregate).Elem().Type()
 	c.Assert(disp.commandHandlers[commandType], Equals, aggregateBaseType)
 }
 
@@ -132,8 +135,7 @@ func (t *TestGlobalSubscriberDelegateDispatcher) HandleEvent(event Event) {
 	t.handledEvent = event
 }
 
-func (s *DelegateDispatcherSuite) TestAddGlobalSubscriber(c *C) {
-	// Add global subscriber.
+func (s *DelegateDispatcherSuite) Test_AddGlobalSubscriber(c *C) {
 	mockStore := &MockEventStore{
 		events: make([]Event, 0),
 	}
@@ -144,8 +146,7 @@ func (s *DelegateDispatcherSuite) TestAddGlobalSubscriber(c *C) {
 	c.Assert(disp.globalSubscribers[0], Equals, globalSubscriber)
 }
 
-func (s *DelegateDispatcherSuite) TestHandleCommand(c *C) {
-	// Simple handler.
+func (s *DelegateDispatcherSuite) Test_HandleCommand_Simple(c *C) {
 	mockStore := &MockEventStore{
 		events: make([]Event, 0),
 	}
@@ -158,31 +159,33 @@ func (s *DelegateDispatcherSuite) TestHandleCommand(c *C) {
 	c.Assert(dispatchedDelegateCommand, Equals, command1)
 	c.Assert(len(mockStore.events), Equals, 1)
 	c.Assert(mockStore.events[0], DeepEquals, TestEvent{command1.TestID, command1.Content})
+}
 
-	// Error in command handler.
-	mockStore = &MockEventStore{
+func (s *DelegateDispatcherSuite) Test_HandleCommand_ErrorInHandler(c *C) {
+	mockStore := &MockEventStore{
 		events: make([]Event, 0),
 	}
-	disp = NewDelegateDispatcher(mockStore)
-	aggregate = &TestDelegateDispatcherAggregate{}
+	disp := NewDelegateDispatcher(mockStore)
+	aggregate := &TestDelegateDispatcherAggregate{}
 	disp.AddHandler(TestCommand{}, aggregate)
 	commandError := TestCommand{NewUUID(), "error"}
-	err = disp.Dispatch(commandError)
+	err := disp.Dispatch(commandError)
 	c.Assert(dispatchedDelegateCommand, Equals, commandError)
 	c.Assert(err, ErrorMatches, "command error")
 	c.Assert(len(mockStore.events), Equals, 0)
+}
 
-	// Global subscribers notified.
-	mockStore = &MockEventStore{
+func (s *DelegateDispatcherSuite) Test_HandleCommand_GlobalSubscribers(c *C) {
+	mockStore := &MockEventStore{
 		events: make([]Event, 0),
 	}
-	disp = NewDelegateDispatcher(mockStore)
-	aggregate = &TestDelegateDispatcherAggregate{}
+	disp := NewDelegateDispatcher(mockStore)
+	aggregate := &TestDelegateDispatcherAggregate{}
 	disp.AddHandler(TestCommand{}, aggregate)
 	globalSubscriber := &TestGlobalSubscriber{}
 	disp.AddGlobalSubscriber(globalSubscriber)
-	command1 = TestCommand{NewUUID(), "command1"}
-	err = disp.Dispatch(command1)
+	command1 := TestCommand{NewUUID(), "command1"}
+	err := disp.Dispatch(command1)
 	c.Assert(err, Equals, nil)
 	c.Assert(globalSubscriber.handledEvent, DeepEquals, TestEvent{command1.TestID, command1.Content})
 }
@@ -201,7 +204,7 @@ func (t *BenchmarkDelegateDispatcherAggregate) HandleCommand(command Command) ([
 func (t *BenchmarkDelegateDispatcherAggregate) HandleEvent(event Event) {
 }
 
-func (s *DelegateDispatcherSuite) BenchmarkDelegateDispatcher(c *C) {
+func (s *DelegateDispatcherSuite) Benchmark_DelegateDispatcher(c *C) {
 	mockStore := &MockEventStore{
 		events: make([]Event, 0),
 	}
