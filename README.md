@@ -38,6 +38,6 @@ See the example folder for a basic usage example to get you started.
 
 # License
 
-FSM is licensed under Apache License 2.0
+Event Horizon is licensed under Apache License 2.0
 
 http://www.apache.org/licenses/LICENSE-2.0
