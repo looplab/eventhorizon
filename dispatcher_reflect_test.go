@@ -23,19 +23,36 @@ import (
 	t "github.com/looplab/eventhorizon/testing"
 )
 
-type ReflectDispatcherSuite struct{}
-
 var _ = Suite(&ReflectDispatcherSuite{})
 
-func (s *ReflectDispatcherSuite) Test_NewReflectAggregate(c *C) {
-	mockStore := &MockEventStore{
+type ReflectDispatcherSuite struct {
+	store *MockEventStore
+	bus   *MockEventBus
+	disp  *ReflectDispatcher
+}
+
+func (s *ReflectDispatcherSuite) SetUpTest(c *C) {
+	s.store = &MockEventStore{
 		events: make([]Event, 0),
 	}
-	disp := NewReflectDispatcher(mockStore)
+	s.bus = &MockEventBus{
+		events: make([]Event, 0),
+	}
+	s.disp = NewReflectDispatcher(s.store, s.bus)
+}
+
+func (s *ReflectDispatcherSuite) Test_NewReflectAggregate(c *C) {
+	store := &MockEventStore{
+		events: make([]Event, 0),
+	}
+	bus := &MockEventBus{
+		events: make([]Event, 0),
+	}
+	disp := NewReflectDispatcher(store, bus)
 	c.Assert(disp, Not(Equals), nil)
-	c.Assert(disp.eventStore, Equals, mockStore)
+	c.Assert(disp.eventStore, Equals, store)
+	c.Assert(disp.eventBus, Equals, bus)
 	c.Assert(disp.commandHandlers, Not(Equals), nil)
-	c.Assert(disp.eventSubscribers, Not(Equals), nil)
 }
 
 var dispatchedCommand Command
@@ -57,109 +74,81 @@ func (t *TestSource) HandleCommandOther2(command TestCommandOther2, invalidParam
 }
 
 func (s *ReflectDispatcherSuite) Test_Dispatch_Simple(c *C) {
-	mockStore := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp := NewReflectDispatcher(mockStore)
 	source := &TestSource{}
 	sourceType := reflect.ValueOf(source).Elem().Type()
 	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
-	disp.commandHandlers[reflect.TypeOf(TestCommand{})] = handler{
+	s.disp.commandHandlers[reflect.TypeOf(TestCommand{})] = handler{
 		sourceType: sourceType,
 		method:     method,
 	}
 	command1 := TestCommand{NewUUID(), "command1"}
-	err := disp.Dispatch(command1)
+	err := s.disp.Dispatch(command1)
 	c.Assert(dispatchedCommand, Equals, command1)
 	c.Assert(err, Equals, nil)
 }
 
 func (s *ReflectDispatcherSuite) Test_Dispatch_ErrorInHandler(c *C) {
-	mockStore := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp := NewReflectDispatcher(mockStore)
 	source := &TestSource{}
 	sourceType := reflect.ValueOf(source).Elem().Type()
 	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
-	disp.commandHandlers[reflect.TypeOf(TestCommand{})] = handler{
+	s.disp.commandHandlers[reflect.TypeOf(TestCommand{})] = handler{
 		sourceType: sourceType,
 		method:     method,
 	}
 	commandError := TestCommand{NewUUID(), "error"}
-	err := disp.Dispatch(commandError)
+	err := s.disp.Dispatch(commandError)
 	c.Assert(err, ErrorMatches, "command error")
 	c.Assert(dispatchedCommand, Equals, commandError)
 }
 
 func (s *ReflectDispatcherSuite) Test_Dispatch_NoHandlers(c *C) {
-	mockStore := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp := NewReflectDispatcher(mockStore)
 	command1 := TestCommand{NewUUID(), "command1"}
-	err := disp.Dispatch(command1)
+	err := s.disp.Dispatch(command1)
 	c.Assert(err, ErrorMatches, "no handlers for command")
 }
 
 func (s *ReflectDispatcherSuite) Test_AddHandler_Simple(c *C) {
-	mockStore := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp := NewReflectDispatcher(mockStore)
 	source := &TestSource{}
-	disp.AddHandler(TestCommand{}, source)
-	c.Assert(len(disp.commandHandlers), Equals, 1)
+	s.disp.AddHandler(TestCommand{}, source)
+	c.Assert(len(s.disp.commandHandlers), Equals, 1)
 	commandType := reflect.TypeOf(TestCommand{})
-	c.Assert(disp.commandHandlers, t.HasKey, commandType)
+	c.Assert(s.disp.commandHandlers, t.HasKey, commandType)
 	sourceType := reflect.ValueOf(source).Elem().Type()
 	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
 	sourceHandler := handler{
 		sourceType: sourceType,
 		method:     method,
 	}
-	c.Assert(disp.commandHandlers[commandType], Equals, sourceHandler)
+	c.Assert(s.disp.commandHandlers[commandType], Equals, sourceHandler)
 }
 
 func (s *ReflectDispatcherSuite) Test_AddHandler_Duplicate(c *C) {
-	mockStore := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp := NewReflectDispatcher(mockStore)
 	source := &TestSource{}
-	disp.AddHandler(TestCommand{}, source)
+	s.disp.AddHandler(TestCommand{}, source)
 	source2 := &TestSource{}
-	disp.AddHandler(TestCommand{}, source2)
-	c.Assert(len(disp.commandHandlers), Equals, 1)
+	s.disp.AddHandler(TestCommand{}, source2)
+	c.Assert(len(s.disp.commandHandlers), Equals, 1)
 	commandType := reflect.TypeOf(TestCommand{})
-	c.Assert(disp.commandHandlers, t.HasKey, commandType)
+	c.Assert(s.disp.commandHandlers, t.HasKey, commandType)
 	sourceType := reflect.ValueOf(source).Elem().Type()
 	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
 	sourceHandler := handler{
 		sourceType: sourceType,
 		method:     method,
 	}
-	c.Assert(disp.commandHandlers[commandType], Equals, sourceHandler)
+	c.Assert(s.disp.commandHandlers[commandType], Equals, sourceHandler)
 }
 
 func (s *ReflectDispatcherSuite) Test_AddHandler_MissingMethod(c *C) {
-	mockStore := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp := NewReflectDispatcher(mockStore)
 	source := &TestSource{}
-	disp.AddHandler(TestCommandOther{}, source)
-	c.Assert(len(disp.commandHandlers), Equals, 0)
+	s.disp.AddHandler(TestCommandOther{}, source)
+	c.Assert(len(s.disp.commandHandlers), Equals, 0)
 }
 
 func (s *ReflectDispatcherSuite) Test_AddHandler_IncorrectMethod(c *C) {
-	mockStore := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp := NewReflectDispatcher(mockStore)
 	source := &TestSource{}
-	disp.AddHandler(TestCommandOther2{}, source)
-	c.Assert(len(disp.commandHandlers), Equals, 0)
+	s.disp.AddHandler(TestCommandOther2{}, source)
+	c.Assert(len(s.disp.commandHandlers), Equals, 0)
 }
 
 type TestGlobalSubscriber struct {
@@ -170,59 +159,28 @@ func (t *TestGlobalSubscriber) HandleEvent(event Event) {
 	t.handledEvent = event
 }
 
-func (s *ReflectDispatcherSuite) Test_AddGlobalSubscriber(c *C) {
-	mockStore := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp := NewReflectDispatcher(mockStore)
-	globalSubscriber := &TestGlobalSubscriber{}
-	disp.AddGlobalSubscriber(globalSubscriber)
-	c.Assert(len(disp.globalSubscribers), Equals, 1)
-	c.Assert(disp.globalSubscribers[0], Equals, globalSubscriber)
-}
-
-func (s *ReflectDispatcherSuite) TestHandleCommand_Simple(c *C) {
-	mockStore := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp := NewReflectDispatcher(mockStore)
+func (s *ReflectDispatcherSuite) Test_HandleCommand_Simple(c *C) {
 	source := &TestSource{}
-	disp.AddHandler(TestCommand{}, source)
+	s.disp.AddHandler(TestCommand{}, source)
 	command1 := TestCommand{NewUUID(), "command1"}
-	err := disp.Dispatch(command1)
+	err := s.disp.Dispatch(command1)
 	c.Assert(err, Equals, nil)
 	c.Assert(dispatchedCommand, Equals, command1)
-	c.Assert(len(mockStore.events), Equals, 1)
-	c.Assert(mockStore.events[0], DeepEquals, TestEvent{command1.TestID, command1.Content})
+	c.Assert(len(s.store.events), Equals, 1)
+	c.Assert(s.store.events[0], DeepEquals, TestEvent{command1.TestID, command1.Content})
+	c.Assert(len(s.bus.events), Equals, 1)
+	c.Assert(s.bus.events[0], DeepEquals, TestEvent{command1.TestID, command1.Content})
 }
 
-func (s *ReflectDispatcherSuite) TestHandleCommand_ErrorInHandler(c *C) {
-	mockStore := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp := NewReflectDispatcher(mockStore)
+func (s *ReflectDispatcherSuite) Test_HandleCommand_ErrorInHandler(c *C) {
 	source := &TestSource{}
-	disp.AddHandler(TestCommand{}, source)
+	s.disp.AddHandler(TestCommand{}, source)
 	commandError := TestCommand{NewUUID(), "error"}
-	err := disp.Dispatch(commandError)
+	err := s.disp.Dispatch(commandError)
 	c.Assert(dispatchedCommand, Equals, commandError)
 	c.Assert(err, ErrorMatches, "command error")
-	c.Assert(len(mockStore.events), Equals, 0)
-}
-
-func (s *ReflectDispatcherSuite) TestHandleCommand_GlobalSubscribers(c *C) {
-	mockStore := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp := NewReflectDispatcher(mockStore)
-	source := &TestSource{}
-	disp.AddHandler(TestCommand{}, source)
-	globalSubscriber := &TestGlobalSubscriber{}
-	disp.AddGlobalSubscriber(globalSubscriber)
-	command1 := TestCommand{NewUUID(), "command1"}
-	err := disp.Dispatch(command1)
-	c.Assert(err, Equals, nil)
-	c.Assert(globalSubscriber.handledEvent, DeepEquals, TestEvent{command1.TestID, command1.Content})
+	c.Assert(len(s.store.events), Equals, 0)
+	c.Assert(len(s.bus.events), Equals, 0)
 }
 
 var callCount int
@@ -237,10 +195,13 @@ func (t *BenchmarkAggregate) HandleTestCommand(command TestCommand) ([]Event, er
 }
 
 func (s *ReflectDispatcherSuite) Benchmark_ReflectDispatcher(c *C) {
-	mockStore := &MockEventStore{
+	store := &MockEventStore{
 		events: make([]Event, 0),
 	}
-	disp := NewReflectDispatcher(mockStore)
+	bus := &MockEventBus{
+		events: make([]Event, 0),
+	}
+	disp := NewReflectDispatcher(store, bus)
 	agg := &BenchmarkAggregate{}
 	disp.AddHandler(TestCommand{}, agg)
 

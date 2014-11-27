@@ -14,16 +14,8 @@
 
 package eventhorizon
 
-// Dispatcher is a interface defining a command and event dispatcher.
-//
-// The dispatch process is as follows:
-// 1. The dispather receives a command
-// 2. An aggregate is created or rebuilt from previous events in event store
-// 3. The aggregate's command handler is called
-// 4. The aggregate generates events in response to the command
-// 5. The events are stored in the event store
-// 6. The events are published to the event bus
-type Dispatcher interface {
-	// Dispatch dispatches a command to the registered command handler.
-	Dispatch(Command) error
+// EventBus is a interface defining an event bus for distributing events.
+type EventBus interface {
+	// PublishEvent publishes an event on the event bus.
+	PublishEvent(Event)
 }

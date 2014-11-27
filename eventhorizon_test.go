@@ -116,3 +116,11 @@ func (m *MockEventStore) Load(id UUID) ([]Event, error) {
 	m.loaded = id
 	return m.events, nil
 }
+
+type MockEventBus struct {
+	events []Event
+}
+
+func (m *MockEventBus) PublishEvent(event Event) {
+	m.events = append(m.events, event)
+}

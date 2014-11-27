@@ -23,10 +23,9 @@ import (
 // ReflectDispatcher is a dispather that dispatches commands and publishes events
 // based on method names.
 type ReflectDispatcher struct {
-	eventStore        EventStore
-	commandHandlers   map[reflect.Type]handler
-	eventSubscribers  map[reflect.Type][]EventHandler
-	globalSubscribers []EventHandler
+	eventStore      EventStore
+	eventBus        EventBus
+	commandHandlers map[reflect.Type]handler
 }
 
 type handler struct {
@@ -35,12 +34,11 @@ type handler struct {
 }
 
 // NewReflectDispatcher creates a dispather and associates it with an event store.
-func NewReflectDispatcher(store EventStore) *ReflectDispatcher {
+func NewReflectDispatcher(store EventStore, bus EventBus) *ReflectDispatcher {
 	d := &ReflectDispatcher{
-		eventStore:        store,
-		commandHandlers:   make(map[reflect.Type]handler),
-		eventSubscribers:  make(map[reflect.Type][]EventHandler),
-		globalSubscribers: make([]EventHandler, 0),
+		eventStore:      store,
+		eventBus:        bus,
+		commandHandlers: make(map[reflect.Type]handler),
 	}
 	return d
 }
@@ -112,46 +110,6 @@ func (d *ReflectDispatcher) AddAllHandlers(source interface{}) {
 	}
 }
 
-// AddSubscriber adds the subscriber as a handler for a specific event.
-func (d *ReflectDispatcher) AddSubscriber(event Event, subscriber EventHandler) {
-	eventType := reflect.TypeOf(event)
-
-	// Create subscriber list for new event types.
-	if _, ok := d.eventSubscribers[eventType]; !ok {
-		d.eventSubscribers[eventType] = make([]EventHandler, 0)
-	}
-
-	// Add subscriber to event type.
-	d.eventSubscribers[eventType] = append(d.eventSubscribers[eventType], subscriber)
-}
-
-// AddAllSubscribers scans a event handler for handling methods and adds
-// it for every event it detects in the method name.
-func (d *ReflectDispatcher) AddAllSubscribers(subscriber EventHandler) {
-	subscriberType := reflect.TypeOf(subscriber)
-	for i := 0; i < subscriberType.NumMethod(); i++ {
-		method := subscriberType.Method(i)
-
-		// Check method prefix to be Handle* and not just Handle, also check for
-		// two arguments; HandleMyEvent(handler *Handler, e MyEvent).
-		if strings.HasPrefix(method.Name, "Handle") &&
-			len(method.Name) > len("Handle") &&
-			method.Type.NumIn() == 2 {
-
-			// Only accept methods wich takes an acctual event type.
-			eventType := method.Type.In(1)
-			if event, ok := reflect.Zero(eventType).Interface().(Event); ok {
-				d.AddSubscriber(event, subscriber)
-			}
-		}
-	}
-}
-
-// AddGlobalSubscriber adds the subscriber as a handler for a specific event.
-func (d *ReflectDispatcher) AddGlobalSubscriber(subscriber EventHandler) {
-	d.globalSubscribers = append(d.globalSubscribers, subscriber)
-}
-
 func (d *ReflectDispatcher) handleCommand(sourceType reflect.Type, method reflect.Method, command Command) error {
 	// Create aggregate from source type
 	aggregate := d.createAggregate(command.AggregateID(), sourceType)
@@ -181,7 +139,7 @@ func (d *ReflectDispatcher) handleCommand(sourceType reflect.Type, method reflec
 
 	// Publish events
 	for _, event := range resultEvents {
-		d.publishEvent(event)
+		d.eventBus.PublishEvent(event)
 	}
 
 	return nil
@@ -193,22 +151,4 @@ func (d *ReflectDispatcher) createAggregate(id UUID, sourceType reflect.Type) Ag
 	sourceObj.Elem().FieldByName("Aggregate").Set(aggregateValue)
 	aggregate := sourceObj.Interface().(Aggregate)
 	return aggregate
-}
-
-// PublishEvent publishes an event to all subscribers capable of handling it.
-func (d *ReflectDispatcher) publishEvent(event Event) {
-	// Publish to global subscribers.
-	for _, subscriber := range d.globalSubscribers {
-		subscriber.HandleEvent(event)
-	}
-
-	// Publish to specific subscribers.
-	eventType := reflect.TypeOf(event)
-	if _, ok := d.eventSubscribers[eventType]; !ok {
-		// TODO: Error here
-		return
-	}
-	for _, subscriber := range d.eventSubscribers[eventType] {
-		subscriber.HandleEvent(event)
-	}
 }

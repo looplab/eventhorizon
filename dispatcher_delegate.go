@@ -22,19 +22,17 @@ import (
 // DelegateDispatcher is a dispather that dispatches commands and publishes events
 // based on method names.
 type DelegateDispatcher struct {
-	eventStore        EventStore
-	commandHandlers   map[reflect.Type]reflect.Type
-	eventSubscribers  map[reflect.Type][]EventHandler
-	globalSubscribers []EventHandler
+	eventStore      EventStore
+	eventBus        EventBus
+	commandHandlers map[reflect.Type]reflect.Type
 }
 
 // NewDelegateDispatcher creates a dispather and associates it with an event store.
-func NewDelegateDispatcher(store EventStore) *DelegateDispatcher {
+func NewDelegateDispatcher(store EventStore, bus EventBus) *DelegateDispatcher {
 	d := &DelegateDispatcher{
-		eventStore:        store,
-		commandHandlers:   make(map[reflect.Type]reflect.Type),
-		eventSubscribers:  make(map[reflect.Type][]EventHandler),
-		globalSubscribers: make([]EventHandler, 0),
+		eventStore:      store,
+		eventBus:        bus,
+		commandHandlers: make(map[reflect.Type]reflect.Type),
 	}
 	return d
 }
@@ -62,24 +60,6 @@ func (d *DelegateDispatcher) AddHandler(command Command, handler CommandHandler)
 	d.commandHandlers[commandType] = aggregateBaseType
 }
 
-// AddSubscriber adds the subscriber as a handler for a specific event.
-func (d *DelegateDispatcher) AddSubscriber(event Event, subscriber EventHandler) {
-	eventType := reflect.TypeOf(event)
-
-	// Create subscriber list for new event types.
-	if _, ok := d.eventSubscribers[eventType]; !ok {
-		d.eventSubscribers[eventType] = make([]EventHandler, 0)
-	}
-
-	// Add subscriber to event type.
-	d.eventSubscribers[eventType] = append(d.eventSubscribers[eventType], subscriber)
-}
-
-// AddGlobalSubscriber adds the subscriber as a handler for a specific event.
-func (d *DelegateDispatcher) AddGlobalSubscriber(subscriber EventHandler) {
-	d.globalSubscribers = append(d.globalSubscribers, subscriber)
-}
-
 func (d *DelegateDispatcher) handleCommand(aggregateType reflect.Type, command Command) error {
 	// Create aggregate from it's type
 	aggregate := d.createAggregate(command.AggregateID(), aggregateType)
@@ -99,7 +79,7 @@ func (d *DelegateDispatcher) handleCommand(aggregateType reflect.Type, command C
 
 	// Publish events
 	for _, event := range resultEvents {
-		d.publishEvent(event)
+		d.eventBus.PublishEvent(event)
 	}
 
 	return nil
@@ -112,22 +92,4 @@ func (d *DelegateDispatcher) createAggregate(id UUID, aggregateType reflect.Type
 	aggregateObj.Elem().FieldByName("Aggregate").Set(delegateAggregateValue)
 	aggregate := aggregateObj.Interface().(Aggregate)
 	return aggregate
-}
-
-// PublishEvent publishes an event to all subscribers capable of handling it.
-func (d *DelegateDispatcher) publishEvent(event Event) {
-	// Publish to global subscribers.
-	for _, subscriber := range d.globalSubscribers {
-		subscriber.HandleEvent(event)
-	}
-
-	// Publish to specific subscribers.
-	eventType := reflect.TypeOf(event)
-	if _, ok := d.eventSubscribers[eventType]; !ok {
-		// TODO: Error here
-		return
-	}
-	for _, subscriber := range d.eventSubscribers[eventType] {
-		subscriber.HandleEvent(event)
-	}
 }

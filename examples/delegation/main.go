@@ -25,8 +25,9 @@ import (
 func main() {
 	// Create the event store and dispatcher.
 	eventStore := eventhorizon.NewMemoryEventStore()
-	disp := eventhorizon.NewDelegateDispatcher(eventStore)
-	disp.AddGlobalSubscriber(&LoggerSubscriber{})
+	eventBus := eventhorizon.NewHandlerEventBus()
+	eventBus.AddGlobalSubscriber(&LoggerSubscriber{})
+	disp := eventhorizon.NewDelegateDispatcher(eventStore, eventBus)
 
 	// Register the domain aggregates with the dispather.
 	disp.AddHandler(CreateInvite{}, &InvitationAggregate{})
@@ -36,17 +37,17 @@ func main() {
 	// Create and register a read model for individual invitations.
 	invitationRepository := eventhorizon.NewMemoryRepository()
 	invitationProjector := NewInvitationProjector(invitationRepository)
-	disp.AddSubscriber(InviteCreated{}, invitationProjector)
-	disp.AddSubscriber(InviteAccepted{}, invitationProjector)
-	disp.AddSubscriber(InviteDeclined{}, invitationProjector)
+	eventBus.AddSubscriber(InviteCreated{}, invitationProjector)
+	eventBus.AddSubscriber(InviteAccepted{}, invitationProjector)
+	eventBus.AddSubscriber(InviteDeclined{}, invitationProjector)
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
 	guestListRepository := eventhorizon.NewMemoryRepository()
 	guestListProjector := NewGuestListProjector(guestListRepository, eventID)
-	disp.AddSubscriber(InviteCreated{}, guestListProjector)
-	disp.AddSubscriber(InviteAccepted{}, guestListProjector)
-	disp.AddSubscriber(InviteDeclined{}, guestListProjector)
+	eventBus.AddSubscriber(InviteCreated{}, guestListProjector)
+	eventBus.AddSubscriber(InviteAccepted{}, guestListProjector)
+	eventBus.AddSubscriber(InviteDeclined{}, guestListProjector)
 
 	// Issue some invitations and responses.
 	// Note that Athena tries to decline the event, but that is not allowed
