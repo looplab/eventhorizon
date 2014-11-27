@@ -14,6 +14,10 @@
 
 package eventhorizon
 
+import (
+	"fmt"
+)
+
 // EventStore is an interface for an event sourcing event store.
 type EventStore interface {
 	// Append appends all events in the event stream to the store.
@@ -21,4 +25,95 @@ type EventStore interface {
 
 	// Load loads all events for the aggregate id from the store.
 	Load(UUID) ([]Event, error)
+}
+
+// MemoryEventStore implements EventStore as an in memory structure.
+type MemoryEventStore struct {
+	events map[UUID][]Event
+}
+
+// NewMemoryEventStore creates a new MemoryEventStore.
+func NewMemoryEventStore() *MemoryEventStore {
+	s := &MemoryEventStore{
+		events: make(map[UUID][]Event),
+	}
+	return s
+}
+
+// Append appends all events in the event stream to the memory store.
+func (s *MemoryEventStore) Append(events []Event) {
+	for _, event := range events {
+		id := event.AggregateID()
+		if _, ok := s.events[id]; !ok {
+			s.events[id] = make([]Event, 0)
+		}
+		// log.Printf("event store: appending %#v", event)
+		s.events[id] = append(s.events[id], event)
+	}
+}
+
+// Load loads all events for the aggregate id from the memory store.
+func (s *MemoryEventStore) Load(id UUID) ([]Event, error) {
+	if events, ok := s.events[id]; ok {
+		// log.Printf("event store: loaded %#v", events)
+		return events, nil
+	}
+
+	return nil, fmt.Errorf("could not find events")
+}
+
+// TraceEventStore wraps an EventStore and adds debug tracing.
+type TraceEventStore struct {
+	eventStore EventStore
+	tracing    bool
+	trace      []Event
+}
+
+// NewTraceEventStore creates a new TraceEventStore.
+func NewTraceEventStore(eventStore EventStore) *TraceEventStore {
+	s := &TraceEventStore{
+		eventStore: eventStore,
+		trace:      make([]Event, 0),
+	}
+	return s
+}
+
+// Append appends all events to the base store and trace them if enabled.
+func (s *TraceEventStore) Append(events []Event) {
+	if s.eventStore != nil {
+		s.eventStore.Append(events)
+	}
+
+	if s.tracing {
+		s.trace = append(s.trace, events...)
+	}
+}
+
+// Load loads all events for the aggregate id from the base store.
+func (s *TraceEventStore) Load(id UUID) ([]Event, error) {
+	if s.eventStore != nil {
+		return s.eventStore.Load(id)
+	}
+
+	return nil, fmt.Errorf("no event store defined")
+}
+
+// StartTracing starts the tracing of events.
+func (s *TraceEventStore) StartTracing() {
+	s.tracing = true
+}
+
+// StopTracing stops the tracing of events.
+func (s *TraceEventStore) StopTracing() {
+	s.tracing = false
+}
+
+// GetTrace returns the events that happened during the tracing.
+func (s *TraceEventStore) GetTrace() []Event {
+	return s.trace
+}
+
+// ResetTrace resets the trace.
+func (s *TraceEventStore) ResetTrace() {
+	s.trace = make([]Event, 0)
 }

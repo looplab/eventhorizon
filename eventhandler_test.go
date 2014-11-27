@@ -20,9 +20,9 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-type ReflectEventHandlerSuite struct{}
-
 var _ = Suite(&ReflectEventHandlerSuite{})
+
+type ReflectEventHandlerSuite struct{}
 
 func (s *ReflectEventHandlerSuite) Test_NewReflectEventHandler_Simple(c *C) {
 	cache = make(map[cacheItem]handlersMap)
