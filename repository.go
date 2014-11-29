@@ -33,7 +33,7 @@ type Repository interface {
 	Remove(UUID) error
 }
 
-// MemoryRepository implements a in memory repository of read models.
+// MemoryRepository implements an in memory repository of read models.
 type MemoryRepository struct {
 	data map[UUID]interface{}
 }

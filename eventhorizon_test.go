@@ -45,7 +45,7 @@ func (a *TestAggregate) HandleTestEvent(event TestEvent) {
 	a.events = append(a.events, event)
 }
 
-// HandleTestEventOther is a invalid handler where tha method name and event
+// HandleTestEventOther is an invalid handler where the method name and event
 // name does not match. It should be ignored.
 func (a *TestAggregate) HandleTestEventOther(event TestEvent) {
 }

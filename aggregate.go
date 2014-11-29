@@ -14,16 +14,16 @@
 
 package eventhorizon
 
-// Aggregate is a CQRS aggregate base to embedd in domain specific aggregates.
+// Aggregate is a CQRS aggregate base to embed in domain specific aggregates.
 //
 // A domain specific aggregate is any struct that implements the Aggregate
-// interface, often by embedding. A typical aggregate examyple:
+// interface, often by embedding. A typical aggregate example:
 //   type UserAggregate struct {
 //       eventhorizon.Aggregate
 //
 //       name string
 //   }
-// The embeddde aggregate is then initialized by the dispatcher with for exapmle
+// The embedded aggregate is then initialized by the dispatcher with for exapmle
 // ReflectAggregate, depending on the type of dispatcher.
 type Aggregate interface {
 	// AggregateID returns the id of the aggregate.
@@ -46,7 +46,7 @@ type DelegateAggregate struct {
 	delegate     EventHandler
 }
 
-// NewDelegateAggregate creates an aggregate wich applies it's events by using
+// NewDelegateAggregate creates an aggregate which applies it's events by using
 // methods detected with reflection by the methodApplier.
 func NewDelegateAggregate(id UUID, delegate EventHandler) *DelegateAggregate {
 	return &DelegateAggregate{
@@ -56,7 +56,7 @@ func NewDelegateAggregate(id UUID, delegate EventHandler) *DelegateAggregate {
 	}
 }
 
-// AggregateID returnes the ID of the aggregate.
+// AggregateID returns the ID of the aggregate.
 func (a *DelegateAggregate) AggregateID() UUID {
 	return a.id
 }
@@ -85,7 +85,7 @@ type ReflectAggregate struct {
 	handler      EventHandler
 }
 
-// NewReflectAggregate creates an aggregate wich applies it's events by using
+// NewReflectAggregate creates an aggregate which applies it's events by using
 // methods detected with reflection by the methodApplier.
 func NewReflectAggregate(id UUID, source interface{}) *ReflectAggregate {
 	return &ReflectAggregate{
@@ -95,7 +95,7 @@ func NewReflectAggregate(id UUID, source interface{}) *ReflectAggregate {
 	}
 }
 
-// AggregateID returnes the ID of the aggregate.
+// AggregateID returns the ID of the aggregate.
 func (a *ReflectAggregate) AggregateID() UUID {
 	return a.id
 }

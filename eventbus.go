@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-// EventBus is a interface defining an event bus for distributing events.
+// EventBus is an interface defining an event bus for distributing events.
 type EventBus interface {
 	// PublishEvent publishes an event on the event bus.
 	PublishEvent(Event)
