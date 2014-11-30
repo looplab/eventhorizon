@@ -17,9 +17,8 @@ package eventhorizon
 
 // Command is a domain command that is sent to a Dispatcher.
 //
-// A command name should:
-// * Be in present tense.
-// * Contain the intent (MoveCustomer vs CorrectCustomerAddress).
+// A command name should 1) be in present tense and 2) contain the intent
+// (MoveCustomer vs CorrectCustomerAddress).
 //
 // The command should contain all the data needed when handling it.
 type Command interface {
@@ -28,9 +27,8 @@ type Command interface {
 
 // Event is a domain event describing a change that has happened to an aggregate.
 //
-// An event name should:
-// * Be in past tense.
-// * Contain the intent (CustomerMoved vs CustomerAddressCorrected).
+// An event name should 1) be in past tense and 2) contain the intent
+// (CustomerMoved vs CustomerAddressCorrected).
 //
 // The event should contain all the data needed when applying/handling it.
 type Event interface {
