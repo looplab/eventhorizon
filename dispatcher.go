@@ -20,10 +20,10 @@ import (
 	"strings"
 )
 
-// Dispatcher is a interface defining a command and event dispatcher.
+// Dispatcher is an interface defining a command and event dispatcher.
 //
 // The dispatch process is as follows:
-// 1. The dispather receives a command
+// 1. The dispatcher receives a command
 // 2. An aggregate is created or rebuilt from previous events in event store
 // 3. The aggregate's command handler is called
 // 4. The aggregate generates events in response to the command
@@ -34,7 +34,7 @@ type Dispatcher interface {
 	Dispatch(Command) error
 }
 
-// DelegateDispatcher is a dispather that dispatches commands and publishes events
+// DelegateDispatcher is a dispatcher that dispatches commands and publishes events
 // based on method names.
 type DelegateDispatcher struct {
 	eventStore      EventStore
@@ -42,7 +42,7 @@ type DelegateDispatcher struct {
 	commandHandlers map[reflect.Type]reflect.Type
 }
 
-// NewDelegateDispatcher creates a dispather and associates it with an event store.
+// NewDelegateDispatcher creates a dispatcher and associates it with an event store.
 func NewDelegateDispatcher(store EventStore, bus EventBus) *DelegateDispatcher {
 	d := &DelegateDispatcher{
 		eventStore:      store,
@@ -109,7 +109,7 @@ func (d *DelegateDispatcher) createAggregate(id UUID, aggregateType reflect.Type
 	return aggregate
 }
 
-// ReflectDispatcher is a dispather that dispatches commands and publishes events
+// ReflectDispatcher is a dispatcher that dispatches commands and publishes events
 // based on method names.
 type ReflectDispatcher struct {
 	eventStore      EventStore
@@ -122,7 +122,7 @@ type handler struct {
 	method     reflect.Method
 }
 
-// NewReflectDispatcher creates a dispather and associates it with an event store.
+// NewReflectDispatcher creates a dispatcher and associates it with an event store.
 func NewReflectDispatcher(store EventStore, bus EventBus) *ReflectDispatcher {
 	d := &ReflectDispatcher{
 		eventStore:      store,

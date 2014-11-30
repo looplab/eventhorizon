@@ -32,7 +32,7 @@ type Command interface {
 // * Be in past tense.
 // * Contain the intent (CustomerMoved vs CustomerAddressCorrected).
 //
-// The event should contain all the data needed when appling/handling it.
+// The event should contain all the data needed when applying/handling it.
 type Event interface {
 	AggregateID() UUID
 }
