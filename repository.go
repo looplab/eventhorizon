@@ -55,7 +55,8 @@ func (r *MemoryRepository) Save(id UUID, model interface{}) {
 	r.data[id] = model
 }
 
-// Find returns one read model with using an id.
+// Find returns one read model with using an id. Returns
+// ErrModelNotFound if no model could be found.
 func (r *MemoryRepository) Find(id UUID) (interface{}, error) {
 	if model, ok := r.data[id]; ok {
 		// log.Printf("read model: found %#v", model)
@@ -74,7 +75,8 @@ func (r *MemoryRepository) FindAll() ([]interface{}, error) {
 	return models, nil
 }
 
-// Remove removes a read model with id from the repository.
+// Remove removes a read model with id from the repository. Returns
+// ErrModelNotFound if no model could be found.
 func (r *MemoryRepository) Remove(id UUID) error {
 	if _, ok := r.data[id]; ok {
 		delete(r.data, id)

@@ -56,6 +56,7 @@ func NewDelegateDispatcher(store EventStore, bus EventBus) *DelegateDispatcher {
 }
 
 // Dispatch dispatches a command to the registered command handler.
+// Returns ErrHandlerNotFound if no handler could be found.
 func (d *DelegateDispatcher) Dispatch(command Command) error {
 	commandType := reflect.TypeOf(command)
 	if aggregateType, ok := d.commandHandlers[commandType]; ok {
@@ -136,6 +137,7 @@ func NewReflectDispatcher(store EventStore, bus EventBus) *ReflectDispatcher {
 }
 
 // Dispatch dispatches a command to the registered command handler.
+// Returns ErrHandlerNotFound if no handler could be found.
 func (d *ReflectDispatcher) Dispatch(command Command) error {
 	commandType := reflect.TypeOf(command)
 	if handler, ok := d.commandHandlers[commandType]; ok {

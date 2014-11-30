@@ -59,6 +59,7 @@ func (s *MemoryEventStore) Append(events []Event) {
 }
 
 // Load loads all events for the aggregate id from the memory store.
+// Returns ErrNotEventsFound if no events can be found.
 func (s *MemoryEventStore) Load(id UUID) ([]Event, error) {
 	if events, ok := s.events[id]; ok {
 		// log.Printf("event store: loaded %#v", events)
@@ -96,6 +97,7 @@ func (s *TraceEventStore) Append(events []Event) {
 }
 
 // Load loads all events for the aggregate id from the base store.
+// Returns NoEventStoreDefinedError if no event store could be found.
 func (s *TraceEventStore) Load(id UUID) ([]Event, error) {
 	if s.eventStore != nil {
 		return s.eventStore.Load(id)
