@@ -15,8 +15,14 @@
 package eventhorizon
 
 import (
-	"fmt"
+	"errors"
 )
+
+// Error returned when no events are found.
+var ErrNotEventsFound = errors.New("could not find events")
+
+// Error returned if no event store has been defined.
+var NoEventStoreDefinedError = errors.New("no event store defined")
 
 // EventStore is an interface for an event sourcing event store.
 type EventStore interface {
@@ -59,7 +65,7 @@ func (s *MemoryEventStore) Load(id UUID) ([]Event, error) {
 		return events, nil
 	}
 
-	return nil, fmt.Errorf("could not find events")
+	return nil, ErrNotEventsFound
 }
 
 // TraceEventStore wraps an EventStore and adds debug tracing.
@@ -95,7 +101,7 @@ func (s *TraceEventStore) Load(id UUID) ([]Event, error) {
 		return s.eventStore.Load(id)
 	}
 
-	return nil, fmt.Errorf("no event store defined")
+	return nil, NoEventStoreDefinedError
 }
 
 // StartTracing starts the tracing of events.

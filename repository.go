@@ -15,8 +15,11 @@
 package eventhorizon
 
 import (
-	"fmt"
+	"errors"
 )
+
+// Error returned when a model could not be found.
+var ErrModelNotFound = errors.New("could not find model")
 
 // Repository is a storage for read models.
 type Repository interface {
@@ -59,7 +62,7 @@ func (r *MemoryRepository) Find(id UUID) (interface{}, error) {
 		return model, nil
 	}
 
-	return nil, fmt.Errorf("could not find model")
+	return nil, ErrModelNotFound
 }
 
 // FindAll returns all read models in the repository.
@@ -79,5 +82,5 @@ func (r *MemoryRepository) Remove(id UUID) error {
 		return nil
 	}
 
-	return fmt.Errorf("could not find model")
+	return ErrModelNotFound
 }
