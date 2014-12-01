@@ -19,7 +19,7 @@ import (
 )
 
 // Error returned when no events are found.
-var ErrNotEventsFound = errors.New("could not find events")
+var ErrNoEventsFound = errors.New("could not find events")
 
 // Error returned if no event store has been defined.
 var NoEventStoreDefinedError = errors.New("no event store defined")
@@ -59,14 +59,14 @@ func (s *MemoryEventStore) Append(events []Event) {
 }
 
 // Load loads all events for the aggregate id from the memory store.
-// Returns ErrNotEventsFound if no events can be found.
+// Returns ErrNoEventsFound if no events can be found.
 func (s *MemoryEventStore) Load(id UUID) ([]Event, error) {
 	if events, ok := s.events[id]; ok {
 		// log.Printf("event store: loaded %#v", events)
 		return events, nil
 	}
 
-	return nil, ErrNotEventsFound
+	return nil, ErrNoEventsFound
 }
 
 // TraceEventStore wraps an EventStore and adds debug tracing.
