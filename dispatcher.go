@@ -15,10 +15,13 @@
 package eventhorizon
 
 import (
-	"fmt"
+	"errors"
 	"reflect"
 	"strings"
 )
+
+// Error returned when no handler can be found.
+var ErrHandlerNotFound = errors.New("no handlers for command")
 
 // Dispatcher is an interface defining a command and event dispatcher.
 //
@@ -53,12 +56,13 @@ func NewDelegateDispatcher(store EventStore, bus EventBus) *DelegateDispatcher {
 }
 
 // Dispatch dispatches a command to the registered command handler.
+// Returns ErrHandlerNotFound if no handler could be found.
 func (d *DelegateDispatcher) Dispatch(command Command) error {
 	commandType := reflect.TypeOf(command)
 	if aggregateType, ok := d.commandHandlers[commandType]; ok {
 		return d.handleCommand(aggregateType, command)
 	}
-	return fmt.Errorf("no handlers for command")
+	return ErrHandlerNotFound
 }
 
 // AddHandler adds a handler for a command.
@@ -133,12 +137,13 @@ func NewReflectDispatcher(store EventStore, bus EventBus) *ReflectDispatcher {
 }
 
 // Dispatch dispatches a command to the registered command handler.
+// Returns ErrHandlerNotFound if no handler could be found.
 func (d *ReflectDispatcher) Dispatch(command Command) error {
 	commandType := reflect.TypeOf(command)
 	if handler, ok := d.commandHandlers[commandType]; ok {
 		return d.handleCommand(handler.sourceType, handler.method, command)
 	}
-	return fmt.Errorf("no handlers for command")
+	return ErrHandlerNotFound
 }
 
 // AddHandler adds an aggregate as a handler for a command.
