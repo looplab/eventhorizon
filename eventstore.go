@@ -22,7 +22,7 @@ import (
 var ErrNoEventsFound = errors.New("could not find events")
 
 // Error returned if no event store has been defined.
-var NoEventStoreDefinedError = errors.New("no event store defined")
+var ErrNoEventStoreDefined = errors.New("no event store defined")
 
 // EventStore is an interface for an event sourcing event store.
 type EventStore interface {
@@ -97,13 +97,13 @@ func (s *TraceEventStore) Append(events []Event) {
 }
 
 // Load loads all events for the aggregate id from the base store.
-// Returns NoEventStoreDefinedError if no event store could be found.
+// Returns ErrNoEventStoreDefined if no event store could be found.
 func (s *TraceEventStore) Load(id UUID) ([]Event, error) {
 	if s.eventStore != nil {
 		return s.eventStore.Load(id)
 	}
 
-	return nil, NoEventStoreDefinedError
+	return nil, ErrNoEventStoreDefined
 }
 
 // StartTracing starts the tracing of events.
