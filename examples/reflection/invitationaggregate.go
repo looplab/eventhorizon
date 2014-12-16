@@ -29,13 +29,14 @@ type InvitationAggregate struct {
 	eventhorizon.Aggregate
 
 	name     string
+	age      int
 	accepted bool
 	declined bool
 }
 
 func (i *InvitationAggregate) HandleCreateInvite(command CreateInvite) ([]eventhorizon.Event, error) {
 	return []eventhorizon.Event{
-		InviteCreated{command.InvitationID, command.Name},
+		InviteCreated{command.InvitationID, command.Name, command.Age},
 	}, nil
 }
 
@@ -69,6 +70,7 @@ func (i *InvitationAggregate) HandleDeclineInvite(command DeclineInvite) ([]even
 
 func (i *InvitationAggregate) ApplyInviteCreated(event InviteCreated) {
 	i.name = event.Name
+	i.age = event.Age
 }
 
 func (i *InvitationAggregate) ApplyInviteAccepted(event InviteAccepted) {

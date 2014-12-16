@@ -21,6 +21,7 @@ import (
 type CreateInvite struct {
 	InvitationID eventhorizon.UUID
 	Name         string
+	Age          int `eh:"optional"`
 }
 
 func (c CreateInvite) AggregateID() eventhorizon.UUID {

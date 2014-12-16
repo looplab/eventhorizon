@@ -54,20 +54,20 @@ func main() {
 	// by the domain logic in InvitationAggregate. The result is that she is
 	// still accepted.
 	athenaID := eventhorizon.NewUUID()
-	disp.Dispatch(CreateInvite{athenaID, "Athena"})
-	disp.Dispatch(AcceptInvite{athenaID})
-	err := disp.Dispatch(DeclineInvite{athenaID})
+	disp.Dispatch(CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
+	disp.Dispatch(AcceptInvite{InvitationID: athenaID})
+	err := disp.Dispatch(DeclineInvite{InvitationID: athenaID})
 	if err != nil {
 		fmt.Printf("error: %s\n", err)
 	}
 
 	hadesID := eventhorizon.NewUUID()
-	disp.Dispatch(CreateInvite{hadesID, "Hades"})
-	disp.Dispatch(AcceptInvite{hadesID})
+	disp.Dispatch(CreateInvite{InvitationID: hadesID, Name: "Hades"})
+	disp.Dispatch(AcceptInvite{InvitationID: hadesID})
 
 	zeusID := eventhorizon.NewUUID()
-	disp.Dispatch(CreateInvite{zeusID, "Zeus"})
-	disp.Dispatch(DeclineInvite{zeusID})
+	disp.Dispatch(CreateInvite{InvitationID: zeusID, Name: "Zeus"})
+	disp.Dispatch(DeclineInvite{InvitationID: zeusID})
 
 	// Read all invites.
 	invitations, _ := invitationRepository.FindAll()

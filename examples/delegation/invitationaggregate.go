@@ -29,6 +29,7 @@ type InvitationAggregate struct {
 	eventhorizon.Aggregate
 
 	name     string
+	age      int
 	accepted bool
 	declined bool
 }
@@ -37,7 +38,7 @@ func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) ([]eve
 	switch command := command.(type) {
 	case CreateInvite:
 		return []eventhorizon.Event{
-			InviteCreated{command.InvitationID, command.Name},
+			InviteCreated{command.InvitationID, command.Name, command.Age},
 		}, nil
 
 	case AcceptInvite:
@@ -73,6 +74,7 @@ func (i *InvitationAggregate) HandleEvent(event eventhorizon.Event) {
 	switch event := event.(type) {
 	case InviteCreated:
 		i.name = event.Name
+		i.age = event.Age
 	case InviteAccepted:
 		i.accepted = true
 	case InviteDeclined:
