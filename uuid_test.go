@@ -15,6 +15,8 @@
 package eventhorizon
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"regexp"
 
 	. "gopkg.in/check.v1"
@@ -29,50 +31,75 @@ func (s *UUIDSuite) TestNewUUID(c *C) {
 	c.Assert(id, NotNil)
 	id2 := NewUUID()
 	c.Assert(id, Not(Equals), id2)
+
+	// Check variant.
+	c.Assert(id[8]&0x40, Equals, uint8(0x40))
+
+	// Check version.
+	c.Assert(id[6]>>4, Equals, uint8(4))
+
+	// Check format.
+	re := regexp.MustCompile("^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$")
+	c.Assert(re.MatchString(id.String()), Equals, true)
 }
 
 func (s *UUIDSuite) TestParseUUID(c *C) {
-	id := NewUUID()
-	parsed, err := ParseUUID(id.String())
+	b, err := hex.DecodeString("a4da289d466d4a5645211dbd455aa0cd")
+	c.Assert(err, Equals, nil)
+	id := UUID(b)
+
+	parsed, err := ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
+	c.Assert(err, Equals, nil)
+	c.Assert(parsed, Equals, id)
+
+	parsed, err = ParseUUID("{a4da289d-466d-4a56-4521-1dbd455aa0cd}")
+	c.Assert(err, Equals, nil)
+	c.Assert(parsed, Equals, id)
+
+	parsed, err = ParseUUID("urn:uuid:a4da289d-466d-4a56-4521-1dbd455aa0cd")
 	c.Assert(err, Equals, nil)
 	c.Assert(parsed, Equals, id)
 
 	parsed, err = ParseUUID("not-a-uuid")
 	c.Assert(err, Not(Equals), nil)
 	c.Assert(err, ErrorMatches, "Invalid UUID string")
-	var nilID UUID
-	c.Assert(parsed, Equals, nilID)
+	c.Assert(parsed, Equals, UUID(""))
 }
 
 func (s *UUIDSuite) TestString(c *C) {
-	id := NewUUID()
-	c.Assert(id.String(), FitsTypeOf, "string")
-	re := regexp.MustCompile("^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$")
-	c.Assert(re.MatchString(id.String()), Equals, true)
+	b, err := hex.DecodeString("a4da289d466d4a5645211dbd455aa0cd")
+	c.Assert(err, Equals, nil)
+	id := UUID(b)
+	c.Assert(id.String(), Equals, "a4da289d-466d-4a56-4521-1dbd455aa0cd")
+}
+
+type jsonType struct {
+	ID *UUID
 }
 
 func (s *UUIDSuite) TestMarshalJSON(c *C) {
-	id := NewUUID()
-	json, err := id.MarshalJSON()
-	c.Assert(err, Equals, nil)
-	c.Assert(json, DeepEquals, []byte("\""+id.String()+"\""))
+	id, err := ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
+	c.Assert(err, IsNil)
+	v := jsonType{ID: &id}
+	data, err := json.Marshal(&v)
+	c.Assert(err, IsNil)
+	c.Assert(string(data), Equals, `{"ID":"a4da289d-466d-4a56-4521-1dbd455aa0cd"}`)
 }
 
 func (s *UUIDSuite) TestUnmarshalJSON(c *C) {
-	id := NewUUID()
-	var jsonID UUID
-	err := jsonID.UnmarshalJSON([]byte("\"" + id.String() + "\""))
-	c.Assert(err, Equals, nil)
-	c.Assert(jsonID, Equals, id)
+	data := []byte(`{"ID":"a4da289d-466d-4a56-4521-1dbd455aa0cd"}`)
+	v := jsonType{}
+	err := json.Unmarshal(data, &v)
+	c.Assert(err, IsNil)
+	id, err := ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
+	c.Assert(err, IsNil)
+	c.Assert(*v.ID, Equals, id)
+}
 
-	var jsonID2 UUID
-	err = jsonID2.UnmarshalJSON([]byte("not-json"))
-	c.Assert(err, ErrorMatches, "invalid UUID in JSON, not-json is not a valid JSON string")
-	var nilID UUID
-	c.Assert(jsonID2, Equals, nilID)
-
-	var jsonID3 UUID
-	err = jsonID3.UnmarshalJSON([]byte("\"819c4ff4-31b4-4519-xxxx-3c4a129b8649\""))
-	c.Assert(err.Error(), Equals, "invalid UUID in JSON, 819c4ff4-31b4-4519-xxxx-3c4a129b8649: encoding/hex: invalid byte: U+0078 'x'")
-	c.Assert(jsonID3, Equals, nilID)
+func (s *UUIDSuite) TestUnmarshalJSONError(c *C) {
+	v := jsonType{}
+	err := json.Unmarshal([]byte(`{"ID":"not-uuid"}`), &v)
+	c.Assert(err, ErrorMatches, `invalid UUID in JSON, not-uuid: Invalid UUID string`)
+	err = json.Unmarshal([]byte(`{"ID":"819c4ff4-31b4-4519-xxxx-3c4a129b8649"}`), &v)
+	c.Assert(err.Error(), Equals, `invalid UUID in JSON, 819c4ff4-31b4-4519-xxxx-3c4a129b8649: encoding/hex: invalid byte: U+0078 'x'`)
 }

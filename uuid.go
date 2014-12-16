@@ -15,44 +15,83 @@
 package eventhorizon
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"fmt"
-
-	"github.com/nu7hatch/gouuid"
+	"regexp"
 )
 
-// UUID is a unique identifier, based on the UUID spec.
-type UUID uuid.UUID
+// Pattern used to parse hex string representation of the UUID.
+// FIXME: do something to consider both brackets at one time,
+// current one allows to parse string with only one opening
+// or closing bracket.
+const hexPattern = "^(urn\\:uuid\\:)?\\{?([a-z0-9]{8})-([a-z0-9]{4})-" +
+	"([1-5][a-z0-9]{3})-([a-z0-9]{4})-([a-z0-9]{12})\\}?$"
+
+var re = regexp.MustCompile(hexPattern)
+
+// UUID is a unique identifier, based on the UUID spec. It must be exactly 16
+// bytes long.
+type UUID string
 
 // NewUUID creates a new UUID of type v4.
 func NewUUID() UUID {
-	guid, err := uuid.NewV4()
+	var u [16]byte
+
+	// Set all bits to randomly (or pseudo-randomly) chosen values.
+	_, err := rand.Read(u[:])
 	if err != nil {
 		panic(err)
 	}
 
-	return UUID(*guid)
+	// Set the RFC4122 flag.
+	// Set the two most significant bits (bits 6 and 7) of the
+	// clock_seq_hi_and_reserved to zero and one, respectively.
+	u[8] = (u[8] | 0x40) & 0x7F
+
+	// Set the version to 4.
+	// Set the four most significant bits (bits 12 through 15) of the
+	// time_hi_and_version field to the 4-bit version number.
+	u[6] = (u[6] & 0xF) | 0x40
+
+	return UUID(u[:])
 }
 
 // ParseUUID parses a UUID from a string representation.
-func ParseUUID(value string) (id UUID, err error) {
-	guid := new(uuid.UUID)
-	if guid, err = uuid.ParseHex(value); err == nil {
-		id = UUID(*guid)
+// ParseUUID creates a UUID object from given hex string representation.
+// The function accepts UUID string in following formats:
+//
+//     ParseUUID("6ba7b814-9dad-11d1-80b4-00c04fd430c8")
+//     ParseUUID("{6ba7b814-9dad-11d1-80b4-00c04fd430c8}")
+//     ParseUUID("urn:uuid:6ba7b814-9dad-11d1-80b4-00c04fd430c8")
+//
+func ParseUUID(s string) (UUID, error) {
+	md := re.FindStringSubmatch(s)
+	if md == nil {
+		return "", errors.New("Invalid UUID string")
 	}
-
-	return
+	hash := md[2] + md[3] + md[4] + md[5] + md[6]
+	b, err := hex.DecodeString(hash)
+	if err != nil {
+		return "", err
+	}
+	return UUID(b), nil
 }
 
 // String implements the Stringer interface for UUID.
 func (id UUID) String() string {
-	guid := uuid.UUID(id)
-	return guid.String()
+	if len(id) == 16 {
+		u := []byte(id)
+		return fmt.Sprintf("%x-%x-%x-%x-%x", u[0:4], u[4:6], u[6:8], u[8:10], u[10:])
+	}
+	return ""
 }
 
 // MarshalJSON turns UUID into a json.Marshaller.
-func (id *UUID) MarshalJSON() ([]byte, error) {
+func (id UUID) MarshalJSON() ([]byte, error) {
 	// Pack the string representation in quotes
-	return []byte(fmt.Sprintf(`"%v"`, id.String())), nil
+	return []byte(fmt.Sprintf(`"%s"`, id.String())), nil
 }
 
 // UnmarshalJSON turns *UUID into a json.Unmarshaller.
@@ -64,12 +103,12 @@ func (id *UUID) UnmarshalJSON(data []byte) error {
 
 	// Grab string value without the surrounding " characters
 	value := string(data[1 : len(data)-1])
-	parsed, err := uuid.ParseHex(value)
+	parsed, err := ParseUUID(value)
 	if err != nil {
 		return fmt.Errorf("invalid UUID in JSON, %v: %v", value, err)
 	}
 
 	// Dereference pointer value and store parsed
-	*id = UUID(*parsed)
+	*id = parsed
 	return nil
 }
