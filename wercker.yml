@@ -24,7 +24,7 @@ build:
     - script:
         name: go test
         code: |
-          go get golang.org/x/tools/cmd/cover
+          go get -d golang.org/x/tools/cmd/cover
           go get github.com/axw/gocov/gocov
           go get github.com/mattn/goveralls
           git checkout master
