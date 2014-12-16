@@ -280,12 +280,25 @@ func checkCommand(c Command) error {
 			continue // Optional field
 		}
 
-		value := sv.Field(i)
-		if value.IsValid() &&
-			value.Interface() == reflect.Zero(field.Type).Interface() {
-
+		if isZero(sv.Field(i)) {
 			return CommandFieldError{field.Name}
 		}
 	}
 	return nil
+}
+
+func isZero(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Func, reflect.Map, reflect.Slice:
+		return v.IsNil()
+	case reflect.Struct:
+		z := true
+		for i := 0; i < v.NumField(); i++ {
+			z = z && isZero(v.Field(i))
+		}
+		return z
+	}
+	// Compare other types directly:
+	z := reflect.Zero(v.Type())
+	return v.Interface() == z.Interface()
 }

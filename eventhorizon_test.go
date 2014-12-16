@@ -70,7 +70,7 @@ func (t TestEventOther) AggregateID() UUID {
 
 type TestCommand struct {
 	TestID  UUID
-	Content string `eh:"optional"`
+	Content string
 }
 
 func (t TestCommand) AggregateID() UUID {

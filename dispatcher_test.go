@@ -418,14 +418,82 @@ func (s *DispatcherSuite) Test_CheckCommand_AllFields(c *C) {
 	c.Assert(err, Equals, nil)
 }
 
-func (s *DispatcherSuite) Test_CheckCommand_MissingRequiredField(c *C) {
-	command := TestCommand{Content: "command1"}
-	err := checkCommand(command)
-	c.Assert(err, ErrorMatches, "missing field: TestID")
+type TestCommandValue struct {
+	TestID  UUID
+	Content string
 }
 
+func (t TestCommandValue) AggregateID() UUID { return t.TestID }
+
+func (s *DispatcherSuite) Test_CheckCommand_MissingRequired_Value(c *C) {
+	command := TestCommandValue{TestID: NewUUID()}
+	err := checkCommand(command)
+	c.Assert(err, ErrorMatches, "missing field: Content")
+}
+
+type TestCommandSlice struct {
+	TestID UUID
+	Slice  []string
+}
+
+func (t TestCommandSlice) AggregateID() UUID { return t.TestID }
+
+func (s *DispatcherSuite) Test_CheckCommand_MissingRequired_Slice(c *C) {
+	command := TestCommandSlice{TestID: NewUUID()}
+	err := checkCommand(command)
+	c.Assert(err, ErrorMatches, "missing field: Slice")
+}
+
+type TestCommandMap struct {
+	TestID UUID
+	Map    map[string]string
+}
+
+func (t TestCommandMap) AggregateID() UUID { return t.TestID }
+
+func (s *DispatcherSuite) Test_CheckCommand_MissingRequired_Map(c *C) {
+	command := TestCommandMap{TestID: NewUUID()}
+	err := checkCommand(command)
+	c.Assert(err, ErrorMatches, "missing field: Map")
+}
+
+type TestCommandStruct struct {
+	TestID UUID
+	Struct struct {
+		Test string
+	}
+}
+
+func (t TestCommandStruct) AggregateID() UUID { return t.TestID }
+
+func (s *DispatcherSuite) Test_CheckCommand_MissingRequired_Struct(c *C) {
+	command := TestCommandStruct{TestID: NewUUID()}
+	err := checkCommand(command)
+	c.Assert(err, ErrorMatches, "missing field: Struct")
+}
+
+type TestCommandOptional struct {
+	TestID  UUID
+	Content string `eh:"optional"`
+}
+
+func (t TestCommandOptional) AggregateID() UUID { return t.TestID }
+
 func (s *DispatcherSuite) Test_CheckCommand_MissingOptionalField(c *C) {
-	command := TestCommand{TestID: NewUUID()}
+	command := TestCommandOptional{TestID: NewUUID()}
+	err := checkCommand(command)
+	c.Assert(err, Equals, nil)
+}
+
+type TestCommandPrivate struct {
+	TestID  UUID
+	private string
+}
+
+func (t TestCommandPrivate) AggregateID() UUID { return t.TestID }
+
+func (s *DispatcherSuite) Test_CheckCommand_MissingPrivateField(c *C) {
+	command := TestCommandPrivate{TestID: NewUUID()}
 	err := checkCommand(command)
 	c.Assert(err, Equals, nil)
 }
