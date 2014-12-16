@@ -25,6 +25,7 @@ import (
 
 var _ = Suite(&DelegateDispatcherSuite{})
 var _ = Suite(&ReflectDispatcherSuite{})
+var _ = Suite(&DispatcherSuite{})
 
 type DelegateDispatcherSuite struct {
 	store *MockEventStore
@@ -239,6 +240,7 @@ func (t *TestSource) HandleCommandOther2(command TestCommandOther2, invalidParam
 }
 
 func (s *ReflectDispatcherSuite) Test_Dispatch_Simple(c *C) {
+	dispatchedCommand = nil
 	source := &TestSource{}
 	sourceType := reflect.ValueOf(source).Elem().Type()
 	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
@@ -252,7 +254,23 @@ func (s *ReflectDispatcherSuite) Test_Dispatch_Simple(c *C) {
 	c.Assert(err, Equals, nil)
 }
 
+func (s *ReflectDispatcherSuite) Test_Dispatch_MissingField(c *C) {
+	dispatchedCommand = nil
+	source := &TestSource{}
+	sourceType := reflect.ValueOf(source).Elem().Type()
+	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
+	s.disp.commandHandlers[reflect.TypeOf(TestCommand{})] = handler{
+		sourceType: sourceType,
+		method:     method,
+	}
+	command1 := TestCommand{Content: "command1"}
+	err := s.disp.Dispatch(command1)
+	c.Assert(err, ErrorMatches, "missing field: TestID")
+	c.Assert(dispatchedCommand, Equals, nil)
+}
+
 func (s *ReflectDispatcherSuite) Test_Dispatch_ErrorInHandler(c *C) {
+	dispatchedCommand = nil
 	source := &TestSource{}
 	sourceType := reflect.ValueOf(source).Elem().Type()
 	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
@@ -325,6 +343,7 @@ func (t *TestGlobalSubscriber) HandleEvent(event Event) {
 }
 
 func (s *ReflectDispatcherSuite) Test_HandleCommand_Simple(c *C) {
+	dispatchedCommand = nil
 	source := &TestSource{}
 	s.disp.AddHandler(TestCommand{}, source)
 	command1 := TestCommand{NewUUID(), "command1"}
@@ -337,13 +356,26 @@ func (s *ReflectDispatcherSuite) Test_HandleCommand_Simple(c *C) {
 	c.Assert(s.bus.events[0], DeepEquals, TestEvent{command1.TestID, command1.Content})
 }
 
+func (s *ReflectDispatcherSuite) Test_HandleCommand_MissingField(c *C) {
+	dispatchedCommand = nil
+	source := &TestSource{}
+	s.disp.AddHandler(TestCommand{}, source)
+	command1 := TestCommand{Content: "command1"}
+	err := s.disp.Dispatch(command1)
+	c.Assert(err, ErrorMatches, "missing field: TestID")
+	c.Assert(dispatchedCommand, Equals, nil)
+	c.Assert(len(s.store.events), Equals, 0)
+	c.Assert(len(s.bus.events), Equals, 0)
+}
+
 func (s *ReflectDispatcherSuite) Test_HandleCommand_ErrorInHandler(c *C) {
+	dispatchedCommand = nil
 	source := &TestSource{}
 	s.disp.AddHandler(TestCommand{}, source)
 	commandError := TestCommand{NewUUID(), "error"}
 	err := s.disp.Dispatch(commandError)
-	c.Assert(dispatchedCommand, Equals, commandError)
 	c.Assert(err, ErrorMatches, "command error")
+	c.Assert(dispatchedCommand, Equals, commandError)
 	c.Assert(len(s.store.events), Equals, 0)
 	c.Assert(len(s.bus.events), Equals, 0)
 }
@@ -376,4 +408,24 @@ func (s *ReflectDispatcherSuite) Benchmark_ReflectDispatcher(c *C) {
 		disp.Dispatch(command1)
 	}
 	c.Assert(callCount, Equals, c.N)
+}
+
+type DispatcherSuite struct{}
+
+func (s *DispatcherSuite) Test_CheckCommand_AllFields(c *C) {
+	command := TestCommand{NewUUID(), "command1"}
+	err := checkCommand(command)
+	c.Assert(err, Equals, nil)
+}
+
+func (s *DispatcherSuite) Test_CheckCommand_MissingRequiredField(c *C) {
+	command := TestCommand{Content: "command1"}
+	err := checkCommand(command)
+	c.Assert(err, ErrorMatches, "missing field: TestID")
+}
+
+func (s *DispatcherSuite) Test_CheckCommand_MissingOptionalField(c *C) {
+	command := TestCommand{TestID: NewUUID()}
+	err := checkCommand(command)
+	c.Assert(err, Equals, nil)
 }

@@ -23,6 +23,15 @@ import (
 // Error returned when no handler can be found.
 var ErrHandlerNotFound = errors.New("no handlers for command")
 
+// CommandFieldError is returned by Dispatch when a field is incorrect.
+type CommandFieldError struct {
+	Field string
+}
+
+func (c CommandFieldError) Error() string {
+	return "missing field: " + c.Field
+}
+
 // Dispatcher is an interface defining a command and event dispatcher.
 //
 // The dispatch process is as follows:
@@ -58,6 +67,11 @@ func NewDelegateDispatcher(store EventStore, bus EventBus) *DelegateDispatcher {
 // Dispatch dispatches a command to the registered command handler.
 // Returns ErrHandlerNotFound if no handler could be found.
 func (d *DelegateDispatcher) Dispatch(command Command) error {
+	err := checkCommand(command)
+	if err != nil {
+		return err
+	}
+
 	commandType := reflect.TypeOf(command)
 	if aggregateType, ok := d.commandHandlers[commandType]; ok {
 		return d.handleCommand(aggregateType, command)
@@ -139,6 +153,11 @@ func NewReflectDispatcher(store EventStore, bus EventBus) *ReflectDispatcher {
 // Dispatch dispatches a command to the registered command handler.
 // Returns ErrHandlerNotFound if no handler could be found.
 func (d *ReflectDispatcher) Dispatch(command Command) error {
+	err := checkCommand(command)
+	if err != nil {
+		return err
+	}
+
 	commandType := reflect.TypeOf(command)
 	if handler, ok := d.commandHandlers[commandType]; ok {
 		return d.handleCommand(handler.sourceType, handler.method, command)
@@ -245,4 +264,28 @@ func (d *ReflectDispatcher) createAggregate(id UUID, sourceType reflect.Type) Ag
 	sourceObj.Elem().FieldByName("Aggregate").Set(aggregateValue)
 	aggregate := sourceObj.Interface().(Aggregate)
 	return aggregate
+}
+
+func checkCommand(c Command) error {
+	st := reflect.TypeOf(c)
+	sv := reflect.ValueOf(c)
+	for i := 0; i < st.NumField(); i++ {
+		field := st.Field(i)
+		if field.PkgPath != "" {
+			continue // Private field
+		}
+
+		tag := field.Tag.Get("eh")
+		if tag == "optional" {
+			continue // Optional field
+		}
+
+		value := sv.Field(i)
+		if value.IsValid() &&
+			value.Interface() == reflect.Zero(field.Type).Interface() {
+
+			return CommandFieldError{field.Name}
+		}
+	}
+	return nil
 }

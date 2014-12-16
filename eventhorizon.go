@@ -20,7 +20,9 @@ package eventhorizon
 // A command name should 1) be in present tense and 2) contain the intent
 // (MoveCustomer vs CorrectCustomerAddress).
 //
-// The command should contain all the data needed when handling it.
+// The command should contain all the data needed when handling it as fields.
+// These fields can take an optional "eh" tag, which adds properties. For now
+// only "optional" is a valid tag: `eh:"optional"`.
 type Command interface {
 	AggregateID() UUID
 }
