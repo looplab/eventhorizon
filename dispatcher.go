@@ -18,6 +18,7 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // Error returned when no handler can be found.
@@ -272,12 +273,12 @@ func checkCommand(c Command) error {
 	for i := 0; i < st.NumField(); i++ {
 		field := st.Field(i)
 		if field.PkgPath != "" {
-			continue // Private field
+			continue // Skip private field.
 		}
 
 		tag := field.Tag.Get("eh")
 		if tag == "optional" {
-			continue // Optional field
+			continue // Optional field.
 		}
 
 		if isZero(sv.Field(i)) {
@@ -292,12 +293,23 @@ func isZero(v reflect.Value) bool {
 	case reflect.Func, reflect.Map, reflect.Slice:
 		return v.IsNil()
 	case reflect.Struct:
+		// Special case to get zero values by method.
+		switch obj := v.Interface().(type) {
+		case time.Time:
+			return obj.IsZero()
+		}
+
+		// Check public fields for zero values.
 		z := true
 		for i := 0; i < v.NumField(); i++ {
+			if v.Type().Field(i).PkgPath != "" {
+				continue // Skip private fields.
+			}
 			z = z && isZero(v.Field(i))
 		}
 		return z
 	}
+
 	// Compare other types directly:
 	z := reflect.Zero(v.Type())
 	return v.Interface() == z.Interface()

@@ -17,6 +17,7 @@ package eventhorizon
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	. "gopkg.in/check.v1"
 
@@ -470,6 +471,19 @@ func (s *DispatcherSuite) Test_CheckCommand_MissingRequired_Struct(c *C) {
 	command := TestCommandStruct{TestID: NewUUID()}
 	err := checkCommand(command)
 	c.Assert(err, ErrorMatches, "missing field: Struct")
+}
+
+type TestCommandTime struct {
+	TestID UUID
+	Time   time.Time
+}
+
+func (t TestCommandTime) AggregateID() UUID { return t.TestID }
+
+func (s *DispatcherSuite) Test_CheckCommand_MissingRequired_Time(c *C) {
+	command := TestCommandTime{TestID: NewUUID()}
+	err := checkCommand(command)
+	c.Assert(err, ErrorMatches, "missing field: Time")
 }
 
 type TestCommandOptional struct {
