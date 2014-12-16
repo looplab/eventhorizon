@@ -55,45 +55,35 @@ type TestEvent struct {
 	Content string
 }
 
-func (t TestEvent) AggregateID() UUID {
-	return t.TestID
-}
+func (t TestEvent) AggregateID() UUID { return t.TestID }
 
 type TestEventOther struct {
 	TestID  UUID
 	Content string
 }
 
-func (t TestEventOther) AggregateID() UUID {
-	return t.TestID
-}
+func (t TestEventOther) AggregateID() UUID { return t.TestID }
 
 type TestCommand struct {
 	TestID  UUID
 	Content string
 }
 
-func (t TestCommand) AggregateID() UUID {
-	return t.TestID
-}
+func (t TestCommand) AggregateID() UUID { return t.TestID }
 
 type TestCommandOther struct {
 	TestID  UUID
 	Content string
 }
 
-func (t TestCommandOther) AggregateID() UUID {
-	return t.TestID
-}
+func (t TestCommandOther) AggregateID() UUID { return t.TestID }
 
 type TestCommandOther2 struct {
 	TestID  UUID
 	Content string
 }
 
-func (t TestCommandOther2) AggregateID() UUID {
-	return t.TestID
-}
+func (t TestCommandOther2) AggregateID() UUID { return t.TestID }
 
 type MockEventHandler struct {
 	events []Event
