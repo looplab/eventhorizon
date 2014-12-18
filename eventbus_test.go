@@ -87,7 +87,7 @@ func (s *HandlerEventBusSuite) Test_PublishEvent_NoGlobalHandler(c *C) {
 
 func (s *HandlerEventBusSuite) Test_AddSubscriber(c *C) {
 	handler := &TestHandlerEventBus{}
-	s.bus.AddSubscriber(TestEvent{}, handler)
+	s.bus.AddSubscriber(handler, TestEvent{})
 	c.Assert(len(s.bus.eventSubscribers), Equals, 1)
 	eventType := reflect.TypeOf(TestEvent{})
 	c.Assert(s.bus.eventSubscribers, t.HasKey, eventType)

@@ -58,7 +58,7 @@ func (b *HandlerEventBus) PublishEvent(event Event) {
 }
 
 // AddSubscriber adds the subscriber as a handler for a specific event.
-func (b *HandlerEventBus) AddSubscriber(event Event, subscriber EventHandler) {
+func (b *HandlerEventBus) AddSubscriber(subscriber EventHandler, event Event) {
 	eventType := reflect.TypeOf(event)
 
 	// Create subscriber list for new event types.
@@ -91,7 +91,7 @@ func (b *HandlerEventBus) AddAllSubscribers(subscriber EventHandler) {
 			// Only accept methods wich takes an acctual event type.
 			eventType := method.Type.In(1)
 			if event, ok := reflect.Zero(eventType).Interface().(Event); ok {
-				b.AddSubscriber(event, subscriber)
+				b.AddSubscriber(subscriber, event)
 			}
 		}
 	}

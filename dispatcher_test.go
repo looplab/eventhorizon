@@ -107,7 +107,7 @@ func (s *DelegateDispatcherSuite) Test_Dispatch_NoHandlers(c *C) {
 
 func (s *DelegateDispatcherSuite) Test_AddHandler_Simple(c *C) {
 	aggregate := &TestDelegateDispatcherAggregate{}
-	s.disp.AddHandler(TestCommand{}, aggregate)
+	s.disp.AddHandler(aggregate, TestCommand{})
 	c.Assert(len(s.disp.commandHandlers), Equals, 1)
 	commandType := reflect.TypeOf(TestCommand{})
 	c.Assert(s.disp.commandHandlers, t.HasKey, commandType)
@@ -117,9 +117,9 @@ func (s *DelegateDispatcherSuite) Test_AddHandler_Simple(c *C) {
 
 func (s *DelegateDispatcherSuite) Test_AddHandler_Duplicate(c *C) {
 	aggregate := &TestDelegateDispatcherAggregate{}
-	s.disp.AddHandler(TestCommand{}, aggregate)
+	s.disp.AddHandler(aggregate, TestCommand{})
 	aggregate2 := &TestDelegateDispatcherAggregate{}
-	s.disp.AddHandler(TestCommand{}, aggregate2)
+	s.disp.AddHandler(aggregate2, TestCommand{})
 	c.Assert(len(s.disp.commandHandlers), Equals, 1)
 	commandType := reflect.TypeOf(TestCommand{})
 	c.Assert(s.disp.commandHandlers, t.HasKey, commandType)
@@ -137,7 +137,7 @@ func (t *TestGlobalSubscriberDelegateDispatcher) HandleEvent(event Event) {
 
 func (s *DelegateDispatcherSuite) Test_HandleCommand_Simple(c *C) {
 	aggregate := &TestDelegateDispatcherAggregate{}
-	s.disp.AddHandler(TestCommand{}, aggregate)
+	s.disp.AddHandler(aggregate, TestCommand{})
 	command1 := TestCommand{NewUUID(), "command1"}
 	err := s.disp.Dispatch(command1)
 	c.Assert(err, Equals, nil)
@@ -150,7 +150,7 @@ func (s *DelegateDispatcherSuite) Test_HandleCommand_Simple(c *C) {
 
 func (s *DelegateDispatcherSuite) Test_HandleCommand_ErrorInHandler(c *C) {
 	aggregate := &TestDelegateDispatcherAggregate{}
-	s.disp.AddHandler(TestCommand{}, aggregate)
+	s.disp.AddHandler(aggregate, TestCommand{})
 	commandError := TestCommand{NewUUID(), "error"}
 	err := s.disp.Dispatch(commandError)
 	c.Assert(dispatchedDelegateCommand, Equals, commandError)
@@ -182,7 +182,7 @@ func (s *DelegateDispatcherSuite) Benchmark_DelegateDispatcher(c *C) {
 	}
 	disp := NewDelegateDispatcher(store, bus)
 	agg := &BenchmarkDelegateDispatcherAggregate{}
-	disp.AddHandler(TestCommand{}, agg)
+	disp.AddHandler(agg, TestCommand{})
 
 	callCountDelegateDispatcher = 0
 	command1 := TestCommand{NewUUID(), "command1"}
@@ -293,7 +293,7 @@ func (s *ReflectDispatcherSuite) Test_Dispatch_NoHandlers(c *C) {
 
 func (s *ReflectDispatcherSuite) Test_AddHandler_Simple(c *C) {
 	source := &TestSource{}
-	s.disp.AddHandler(TestCommand{}, source)
+	s.disp.AddHandler(source, TestCommand{})
 	c.Assert(len(s.disp.commandHandlers), Equals, 1)
 	commandType := reflect.TypeOf(TestCommand{})
 	c.Assert(s.disp.commandHandlers, t.HasKey, commandType)
@@ -308,9 +308,9 @@ func (s *ReflectDispatcherSuite) Test_AddHandler_Simple(c *C) {
 
 func (s *ReflectDispatcherSuite) Test_AddHandler_Duplicate(c *C) {
 	source := &TestSource{}
-	s.disp.AddHandler(TestCommand{}, source)
+	s.disp.AddHandler(source, TestCommand{})
 	source2 := &TestSource{}
-	s.disp.AddHandler(TestCommand{}, source2)
+	s.disp.AddHandler(source2, TestCommand{})
 	c.Assert(len(s.disp.commandHandlers), Equals, 1)
 	commandType := reflect.TypeOf(TestCommand{})
 	c.Assert(s.disp.commandHandlers, t.HasKey, commandType)
@@ -325,13 +325,13 @@ func (s *ReflectDispatcherSuite) Test_AddHandler_Duplicate(c *C) {
 
 func (s *ReflectDispatcherSuite) Test_AddHandler_MissingMethod(c *C) {
 	source := &TestSource{}
-	s.disp.AddHandler(TestCommandOther{}, source)
+	s.disp.AddHandler(source, TestCommandOther{})
 	c.Assert(len(s.disp.commandHandlers), Equals, 0)
 }
 
 func (s *ReflectDispatcherSuite) Test_AddHandler_IncorrectMethod(c *C) {
 	source := &TestSource{}
-	s.disp.AddHandler(TestCommandOther2{}, source)
+	s.disp.AddHandler(source, TestCommandOther2{})
 	c.Assert(len(s.disp.commandHandlers), Equals, 0)
 }
 
@@ -346,7 +346,7 @@ func (t *TestGlobalSubscriber) HandleEvent(event Event) {
 func (s *ReflectDispatcherSuite) Test_HandleCommand_Simple(c *C) {
 	dispatchedCommand = nil
 	source := &TestSource{}
-	s.disp.AddHandler(TestCommand{}, source)
+	s.disp.AddHandler(source, TestCommand{})
 	command1 := TestCommand{NewUUID(), "command1"}
 	err := s.disp.Dispatch(command1)
 	c.Assert(err, Equals, nil)
@@ -360,7 +360,7 @@ func (s *ReflectDispatcherSuite) Test_HandleCommand_Simple(c *C) {
 func (s *ReflectDispatcherSuite) Test_HandleCommand_MissingField(c *C) {
 	dispatchedCommand = nil
 	source := &TestSource{}
-	s.disp.AddHandler(TestCommand{}, source)
+	s.disp.AddHandler(source, TestCommand{})
 	command1 := TestCommand{Content: "command1"}
 	err := s.disp.Dispatch(command1)
 	c.Assert(err, ErrorMatches, "missing field: TestID")
@@ -372,7 +372,7 @@ func (s *ReflectDispatcherSuite) Test_HandleCommand_MissingField(c *C) {
 func (s *ReflectDispatcherSuite) Test_HandleCommand_ErrorInHandler(c *C) {
 	dispatchedCommand = nil
 	source := &TestSource{}
-	s.disp.AddHandler(TestCommand{}, source)
+	s.disp.AddHandler(source, TestCommand{})
 	commandError := TestCommand{NewUUID(), "error"}
 	err := s.disp.Dispatch(commandError)
 	c.Assert(err, ErrorMatches, "command error")
@@ -401,7 +401,7 @@ func (s *ReflectDispatcherSuite) Benchmark_ReflectDispatcher(c *C) {
 	}
 	disp := NewReflectDispatcher(store, bus)
 	agg := &BenchmarkAggregate{}
-	disp.AddHandler(TestCommand{}, agg)
+	disp.AddHandler(agg, TestCommand{})
 
 	callCount = 0
 	command1 := TestCommand{NewUUID(), "command1"}

@@ -81,7 +81,7 @@ func (d *DelegateDispatcher) Dispatch(command Command) error {
 }
 
 // AddHandler adds a handler for a command.
-func (d *DelegateDispatcher) AddHandler(command Command, handler CommandHandler) {
+func (d *DelegateDispatcher) AddHandler(handler CommandHandler, command Command) {
 	// Check for already existing handler.
 	commandType := reflect.TypeOf(command)
 	if _, ok := d.commandHandlers[commandType]; ok {
@@ -174,7 +174,7 @@ func (d *ReflectDispatcher) Dispatch(command Command) error {
 // is as following:
 //   func HandleMyCommand(source *MySource, c MyCommand).
 // Only add method that has the correct type.
-func (d *ReflectDispatcher) AddHandler(command Command, source interface{}) {
+func (d *ReflectDispatcher) AddHandler(source interface{}, command Command) {
 	// Check for already existing handler.
 	commandType := reflect.TypeOf(command)
 	if _, ok := d.commandHandlers[commandType]; ok {
@@ -218,7 +218,7 @@ func (d *ReflectDispatcher) AddAllHandlers(source interface{}) {
 			// Only accept methods wich takes an acctual command type.
 			commandType := method.Type.In(1)
 			if command, ok := reflect.Zero(commandType).Interface().(Command); ok {
-				d.AddHandler(command, source)
+				d.AddHandler(source, command)
 			}
 		}
 	}
