@@ -95,7 +95,7 @@ func (d *DelegateDispatcher) AddHandler(handler CommandHandler, command Command)
 }
 
 func (d *DelegateDispatcher) handleCommand(aggregateType reflect.Type, command Command) error {
-	// Create aggregate from it's type
+	// Create aggregate from its type
 	aggregate := d.createAggregate(command.AggregateID(), aggregateType)
 
 	// Load aggregate events
