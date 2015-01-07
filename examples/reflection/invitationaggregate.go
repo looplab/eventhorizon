@@ -34,13 +34,13 @@ type InvitationAggregate struct {
 	declined bool
 }
 
-func (i *InvitationAggregate) HandleCreateInvite(command CreateInvite) ([]eventhorizon.Event, error) {
+func (i *InvitationAggregate) HandleCreateInvite(command *CreateInvite) ([]eventhorizon.Event, error) {
 	return []eventhorizon.Event{
-		InviteCreated{command.InvitationID, command.Name, command.Age},
+		&InviteCreated{command.InvitationID, command.Name, command.Age},
 	}, nil
 }
 
-func (i *InvitationAggregate) HandleAcceptInvite(command AcceptInvite) ([]eventhorizon.Event, error) {
+func (i *InvitationAggregate) HandleAcceptInvite(command *AcceptInvite) ([]eventhorizon.Event, error) {
 	if i.declined {
 		return nil, fmt.Errorf("%s already declined", i.name)
 	}
@@ -50,11 +50,11 @@ func (i *InvitationAggregate) HandleAcceptInvite(command AcceptInvite) ([]eventh
 	}
 
 	return []eventhorizon.Event{
-		InviteAccepted{i.AggregateID()},
+		&InviteAccepted{i.AggregateID()},
 	}, nil
 }
 
-func (i *InvitationAggregate) HandleDeclineInvite(command DeclineInvite) ([]eventhorizon.Event, error) {
+func (i *InvitationAggregate) HandleDeclineInvite(command *DeclineInvite) ([]eventhorizon.Event, error) {
 	if i.accepted {
 		return nil, fmt.Errorf("%s already accepted", i.name)
 	}
@@ -64,19 +64,19 @@ func (i *InvitationAggregate) HandleDeclineInvite(command DeclineInvite) ([]even
 	}
 
 	return []eventhorizon.Event{
-		InviteDeclined{i.AggregateID()},
+		&InviteDeclined{i.AggregateID()},
 	}, nil
 }
 
-func (i *InvitationAggregate) ApplyInviteCreated(event InviteCreated) {
+func (i *InvitationAggregate) ApplyInviteCreated(event *InviteCreated) {
 	i.name = event.Name
 	i.age = event.Age
 }
 
-func (i *InvitationAggregate) ApplyInviteAccepted(event InviteAccepted) {
+func (i *InvitationAggregate) ApplyInviteAccepted(event *InviteAccepted) {
 	i.accepted = true
 }
 
-func (i *InvitationAggregate) ApplyInviteDeclined(event InviteDeclined) {
+func (i *InvitationAggregate) ApplyInviteDeclined(event *InviteDeclined) {
 	i.declined = true
 }

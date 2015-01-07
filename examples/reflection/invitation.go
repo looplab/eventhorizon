@@ -39,7 +39,7 @@ func NewInvitationProjector(repository eventhorizon.Repository) *InvitationProje
 	return p
 }
 
-func (p *InvitationProjector) HandleInviteCreated(event InviteCreated) {
+func (p *InvitationProjector) HandleInviteCreated(event *InviteCreated) {
 	i := &Invitation{
 		ID:   event.InvitationID,
 		Name: event.Name,
@@ -47,14 +47,14 @@ func (p *InvitationProjector) HandleInviteCreated(event InviteCreated) {
 	p.repository.Save(i.ID, i)
 }
 
-func (p *InvitationProjector) HandleInviteAccepted(event InviteAccepted) {
+func (p *InvitationProjector) HandleInviteAccepted(event *InviteAccepted) {
 	m, _ := p.repository.Find(event.InvitationID)
 	i := m.(*Invitation)
 	i.Status = "accepted"
 	p.repository.Save(i.ID, i)
 }
 
-func (p *InvitationProjector) HandleInviteDeclined(event InviteDeclined) {
+func (p *InvitationProjector) HandleInviteDeclined(event *InviteDeclined) {
 	m, _ := p.repository.Find(event.InvitationID)
 	i := m.(*Invitation)
 	i.Status = "declined"

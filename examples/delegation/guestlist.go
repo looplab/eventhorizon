@@ -41,19 +41,19 @@ func NewGuestListProjector(repository eventhorizon.Repository, eventID eventhori
 
 func (p *GuestListProjector) HandleEvent(event eventhorizon.Event) {
 	switch event.(type) {
-	case InviteCreated:
+	case *InviteCreated:
 		m, _ := p.repository.Find(p.eventID)
 		if m == nil {
 			m = &GuestList{}
 		}
 		g := m.(*GuestList)
 		p.repository.Save(p.eventID, g)
-	case InviteAccepted:
+	case *InviteAccepted:
 		m, _ := p.repository.Find(p.eventID)
 		g := m.(*GuestList)
 		g.NumAccepted++
 		p.repository.Save(p.eventID, g)
-	case InviteDeclined:
+	case *InviteDeclined:
 		m, _ := p.repository.Find(p.eventID)
 		g := m.(*GuestList)
 		g.NumDeclined++

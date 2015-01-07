@@ -25,102 +25,87 @@ type EventHandler interface {
 	HandleEvent(Event)
 }
 
-var (
-	cache map[cacheItem]handlersMap
-)
+// ReflectEventHandler routes events to methods of a struct by convention.
+// There should be one router per event source instance.
+//
+// The convention is: func(s MySource) HandleXXX(e EventType)
+type ReflectEventHandler struct {
+	handler interface{}
+	methods map[reflect.Type]reflect.Method
+}
 
 type cacheItem struct {
 	sourceType   reflect.Type
 	methodPrefix string
 }
 
-type handlersMap map[reflect.Type]reflect.Method
-
-// ReflectEventHandler routes events to methods of a struct by convention.
-// There should be one router per event source instance.
-//
-// The convention is: func(s MySource) HandleXXX(e EventType)
-type ReflectEventHandler struct {
-	source   interface{}
-	handlers handlersMap
-}
+var (
+	cache map[cacheItem]map[reflect.Type]reflect.Method
+)
 
 func init() {
-	cache = make(map[cacheItem]handlersMap)
+	cache = make(map[cacheItem]map[reflect.Type]reflect.Method)
 }
 
 // NewReflectEventHandler returns an EventHandler that uses reflection to handle
 // events based on method names.
-func NewReflectEventHandler(source interface{}, methodPrefix string) *ReflectEventHandler {
-	if source == nil {
+func NewReflectEventHandler(handler interface{}, methodPrefix string) *ReflectEventHandler {
+	if handler == nil || methodPrefix == "" {
 		return &ReflectEventHandler{}
 	}
 
-	if methodPrefix == "" {
-		return &ReflectEventHandler{}
-	}
-
-	var handlers handlersMap
-	sourceType := reflect.TypeOf(source)
-	if value, ok := cache[cacheItem{sourceType, methodPrefix}]; ok {
-		handlers = value
-		// log.Printf("load from cache: %s", sourceType)
+	handlerType := reflect.TypeOf(handler)
+	var methods map[reflect.Type]reflect.Method
+	if cached, ok := cache[cacheItem{handlerType, methodPrefix}]; ok {
+		methods = cached
 	} else {
-		handlers = createEventHandlersForType(sourceType, methodPrefix)
-		cache[cacheItem{sourceType, methodPrefix}] = handlers
-		// log.Printf("write to cache: %s", sourceType)
+		methods = make(map[reflect.Type]reflect.Method)
+
+		// Loop through all the methods of the source
+		methodCount := handlerType.NumMethod()
+		for i := 0; i < methodCount; i++ {
+			method := handlerType.Method(i)
+
+			// Only match methods that has the prefix.
+			if strings.HasPrefix(method.Name, methodPrefix) {
+				eventType := method.Type.In(1)
+				if eventType.Name() == "" {
+					// Get the base type it the method arg is a pointer.
+					if pt := eventType; pt.Kind() == reflect.Ptr {
+						eventType = pt.Elem()
+					}
+				}
+
+				// Handling methods are defined in code by:
+				//   func (source *MySource) HandleMyEvent(e *MyEvent).
+				// When getting the type of this methods by reflection the signature
+				// is as following:
+				//   func HandleMyEvent(source *MySource, e *MyEvent).
+				if method.Name == methodPrefix+eventType.Name() && method.Type.NumIn() == 2 {
+					methods[eventType] = method
+				}
+			}
+		}
+		cache[cacheItem{handlerType, methodPrefix}] = methods
 	}
 
 	return &ReflectEventHandler{
-		source:   source,
-		handlers: handlers,
+		handler: handler,
+		methods: methods,
 	}
 }
 
 // HandleEvent handles an event by routing it to the handler method of the source.
 func (h *ReflectEventHandler) HandleEvent(event Event) {
-	// log.Printf("Routing %+v", event)
 	// TODO: Add error return.
 
-	eventType := reflect.TypeOf(event)
-	if handler, ok := h.handlers[eventType]; ok {
-		h.handleEvent(handler, event)
+	eventBaseType := reflect.Indirect(reflect.ValueOf(event)).Type()
+	if method, ok := h.methods[eventBaseType]; ok {
+		handlerValue := reflect.ValueOf(h.handler)
+		eventValue := reflect.ValueOf(event)
+		method.Func.Call([]reflect.Value{handlerValue, eventValue})
 	} else {
-		sourceType := reflect.TypeOf(h.source)
-		log.Printf("No handler found for event: %v in %v", eventType.String(), sourceType.String())
+		handlerType := reflect.TypeOf(h.handler)
+		log.Printf("No handler found for event: %v in %v", eventBaseType.String(), handlerType.String())
 	}
-}
-
-func (h *ReflectEventHandler) handleEvent(method reflect.Method, event Event) {
-	sourceValue := reflect.ValueOf(h.source)
-	eventValue := reflect.ValueOf(event)
-
-	// Call actual event handling method.
-	method.Func.Call([]reflect.Value{sourceValue, eventValue})
-}
-
-func createEventHandlersForType(sourceType reflect.Type, methodPrefix string) handlersMap {
-	handlers := make(handlersMap)
-
-	// Loop through all the methods of the source
-	methodCount := sourceType.NumMethod()
-	for i := 0; i < methodCount; i++ {
-		method := sourceType.Method(i)
-
-		// Only match methods that satisfy prefix
-		if strings.HasPrefix(method.Name, methodPrefix) {
-			// Handling methods are defined in code by:
-			//   func (source *MySource) HandleMyEvent(e MyEvent).
-			// When getting the type of this methods by reflection the signature
-			// is as following:
-			//   func HandleMyEvent(source *MySource, e MyEvent).
-			eventType := method.Type.In(1)
-			if method.Type.NumIn() != 2 || eventType != method.Type.In(1) || !strings.HasSuffix(method.Name, eventType.Name()) {
-				continue
-			}
-			handlers[eventType] = method
-		}
-	}
-
-	return handlers
 }

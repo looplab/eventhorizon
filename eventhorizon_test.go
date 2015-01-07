@@ -41,13 +41,13 @@ type TestAggregate struct {
 }
 
 // HandleTestEvent is a valid handler with matching method and event name.
-func (a *TestAggregate) HandleTestEvent(event TestEvent) {
+func (a *TestAggregate) HandleTestEvent(event *TestEvent) {
 	a.events = append(a.events, event)
 }
 
 // HandleTestEventOther is an invalid handler where the method name and event
 // name does not match. It should be ignored.
-func (a *TestAggregate) HandleTestEventOther(event TestEvent) {
+func (a *TestAggregate) HandleTestEventOther(event *TestEvent) {
 }
 
 type TestEvent struct {
@@ -55,35 +55,35 @@ type TestEvent struct {
 	Content string
 }
 
-func (t TestEvent) AggregateID() UUID { return t.TestID }
+func (t *TestEvent) AggregateID() UUID { return t.TestID }
 
 type TestEventOther struct {
 	TestID  UUID
 	Content string
 }
 
-func (t TestEventOther) AggregateID() UUID { return t.TestID }
+func (t *TestEventOther) AggregateID() UUID { return t.TestID }
 
 type TestCommand struct {
 	TestID  UUID
 	Content string
 }
 
-func (t TestCommand) AggregateID() UUID { return t.TestID }
+func (t *TestCommand) AggregateID() UUID { return t.TestID }
 
 type TestCommandOther struct {
 	TestID  UUID
 	Content string
 }
 
-func (t TestCommandOther) AggregateID() UUID { return t.TestID }
+func (t *TestCommandOther) AggregateID() UUID { return t.TestID }
 
 type TestCommandOther2 struct {
 	TestID  UUID
 	Content string
 }
 
-func (t TestCommandOther2) AggregateID() UUID { return t.TestID }
+func (t *TestCommandOther2) AggregateID() UUID { return t.TestID }
 
 type MockEventHandler struct {
 	events []Event

@@ -28,70 +28,85 @@ type EventBus interface {
 // HandlerEventBus is an event bus that notifies registered EventHandlers of
 // published events.
 type HandlerEventBus struct {
-	eventSubscribers  map[reflect.Type][]EventHandler
-	globalSubscribers []EventHandler
+	eventHandlers  map[reflect.Type][]EventHandler
+	globalHandlers []EventHandler
 }
 
 // NewHandlerEventBus creates a HandlerEventBus.
 func NewHandlerEventBus() *HandlerEventBus {
 	b := &HandlerEventBus{
-		eventSubscribers:  make(map[reflect.Type][]EventHandler),
-		globalSubscribers: make([]EventHandler, 0),
+		eventHandlers:  make(map[reflect.Type][]EventHandler),
+		globalHandlers: make([]EventHandler, 0),
 	}
 	return b
 }
 
-// PublishEvent publishes an event to all subscribers capable of handling it.
+// PublishEvent publishes an event to all handlers capable of handling it.
 func (b *HandlerEventBus) PublishEvent(event Event) {
-	// Publish to specific subscribers.
-	eventType := reflect.TypeOf(event)
-	if subscribers, ok := b.eventSubscribers[eventType]; ok {
-		for _, subscriber := range subscribers {
-			subscriber.HandleEvent(event)
+	// Publish to specific handlers.
+	eventBaseType := reflect.TypeOf(event)
+	if eventBaseType.Kind() == reflect.Ptr {
+		eventBaseType = eventBaseType.Elem()
+	}
+	if handlers, ok := b.eventHandlers[eventBaseType]; ok {
+		for _, handler := range handlers {
+			handler.HandleEvent(event)
 		}
 	}
 
-	// Publish to global subscribers.
-	for _, subscriber := range b.globalSubscribers {
-		subscriber.HandleEvent(event)
+	// Publish to global handlers.
+	for _, handler := range b.globalHandlers {
+		handler.HandleEvent(event)
 	}
 }
 
-// AddSubscriber adds the subscriber as a handler for a specific event.
-func (b *HandlerEventBus) AddSubscriber(subscriber EventHandler, event Event) {
-	eventType := reflect.TypeOf(event)
-
-	// Create subscriber list for new event types.
-	if _, ok := b.eventSubscribers[eventType]; !ok {
-		b.eventSubscribers[eventType] = make([]EventHandler, 0)
+// AddHandler adds a handler for a specific event.
+func (b *HandlerEventBus) AddHandler(handler EventHandler, event Event) {
+	eventBaseType := reflect.TypeOf(event)
+	if eventBaseType.Kind() == reflect.Ptr {
+		eventBaseType = eventBaseType.Elem()
 	}
 
-	// Add subscriber to event type.
-	b.eventSubscribers[eventType] = append(b.eventSubscribers[eventType], subscriber)
+	// Create handler list for new event types.
+	if _, ok := b.eventHandlers[eventBaseType]; !ok {
+		b.eventHandlers[eventBaseType] = make([]EventHandler, 0)
+	}
+
+	// Add handler to event type.
+	b.eventHandlers[eventBaseType] = append(b.eventHandlers[eventBaseType], handler)
 }
 
-// AddGlobalSubscriber adds the subscriber as a handler for a specific event.
-func (b *HandlerEventBus) AddGlobalSubscriber(subscriber EventHandler) {
-	b.globalSubscribers = append(b.globalSubscribers, subscriber)
+// AddGlobalHandler adds the handler for a specific event.
+func (b *HandlerEventBus) AddGlobalHandler(handler EventHandler) {
+	b.globalHandlers = append(b.globalHandlers, handler)
 }
 
-// AddAllSubscribers scans a event handler for handling methods and adds
+// ScanHandler scans a event handler for handling methods and adds
 // it for every event it detects in the method name.
-func (b *HandlerEventBus) AddAllSubscribers(subscriber EventHandler) {
-	subscriberType := reflect.TypeOf(subscriber)
-	for i := 0; i < subscriberType.NumMethod(); i++ {
-		method := subscriberType.Method(i)
+func (b *HandlerEventBus) ScanHandler(handler EventHandler) {
+	handlerType := reflect.TypeOf(handler)
+	for i := 0; i < handlerType.NumMethod(); i++ {
+		method := handlerType.Method(i)
 
-		// Check method prefix to be Handle* and not just Handle, also check for
-		// two arguments; HandleMyEvent(handler *Handler, e MyEvent).
 		if strings.HasPrefix(method.Name, "Handle") &&
-			len(method.Name) > len("Handle") &&
 			method.Type.NumIn() == 2 {
 
-			// Only accept methods wich takes an acctual event type.
 			eventType := method.Type.In(1)
-			if event, ok := reflect.Zero(eventType).Interface().(Event); ok {
-				b.AddSubscriber(subscriber, event)
+			eventBaseType := eventType
+			if eventBaseType.Name() == "" {
+				if pt := eventBaseType; pt.Kind() == reflect.Ptr {
+					eventBaseType = pt.Elem()
+				}
+			}
+
+			// Check method to matcd: HandleMyEvent(handler *Handler, e MyEvent)
+			if method.Name == "Handle"+eventBaseType.Name() &&
+				method.Type.NumIn() == 2 {
+
+				// Only accept methods wich takes an acctual event type.
+				if event, ok := reflect.Zero(eventType).Interface().(Event); ok {
+					b.AddHandler(handler, event)
+				}
 			}
 		}
 	}

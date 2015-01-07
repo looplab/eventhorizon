@@ -39,18 +39,18 @@ func NewInvitationProjector(repository eventhorizon.Repository) *InvitationProje
 
 func (p *InvitationProjector) HandleEvent(event eventhorizon.Event) {
 	switch event := event.(type) {
-	case InviteCreated:
+	case *InviteCreated:
 		i := &Invitation{
 			ID:   event.InvitationID,
 			Name: event.Name,
 		}
 		p.repository.Save(i.ID, i)
-	case InviteAccepted:
+	case *InviteAccepted:
 		m, _ := p.repository.Find(event.InvitationID)
 		i := m.(*Invitation)
 		i.Status = "accepted"
 		p.repository.Save(i.ID, i)
-	case InviteDeclined:
+	case *InviteDeclined:
 		m, _ := p.repository.Find(event.InvitationID)
 		i := m.(*Invitation)
 		i.Status = "declined"

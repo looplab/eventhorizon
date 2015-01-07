@@ -35,8 +35,8 @@ func (s *HandlerEventBusSuite) SetUpTest(c *C) {
 func (s *HandlerEventBusSuite) Test_NewHandlerEventBus(c *C) {
 	bus := NewHandlerEventBus()
 	c.Assert(bus, Not(Equals), nil)
-	c.Assert(bus.eventSubscribers, Not(Equals), nil)
-	c.Assert(bus.globalSubscribers, Not(Equals), nil)
+	c.Assert(bus.eventHandlers, Not(Equals), nil)
+	c.Assert(bus.globalHandlers, Not(Equals), nil)
 }
 
 type TestHandlerEventBus struct {
@@ -50,9 +50,9 @@ func (t *TestHandlerEventBus) HandleEvent(event Event) {
 func (s *HandlerEventBusSuite) Test_PublishEvent_Simple(c *C) {
 	handler := &TestHandlerEventBus{}
 	globalHandler := &TestHandlerEventBus{}
-	s.bus.eventSubscribers[reflect.TypeOf(TestEvent{})] = []EventHandler{handler}
-	s.bus.globalSubscribers = append(s.bus.globalSubscribers, globalHandler)
-	event1 := TestEvent{NewUUID(), "event1"}
+	s.bus.eventHandlers[reflect.TypeOf(TestEvent{})] = []EventHandler{handler}
+	s.bus.globalHandlers = append(s.bus.globalHandlers, globalHandler)
+	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
 	c.Assert(handler.event, Equals, event1)
 	c.Assert(globalHandler.event, Equals, event1)
@@ -61,9 +61,9 @@ func (s *HandlerEventBusSuite) Test_PublishEvent_Simple(c *C) {
 func (s *HandlerEventBusSuite) Test_PublishEvent_AnotherEvent(c *C) {
 	handler := &TestHandlerEventBus{}
 	globalHandler := &TestHandlerEventBus{}
-	s.bus.eventSubscribers[reflect.TypeOf(TestEventOther{})] = []EventHandler{handler}
-	s.bus.globalSubscribers = append(s.bus.globalSubscribers, globalHandler)
-	event1 := TestEvent{NewUUID(), "event1"}
+	s.bus.eventHandlers[reflect.TypeOf(TestEventOther{})] = []EventHandler{handler}
+	s.bus.globalHandlers = append(s.bus.globalHandlers, globalHandler)
+	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
 	c.Assert(handler.event, Equals, nil)
 	c.Assert(globalHandler.event, Equals, event1)
@@ -71,36 +71,36 @@ func (s *HandlerEventBusSuite) Test_PublishEvent_AnotherEvent(c *C) {
 
 func (s *HandlerEventBusSuite) Test_PublishEvent_NoHandler(c *C) {
 	globalHandler := &TestHandlerEventBus{}
-	s.bus.globalSubscribers = append(s.bus.globalSubscribers, globalHandler)
-	event1 := TestEvent{NewUUID(), "event1"}
+	s.bus.globalHandlers = append(s.bus.globalHandlers, globalHandler)
+	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
 	c.Assert(globalHandler.event, Equals, event1)
 }
 
 func (s *HandlerEventBusSuite) Test_PublishEvent_NoGlobalHandler(c *C) {
 	handler := &TestHandlerEventBus{}
-	s.bus.eventSubscribers[reflect.TypeOf(TestEvent{})] = []EventHandler{handler}
-	event1 := TestEvent{NewUUID(), "event1"}
+	s.bus.eventHandlers[reflect.TypeOf(TestEvent{})] = []EventHandler{handler}
+	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
 	c.Assert(handler.event, Equals, event1)
 }
 
-func (s *HandlerEventBusSuite) Test_AddSubscriber(c *C) {
+func (s *HandlerEventBusSuite) Test_AddHandler(c *C) {
 	handler := &TestHandlerEventBus{}
-	s.bus.AddSubscriber(handler, TestEvent{})
-	c.Assert(len(s.bus.eventSubscribers), Equals, 1)
+	s.bus.AddHandler(handler, &TestEvent{})
+	c.Assert(len(s.bus.eventHandlers), Equals, 1)
 	eventType := reflect.TypeOf(TestEvent{})
-	c.Assert(s.bus.eventSubscribers, t.HasKey, eventType)
-	c.Assert(len(s.bus.eventSubscribers[eventType]), Equals, 1)
-	c.Assert(s.bus.eventSubscribers[eventType][0], Equals, handler)
+	c.Assert(s.bus.eventHandlers, t.HasKey, eventType)
+	c.Assert(len(s.bus.eventHandlers[eventType]), Equals, 1)
+	c.Assert(s.bus.eventHandlers[eventType][0], Equals, handler)
 }
 
-func (s *HandlerEventBusSuite) Test_AddGlobalSubscriber(c *C) {
+func (s *HandlerEventBusSuite) Test_AddGlobalHandler(c *C) {
 	globalHandler := &TestHandlerEventBus{}
-	s.bus.AddGlobalSubscriber(globalHandler)
-	c.Assert(len(s.bus.globalSubscribers), Equals, 1)
-	c.Assert(s.bus.globalSubscribers[0], Equals, globalHandler)
+	s.bus.AddGlobalHandler(globalHandler)
+	c.Assert(len(s.bus.globalHandlers), Equals, 1)
+	c.Assert(s.bus.globalHandlers[0], Equals, globalHandler)
 }
 
-func (s *HandlerEventBusSuite) Test_AddAllSubscribers(c *C) {
+func (s *HandlerEventBusSuite) Test_ScanHandler(c *C) {
 }

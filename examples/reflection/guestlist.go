@@ -42,7 +42,7 @@ func NewGuestListProjector(repository eventhorizon.Repository, eventID eventhori
 	return p
 }
 
-func (p *GuestListProjector) HandleInviteCreated(event InviteCreated) {
+func (p *GuestListProjector) HandleInviteCreated(event *InviteCreated) {
 	m, _ := p.repository.Find(p.eventID)
 	if m == nil {
 		m = &GuestList{}
@@ -51,14 +51,14 @@ func (p *GuestListProjector) HandleInviteCreated(event InviteCreated) {
 	p.repository.Save(p.eventID, g)
 }
 
-func (p *GuestListProjector) HandleInviteAccepted(event InviteAccepted) {
+func (p *GuestListProjector) HandleInviteAccepted(event *InviteAccepted) {
 	m, _ := p.repository.Find(p.eventID)
 	g := m.(*GuestList)
 	g.NumAccepted++
 	p.repository.Save(p.eventID, g)
 }
 
-func (p *GuestListProjector) HandleInviteDeclined(event InviteDeclined) {
+func (p *GuestListProjector) HandleInviteDeclined(event *InviteDeclined) {
 	m, _ := p.repository.Find(p.eventID)
 	g := m.(*GuestList)
 	g.NumDeclined++

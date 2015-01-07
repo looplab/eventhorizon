@@ -36,12 +36,12 @@ type InvitationAggregate struct {
 
 func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) ([]eventhorizon.Event, error) {
 	switch command := command.(type) {
-	case CreateInvite:
+	case *CreateInvite:
 		return []eventhorizon.Event{
-			InviteCreated{command.InvitationID, command.Name, command.Age},
+			&InviteCreated{command.InvitationID, command.Name, command.Age},
 		}, nil
 
-	case AcceptInvite:
+	case *AcceptInvite:
 		if i.declined {
 			return nil, fmt.Errorf("%s already declined", i.name)
 		}
@@ -51,10 +51,10 @@ func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) ([]eve
 		}
 
 		return []eventhorizon.Event{
-			InviteAccepted{i.AggregateID()},
+			&InviteAccepted{i.AggregateID()},
 		}, nil
 
-	case DeclineInvite:
+	case *DeclineInvite:
 		if i.accepted {
 			return nil, fmt.Errorf("%s already accepted", i.name)
 		}
@@ -64,7 +64,7 @@ func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) ([]eve
 		}
 
 		return []eventhorizon.Event{
-			InviteDeclined{i.AggregateID()},
+			&InviteDeclined{i.AggregateID()},
 		}, nil
 	}
 	return nil, fmt.Errorf("couldn't handle command")
@@ -72,12 +72,12 @@ func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) ([]eve
 
 func (i *InvitationAggregate) HandleEvent(event eventhorizon.Event) {
 	switch event := event.(type) {
-	case InviteCreated:
+	case *InviteCreated:
 		i.name = event.Name
 		i.age = event.Age
-	case InviteAccepted:
+	case *InviteAccepted:
 		i.accepted = true
-	case InviteDeclined:
+	case *InviteDeclined:
 		i.declined = true
 	}
 }

@@ -26,42 +26,42 @@ func main() {
 	// Create the event store and dispatcher.
 	eventStore := eventhorizon.NewMemoryEventStore()
 	eventBus := eventhorizon.NewHandlerEventBus()
-	eventBus.AddGlobalSubscriber(&LoggerSubscriber{})
+	eventBus.AddGlobalHandler(&LoggerSubscriber{})
 	disp := eventhorizon.NewReflectDispatcher(eventStore, eventBus)
 
 	// Register the domain aggregates with the dispather.
-	disp.AddAllHandlers(&InvitationAggregate{})
+	disp.ScanHandler(&InvitationAggregate{})
 
 	// Create and register a read model for individual invitations.
 	invitationRepository := eventhorizon.NewMemoryRepository()
 	invitationProjector := NewInvitationProjector(invitationRepository)
-	eventBus.AddAllSubscribers(invitationProjector)
+	eventBus.ScanHandler(invitationProjector)
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
 	guestListRepository := eventhorizon.NewMemoryRepository()
 	guestListProjector := NewGuestListProjector(guestListRepository, eventID)
-	eventBus.AddAllSubscribers(guestListProjector)
+	eventBus.ScanHandler(guestListProjector)
 
 	// Issue some invitations and responses.
 	// Note that Athena tries to decline the event, but that is not allowed
 	// by the domain logic in InvitationAggregate. The result is that she is
 	// still accepted.
 	athenaID := eventhorizon.NewUUID()
-	disp.Dispatch(CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
-	disp.Dispatch(AcceptInvite{InvitationID: athenaID})
-	err := disp.Dispatch(DeclineInvite{InvitationID: athenaID})
+	disp.Dispatch(&CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
+	disp.Dispatch(&AcceptInvite{InvitationID: athenaID})
+	err := disp.Dispatch(&DeclineInvite{InvitationID: athenaID})
 	if err != nil {
 		fmt.Printf("error: %s\n", err)
 	}
 
 	hadesID := eventhorizon.NewUUID()
-	disp.Dispatch(CreateInvite{InvitationID: hadesID, Name: "Hades"})
-	disp.Dispatch(AcceptInvite{InvitationID: hadesID})
+	disp.Dispatch(&CreateInvite{InvitationID: hadesID, Name: "Hades"})
+	disp.Dispatch(&AcceptInvite{InvitationID: hadesID})
 
 	zeusID := eventhorizon.NewUUID()
-	disp.Dispatch(CreateInvite{InvitationID: zeusID, Name: "Zeus"})
-	disp.Dispatch(DeclineInvite{InvitationID: zeusID})
+	disp.Dispatch(&CreateInvite{InvitationID: zeusID, Name: "Zeus"})
+	disp.Dispatch(&DeclineInvite{InvitationID: zeusID})
 
 	// Read all invites.
 	invitations, _ := invitationRepository.FindAll()

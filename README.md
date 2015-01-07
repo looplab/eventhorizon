@@ -5,6 +5,8 @@
 
 # Event Horizon
 
+**Breaking changes as of 2015-01-07, read changes section!**
+
 Event Horizon is a CQRS/ES toolkit for Go.
 
 CQRS stands for Command Query Responsibility Segregation and is a technique where object access (the Query part) and modification (the Command part) are separated from each other. This helps in designing complex data models where the actions can be totally independent from the data output.
@@ -34,6 +36,13 @@ Suggestions are welcome!
 # Usage
 
 See the example folder for a basic usage example to get you started.
+
+
+# Changes
+
+### 2015-01-07
+
+As of this version commands and events are recommended to be passed around as pointers, instead of values as the previous versions did. Passing as values may still work, but is not tested at the momemnt. It should not requrie much changes in applications using Event Horizon, simple pass all commands and events with & before them or create them as *XXXCommand, see the examples and tests for usage. There are also some other API changes to method names, mostly with using "handler" as a more common term.
 
 
 # License

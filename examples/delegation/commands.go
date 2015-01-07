@@ -24,22 +24,16 @@ type CreateInvite struct {
 	Age          int `eh:"optional"`
 }
 
-func (c CreateInvite) AggregateID() eventhorizon.UUID {
-	return c.InvitationID
-}
+func (c *CreateInvite) AggregateID() eventhorizon.UUID { return c.InvitationID }
 
 type AcceptInvite struct {
 	InvitationID eventhorizon.UUID
 }
 
-func (c AcceptInvite) AggregateID() eventhorizon.UUID {
-	return c.InvitationID
-}
+func (c *AcceptInvite) AggregateID() eventhorizon.UUID { return c.InvitationID }
 
 type DeclineInvite struct {
 	InvitationID eventhorizon.UUID
 }
 
-func (c DeclineInvite) AggregateID() eventhorizon.UUID {
-	return c.InvitationID
-}
+func (c *DeclineInvite) AggregateID() eventhorizon.UUID { return c.InvitationID }
