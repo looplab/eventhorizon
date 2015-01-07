@@ -23,7 +23,7 @@ package eventhorizon
 //
 //       name string
 //   }
-// The embedded aggregate is then initialized by the dispatcher with for exapmle
+// The embedded aggregate is then initialized by the dispatcher with for example
 // ReflectAggregate, depending on the type of dispatcher.
 type Aggregate interface {
 	// AggregateID returns the id of the aggregate.
