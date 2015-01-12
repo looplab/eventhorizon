@@ -25,6 +25,7 @@ import (
 func main() {
 	// Create the event store and dispatcher.
 	eventStore := eventhorizon.NewMemoryEventStore()
+
 	eventBus := eventhorizon.NewHandlerEventBus()
 	eventBus.AddGlobalHandler(&LoggerSubscriber{})
 	disp, err := eventhorizon.NewDelegateDispatcher(eventStore, eventBus)
