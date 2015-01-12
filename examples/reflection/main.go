@@ -27,10 +27,16 @@ func main() {
 	eventStore := eventhorizon.NewMemoryEventStore()
 	eventBus := eventhorizon.NewHandlerEventBus()
 	eventBus.AddGlobalHandler(&LoggerSubscriber{})
-	disp := eventhorizon.NewReflectDispatcher(eventStore, eventBus)
+	disp, err := eventhorizon.NewReflectDispatcher(eventStore, eventBus)
+	if err != nil {
+		log.Fatalf("could not create dispatcher: %s", err)
+	}
 
 	// Register the domain aggregates with the dispather.
-	disp.ScanHandler(&InvitationAggregate{})
+	err = disp.ScanHandler(&InvitationAggregate{})
+	if err != nil {
+		log.Fatalf("could not add commands: %s", err)
+	}
 
 	// Create and register a read model for individual invitations.
 	invitationRepository := eventhorizon.NewMemoryRepository()
@@ -50,7 +56,7 @@ func main() {
 	athenaID := eventhorizon.NewUUID()
 	disp.Dispatch(&CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
 	disp.Dispatch(&AcceptInvite{InvitationID: athenaID})
-	err := disp.Dispatch(&DeclineInvite{InvitationID: athenaID})
+	err = disp.Dispatch(&DeclineInvite{InvitationID: athenaID})
 	if err != nil {
 		fmt.Printf("error: %s\n", err)
 	}

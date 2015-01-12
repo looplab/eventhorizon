@@ -21,6 +21,21 @@ import (
 	"time"
 )
 
+// Error returned when a dispatcher is created with a nil event store.
+var ErrNilEventStore = errors.New("event store is nil")
+
+// Error returned when a dispatcher is created with a nil event bus.
+var ErrNilEventBus = errors.New("event bus is nil")
+
+// Error returned when a handler is already registered for a command.
+var ErrHandlerAlreadySet = errors.New("handler is already set")
+
+// Error returned when a handler is missing a method for a command.
+var ErrMissingHandlerMethod = errors.New("missing handler method")
+
+// Error returned when a handler has an incorrect method for a command.
+var ErrIncorrectHandlerMethod = errors.New("incorrect handler method")
+
 // Error returned when no handler can be found.
 var ErrHandlerNotFound = errors.New("no handlers for command")
 
@@ -56,13 +71,21 @@ type DelegateDispatcher struct {
 }
 
 // NewDelegateDispatcher creates a dispatcher and associates it with an event store.
-func NewDelegateDispatcher(store EventStore, bus EventBus) *DelegateDispatcher {
+func NewDelegateDispatcher(store EventStore, bus EventBus) (*DelegateDispatcher, error) {
+	if store == nil {
+		return nil, ErrNilEventStore
+	}
+
+	if bus == nil {
+		return nil, ErrNilEventBus
+	}
+
 	d := &DelegateDispatcher{
 		eventStore:      store,
 		eventBus:        bus,
 		commandHandlers: make(map[reflect.Type]reflect.Type),
 	}
-	return d
+	return d, nil
 }
 
 // Dispatch dispatches a command to the registered command handler.
@@ -82,17 +105,18 @@ func (d *DelegateDispatcher) Dispatch(command Command) error {
 }
 
 // SetHandler sets a handler for a command.
-func (d *DelegateDispatcher) SetHandler(handler CommandHandler, command Command) {
+func (d *DelegateDispatcher) SetHandler(handler CommandHandler, command Command) error {
 	// Check for already existing handler.
 	commandBaseType := reflect.Indirect(reflect.ValueOf(command)).Type()
 	if _, ok := d.commandHandlers[commandBaseType]; ok {
-		// TODO: Error here
-		return
+		return ErrHandlerAlreadySet
 	}
 
 	// Add aggregate type to command type.
 	handlerBaseType := reflect.Indirect(reflect.ValueOf(handler)).Type()
 	d.commandHandlers[commandBaseType] = handlerBaseType
+
+	return nil
 }
 
 func (d *DelegateDispatcher) handleCommand(handlerType reflect.Type, command Command) error {
@@ -147,13 +171,21 @@ type handlerMethod struct {
 }
 
 // NewReflectDispatcher creates a dispatcher and associates it with an event store.
-func NewReflectDispatcher(store EventStore, bus EventBus) *ReflectDispatcher {
+func NewReflectDispatcher(store EventStore, bus EventBus) (*ReflectDispatcher, error) {
+	if store == nil {
+		return nil, ErrNilEventStore
+	}
+
+	if bus == nil {
+		return nil, ErrNilEventBus
+	}
+
 	d := &ReflectDispatcher{
 		eventStore:      store,
 		eventBus:        bus,
 		commandHandlers: make(map[reflect.Type]handlerMethod),
 	}
-	return d
+	return d, nil
 }
 
 // Dispatch dispatches a command to the registered command handler.
@@ -181,28 +213,27 @@ func (d *ReflectDispatcher) Dispatch(command Command) error {
 // is as following:
 //   func HandleMyCommand(source *MySource, c MyCommand).
 // Only add method that has the correct type.
-func (d *ReflectDispatcher) SetHandler(handler interface{}, command Command) {
+func (d *ReflectDispatcher) SetHandler(handler interface{}, command Command) error {
 	// Check for already existing handler.
 	commandBaseType := reflect.TypeOf(command)
 	if commandBaseType.Kind() == reflect.Ptr {
 		commandBaseType = commandBaseType.Elem()
 	}
 	if _, ok := d.commandHandlers[commandBaseType]; ok {
-		// TODO: Error here
-		return
+		return ErrHandlerAlreadySet
 	}
 
 	// Check for method existance.
 	handlerType := reflect.TypeOf(handler)
 	method, ok := handlerType.MethodByName("Handle" + commandBaseType.Name())
 	if !ok {
-		return
+		return ErrMissingHandlerMethod
 	}
 
 	commandType := reflect.TypeOf(command)
 	// Check method signature.
 	if method.Type.NumIn() != 2 || commandType != method.Type.In(1) {
-		return
+		return ErrIncorrectHandlerMethod
 	}
 
 	handlerBaseType := reflect.ValueOf(handler).Elem().Type()
@@ -212,11 +243,13 @@ func (d *ReflectDispatcher) SetHandler(handler interface{}, command Command) {
 		handlerType: handlerBaseType,
 		method:      method,
 	}
+
+	return nil
 }
 
 // ScanHandler scans an aggregate for command handling methods and adds
 // it for every event it can handle.
-func (d *ReflectDispatcher) ScanHandler(handler interface{}) {
+func (d *ReflectDispatcher) ScanHandler(handler interface{}) error {
 	handlerType := reflect.TypeOf(handler)
 	for i := 0; i < handlerType.NumMethod(); i++ {
 		method := handlerType.Method(i)
@@ -229,10 +262,15 @@ func (d *ReflectDispatcher) ScanHandler(handler interface{}) {
 			// Only accept methods wich takes an acctual command type.
 			commandType := method.Type.In(1)
 			if command, ok := reflect.Zero(commandType).Interface().(Command); ok {
-				d.SetHandler(handler, command)
+				err := d.SetHandler(handler, command)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
+
+	return nil
 }
 
 func (d *ReflectDispatcher) handleCommand(handlerType reflect.Type, method reflect.Method, command Command) error {

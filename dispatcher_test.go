@@ -20,8 +20,6 @@ import (
 	"time"
 
 	. "gopkg.in/check.v1"
-
-	t "github.com/looplab/eventhorizon/testing"
 )
 
 var _ = Suite(&DelegateDispatcherSuite{})
@@ -41,7 +39,7 @@ func (s *DelegateDispatcherSuite) SetUpTest(c *C) {
 	s.bus = &MockEventBus{
 		events: make([]Event, 0),
 	}
-	s.disp = NewDelegateDispatcher(s.store, s.bus)
+	s.disp, _ = NewDelegateDispatcher(s.store, s.bus)
 }
 
 func (s *DelegateDispatcherSuite) Test_NewDelegateAggregate(c *C) {
@@ -51,11 +49,27 @@ func (s *DelegateDispatcherSuite) Test_NewDelegateAggregate(c *C) {
 	bus := &MockEventBus{
 		events: make([]Event, 0),
 	}
-	disp := NewDelegateDispatcher(store, bus)
+	disp, err := NewDelegateDispatcher(store, bus)
 	c.Assert(disp, NotNil)
-	c.Assert(disp.eventStore, Equals, store)
-	c.Assert(disp.eventBus, Equals, bus)
-	c.Assert(disp.commandHandlers, Not(Equals), nil)
+	c.Assert(err, IsNil)
+}
+
+func (s *DelegateDispatcherSuite) Test_NewDelegateAggregate_NilEventStore(c *C) {
+	bus := &MockEventBus{
+		events: make([]Event, 0),
+	}
+	disp, err := NewDelegateDispatcher(nil, bus)
+	c.Assert(disp, IsNil)
+	c.Assert(err, Equals, ErrNilEventStore)
+}
+
+func (s *DelegateDispatcherSuite) Test_NewDelegateAggregate_NilEventBus(c *C) {
+	store := &MockEventStore{
+		events: make([]Event, 0),
+	}
+	disp, err := NewDelegateDispatcher(store, nil)
+	c.Assert(disp, IsNil)
+	c.Assert(err, Equals, ErrNilEventBus)
 }
 
 var dispatchedDelegateCommand Command
@@ -79,84 +93,37 @@ func (t *TestDelegateDispatcherAggregate) HandleCommand(command Command) ([]Even
 func (t *TestDelegateDispatcherAggregate) HandleEvent(event Event) {
 }
 
-func (s *DelegateDispatcherSuite) Test_Dispatch_Simple(c *C) {
+func (s *DelegateDispatcherSuite) Test_Simple(c *C) {
 	aggregate := &TestDelegateDispatcherAggregate{}
-	aggregateBaseType := reflect.ValueOf(aggregate).Elem().Type()
-	s.disp.commandHandlers[reflect.TypeOf(TestCommand{})] = aggregateBaseType
+	s.disp.SetHandler(aggregate, &TestCommand{})
 	command1 := &TestCommand{NewUUID(), "command1"}
 	err := s.disp.Dispatch(command1)
 	c.Assert(dispatchedDelegateCommand, Equals, command1)
 	c.Assert(err, IsNil)
 }
 
-func (s *DelegateDispatcherSuite) Test_Dispatch_ErrorInHandler(c *C) {
+func (s *DelegateDispatcherSuite) Test_ErrorInHandler(c *C) {
 	aggregate := &TestDelegateDispatcherAggregate{}
-	aggregateBaseType := reflect.ValueOf(aggregate).Elem().Type()
-	s.disp.commandHandlers[reflect.TypeOf(TestCommand{})] = aggregateBaseType
+	s.disp.SetHandler(aggregate, &TestCommand{})
 	commandError := &TestCommand{NewUUID(), "error"}
 	err := s.disp.Dispatch(commandError)
 	c.Assert(err, ErrorMatches, "command error")
 	c.Assert(dispatchedDelegateCommand, Equals, commandError)
 }
 
-func (s *DelegateDispatcherSuite) Test_Dispatch_NoHandlers(c *C) {
+func (s *DelegateDispatcherSuite) Test_NoHandlers(c *C) {
 	command1 := &TestCommand{NewUUID(), "command1"}
 	err := s.disp.Dispatch(command1)
 	c.Assert(err, ErrorMatches, "no handlers for command")
 }
 
-func (s *DelegateDispatcherSuite) Test_SetHandler_Simple(c *C) {
+func (s *DelegateDispatcherSuite) Test_SetHandler_Twice(c *C) {
 	aggregate := &TestDelegateDispatcherAggregate{}
-	s.disp.SetHandler(aggregate, &TestCommand{})
-	c.Assert(len(s.disp.commandHandlers), Equals, 1)
-	commandType := reflect.TypeOf(TestCommand{})
-	c.Assert(s.disp.commandHandlers, t.HasKey, commandType)
-	aggregateBaseType := reflect.ValueOf(aggregate).Elem().Type()
-	c.Assert(s.disp.commandHandlers[commandType], Equals, aggregateBaseType)
-}
-
-func (s *DelegateDispatcherSuite) Test_SetHandler_Duplicate(c *C) {
-	aggregate := &TestDelegateDispatcherAggregate{}
-	s.disp.SetHandler(aggregate, &TestCommand{})
-	aggregate2 := &TestDelegateDispatcherAggregate{}
-	s.disp.SetHandler(aggregate2, &TestCommand{})
-	c.Assert(len(s.disp.commandHandlers), Equals, 1)
-	commandType := reflect.TypeOf(TestCommand{})
-	c.Assert(s.disp.commandHandlers, t.HasKey, commandType)
-	aggregateBaseType := reflect.ValueOf(aggregate).Elem().Type()
-	c.Assert(s.disp.commandHandlers[commandType], Equals, aggregateBaseType)
-}
-
-type TestGlobalSubscriberDelegateDispatcher struct {
-	handledEvent Event
-}
-
-func (t *TestGlobalSubscriberDelegateDispatcher) HandleEvent(event Event) {
-	t.handledEvent = event
-}
-
-func (s *DelegateDispatcherSuite) Test_HandleCommand_Simple(c *C) {
-	aggregate := &TestDelegateDispatcherAggregate{}
-	s.disp.SetHandler(aggregate, &TestCommand{})
-	command1 := &TestCommand{NewUUID(), "command1"}
-	err := s.disp.Dispatch(command1)
+	err := s.disp.SetHandler(aggregate, &TestCommand{})
 	c.Assert(err, IsNil)
-	c.Assert(dispatchedDelegateCommand, Equals, command1)
-	c.Assert(len(s.store.events), Equals, 1)
-	c.Assert(s.store.events[0], DeepEquals, &TestEvent{command1.TestID, command1.Content})
-	c.Assert(len(s.bus.events), Equals, 1)
-	c.Assert(s.bus.events[0], DeepEquals, &TestEvent{command1.TestID, command1.Content})
-}
-
-func (s *DelegateDispatcherSuite) Test_HandleCommand_ErrorInHandler(c *C) {
-	aggregate := &TestDelegateDispatcherAggregate{}
-	s.disp.SetHandler(aggregate, &TestCommand{})
-	commandError := &TestCommand{NewUUID(), "error"}
-	err := s.disp.Dispatch(commandError)
-	c.Assert(dispatchedDelegateCommand, Equals, commandError)
-	c.Assert(err, ErrorMatches, "command error")
-	c.Assert(len(s.store.events), Equals, 0)
-	c.Assert(len(s.bus.events), Equals, 0)
+	aggregate2 := &TestDelegateDispatcherAggregate{}
+	err = s.disp.SetHandler(aggregate2, &TestCommand{})
+	c.Assert(err, Equals, ErrHandlerAlreadySet)
 }
 
 var callCountDelegateDispatcher int
@@ -180,7 +147,7 @@ func (s *DelegateDispatcherSuite) Benchmark_DelegateDispatcher(c *C) {
 	bus := &MockEventBus{
 		events: make([]Event, 0),
 	}
-	disp := NewDelegateDispatcher(store, bus)
+	disp, _ := NewDelegateDispatcher(store, bus)
 	agg := &BenchmarkDelegateDispatcherAggregate{}
 	disp.SetHandler(agg, &TestCommand{})
 
@@ -205,7 +172,7 @@ func (s *ReflectDispatcherSuite) SetUpTest(c *C) {
 	s.bus = &MockEventBus{
 		events: make([]Event, 0),
 	}
-	s.disp = NewReflectDispatcher(s.store, s.bus)
+	s.disp, _ = NewReflectDispatcher(s.store, s.bus)
 }
 
 func (s *ReflectDispatcherSuite) Test_NewReflectAggregate(c *C) {
@@ -215,11 +182,27 @@ func (s *ReflectDispatcherSuite) Test_NewReflectAggregate(c *C) {
 	bus := &MockEventBus{
 		events: make([]Event, 0),
 	}
-	disp := NewReflectDispatcher(store, bus)
+	disp, err := NewReflectDispatcher(store, bus)
 	c.Assert(disp, NotNil)
-	c.Assert(disp.eventStore, Equals, store)
-	c.Assert(disp.eventBus, Equals, bus)
-	c.Assert(disp.commandHandlers, Not(Equals), nil)
+	c.Assert(err, IsNil)
+}
+
+func (s *ReflectDispatcherSuite) Test_NewReflectAggregate_NilEventStore(c *C) {
+	bus := &MockEventBus{
+		events: make([]Event, 0),
+	}
+	disp, err := NewReflectDispatcher(nil, bus)
+	c.Assert(disp, IsNil)
+	c.Assert(err, Equals, ErrNilEventStore)
+}
+
+func (s *ReflectDispatcherSuite) Test_NewReflectAggregate_NilEventBus(c *C) {
+	store := &MockEventStore{
+		events: make([]Event, 0),
+	}
+	disp, err := NewReflectDispatcher(store, nil)
+	c.Assert(disp, IsNil)
+	c.Assert(err, Equals, ErrNilEventBus)
 }
 
 var dispatchedCommand Command
@@ -236,150 +219,68 @@ func (t *TestSource) HandleTestCommand(command *TestCommand) ([]Event, error) {
 	return []Event{&TestEvent{command.TestID, command.Content}}, nil
 }
 
-func (t *TestSource) HandleCommandOther2(command *TestCommandOther2, invalidParam string) ([]Event, error) {
+func (t *TestSource) HandleTestCommandOther2(command *TestCommandOther2, invalidParam string) ([]Event, error) {
 	return nil, nil
 }
 
-func (s *ReflectDispatcherSuite) Test_Dispatch_Simple(c *C) {
+func (s *ReflectDispatcherSuite) Test_Simple(c *C) {
 	dispatchedCommand = nil
 	source := &TestSource{}
-	sourceType := reflect.ValueOf(source).Elem().Type()
-	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
-	s.disp.commandHandlers[reflect.TypeOf(TestCommand{})] = handlerMethod{
-		handlerType: sourceType,
-		method:      method,
-	}
+	err := s.disp.SetHandler(source, &TestCommand{})
+	c.Assert(err, IsNil)
 	command1 := &TestCommand{NewUUID(), "command1"}
-	err := s.disp.Dispatch(command1)
+	err = s.disp.Dispatch(command1)
 	c.Assert(dispatchedCommand, Equals, command1)
 	c.Assert(err, IsNil)
 }
 
-func (s *ReflectDispatcherSuite) Test_Dispatch_MissingField(c *C) {
+func (s *ReflectDispatcherSuite) Test_MissingField(c *C) {
 	dispatchedCommand = nil
 	source := &TestSource{}
-	sourceType := reflect.ValueOf(source).Elem().Type()
-	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
-	s.disp.commandHandlers[reflect.TypeOf(TestCommand{})] = handlerMethod{
-		handlerType: sourceType,
-		method:      method,
-	}
+	err := s.disp.SetHandler(source, &TestCommand{})
+	c.Assert(err, IsNil)
 	command1 := &TestCommand{Content: "command1"}
-	err := s.disp.Dispatch(command1)
+	err = s.disp.Dispatch(command1)
 	c.Assert(err, ErrorMatches, "missing field: TestID")
 	c.Assert(dispatchedCommand, IsNil)
 }
 
-func (s *ReflectDispatcherSuite) Test_Dispatch_ErrorInHandler(c *C) {
+func (s *ReflectDispatcherSuite) Test_ErrorInHandler(c *C) {
 	dispatchedCommand = nil
 	source := &TestSource{}
-	sourceType := reflect.ValueOf(source).Elem().Type()
-	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
-	s.disp.commandHandlers[reflect.TypeOf(TestCommand{})] = handlerMethod{
-		handlerType: sourceType,
-		method:      method,
-	}
+	err := s.disp.SetHandler(source, &TestCommand{})
+	c.Assert(err, IsNil)
 	commandError := &TestCommand{NewUUID(), "error"}
-	err := s.disp.Dispatch(commandError)
+	err = s.disp.Dispatch(commandError)
 	c.Assert(err, ErrorMatches, "command error")
 	c.Assert(dispatchedCommand, Equals, commandError)
 }
 
-func (s *ReflectDispatcherSuite) Test_Dispatch_NoHandlers(c *C) {
+func (s *ReflectDispatcherSuite) Test_NoHandlers(c *C) {
 	command1 := &TestCommand{NewUUID(), "command1"}
 	err := s.disp.Dispatch(command1)
 	c.Assert(err, ErrorMatches, "no handlers for command")
 }
 
-func (s *ReflectDispatcherSuite) Test_SetHandler_Simple(c *C) {
+func (s *ReflectDispatcherSuite) Test_SetHandler_Twice(c *C) {
 	source := &TestSource{}
-	s.disp.SetHandler(source, &TestCommand{})
-	c.Assert(len(s.disp.commandHandlers), Equals, 1)
-	commandType := reflect.TypeOf(TestCommand{})
-	c.Assert(s.disp.commandHandlers, t.HasKey, commandType)
-	sourceType := reflect.ValueOf(source).Elem().Type()
-	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
-	sourceHandler := handlerMethod{
-		handlerType: sourceType,
-		method:      method,
-	}
-	c.Assert(s.disp.commandHandlers[commandType], Equals, sourceHandler)
-}
-
-func (s *ReflectDispatcherSuite) Test_SetHandler_Duplicate(c *C) {
-	source := &TestSource{}
-	s.disp.SetHandler(source, &TestCommand{})
-	c.Assert(len(s.disp.commandHandlers), Equals, 1)
+	err := s.disp.SetHandler(source, &TestCommand{})
+	c.Assert(err, IsNil)
 	source2 := &TestSource{}
-	s.disp.SetHandler(source2, &TestCommand{})
-	c.Assert(len(s.disp.commandHandlers), Equals, 1)
-	commandType := reflect.TypeOf(TestCommand{})
-	c.Assert(s.disp.commandHandlers, t.HasKey, commandType)
-	sourceType := reflect.ValueOf(source).Elem().Type()
-	method, _ := reflect.TypeOf(source).MethodByName("HandleTestCommand")
-	sourceHandler := handlerMethod{
-		handlerType: sourceType,
-		method:      method,
-	}
-	c.Assert(s.disp.commandHandlers[commandType], Equals, sourceHandler)
+	err = s.disp.SetHandler(source2, &TestCommand{})
+	c.Assert(err, Equals, ErrHandlerAlreadySet)
 }
 
 func (s *ReflectDispatcherSuite) Test_SetHandler_MissingMethod(c *C) {
 	source := &TestSource{}
-	s.disp.SetHandler(source, &TestCommandOther{})
-	c.Assert(len(s.disp.commandHandlers), Equals, 0)
+	err := s.disp.SetHandler(source, &TestCommandOther{})
+	c.Assert(err, Equals, ErrMissingHandlerMethod)
 }
 
 func (s *ReflectDispatcherSuite) Test_SetHandler_IncorrectMethod(c *C) {
 	source := &TestSource{}
-	s.disp.SetHandler(source, &TestCommandOther2{})
-	c.Assert(len(s.disp.commandHandlers), Equals, 0)
-}
-
-type TestGlobalSubscriber struct {
-	handledEvent Event
-}
-
-func (t *TestGlobalSubscriber) HandleEvent(event Event) {
-	t.handledEvent = event
-}
-
-func (s *ReflectDispatcherSuite) Test_HandleCommand_Simple(c *C) {
-	dispatchedCommand = nil
-	source := &TestSource{}
-	s.disp.SetHandler(source, &TestCommand{})
-	command1 := &TestCommand{NewUUID(), "command1"}
-	err := s.disp.Dispatch(command1)
-	c.Assert(err, IsNil)
-	c.Assert(dispatchedCommand, Equals, command1)
-	c.Assert(len(s.store.events), Equals, 1)
-	c.Assert(s.store.events[0], DeepEquals, &TestEvent{command1.TestID, command1.Content})
-	c.Assert(len(s.bus.events), Equals, 1)
-	c.Assert(s.bus.events[0], DeepEquals, &TestEvent{command1.TestID, command1.Content})
-}
-
-func (s *ReflectDispatcherSuite) Test_HandleCommand_MissingField(c *C) {
-	dispatchedCommand = nil
-	source := &TestSource{}
-	s.disp.SetHandler(source, &TestCommand{})
-	command1 := &TestCommand{Content: "command1"}
-	err := s.disp.Dispatch(command1)
-	c.Assert(err, ErrorMatches, "missing field: TestID")
-	c.Assert(dispatchedCommand, IsNil)
-	c.Assert(len(s.store.events), Equals, 0)
-	c.Assert(len(s.bus.events), Equals, 0)
-}
-
-func (s *ReflectDispatcherSuite) Test_HandleCommand_ErrorInHandler(c *C) {
-	dispatchedCommand = nil
-	source := &TestSource{}
-	s.disp.SetHandler(source, &TestCommand{})
-	commandError := &TestCommand{NewUUID(), "error"}
-	err := s.disp.Dispatch(commandError)
-	c.Assert(err, ErrorMatches, "command error")
-	c.Assert(dispatchedCommand, Equals, commandError)
-	c.Assert(len(s.store.events), Equals, 0)
-	c.Assert(len(s.bus.events), Equals, 0)
+	err := s.disp.SetHandler(source, &TestCommandOther2{})
+	c.Assert(err, Equals, ErrIncorrectHandlerMethod)
 }
 
 var callCount int
@@ -400,7 +301,7 @@ func (s *ReflectDispatcherSuite) Benchmark_ReflectDispatcher(c *C) {
 	bus := &MockEventBus{
 		events: make([]Event, 0),
 	}
-	disp := NewReflectDispatcher(store, bus)
+	disp, _ := NewReflectDispatcher(store, bus)
 	agg := &BenchmarkAggregate{}
 	disp.SetHandler(agg, &TestCommand{})
 

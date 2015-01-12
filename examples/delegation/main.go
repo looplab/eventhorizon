@@ -27,12 +27,24 @@ func main() {
 	eventStore := eventhorizon.NewMemoryEventStore()
 	eventBus := eventhorizon.NewHandlerEventBus()
 	eventBus.AddGlobalHandler(&LoggerSubscriber{})
-	disp := eventhorizon.NewDelegateDispatcher(eventStore, eventBus)
+	disp, err := eventhorizon.NewDelegateDispatcher(eventStore, eventBus)
+	if err != nil {
+		log.Fatalf("could not create dispatcher: %s", err)
+	}
 
 	// Register the domain aggregates with the dispather.
-	disp.SetHandler(&InvitationAggregate{}, &CreateInvite{})
-	disp.SetHandler(&InvitationAggregate{}, &AcceptInvite{})
-	disp.SetHandler(&InvitationAggregate{}, &DeclineInvite{})
+	err = disp.SetHandler(&InvitationAggregate{}, &CreateInvite{})
+	if err != nil {
+		log.Fatalf("could not add command: %s", err)
+	}
+	err = disp.SetHandler(&InvitationAggregate{}, &AcceptInvite{})
+	if err != nil {
+		log.Fatalf("could not add command: %s", err)
+	}
+	err = disp.SetHandler(&InvitationAggregate{}, &DeclineInvite{})
+	if err != nil {
+		log.Fatalf("could not add command: %s", err)
+	}
 
 	// Create and register a read model for individual invitations.
 	invitationRepository := eventhorizon.NewMemoryRepository()
@@ -56,7 +68,7 @@ func main() {
 	athenaID := eventhorizon.NewUUID()
 	disp.Dispatch(&CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
 	disp.Dispatch(&AcceptInvite{InvitationID: athenaID})
-	err := disp.Dispatch(&DeclineInvite{InvitationID: athenaID})
+	err = disp.Dispatch(&DeclineInvite{InvitationID: athenaID})
 	if err != nil {
 		fmt.Printf("error: %s\n", err)
 	}
