@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build mongo
+
 // Package example contains a simple runnable example of a CQRS/ES app.
 package main
 
