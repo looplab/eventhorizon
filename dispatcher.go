@@ -109,12 +109,17 @@ func (d *DelegateDispatcher) handleCommand(handlerType reflect.Type, command Com
 		return err
 	}
 
-	// Store events
-	d.eventStore.Append(resultEvents)
+	if len(resultEvents) > 0 {
+		// Store events
+		err := d.eventStore.Append(resultEvents)
+		if err != nil {
+			return err
+		}
 
-	// Publish events
-	for _, event := range resultEvents {
-		d.eventBus.PublishEvent(event)
+		// Publish events
+		for _, event := range resultEvents {
+			d.eventBus.PublishEvent(event)
+		}
 	}
 
 	return nil
@@ -254,12 +259,17 @@ func (d *ReflectDispatcher) handleCommand(handlerType reflect.Type, method refle
 		resultEvents[i] = eventsValue.Index(i).Interface().(Event)
 	}
 
-	// Store events
-	d.eventStore.Append(resultEvents)
+	if len(resultEvents) > 0 {
+		// Store events
+		err := d.eventStore.Append(resultEvents)
+		if err != nil {
+			return err
+		}
 
-	// Publish events
-	for _, event := range resultEvents {
-		d.eventBus.PublishEvent(event)
+		// Publish events
+		for _, event := range resultEvents {
+			d.eventBus.PublishEvent(event)
+		}
 	}
 
 	return nil

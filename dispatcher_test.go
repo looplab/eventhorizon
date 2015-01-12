@@ -52,7 +52,7 @@ func (s *DelegateDispatcherSuite) Test_NewDelegateAggregate(c *C) {
 		events: make([]Event, 0),
 	}
 	disp := NewDelegateDispatcher(store, bus)
-	c.Assert(disp, Not(Equals), nil)
+	c.Assert(disp, NotNil)
 	c.Assert(disp.eventStore, Equals, store)
 	c.Assert(disp.eventBus, Equals, bus)
 	c.Assert(disp.commandHandlers, Not(Equals), nil)
@@ -86,7 +86,7 @@ func (s *DelegateDispatcherSuite) Test_Dispatch_Simple(c *C) {
 	command1 := &TestCommand{NewUUID(), "command1"}
 	err := s.disp.Dispatch(command1)
 	c.Assert(dispatchedDelegateCommand, Equals, command1)
-	c.Assert(err, Equals, nil)
+	c.Assert(err, IsNil)
 }
 
 func (s *DelegateDispatcherSuite) Test_Dispatch_ErrorInHandler(c *C) {
@@ -140,7 +140,7 @@ func (s *DelegateDispatcherSuite) Test_HandleCommand_Simple(c *C) {
 	s.disp.SetHandler(aggregate, &TestCommand{})
 	command1 := &TestCommand{NewUUID(), "command1"}
 	err := s.disp.Dispatch(command1)
-	c.Assert(err, Equals, nil)
+	c.Assert(err, IsNil)
 	c.Assert(dispatchedDelegateCommand, Equals, command1)
 	c.Assert(len(s.store.events), Equals, 1)
 	c.Assert(s.store.events[0], DeepEquals, &TestEvent{command1.TestID, command1.Content})
@@ -216,7 +216,7 @@ func (s *ReflectDispatcherSuite) Test_NewReflectAggregate(c *C) {
 		events: make([]Event, 0),
 	}
 	disp := NewReflectDispatcher(store, bus)
-	c.Assert(disp, Not(Equals), nil)
+	c.Assert(disp, NotNil)
 	c.Assert(disp.eventStore, Equals, store)
 	c.Assert(disp.eventBus, Equals, bus)
 	c.Assert(disp.commandHandlers, Not(Equals), nil)
@@ -252,7 +252,7 @@ func (s *ReflectDispatcherSuite) Test_Dispatch_Simple(c *C) {
 	command1 := &TestCommand{NewUUID(), "command1"}
 	err := s.disp.Dispatch(command1)
 	c.Assert(dispatchedCommand, Equals, command1)
-	c.Assert(err, Equals, nil)
+	c.Assert(err, IsNil)
 }
 
 func (s *ReflectDispatcherSuite) Test_Dispatch_MissingField(c *C) {
@@ -267,7 +267,7 @@ func (s *ReflectDispatcherSuite) Test_Dispatch_MissingField(c *C) {
 	command1 := &TestCommand{Content: "command1"}
 	err := s.disp.Dispatch(command1)
 	c.Assert(err, ErrorMatches, "missing field: TestID")
-	c.Assert(dispatchedCommand, Equals, nil)
+	c.Assert(dispatchedCommand, IsNil)
 }
 
 func (s *ReflectDispatcherSuite) Test_Dispatch_ErrorInHandler(c *C) {
@@ -350,7 +350,7 @@ func (s *ReflectDispatcherSuite) Test_HandleCommand_Simple(c *C) {
 	s.disp.SetHandler(source, &TestCommand{})
 	command1 := &TestCommand{NewUUID(), "command1"}
 	err := s.disp.Dispatch(command1)
-	c.Assert(err, Equals, nil)
+	c.Assert(err, IsNil)
 	c.Assert(dispatchedCommand, Equals, command1)
 	c.Assert(len(s.store.events), Equals, 1)
 	c.Assert(s.store.events[0], DeepEquals, &TestEvent{command1.TestID, command1.Content})
@@ -365,7 +365,7 @@ func (s *ReflectDispatcherSuite) Test_HandleCommand_MissingField(c *C) {
 	command1 := &TestCommand{Content: "command1"}
 	err := s.disp.Dispatch(command1)
 	c.Assert(err, ErrorMatches, "missing field: TestID")
-	c.Assert(dispatchedCommand, Equals, nil)
+	c.Assert(dispatchedCommand, IsNil)
 	c.Assert(len(s.store.events), Equals, 0)
 	c.Assert(len(s.bus.events), Equals, 0)
 }
