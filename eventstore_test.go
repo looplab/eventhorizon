@@ -46,7 +46,7 @@ func (s *MemoryEventStoreSuite) Test_OneEvent(c *C) {
 	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], Equals, event1)
+	c.Assert(events[0], DeepEquals, event1)
 }
 
 func (s *MemoryEventStoreSuite) Test_TwoEvents(c *C) {
@@ -57,8 +57,8 @@ func (s *MemoryEventStoreSuite) Test_TwoEvents(c *C) {
 	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 2)
-	c.Assert(events[0], Equals, event1)
-	c.Assert(events[1], Equals, event2)
+	c.Assert(events[0], DeepEquals, event1)
+	c.Assert(events[1], DeepEquals, event2)
 }
 
 func (s *MemoryEventStoreSuite) Test_DifferentAggregates(c *C) {
@@ -69,11 +69,11 @@ func (s *MemoryEventStoreSuite) Test_DifferentAggregates(c *C) {
 	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], Equals, event1)
+	c.Assert(events[0], DeepEquals, event1)
 	events, err = s.store.Load(event2.TestID)
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], Equals, event2)
+	c.Assert(events[0], DeepEquals, event2)
 }
 
 func (s *MemoryEventStoreSuite) Test_LoadNoEvents(c *C) {
@@ -109,7 +109,7 @@ func (s *TraceEventStoreSuite) Test_OneEvent_NotTracing(c *C) {
 	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], Equals, event1)
+	c.Assert(events[0], DeepEquals, event1)
 }
 
 func (s *TraceEventStoreSuite) Test_TwoEvents_NotTracing(c *C) {
@@ -120,8 +120,8 @@ func (s *TraceEventStoreSuite) Test_TwoEvents_NotTracing(c *C) {
 	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 2)
-	c.Assert(events[0], Equals, event1)
-	c.Assert(events[1], Equals, event2)
+	c.Assert(events[0], DeepEquals, event1)
+	c.Assert(events[1], DeepEquals, event2)
 }
 
 func (s *TraceEventStoreSuite) Test_DifferentAggregates_NotTracing(c *C) {
@@ -132,11 +132,11 @@ func (s *TraceEventStoreSuite) Test_DifferentAggregates_NotTracing(c *C) {
 	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], Equals, event1)
+	c.Assert(events[0], DeepEquals, event1)
 	events, err = s.store.Load(event2.TestID)
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], Equals, event2)
+	c.Assert(events[0], DeepEquals, event2)
 }
 
 func (s *TraceEventStoreSuite) Test_NoEvents_Tracing(c *C) {
@@ -156,7 +156,7 @@ func (s *TraceEventStoreSuite) Test_OneEvent_Tracing(c *C) {
 	s.store.StopTracing()
 	trace := s.store.GetTrace()
 	c.Assert(trace, HasLen, 1)
-	c.Assert(trace[0], Equals, event1)
+	c.Assert(trace[0], DeepEquals, event1)
 }
 
 func (s *TraceEventStoreSuite) Test_TwoEvents_Tracing(c *C) {
@@ -168,8 +168,8 @@ func (s *TraceEventStoreSuite) Test_TwoEvents_Tracing(c *C) {
 	s.store.StopTracing()
 	trace := s.store.GetTrace()
 	c.Assert(trace, HasLen, 2)
-	c.Assert(trace[0], Equals, event1)
-	c.Assert(trace[1], Equals, event2)
+	c.Assert(trace[0], DeepEquals, event1)
+	c.Assert(trace[1], DeepEquals, event2)
 }
 
 func (s *TraceEventStoreSuite) Test_OneOfTwoEvents_Tracing(c *C) {
@@ -183,7 +183,7 @@ func (s *TraceEventStoreSuite) Test_OneOfTwoEvents_Tracing(c *C) {
 	s.store.StopTracing()
 	trace := s.store.GetTrace()
 	c.Assert(trace, HasLen, 1)
-	c.Assert(trace[0], Equals, event2)
+	c.Assert(trace[0], DeepEquals, event2)
 }
 
 func (s *TraceEventStoreSuite) Test_OneOfTwoEventsOtherOrder_Tracing(c *C) {
@@ -197,7 +197,7 @@ func (s *TraceEventStoreSuite) Test_OneOfTwoEventsOtherOrder_Tracing(c *C) {
 	c.Assert(err, IsNil)
 	trace := s.store.GetTrace()
 	c.Assert(trace, HasLen, 1)
-	c.Assert(trace[0], Equals, event1)
+	c.Assert(trace[0], DeepEquals, event1)
 }
 
 func (s *TraceEventStoreSuite) Test_DifferentAggregates_Tracing(c *C) {
@@ -209,8 +209,8 @@ func (s *TraceEventStoreSuite) Test_DifferentAggregates_Tracing(c *C) {
 	s.store.StopTracing()
 	trace := s.store.GetTrace()
 	c.Assert(trace, HasLen, 2)
-	c.Assert(trace[0], Equals, event1)
-	c.Assert(trace[1], Equals, event2)
+	c.Assert(trace[0], DeepEquals, event1)
+	c.Assert(trace[1], DeepEquals, event2)
 }
 
 func (s *TraceEventStoreSuite) Test_OneEvent_NoBaseStore(c *C) {
@@ -222,7 +222,7 @@ func (s *TraceEventStoreSuite) Test_OneEvent_NoBaseStore(c *C) {
 	store.StopTracing()
 	trace := store.GetTrace()
 	c.Assert(trace, HasLen, 1)
-	c.Assert(trace[0], Equals, event1)
+	c.Assert(trace[0], DeepEquals, event1)
 }
 
 func (s *TraceEventStoreSuite) Test_LoadNoBaseStore(c *C) {
