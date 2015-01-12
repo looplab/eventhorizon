@@ -16,7 +16,11 @@ package eventhorizon
 
 import (
 	"errors"
+	"time"
 )
+
+// Error returned when no events are available to append.
+var ErrNoEventsToAppend = errors.New("no events to append")
 
 // Error returned when no events are found.
 var ErrNoEventsFound = errors.New("could not find events")
@@ -27,46 +31,93 @@ var ErrNoEventStoreDefined = errors.New("no event store defined")
 // EventStore is an interface for an event sourcing event store.
 type EventStore interface {
 	// Append appends all events in the event stream to the store.
-	Append([]Event)
+	Append([]Event) error
 
 	// Load loads all events for the aggregate id from the store.
 	Load(UUID) ([]Event, error)
 }
 
+// AggregateRecord is a stored record of an aggregate in form of its events.
+type AggregateRecord interface {
+	AggregateID() UUID
+	Version() int
+	EventRecords() []EventRecord
+}
+
+// EventRecord is a single event record with timestamp
+type EventRecord interface {
+	Type() string
+	Version() int
+	Events() []Event
+}
+
 // MemoryEventStore implements EventStore as an in memory structure.
 type MemoryEventStore struct {
-	events map[UUID][]Event
+	aggregateRecords map[UUID]*memoryAggregateRecord
 }
 
 // NewMemoryEventStore creates a new MemoryEventStore.
 func NewMemoryEventStore() *MemoryEventStore {
 	s := &MemoryEventStore{
-		events: make(map[UUID][]Event),
+		aggregateRecords: make(map[UUID]*memoryAggregateRecord),
 	}
 	return s
 }
 
 // Append appends all events in the event stream to the memory store.
-func (s *MemoryEventStore) Append(events []Event) {
-	for _, event := range events {
-		id := event.AggregateID()
-		if _, ok := s.events[id]; !ok {
-			s.events[id] = make([]Event, 0)
-		}
-		// log.Printf("event store: appending %#v", event)
-		s.events[id] = append(s.events[id], event)
+func (s *MemoryEventStore) Append(events []Event) error {
+	if len(events) == 0 {
+		return ErrNoEventsToAppend
 	}
+
+	for _, event := range events {
+		r := &memoryEventRecord{
+			eventType: event.EventType(),
+			timestamp: time.Now(),
+			event:     event,
+		}
+
+		if a, ok := s.aggregateRecords[event.AggregateID()]; ok {
+			a.version++
+			r.version = a.version
+			a.events = append(a.events, r)
+		} else {
+			s.aggregateRecords[event.AggregateID()] = &memoryAggregateRecord{
+				aggregateID: event.AggregateID(),
+				version:     0,
+				events:      []*memoryEventRecord{r},
+			}
+		}
+	}
+
+	return nil
 }
 
 // Load loads all events for the aggregate id from the memory store.
 // Returns ErrNoEventsFound if no events can be found.
 func (s *MemoryEventStore) Load(id UUID) ([]Event, error) {
-	if events, ok := s.events[id]; ok {
-		// log.Printf("event store: loaded %#v", events)
+	if a, ok := s.aggregateRecords[id]; ok {
+		events := make([]Event, len(a.events))
+		for i, r := range a.events {
+			events[i] = r.event
+		}
 		return events, nil
 	}
 
 	return nil, ErrNoEventsFound
+}
+
+type memoryAggregateRecord struct {
+	aggregateID UUID
+	version     int
+	events      []*memoryEventRecord
+}
+
+type memoryEventRecord struct {
+	eventType string
+	version   int
+	timestamp time.Time
+	event     Event
 }
 
 // TraceEventStore wraps an EventStore and adds debug tracing.
@@ -86,14 +137,16 @@ func NewTraceEventStore(eventStore EventStore) *TraceEventStore {
 }
 
 // Append appends all events to the base store and trace them if enabled.
-func (s *TraceEventStore) Append(events []Event) {
-	if s.eventStore != nil {
-		s.eventStore.Append(events)
-	}
-
+func (s *TraceEventStore) Append(events []Event) error {
 	if s.tracing {
 		s.trace = append(s.trace, events...)
 	}
+
+	if s.eventStore != nil {
+		return s.eventStore.Append(events)
+	}
+
+	return nil
 }
 
 // Load loads all events for the aggregate id from the base store.

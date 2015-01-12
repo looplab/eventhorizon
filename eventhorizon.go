@@ -35,4 +35,5 @@ type Command interface {
 // The event should contain all the data needed when applying/handling it.
 type Event interface {
 	AggregateID() UUID
+	EventType() string
 }

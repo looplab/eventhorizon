@@ -56,6 +56,7 @@ type TestEvent struct {
 }
 
 func (t *TestEvent) AggregateID() UUID { return t.TestID }
+func (t *TestEvent) EventType() string { return "TestEvent" }
 
 type TestEventOther struct {
 	TestID  UUID
@@ -63,6 +64,7 @@ type TestEventOther struct {
 }
 
 func (t *TestEventOther) AggregateID() UUID { return t.TestID }
+func (t *TestEventOther) EventType() string { return "TestEventOther" }
 
 type TestCommand struct {
 	TestID  UUID
@@ -98,8 +100,9 @@ type MockEventStore struct {
 	loaded UUID
 }
 
-func (m *MockEventStore) Append(events []Event) {
+func (m *MockEventStore) Append(events []Event) error {
 	m.events = append(m.events, events...)
+	return nil
 }
 
 func (m *MockEventStore) Load(id UUID) ([]Event, error) {
