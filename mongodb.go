@@ -51,7 +51,7 @@ var ErrInvalidEvent = errors.New("invalid event")
 // MongoEventStore implements an EventStore for MongoDB.
 type MongoEventStore struct {
 	session   *mgo.Session
-	db        *mgo.Database
+	db        string
 	factories map[string]func() interface{}
 }
 
@@ -73,7 +73,7 @@ func NewMongoEventStoreWithSession(session *mgo.Session, database string) (*Mong
 	s := &MongoEventStore{
 		factories: make(map[string]func() interface{}),
 		session:   session,
-		db:        session.DB(database),
+		db:        database,
 	}
 
 	return s, nil
@@ -101,10 +101,13 @@ func (s *MongoEventStore) Append(events []Event) error {
 		return ErrNoEventsToAppend
 	}
 
+	sess := s.session.Copy()
+	defer sess.Close()
+
 	for _, event := range events {
 		// Get an existing aggregate, if any.
 		var existing []mongoAggregateRecord
-		err := s.db.C("events").FindId(event.AggregateID().String()).
+		err := sess.DB(s.db).C("events").FindId(event.AggregateID().String()).
 			Select(bson.M{"version": 1}).Limit(1).All(&existing)
 		if err != nil || len(existing) > 1 {
 			return ErrCouldNotLoadAggregate
@@ -132,7 +135,7 @@ func (s *MongoEventStore) Append(events []Event) error {
 				Events:      []*mongoEventRecord{r},
 			}
 
-			if err := s.db.C("events").Insert(aggregate); err != nil {
+			if err := sess.DB(s.db).C("events").Insert(aggregate); err != nil {
 				return ErrCouldNotSaveAggregate
 			}
 		} else {
@@ -142,7 +145,7 @@ func (s *MongoEventStore) Append(events []Event) error {
 			// Increment aggregate version on insert of new event record, and
 			// only insert if version of aggregate is matching (ie not changed
 			// since the query above).
-			err = s.db.C("events").Update(
+			err = sess.DB(s.db).C("events").Update(
 				bson.M{
 					"_id":     event.AggregateID().String(),
 					"version": existing[0].Version,
@@ -164,8 +167,11 @@ func (s *MongoEventStore) Append(events []Event) error {
 // Load loads all events for the aggregate id from the database.
 // Returns ErrNoEventsFound if no events can be found.
 func (s *MongoEventStore) Load(id UUID) ([]Event, error) {
+	sess := s.session.Copy()
+	defer sess.Close()
+
 	var aggregate mongoAggregateRecord
-	err := s.db.C("events").FindId(id.String()).One(&aggregate)
+	err := sess.DB(s.db).C("events").FindId(id.String()).One(&aggregate)
 	if err != nil {
 		return nil, ErrNoEventsFound
 	}
@@ -212,7 +218,7 @@ func (s *MongoEventStore) RegisterEventType(event Event, factory func() interfac
 
 // Clear clears the event storge.
 func (s *MongoEventStore) Clear() error {
-	if err := s.db.DropDatabase(); err != nil {
+	if err := s.session.DB(s.db).DropDatabase(); err != nil {
 		return ErrCouldNotClearDB
 	}
 	return nil
