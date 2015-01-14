@@ -57,21 +57,24 @@ type TestCommand struct {
 	Content string
 }
 
-func (t *TestCommand) AggregateID() UUID { return t.TestID }
+func (t *TestCommand) AggregateID() UUID   { return t.TestID }
+func (t *TestCommand) CommandType() string { return "TestCommand" }
 
 type TestCommandOther struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestCommandOther) AggregateID() UUID { return t.TestID }
+func (t *TestCommandOther) AggregateID() UUID   { return t.TestID }
+func (t *TestCommandOther) CommandType() string { return "TestCommandOther" }
 
 type TestCommandOther2 struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestCommandOther2) AggregateID() UUID { return t.TestID }
+func (t *TestCommandOther2) AggregateID() UUID   { return t.TestID }
+func (t *TestCommandOther2) CommandType() string { return "TestCommandOther2" }
 
 type MockEventHandler struct {
 	events []Event

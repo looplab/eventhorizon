@@ -55,7 +55,7 @@ func (c CommandFieldError) Error() string {
 // 6. The events are published to the event bus
 type Dispatcher struct {
 	eventStore      EventStore
-	commandHandlers map[reflect.Type]reflect.Type
+	commandHandlers map[string]reflect.Type
 }
 
 // NewDispatcher creates a dispatcher and associates it with an event store.
@@ -66,7 +66,7 @@ func NewDispatcher(eventStore EventStore) (*Dispatcher, error) {
 
 	d := &Dispatcher{
 		eventStore:      eventStore,
-		commandHandlers: make(map[reflect.Type]reflect.Type),
+		commandHandlers: make(map[string]reflect.Type),
 	}
 	return d, nil
 }
@@ -74,14 +74,12 @@ func NewDispatcher(eventStore EventStore) (*Dispatcher, error) {
 // Dispatch dispatches a command to the registered command handler.
 // Returns ErrHandlerNotFound if no handler could be found.
 func (d *Dispatcher) Dispatch(command Command) error {
-	commandBaseValue := reflect.Indirect(reflect.ValueOf(command))
-	commandBaseType := commandBaseValue.Type()
-	err := checkCommand(commandBaseValue, commandBaseType)
+	err := d.checkCommand(command)
 	if err != nil {
 		return err
 	}
 
-	if handlerType, ok := d.commandHandlers[commandBaseType]; ok {
+	if handlerType, ok := d.commandHandlers[command.CommandType()]; ok {
 		return d.handleCommand(handlerType, command)
 	}
 	return ErrHandlerNotFound
@@ -90,15 +88,36 @@ func (d *Dispatcher) Dispatch(command Command) error {
 // SetHandler sets a handler for a command.
 func (d *Dispatcher) SetHandler(handler CommandHandler, command Command) error {
 	// Check for already existing handler.
-	commandBaseType := reflect.Indirect(reflect.ValueOf(command)).Type()
-	if _, ok := d.commandHandlers[commandBaseType]; ok {
+	if _, ok := d.commandHandlers[command.CommandType()]; ok {
 		return ErrHandlerAlreadySet
 	}
 
 	// Add aggregate type to command type.
 	handlerBaseType := reflect.Indirect(reflect.ValueOf(handler)).Type()
-	d.commandHandlers[commandBaseType] = handlerBaseType
+	d.commandHandlers[command.CommandType()] = handlerBaseType
 
+	return nil
+}
+
+func (d *Dispatcher) checkCommand(command Command) error {
+	rv := reflect.Indirect(reflect.ValueOf(command))
+	rt := rv.Type()
+
+	for i := 0; i < rt.NumField(); i++ {
+		field := rt.Field(i)
+		if field.PkgPath != "" {
+			continue // Skip private field.
+		}
+
+		tag := field.Tag.Get("eh")
+		if tag == "optional" {
+			continue // Optional field.
+		}
+
+		if isZero(rv.Field(i)) {
+			return CommandFieldError{field.Name}
+		}
+	}
 	return nil
 }
 
@@ -133,25 +152,6 @@ func (d *Dispatcher) createAggregate(id UUID, handlerType reflect.Type) Aggregat
 	handlerObj.Elem().FieldByName("Aggregate").Set(handlerValue)
 	aggregate := handlerObj.Interface().(Aggregate)
 	return aggregate
-}
-
-func checkCommand(rv reflect.Value, rt reflect.Type) error {
-	for i := 0; i < rt.NumField(); i++ {
-		field := rt.Field(i)
-		if field.PkgPath != "" {
-			continue // Skip private field.
-		}
-
-		tag := field.Tag.Get("eh")
-		if tag == "optional" {
-			continue // Optional field.
-		}
-
-		if isZero(rv.Field(i)) {
-			return CommandFieldError{field.Name}
-		}
-	}
-	return nil
 }
 
 func isZero(v reflect.Value) bool {

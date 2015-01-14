@@ -16,7 +16,6 @@ package eventhorizon
 
 import (
 	"fmt"
-	"reflect"
 	"time"
 
 	. "gopkg.in/check.v1"
@@ -136,10 +135,7 @@ func (s *DispatcherSuite) Benchmark_Dispatcher(c *C) {
 }
 
 func (s *DispatcherSuite) Test_CheckCommand_AllFields(c *C) {
-	command := &TestCommand{NewUUID(), "command1"}
-	commandBaseValue := reflect.Indirect(reflect.ValueOf(command))
-	commandBaseType := commandBaseValue.Type()
-	err := checkCommand(commandBaseValue, commandBaseType)
+	err := s.disp.checkCommand(&TestCommand{NewUUID(), "command1"})
 	c.Assert(err, Equals, nil)
 }
 
@@ -148,13 +144,11 @@ type TestCommandValue struct {
 	Content string
 }
 
-func (t TestCommandValue) AggregateID() UUID { return t.TestID }
+func (t *TestCommandValue) AggregateID() UUID   { return t.TestID }
+func (t *TestCommandValue) CommandType() string { return "TestCommandValue" }
 
 func (s *DispatcherSuite) Test_CheckCommand_MissingRequired_Value(c *C) {
-	command := TestCommandValue{TestID: NewUUID()}
-	commandBaseValue := reflect.Indirect(reflect.ValueOf(command))
-	commandBaseType := commandBaseValue.Type()
-	err := checkCommand(commandBaseValue, commandBaseType)
+	err := s.disp.checkCommand(&TestCommandValue{TestID: NewUUID()})
 	c.Assert(err, ErrorMatches, "missing field: Content")
 }
 
@@ -163,13 +157,11 @@ type TestCommandSlice struct {
 	Slice  []string
 }
 
-func (t TestCommandSlice) AggregateID() UUID { return t.TestID }
+func (t *TestCommandSlice) AggregateID() UUID   { return t.TestID }
+func (t *TestCommandSlice) CommandType() string { return "TestCommandSlice" }
 
 func (s *DispatcherSuite) Test_CheckCommand_MissingRequired_Slice(c *C) {
-	command := TestCommandSlice{TestID: NewUUID()}
-	commandBaseValue := reflect.Indirect(reflect.ValueOf(command))
-	commandBaseType := commandBaseValue.Type()
-	err := checkCommand(commandBaseValue, commandBaseType)
+	err := s.disp.checkCommand(&TestCommandSlice{TestID: NewUUID()})
 	c.Assert(err, ErrorMatches, "missing field: Slice")
 }
 
@@ -178,13 +170,11 @@ type TestCommandMap struct {
 	Map    map[string]string
 }
 
-func (t TestCommandMap) AggregateID() UUID { return t.TestID }
+func (t *TestCommandMap) AggregateID() UUID   { return t.TestID }
+func (t *TestCommandMap) CommandType() string { return "TestCommandMap" }
 
 func (s *DispatcherSuite) Test_CheckCommand_MissingRequired_Map(c *C) {
-	command := TestCommandMap{TestID: NewUUID()}
-	commandBaseValue := reflect.Indirect(reflect.ValueOf(command))
-	commandBaseType := commandBaseValue.Type()
-	err := checkCommand(commandBaseValue, commandBaseType)
+	err := s.disp.checkCommand(&TestCommandMap{TestID: NewUUID()})
 	c.Assert(err, ErrorMatches, "missing field: Map")
 }
 
@@ -195,13 +185,11 @@ type TestCommandStruct struct {
 	}
 }
 
-func (t TestCommandStruct) AggregateID() UUID { return t.TestID }
+func (t *TestCommandStruct) AggregateID() UUID   { return t.TestID }
+func (t *TestCommandStruct) CommandType() string { return "TestCommandStruct" }
 
 func (s *DispatcherSuite) Test_CheckCommand_MissingRequired_Struct(c *C) {
-	command := TestCommandStruct{TestID: NewUUID()}
-	commandBaseValue := reflect.Indirect(reflect.ValueOf(command))
-	commandBaseType := commandBaseValue.Type()
-	err := checkCommand(commandBaseValue, commandBaseType)
+	err := s.disp.checkCommand(&TestCommandStruct{TestID: NewUUID()})
 	c.Assert(err, ErrorMatches, "missing field: Struct")
 }
 
@@ -210,13 +198,11 @@ type TestCommandTime struct {
 	Time   time.Time
 }
 
-func (t TestCommandTime) AggregateID() UUID { return t.TestID }
+func (t *TestCommandTime) AggregateID() UUID   { return t.TestID }
+func (t *TestCommandTime) CommandType() string { return "TestCommandTime" }
 
 func (s *DispatcherSuite) Test_CheckCommand_MissingRequired_Time(c *C) {
-	command := TestCommandTime{TestID: NewUUID()}
-	commandBaseValue := reflect.Indirect(reflect.ValueOf(command))
-	commandBaseType := commandBaseValue.Type()
-	err := checkCommand(commandBaseValue, commandBaseType)
+	err := s.disp.checkCommand(&TestCommandTime{TestID: NewUUID()})
 	c.Assert(err, ErrorMatches, "missing field: Time")
 }
 
@@ -225,13 +211,11 @@ type TestCommandOptional struct {
 	Content string `eh:"optional"`
 }
 
-func (t TestCommandOptional) AggregateID() UUID { return t.TestID }
+func (t *TestCommandOptional) AggregateID() UUID   { return t.TestID }
+func (t *TestCommandOptional) CommandType() string { return "TestCommandOptional" }
 
 func (s *DispatcherSuite) Test_CheckCommand_MissingOptionalField(c *C) {
-	command := TestCommandOptional{TestID: NewUUID()}
-	commandBaseValue := reflect.Indirect(reflect.ValueOf(command))
-	commandBaseType := commandBaseValue.Type()
-	err := checkCommand(commandBaseValue, commandBaseType)
+	err := s.disp.checkCommand(&TestCommandOptional{TestID: NewUUID()})
 	c.Assert(err, Equals, nil)
 }
 
@@ -240,12 +224,10 @@ type TestCommandPrivate struct {
 	private string
 }
 
-func (t TestCommandPrivate) AggregateID() UUID { return t.TestID }
+func (t *TestCommandPrivate) AggregateID() UUID   { return t.TestID }
+func (t *TestCommandPrivate) CommandType() string { return "TestCommandPrivate" }
 
 func (s *DispatcherSuite) Test_CheckCommand_MissingPrivateField(c *C) {
-	command := TestCommandPrivate{TestID: NewUUID()}
-	commandBaseValue := reflect.Indirect(reflect.ValueOf(command))
-	commandBaseType := commandBaseValue.Type()
-	err := checkCommand(commandBaseValue, commandBaseType)
+	err := s.disp.checkCommand(&TestCommandPrivate{TestID: NewUUID()})
 	c.Assert(err, Equals, nil)
 }

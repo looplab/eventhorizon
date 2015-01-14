@@ -25,6 +25,7 @@ package eventhorizon
 // only "optional" is a valid tag: `eh:"optional"`.
 type Command interface {
 	AggregateID() UUID
+	CommandType() string
 }
 
 // Event is a domain event describing a change that has happened to an aggregate.
