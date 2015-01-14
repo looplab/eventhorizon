@@ -15,11 +15,7 @@
 package eventhorizon
 
 import (
-	"reflect"
-
 	. "gopkg.in/check.v1"
-
-	t "github.com/looplab/eventhorizon/testing"
 )
 
 var _ = Suite(&HandlerEventBusSuite{})
@@ -50,7 +46,7 @@ func (t *TestHandlerEventBus) HandleEvent(event Event) {
 func (s *HandlerEventBusSuite) Test_PublishEvent_Simple(c *C) {
 	handler := &TestHandlerEventBus{}
 	globalHandler := &TestHandlerEventBus{}
-	s.bus.eventHandlers[reflect.TypeOf(TestEvent{})] = []EventHandler{handler}
+	s.bus.eventHandlers[(&TestEvent{}).EventType()] = []EventHandler{handler}
 	s.bus.globalHandlers = append(s.bus.globalHandlers, globalHandler)
 	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
@@ -61,7 +57,7 @@ func (s *HandlerEventBusSuite) Test_PublishEvent_Simple(c *C) {
 func (s *HandlerEventBusSuite) Test_PublishEvent_AnotherEvent(c *C) {
 	handler := &TestHandlerEventBus{}
 	globalHandler := &TestHandlerEventBus{}
-	s.bus.eventHandlers[reflect.TypeOf(TestEventOther{})] = []EventHandler{handler}
+	s.bus.eventHandlers[(&TestEventOther{}).EventType()] = []EventHandler{handler}
 	s.bus.globalHandlers = append(s.bus.globalHandlers, globalHandler)
 	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
@@ -79,7 +75,7 @@ func (s *HandlerEventBusSuite) Test_PublishEvent_NoHandler(c *C) {
 
 func (s *HandlerEventBusSuite) Test_PublishEvent_NoGlobalHandler(c *C) {
 	handler := &TestHandlerEventBus{}
-	s.bus.eventHandlers[reflect.TypeOf(TestEvent{})] = []EventHandler{handler}
+	s.bus.eventHandlers[(&TestEvent{}).EventType()] = []EventHandler{handler}
 	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
 	c.Assert(handler.event, Equals, event1)
@@ -89,10 +85,11 @@ func (s *HandlerEventBusSuite) Test_AddHandler(c *C) {
 	handler := &TestHandlerEventBus{}
 	s.bus.AddHandler(handler, &TestEvent{})
 	c.Assert(len(s.bus.eventHandlers), Equals, 1)
-	eventType := reflect.TypeOf(TestEvent{})
-	c.Assert(s.bus.eventHandlers, t.HasKey, eventType)
-	c.Assert(len(s.bus.eventHandlers[eventType]), Equals, 1)
-	c.Assert(s.bus.eventHandlers[eventType][0], Equals, handler)
+	eventType := (&TestEvent{}).EventType()
+	handlers, _ := s.bus.eventHandlers[eventType]
+	c.Assert(handlers, NotNil)
+	c.Assert(handlers, HasLen, 1)
+	c.Assert(handlers[0], Equals, handler)
 }
 
 func (s *HandlerEventBusSuite) Test_AddGlobalHandler(c *C) {

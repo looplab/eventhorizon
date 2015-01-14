@@ -28,26 +28,12 @@ func Test(t *testing.T) { TestingT(t) }
 type EmptyAggregate struct {
 }
 
-type TestDelegateAggregate struct {
-	events []Event
-}
-
-func (a *TestDelegateAggregate) HandleEvent(event Event) {
-	a.events = append(a.events, event)
-}
-
 type TestAggregate struct {
 	events []Event
 }
 
-// HandleTestEvent is a valid handler with matching method and event name.
-func (a *TestAggregate) HandleTestEvent(event *TestEvent) {
+func (a *TestAggregate) HandleEvent(event Event) {
 	a.events = append(a.events, event)
-}
-
-// HandleTestEventOther is an invalid handler where the method name and event
-// name does not match. It should be ignored.
-func (a *TestAggregate) HandleTestEventOther(event *TestEvent) {
 }
 
 type TestEvent struct {

@@ -16,8 +16,6 @@ package eventhorizon
 
 import (
 	. "gopkg.in/check.v1"
-
-	t "github.com/looplab/eventhorizon/testing"
 )
 
 type MemoryReadRepositorySuite struct{}
@@ -85,8 +83,11 @@ func (s *MemoryReadRepositorySuite) TestFindAll(c *C) {
 	repo.data[NewUUID()] = 43
 	result, err = repo.FindAll()
 	c.Assert(err, Equals, nil)
-	c.Assert(result, t.Contains, 42)
-	c.Assert(result, t.Contains, 43)
+	sum := 0
+	for _, v := range result {
+		sum += v.(int)
+	}
+	c.Assert(sum, Equals, 85)
 
 	// Find none.
 	repo = NewMemoryReadRepository()

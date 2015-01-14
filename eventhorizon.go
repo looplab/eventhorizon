@@ -37,3 +37,13 @@ type Event interface {
 	AggregateID() UUID
 	EventType() string
 }
+
+// CommandHandler is an interface that all handlers of commands should implement.
+type CommandHandler interface {
+	HandleCommand(Command) ([]Event, error)
+}
+
+// EventHandler is an interface that all handlers of events should implement.
+type EventHandler interface {
+	HandleEvent(Event)
+}

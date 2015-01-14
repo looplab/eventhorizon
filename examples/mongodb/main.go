@@ -40,7 +40,7 @@ func main() {
 	eventStore.RegisterEventType(&InviteDeclined{}, func() interface{} { return &InviteDeclined{} })
 
 	// Create the dispatcher.
-	disp, err := eventhorizon.NewDelegateDispatcher(eventStore)
+	disp, err := eventhorizon.NewDispatcher(eventStore)
 	if err != nil {
 		log.Fatalf("could not create dispatcher: %s", err)
 	}

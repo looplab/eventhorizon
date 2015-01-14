@@ -23,8 +23,7 @@ package eventhorizon
 //
 //       name string
 //   }
-// The embedded aggregate is then initialized by the dispatcher with for example
-// ReflectAggregate, depending on the type of dispatcher.
+// The embedded aggregate is then initialized by the dispatcher with AggregateBase.
 type Aggregate interface {
 	// AggregateID returns the id of the aggregate.
 	AggregateID() UUID
@@ -36,20 +35,19 @@ type Aggregate interface {
 	ApplyEvents(events []Event)
 }
 
-// DelegateAggregate is an implementation of Aggregate using delegation.
+// AggregateBase is an implementation of Aggregate using delegation.
 //
-// This implementation is used by the DelegateDispatcher and will delegate all
+// This implementation is used by the Dispatcher and will delegate all
 // event handling to the concrete aggregate.
-type DelegateAggregate struct {
+type AggregateBase struct {
 	id           UUID
 	eventsLoaded int
 	delegate     EventHandler
 }
 
-// NewDelegateAggregate creates an aggregate which applies its events by using
-// methods detected with reflection by the methodApplier.
-func NewDelegateAggregate(id UUID, delegate EventHandler) *DelegateAggregate {
-	return &DelegateAggregate{
+// NewAggregateBase creates an aggregate.
+func NewAggregateBase(id UUID, delegate EventHandler) *AggregateBase {
+	return &AggregateBase{
 		id:           id,
 		eventsLoaded: 0,
 		delegate:     delegate,
@@ -57,57 +55,18 @@ func NewDelegateAggregate(id UUID, delegate EventHandler) *DelegateAggregate {
 }
 
 // AggregateID returns the ID of the aggregate.
-func (a *DelegateAggregate) AggregateID() UUID {
+func (a *AggregateBase) AggregateID() UUID {
 	return a.id
 }
 
 // ApplyEvent applies an event using the handler.
-func (a *DelegateAggregate) ApplyEvent(event Event) {
+func (a *AggregateBase) ApplyEvent(event Event) {
 	a.delegate.HandleEvent(event)
 	a.eventsLoaded++
 }
 
 // ApplyEvents applies an event stream using the handler.
-func (a *DelegateAggregate) ApplyEvents(events []Event) {
-	for _, event := range events {
-		a.ApplyEvent(event)
-	}
-}
-
-// ReflectAggregate is an implementation of Aggregate using method reflection.
-//
-// This implementation is used by the ReflectDispatcher and will add handler
-// based on the aggregate's methods prefixed with "Apply". See docs for
-// ReflectEventHandler for more info.
-type ReflectAggregate struct {
-	id           UUID
-	eventsLoaded int
-	handler      EventHandler
-}
-
-// NewReflectAggregate creates an aggregate which applies its events by using
-// methods detected with reflection by the methodApplier.
-func NewReflectAggregate(id UUID, source interface{}) *ReflectAggregate {
-	return &ReflectAggregate{
-		id:           id,
-		eventsLoaded: 0,
-		handler:      NewReflectEventHandler(source, "Apply"),
-	}
-}
-
-// AggregateID returns the ID of the aggregate.
-func (a *ReflectAggregate) AggregateID() UUID {
-	return a.id
-}
-
-// ApplyEvent applies an event using the handler.
-func (a *ReflectAggregate) ApplyEvent(event Event) {
-	a.handler.HandleEvent(event)
-	a.eventsLoaded++
-}
-
-// ApplyEvents applies an event stream using the handler.
-func (a *ReflectAggregate) ApplyEvents(events []Event) {
+func (a *AggregateBase) ApplyEvents(events []Event) {
 	for _, event := range events {
 		a.ApplyEvent(event)
 	}

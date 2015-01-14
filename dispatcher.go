@@ -17,7 +17,6 @@ package eventhorizon
 import (
 	"errors"
 	"reflect"
-	"strings"
 	"time"
 )
 
@@ -45,7 +44,7 @@ func (c CommandFieldError) Error() string {
 	return "missing field: " + c.Field
 }
 
-// Dispatcher is an interface defining a command and event dispatcher.
+// Dispatcher dispatches commands based to registered handlers.
 //
 // The dispatch process is as follows:
 // 1. The dispatcher receives a command
@@ -54,24 +53,18 @@ func (c CommandFieldError) Error() string {
 // 4. The aggregate generates events in response to the command
 // 5. The events are stored in the event store
 // 6. The events are published to the event bus
-type Dispatcher interface {
-	// Dispatch dispatches a command to the registered command handler.
-	Dispatch(Command) error
-}
-
-// DelegateDispatcher is a dispatcher that dispatches commands based on delegation.
-type DelegateDispatcher struct {
+type Dispatcher struct {
 	eventStore      EventStore
 	commandHandlers map[reflect.Type]reflect.Type
 }
 
-// NewDelegateDispatcher creates a dispatcher and associates it with an event store.
-func NewDelegateDispatcher(eventStore EventStore) (*DelegateDispatcher, error) {
+// NewDispatcher creates a dispatcher and associates it with an event store.
+func NewDispatcher(eventStore EventStore) (*Dispatcher, error) {
 	if eventStore == nil {
 		return nil, ErrNilEventStore
 	}
 
-	d := &DelegateDispatcher{
+	d := &Dispatcher{
 		eventStore:      eventStore,
 		commandHandlers: make(map[reflect.Type]reflect.Type),
 	}
@@ -80,7 +73,7 @@ func NewDelegateDispatcher(eventStore EventStore) (*DelegateDispatcher, error) {
 
 // Dispatch dispatches a command to the registered command handler.
 // Returns ErrHandlerNotFound if no handler could be found.
-func (d *DelegateDispatcher) Dispatch(command Command) error {
+func (d *Dispatcher) Dispatch(command Command) error {
 	commandBaseValue := reflect.Indirect(reflect.ValueOf(command))
 	commandBaseType := commandBaseValue.Type()
 	err := checkCommand(commandBaseValue, commandBaseType)
@@ -95,7 +88,7 @@ func (d *DelegateDispatcher) Dispatch(command Command) error {
 }
 
 // SetHandler sets a handler for a command.
-func (d *DelegateDispatcher) SetHandler(handler CommandHandler, command Command) error {
+func (d *Dispatcher) SetHandler(handler CommandHandler, command Command) error {
 	// Check for already existing handler.
 	commandBaseType := reflect.Indirect(reflect.ValueOf(command)).Type()
 	if _, ok := d.commandHandlers[commandBaseType]; ok {
@@ -109,7 +102,7 @@ func (d *DelegateDispatcher) SetHandler(handler CommandHandler, command Command)
 	return nil
 }
 
-func (d *DelegateDispatcher) handleCommand(handlerType reflect.Type, command Command) error {
+func (d *Dispatcher) handleCommand(handlerType reflect.Type, command Command) error {
 	// Create aggregate from its type
 	aggregate := d.createAggregate(command.AggregateID(), handlerType)
 
@@ -134,161 +127,9 @@ func (d *DelegateDispatcher) handleCommand(handlerType reflect.Type, command Com
 	return nil
 }
 
-func (d *DelegateDispatcher) createAggregate(id UUID, handlerType reflect.Type) Aggregate {
+func (d *Dispatcher) createAggregate(id UUID, handlerType reflect.Type) Aggregate {
 	handlerObj := reflect.New(handlerType)
-	handlerValue := reflect.ValueOf(NewDelegateAggregate(id, handlerObj.Interface().(EventHandler)))
-	handlerObj.Elem().FieldByName("Aggregate").Set(handlerValue)
-	aggregate := handlerObj.Interface().(Aggregate)
-	return aggregate
-}
-
-// ReflectDispatcher is a dispatcher that dispatches commands based on method names.
-type ReflectDispatcher struct {
-	eventStore      EventStore
-	commandHandlers map[reflect.Type]handlerMethod
-}
-
-type handlerMethod struct {
-	handlerType reflect.Type
-	method      reflect.Method
-}
-
-// NewReflectDispatcher creates a dispatcher and associates it with an event store.
-func NewReflectDispatcher(eventStore EventStore) (*ReflectDispatcher, error) {
-	if eventStore == nil {
-		return nil, ErrNilEventStore
-	}
-
-	d := &ReflectDispatcher{
-		eventStore:      eventStore,
-		commandHandlers: make(map[reflect.Type]handlerMethod),
-	}
-	return d, nil
-}
-
-// Dispatch dispatches a command to the registered command handler.
-// Returns ErrHandlerNotFound if no handler could be found.
-func (d *ReflectDispatcher) Dispatch(command Command) error {
-	// Get value with dereference to also handle pointers to commands.
-	commandBaseValue := reflect.Indirect(reflect.ValueOf(command))
-	commandBaseType := commandBaseValue.Type()
-	err := checkCommand(commandBaseValue, commandBaseType)
-	if err != nil {
-		return err
-	}
-
-	if handler, ok := d.commandHandlers[commandBaseType]; ok {
-		return d.handleCommand(handler.handlerType, handler.method, command)
-	}
-	return ErrHandlerNotFound
-}
-
-// SetHandler sets an aggregate as a handler for a command.
-//
-// Handling methods are defined in code by:
-//   func (source *MySource) HandleMyCommand(c MyCommand).
-// When getting the type of this methods by reflection the signature
-// is as following:
-//   func HandleMyCommand(source *MySource, c MyCommand).
-// Only add method that has the correct type.
-func (d *ReflectDispatcher) SetHandler(handler interface{}, command Command) error {
-	// Check for already existing handler.
-	commandBaseType := reflect.TypeOf(command)
-	if commandBaseType.Kind() == reflect.Ptr {
-		commandBaseType = commandBaseType.Elem()
-	}
-	if _, ok := d.commandHandlers[commandBaseType]; ok {
-		return ErrHandlerAlreadySet
-	}
-
-	// Check for method existance.
-	handlerType := reflect.TypeOf(handler)
-	method, ok := handlerType.MethodByName("Handle" + commandBaseType.Name())
-	if !ok {
-		return ErrMissingHandlerMethod
-	}
-
-	commandType := reflect.TypeOf(command)
-	// Check method signature.
-	if method.Type.NumIn() != 2 || commandType != method.Type.In(1) {
-		return ErrIncorrectHandlerMethod
-	}
-
-	handlerBaseType := reflect.ValueOf(handler).Elem().Type()
-
-	// Add handler func to command type.
-	d.commandHandlers[commandBaseType] = handlerMethod{
-		handlerType: handlerBaseType,
-		method:      method,
-	}
-
-	return nil
-}
-
-// ScanHandler scans an aggregate for command handling methods and adds
-// it for every event it can handle.
-func (d *ReflectDispatcher) ScanHandler(handler interface{}) error {
-	handlerType := reflect.TypeOf(handler)
-	for i := 0; i < handlerType.NumMethod(); i++ {
-		method := handlerType.Method(i)
-
-		// Check method prefix to be Handle* and not just Handle, also check for
-		// two arguments; HandleMyCommand(source *MySource, c MyCommand).
-		if strings.HasPrefix(method.Name, "Handle") &&
-			method.Type.NumIn() == 2 {
-
-			// Only accept methods wich takes an acctual command type.
-			commandType := method.Type.In(1)
-			if command, ok := reflect.Zero(commandType).Interface().(Command); ok {
-				err := d.SetHandler(handler, command)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func (d *ReflectDispatcher) handleCommand(handlerType reflect.Type, method reflect.Method, command Command) error {
-	// Create aggregate from handler type
-	aggregate := d.createAggregate(command.AggregateID(), handlerType)
-
-	// Load aggregate events
-	events, _ := d.eventStore.Load(aggregate.AggregateID())
-	aggregate.ApplyEvents(events)
-
-	// Call handler, keep events
-	handlerValue := reflect.ValueOf(aggregate)
-	commandValue := reflect.ValueOf(command)
-	values := method.Func.Call([]reflect.Value{handlerValue, commandValue})
-
-	err := values[1].Interface()
-	if err != nil {
-		return err.(error)
-	}
-
-	eventsValue := values[0]
-	resultEvents := make([]Event, eventsValue.Len())
-	for i := 0; i < eventsValue.Len(); i++ {
-		resultEvents[i] = eventsValue.Index(i).Interface().(Event)
-	}
-
-	if len(resultEvents) > 0 {
-		// Store events
-		err := d.eventStore.Save(resultEvents)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (d *ReflectDispatcher) createAggregate(id UUID, handlerType reflect.Type) Aggregate {
-	handlerObj := reflect.New(handlerType)
-	handlerValue := reflect.ValueOf(NewReflectAggregate(id, handlerObj.Interface()))
+	handlerValue := reflect.ValueOf(NewAggregateBase(id, handlerObj.Interface().(EventHandler)))
 	handlerObj.Elem().FieldByName("Aggregate").Set(handlerValue)
 	aggregate := handlerObj.Interface().(Aggregate)
 	return aggregate
