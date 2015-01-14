@@ -40,13 +40,13 @@ func main() {
 	}
 
 	// Create and register a read model for individual invitations.
-	invitationRepository := eventhorizon.NewMemoryRepository()
+	invitationRepository := eventhorizon.NewMemoryReadRepository()
 	invitationProjector := NewInvitationProjector(invitationRepository)
 	eventBus.ScanHandler(invitationProjector)
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
-	guestListRepository := eventhorizon.NewMemoryRepository()
+	guestListRepository := eventhorizon.NewMemoryReadRepository()
 	guestListProjector := NewGuestListProjector(guestListRepository, eventID)
 	eventBus.ScanHandler(guestListProjector)
 

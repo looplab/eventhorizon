@@ -27,13 +27,13 @@ type GuestList struct {
 // Projector that writes to a read model
 
 type GuestListProjector struct {
-	repository eventhorizon.Repository
+	repository eventhorizon.ReadRepository
 	eventID    eventhorizon.UUID
 
 	eventhorizon.EventHandler
 }
 
-func NewGuestListProjector(repository eventhorizon.Repository, eventID eventhorizon.UUID) *GuestListProjector {
+func NewGuestListProjector(repository eventhorizon.ReadRepository, eventID eventhorizon.UUID) *GuestListProjector {
 	p := &GuestListProjector{
 		repository: repository,
 		eventID:    eventID,

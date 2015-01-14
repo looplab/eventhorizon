@@ -20,27 +20,27 @@ import (
 	t "github.com/looplab/eventhorizon/testing"
 )
 
-type MemoryRepositorySuite struct{}
+type MemoryReadRepositorySuite struct{}
 
-var _ = Suite(&MemoryRepositorySuite{})
+var _ = Suite(&MemoryReadRepositorySuite{})
 
-func (s *MemoryRepositorySuite) TestNewMemoryRepository(c *C) {
-	repo := NewMemoryRepository()
+func (s *MemoryReadRepositorySuite) TestNewMemoryReadRepository(c *C) {
+	repo := NewMemoryReadRepository()
 	c.Assert(repo, Not(Equals), nil)
 	c.Assert(repo.data, Not(Equals), nil)
 	c.Assert(len(repo.data), Equals, 0)
 }
 
-func (s *MemoryRepositorySuite) TestSave(c *C) {
+func (s *MemoryReadRepositorySuite) TestSave(c *C) {
 	// Simple save.
-	repo := NewMemoryRepository()
+	repo := NewMemoryReadRepository()
 	id := NewUUID()
 	repo.Save(id, 42)
 	c.Assert(len(repo.data), Equals, 1)
 	c.Assert(repo.data[id], Equals, 42)
 
 	// Overwrite with same ID.
-	repo = NewMemoryRepository()
+	repo = NewMemoryReadRepository()
 	id = NewUUID()
 	repo.Save(id, 42)
 	repo.Save(id, 43)
@@ -48,9 +48,9 @@ func (s *MemoryRepositorySuite) TestSave(c *C) {
 	c.Assert(repo.data[id], Equals, 43)
 }
 
-func (s *MemoryRepositorySuite) TestFind(c *C) {
+func (s *MemoryReadRepositorySuite) TestFind(c *C) {
 	// Simple find.
-	repo := NewMemoryRepository()
+	repo := NewMemoryReadRepository()
 	id := NewUUID()
 	repo.data[id] = 42
 	result, err := repo.Find(id)
@@ -58,29 +58,29 @@ func (s *MemoryRepositorySuite) TestFind(c *C) {
 	c.Assert(result, Equals, 42)
 
 	// Empty repo.
-	repo = NewMemoryRepository()
+	repo = NewMemoryReadRepository()
 	result, err = repo.Find(NewUUID())
 	c.Assert(err, ErrorMatches, "could not find model")
 	c.Assert(result, Equals, nil)
 
 	// Non existing ID.
-	repo = NewMemoryRepository()
+	repo = NewMemoryReadRepository()
 	repo.data[NewUUID()] = 42
 	result, err = repo.Find(NewUUID())
 	c.Assert(err, ErrorMatches, "could not find model")
 	c.Assert(result, Equals, nil)
 }
 
-func (s *MemoryRepositorySuite) TestFindAll(c *C) {
+func (s *MemoryReadRepositorySuite) TestFindAll(c *C) {
 	// Find one.
-	repo := NewMemoryRepository()
+	repo := NewMemoryReadRepository()
 	repo.data[NewUUID()] = 42
 	result, err := repo.FindAll()
 	c.Assert(err, Equals, nil)
 	c.Assert(result, DeepEquals, []interface{}{42})
 
 	// Find two.
-	repo = NewMemoryRepository()
+	repo = NewMemoryReadRepository()
 	repo.data[NewUUID()] = 42
 	repo.data[NewUUID()] = 43
 	result, err = repo.FindAll()
@@ -89,15 +89,15 @@ func (s *MemoryRepositorySuite) TestFindAll(c *C) {
 	c.Assert(result, t.Contains, 43)
 
 	// Find none.
-	repo = NewMemoryRepository()
+	repo = NewMemoryReadRepository()
 	result, err = repo.FindAll()
 	c.Assert(err, Equals, nil)
 	c.Assert(result, DeepEquals, []interface{}{})
 }
 
-func (s *MemoryRepositorySuite) TestRemove(c *C) {
+func (s *MemoryReadRepositorySuite) TestRemove(c *C) {
 	// Simple remove.
-	repo := NewMemoryRepository()
+	repo := NewMemoryReadRepository()
 	id := NewUUID()
 	repo.data[id] = 42
 	err := repo.Remove(id)
@@ -105,7 +105,7 @@ func (s *MemoryRepositorySuite) TestRemove(c *C) {
 	c.Assert(len(repo.data), Equals, 0)
 
 	// Non existing ID.
-	repo = NewMemoryRepository()
+	repo = NewMemoryReadRepository()
 	repo.data[id] = 42
 	err = repo.Remove(NewUUID())
 	c.Assert(err, ErrorMatches, "could not find model")

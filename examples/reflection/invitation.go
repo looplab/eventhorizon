@@ -27,11 +27,11 @@ type Invitation struct {
 // Projector that writes to a read model
 
 type InvitationProjector struct {
-	repository eventhorizon.Repository
+	repository eventhorizon.ReadRepository
 	eventhorizon.EventHandler
 }
 
-func NewInvitationProjector(repository eventhorizon.Repository) *InvitationProjector {
+func NewInvitationProjector(repository eventhorizon.ReadRepository) *InvitationProjector {
 	p := &InvitationProjector{
 		repository: repository,
 	}
