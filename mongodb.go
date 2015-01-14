@@ -50,13 +50,14 @@ var ErrInvalidEvent = errors.New("invalid event")
 
 // MongoEventStore implements an EventStore for MongoDB.
 type MongoEventStore struct {
+	eventBus  EventBus
 	session   *mgo.Session
 	db        string
 	factories map[string]func() interface{}
 }
 
 // NewMongoEventStore creates a new MongoEventStore.
-func NewMongoEventStore(host, database string) (*MongoEventStore, error) {
+func NewMongoEventStore(eventBus EventBus, host, database string) (*MongoEventStore, error) {
 	session, err := mgo.Dial(host)
 	if err != nil {
 		return nil, ErrCouldNotDialDB
@@ -65,12 +66,13 @@ func NewMongoEventStore(host, database string) (*MongoEventStore, error) {
 	session.SetMode(mgo.Strong, true)
 	session.SetSafe(&mgo.Safe{W: 1})
 
-	return NewMongoEventStoreWithSession(session, database)
+	return NewMongoEventStoreWithSession(eventBus, session, database)
 }
 
 // NewMongoEventStoreWithSession creates a new MongoEventStore with a session.
-func NewMongoEventStoreWithSession(session *mgo.Session, database string) (*MongoEventStore, error) {
+func NewMongoEventStoreWithSession(eventBus EventBus, session *mgo.Session, database string) (*MongoEventStore, error) {
 	s := &MongoEventStore{
+		eventBus:  eventBus,
 		factories: make(map[string]func() interface{}),
 		session:   session,
 		db:        database,
@@ -158,6 +160,11 @@ func (s *MongoEventStore) Save(events []Event) error {
 			if err != nil {
 				return ErrCouldNotSaveAggregate
 			}
+		}
+
+		// Publish event on the bus.
+		if s.eventBus != nil {
+			s.eventBus.PublishEvent(event)
 		}
 	}
 

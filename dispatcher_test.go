@@ -28,7 +28,6 @@ var _ = Suite(&DispatcherSuite{})
 
 type DelegateDispatcherSuite struct {
 	store *MockEventStore
-	bus   *MockEventBus
 	disp  *DelegateDispatcher
 }
 
@@ -36,40 +35,22 @@ func (s *DelegateDispatcherSuite) SetUpTest(c *C) {
 	s.store = &MockEventStore{
 		events: make([]Event, 0),
 	}
-	s.bus = &MockEventBus{
-		events: make([]Event, 0),
-	}
-	s.disp, _ = NewDelegateDispatcher(s.store, s.bus)
+	s.disp, _ = NewDelegateDispatcher(s.store)
 }
 
 func (s *DelegateDispatcherSuite) Test_NewDelegateAggregate(c *C) {
 	store := &MockEventStore{
 		events: make([]Event, 0),
 	}
-	bus := &MockEventBus{
-		events: make([]Event, 0),
-	}
-	disp, err := NewDelegateDispatcher(store, bus)
+	disp, err := NewDelegateDispatcher(store)
 	c.Assert(disp, NotNil)
 	c.Assert(err, IsNil)
 }
 
 func (s *DelegateDispatcherSuite) Test_NewDelegateAggregate_NilEventStore(c *C) {
-	bus := &MockEventBus{
-		events: make([]Event, 0),
-	}
-	disp, err := NewDelegateDispatcher(nil, bus)
+	disp, err := NewDelegateDispatcher(nil)
 	c.Assert(disp, IsNil)
 	c.Assert(err, Equals, ErrNilEventStore)
-}
-
-func (s *DelegateDispatcherSuite) Test_NewDelegateAggregate_NilEventBus(c *C) {
-	store := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp, err := NewDelegateDispatcher(store, nil)
-	c.Assert(disp, IsNil)
-	c.Assert(err, Equals, ErrNilEventBus)
 }
 
 var dispatchedDelegateCommand Command
@@ -144,10 +125,7 @@ func (s *DelegateDispatcherSuite) Benchmark_DelegateDispatcher(c *C) {
 	store := &MockEventStore{
 		events: make([]Event, 0),
 	}
-	bus := &MockEventBus{
-		events: make([]Event, 0),
-	}
-	disp, _ := NewDelegateDispatcher(store, bus)
+	disp, _ := NewDelegateDispatcher(store)
 	agg := &BenchmarkDelegateDispatcherAggregate{}
 	disp.SetHandler(agg, &TestCommand{})
 
@@ -161,7 +139,6 @@ func (s *DelegateDispatcherSuite) Benchmark_DelegateDispatcher(c *C) {
 
 type ReflectDispatcherSuite struct {
 	store *MockEventStore
-	bus   *MockEventBus
 	disp  *ReflectDispatcher
 }
 
@@ -169,40 +146,22 @@ func (s *ReflectDispatcherSuite) SetUpTest(c *C) {
 	s.store = &MockEventStore{
 		events: make([]Event, 0),
 	}
-	s.bus = &MockEventBus{
-		events: make([]Event, 0),
-	}
-	s.disp, _ = NewReflectDispatcher(s.store, s.bus)
+	s.disp, _ = NewReflectDispatcher(s.store)
 }
 
 func (s *ReflectDispatcherSuite) Test_NewReflectAggregate(c *C) {
 	store := &MockEventStore{
 		events: make([]Event, 0),
 	}
-	bus := &MockEventBus{
-		events: make([]Event, 0),
-	}
-	disp, err := NewReflectDispatcher(store, bus)
+	disp, err := NewReflectDispatcher(store)
 	c.Assert(disp, NotNil)
 	c.Assert(err, IsNil)
 }
 
 func (s *ReflectDispatcherSuite) Test_NewReflectAggregate_NilEventStore(c *C) {
-	bus := &MockEventBus{
-		events: make([]Event, 0),
-	}
-	disp, err := NewReflectDispatcher(nil, bus)
+	disp, err := NewReflectDispatcher(nil)
 	c.Assert(disp, IsNil)
 	c.Assert(err, Equals, ErrNilEventStore)
-}
-
-func (s *ReflectDispatcherSuite) Test_NewReflectAggregate_NilEventBus(c *C) {
-	store := &MockEventStore{
-		events: make([]Event, 0),
-	}
-	disp, err := NewReflectDispatcher(store, nil)
-	c.Assert(disp, IsNil)
-	c.Assert(err, Equals, ErrNilEventBus)
 }
 
 var dispatchedCommand Command
@@ -298,10 +257,7 @@ func (s *ReflectDispatcherSuite) Benchmark_ReflectDispatcher(c *C) {
 	store := &MockEventStore{
 		events: make([]Event, 0),
 	}
-	bus := &MockEventBus{
-		events: make([]Event, 0),
-	}
-	disp, _ := NewReflectDispatcher(store, bus)
+	disp, _ := NewReflectDispatcher(store)
 	agg := &BenchmarkAggregate{}
 	disp.SetHandler(agg, &TestCommand{})
 

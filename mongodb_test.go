@@ -24,11 +24,15 @@ var _ = Suite(&MongoEventStoreSuite{})
 
 type MongoEventStoreSuite struct {
 	store *MongoEventStore
+	bus   *MockEventBus
 }
 
 func (s *MongoEventStoreSuite) SetUpTest(c *C) {
+	s.bus = &MockEventBus{
+		events: make([]Event, 0),
+	}
 	var err error
-	s.store, err = NewMongoEventStore("localhost", "test")
+	s.store, err = NewMongoEventStore(s.bus, "localhost", "test")
 	c.Assert(err, IsNil)
 	err = s.store.RegisterEventType(&TestEvent{}, func() interface{} { return &TestEvent{} })
 	c.Assert(err, IsNil)
@@ -41,7 +45,10 @@ func (s *MongoEventStoreSuite) TearDownTest(c *C) {
 }
 
 func (s *MongoEventStoreSuite) Test_NewMemoryEventStore(c *C) {
-	store, err := NewMongoEventStore("localhost", "test")
+	bus := &MockEventBus{
+		events: make([]Event, 0),
+	}
+	store, err := NewMongoEventStore(bus, "localhost", "test")
 	c.Assert(store, NotNil)
 	c.Assert(err, IsNil)
 }
@@ -59,6 +66,7 @@ func (s *MongoEventStoreSuite) Test_OneEvent(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 1)
 	c.Assert(events[0], DeepEquals, event1)
+	c.Assert(s.bus.events, DeepEquals, events)
 }
 
 func (s *MongoEventStoreSuite) Test_TwoEvents(c *C) {
@@ -71,6 +79,7 @@ func (s *MongoEventStoreSuite) Test_TwoEvents(c *C) {
 	c.Assert(events, HasLen, 2)
 	c.Assert(events[0], DeepEquals, event1)
 	c.Assert(events[1], DeepEquals, event2)
+	c.Assert(s.bus.events, DeepEquals, events)
 }
 
 func (s *MongoEventStoreSuite) Test_DifferentAggregates(c *C) {
@@ -86,6 +95,7 @@ func (s *MongoEventStoreSuite) Test_DifferentAggregates(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 1)
 	c.Assert(events[0], DeepEquals, event2)
+	c.Assert(s.bus.events, DeepEquals, []Event{event1, event2})
 }
 
 func (s *MongoEventStoreSuite) Test_NotRegisteredEvent(c *C) {

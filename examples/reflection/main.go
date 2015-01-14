@@ -23,12 +23,15 @@ import (
 )
 
 func main() {
-	// Create the event store and dispatcher.
-	eventStore := eventhorizon.NewMemoryEventStore()
-
+	// Create the event bus that distributes events.
 	eventBus := eventhorizon.NewHandlerEventBus()
 	eventBus.AddGlobalHandler(&LoggerSubscriber{})
-	disp, err := eventhorizon.NewReflectDispatcher(eventStore, eventBus)
+
+	// Create the event store.
+	eventStore := eventhorizon.NewMemoryEventStore(eventBus)
+
+	// Create the dispatcher.
+	disp, err := eventhorizon.NewReflectDispatcher(eventStore)
 	if err != nil {
 		log.Fatalf("could not create dispatcher: %s", err)
 	}

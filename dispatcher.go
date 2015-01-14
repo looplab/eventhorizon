@@ -24,9 +24,6 @@ import (
 // Error returned when a dispatcher is created with a nil event store.
 var ErrNilEventStore = errors.New("event store is nil")
 
-// Error returned when a dispatcher is created with a nil event bus.
-var ErrNilEventBus = errors.New("event bus is nil")
-
 // Error returned when a handler is already registered for a command.
 var ErrHandlerAlreadySet = errors.New("handler is already set")
 
@@ -62,27 +59,20 @@ type Dispatcher interface {
 	Dispatch(Command) error
 }
 
-// DelegateDispatcher is a dispatcher that dispatches commands and publishes events
-// based on method names.
+// DelegateDispatcher is a dispatcher that dispatches commands based on delegation.
 type DelegateDispatcher struct {
 	eventStore      EventStore
-	eventBus        EventBus
 	commandHandlers map[reflect.Type]reflect.Type
 }
 
 // NewDelegateDispatcher creates a dispatcher and associates it with an event store.
-func NewDelegateDispatcher(store EventStore, bus EventBus) (*DelegateDispatcher, error) {
-	if store == nil {
+func NewDelegateDispatcher(eventStore EventStore) (*DelegateDispatcher, error) {
+	if eventStore == nil {
 		return nil, ErrNilEventStore
 	}
 
-	if bus == nil {
-		return nil, ErrNilEventBus
-	}
-
 	d := &DelegateDispatcher{
-		eventStore:      store,
-		eventBus:        bus,
+		eventStore:      eventStore,
 		commandHandlers: make(map[reflect.Type]reflect.Type),
 	}
 	return d, nil
@@ -139,11 +129,6 @@ func (d *DelegateDispatcher) handleCommand(handlerType reflect.Type, command Com
 		if err != nil {
 			return err
 		}
-
-		// Publish events
-		for _, event := range resultEvents {
-			d.eventBus.PublishEvent(event)
-		}
 	}
 
 	return nil
@@ -157,11 +142,9 @@ func (d *DelegateDispatcher) createAggregate(id UUID, handlerType reflect.Type) 
 	return aggregate
 }
 
-// ReflectDispatcher is a dispatcher that dispatches commands and publishes events
-// based on method names.
+// ReflectDispatcher is a dispatcher that dispatches commands based on method names.
 type ReflectDispatcher struct {
 	eventStore      EventStore
-	eventBus        EventBus
 	commandHandlers map[reflect.Type]handlerMethod
 }
 
@@ -171,18 +154,13 @@ type handlerMethod struct {
 }
 
 // NewReflectDispatcher creates a dispatcher and associates it with an event store.
-func NewReflectDispatcher(store EventStore, bus EventBus) (*ReflectDispatcher, error) {
-	if store == nil {
+func NewReflectDispatcher(eventStore EventStore) (*ReflectDispatcher, error) {
+	if eventStore == nil {
 		return nil, ErrNilEventStore
 	}
 
-	if bus == nil {
-		return nil, ErrNilEventBus
-	}
-
 	d := &ReflectDispatcher{
-		eventStore:      store,
-		eventBus:        bus,
+		eventStore:      eventStore,
 		commandHandlers: make(map[reflect.Type]handlerMethod),
 	}
 	return d, nil
@@ -302,11 +280,6 @@ func (d *ReflectDispatcher) handleCommand(handlerType reflect.Type, method refle
 		err := d.eventStore.Save(resultEvents)
 		if err != nil {
 			return err
-		}
-
-		// Publish events
-		for _, event := range resultEvents {
-			d.eventBus.PublishEvent(event)
 		}
 	}
 

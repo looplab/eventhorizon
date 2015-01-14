@@ -23,14 +23,21 @@ var _ = Suite(&TraceEventStoreSuite{})
 
 type MemoryEventStoreSuite struct {
 	store *MemoryEventStore
+	bus   *MockEventBus
 }
 
 func (s *MemoryEventStoreSuite) SetUpTest(c *C) {
-	s.store = NewMemoryEventStore()
+	s.bus = &MockEventBus{
+		events: make([]Event, 0),
+	}
+	s.store = NewMemoryEventStore(s.bus)
 }
 
 func (s *MemoryEventStoreSuite) Test_NewMemoryEventStore(c *C) {
-	store := NewMemoryEventStore()
+	bus := &MockEventBus{
+		events: make([]Event, 0),
+	}
+	store := NewMemoryEventStore(bus)
 	c.Assert(store, NotNil)
 }
 
@@ -47,6 +54,7 @@ func (s *MemoryEventStoreSuite) Test_OneEvent(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 1)
 	c.Assert(events[0], DeepEquals, event1)
+	c.Assert(s.bus.events, DeepEquals, events)
 }
 
 func (s *MemoryEventStoreSuite) Test_TwoEvents(c *C) {
@@ -59,6 +67,7 @@ func (s *MemoryEventStoreSuite) Test_TwoEvents(c *C) {
 	c.Assert(events, HasLen, 2)
 	c.Assert(events[0], DeepEquals, event1)
 	c.Assert(events[1], DeepEquals, event2)
+	c.Assert(s.bus.events, DeepEquals, events)
 }
 
 func (s *MemoryEventStoreSuite) Test_DifferentAggregates(c *C) {
@@ -74,6 +83,7 @@ func (s *MemoryEventStoreSuite) Test_DifferentAggregates(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(events, HasLen, 1)
 	c.Assert(events[0], DeepEquals, event2)
+	c.Assert(s.bus.events, DeepEquals, []Event{event1, event2})
 }
 
 func (s *MemoryEventStoreSuite) Test_LoadNoEvents(c *C) {
@@ -88,12 +98,12 @@ type TraceEventStoreSuite struct {
 }
 
 func (s *TraceEventStoreSuite) SetUpTest(c *C) {
-	s.baseStore = NewMemoryEventStore()
+	s.baseStore = NewMemoryEventStore(nil)
 	s.store = NewTraceEventStore(s.baseStore)
 }
 
 func (s *TraceEventStoreSuite) Test_NewTraceEventStore(c *C) {
-	store := NewTraceEventStore(NewMemoryEventStore())
+	store := NewTraceEventStore(NewMemoryEventStore(nil))
 	c.Assert(store, NotNil)
 }
 

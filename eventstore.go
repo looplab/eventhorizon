@@ -53,12 +53,14 @@ type EventRecord interface {
 
 // MemoryEventStore implements EventStore as an in memory structure.
 type MemoryEventStore struct {
+	eventBus         EventBus
 	aggregateRecords map[UUID]*memoryAggregateRecord
 }
 
 // NewMemoryEventStore creates a new MemoryEventStore.
-func NewMemoryEventStore() *MemoryEventStore {
+func NewMemoryEventStore(eventBus EventBus) *MemoryEventStore {
 	s := &MemoryEventStore{
+		eventBus:         eventBus,
 		aggregateRecords: make(map[UUID]*memoryAggregateRecord),
 	}
 	return s
@@ -87,6 +89,11 @@ func (s *MemoryEventStore) Save(events []Event) error {
 				version:     0,
 				events:      []*memoryEventRecord{r},
 			}
+		}
+
+		// Publish event on the bus.
+		if s.eventBus != nil {
+			s.eventBus.PublishEvent(event)
 		}
 	}
 

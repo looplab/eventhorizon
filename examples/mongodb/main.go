@@ -25,8 +25,12 @@ import (
 )
 
 func main() {
-	// Create the event store and dispatcher.
-	eventStore, err := eventhorizon.NewMongoEventStore("localhost", "demo")
+	// Create the event bus that distributes events.
+	eventBus := eventhorizon.NewHandlerEventBus()
+	eventBus.AddGlobalHandler(&LoggerSubscriber{})
+
+	// Create the event store.
+	eventStore, err := eventhorizon.NewMongoEventStore(eventBus, "localhost", "demo")
 	if err != nil {
 		log.Fatalf("could not create event store: %s", err)
 	}
@@ -35,9 +39,8 @@ func main() {
 	eventStore.RegisterEventType(&InviteAccepted{}, func() interface{} { return &InviteAccepted{} })
 	eventStore.RegisterEventType(&InviteDeclined{}, func() interface{} { return &InviteDeclined{} })
 
-	eventBus := eventhorizon.NewHandlerEventBus()
-	eventBus.AddGlobalHandler(&LoggerSubscriber{})
-	disp, err := eventhorizon.NewDelegateDispatcher(eventStore, eventBus)
+	// Create the dispatcher.
+	disp, err := eventhorizon.NewDelegateDispatcher(eventStore)
 	if err != nil {
 		log.Fatalf("could not create dispatcher: %s", err)
 	}
