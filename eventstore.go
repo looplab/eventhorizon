@@ -30,8 +30,8 @@ var ErrNoEventStoreDefined = errors.New("no event store defined")
 
 // EventStore is an interface for an event sourcing event store.
 type EventStore interface {
-	// Append appends all events in the event stream to the store.
-	Append([]Event) error
+	// Save appends all events in the event stream to the store.
+	Save([]Event) error
 
 	// Load loads all events for the aggregate id from the store.
 	Load(UUID) ([]Event, error)
@@ -64,8 +64,8 @@ func NewMemoryEventStore() *MemoryEventStore {
 	return s
 }
 
-// Append appends all events in the event stream to the memory store.
-func (s *MemoryEventStore) Append(events []Event) error {
+// Save appends all events in the event stream to the memory store.
+func (s *MemoryEventStore) Save(events []Event) error {
 	if len(events) == 0 {
 		return ErrNoEventsToAppend
 	}
@@ -136,14 +136,14 @@ func NewTraceEventStore(eventStore EventStore) *TraceEventStore {
 	return s
 }
 
-// Append appends all events to the base store and trace them if enabled.
-func (s *TraceEventStore) Append(events []Event) error {
+// Save appends all events to the base store and trace them if enabled.
+func (s *TraceEventStore) Save(events []Event) error {
 	if s.tracing {
 		s.trace = append(s.trace, events...)
 	}
 
 	if s.eventStore != nil {
-		return s.eventStore.Append(events)
+		return s.eventStore.Save(events)
 	}
 
 	return nil

@@ -95,8 +95,8 @@ type mongoEventRecord struct {
 	Data      bson.Raw  `bson:"data"`
 }
 
-// Append appends all events in the event stream to the database.
-func (s *MongoEventStore) Append(events []Event) error {
+// Save appends all events in the event stream to the database.
+func (s *MongoEventStore) Save(events []Event) error {
 	if len(events) == 0 {
 		return ErrNoEventsToAppend
 	}

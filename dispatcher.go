@@ -135,7 +135,7 @@ func (d *DelegateDispatcher) handleCommand(handlerType reflect.Type, command Com
 
 	if len(resultEvents) > 0 {
 		// Store events
-		err := d.eventStore.Append(resultEvents)
+		err := d.eventStore.Save(resultEvents)
 		if err != nil {
 			return err
 		}
@@ -299,7 +299,7 @@ func (d *ReflectDispatcher) handleCommand(handlerType reflect.Type, method refle
 
 	if len(resultEvents) > 0 {
 		// Store events
-		err := d.eventStore.Append(resultEvents)
+		err := d.eventStore.Save(resultEvents)
 		if err != nil {
 			return err
 		}

@@ -47,13 +47,13 @@ func (s *MongoEventStoreSuite) Test_NewMemoryEventStore(c *C) {
 }
 
 func (s *MongoEventStoreSuite) Test_NoEvents(c *C) {
-	err := s.store.Append([]Event{})
+	err := s.store.Save([]Event{})
 	c.Assert(err, Equals, ErrNoEventsToAppend)
 }
 
 func (s *MongoEventStoreSuite) Test_OneEvent(c *C) {
 	event1 := &TestEvent{NewUUID(), "event1"}
-	err := s.store.Append([]Event{event1})
+	err := s.store.Save([]Event{event1})
 	c.Assert(err, IsNil)
 	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, IsNil)
@@ -64,7 +64,7 @@ func (s *MongoEventStoreSuite) Test_OneEvent(c *C) {
 func (s *MongoEventStoreSuite) Test_TwoEvents(c *C) {
 	event1 := &TestEvent{NewUUID(), "event1"}
 	event2 := &TestEvent{event1.TestID, "event2"}
-	err := s.store.Append([]Event{event1, event2})
+	err := s.store.Save([]Event{event1, event2})
 	c.Assert(err, IsNil)
 	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, IsNil)
@@ -76,7 +76,7 @@ func (s *MongoEventStoreSuite) Test_TwoEvents(c *C) {
 func (s *MongoEventStoreSuite) Test_DifferentAggregates(c *C) {
 	event1 := &TestEvent{NewUUID(), "event1"}
 	event2 := &TestEvent{NewUUID(), "event2"}
-	err := s.store.Append([]Event{event1, event2})
+	err := s.store.Save([]Event{event1, event2})
 	c.Assert(err, IsNil)
 	events, err := s.store.Load(event1.TestID)
 	c.Assert(err, IsNil)
@@ -90,7 +90,7 @@ func (s *MongoEventStoreSuite) Test_DifferentAggregates(c *C) {
 
 func (s *MongoEventStoreSuite) Test_NotRegisteredEvent(c *C) {
 	event1 := &TestEventOther{NewUUID(), "event1"}
-	err := s.store.Append([]Event{event1})
+	err := s.store.Save([]Event{event1})
 	c.Assert(err, IsNil)
 	events, err := s.store.Load(event1.TestID)
 	c.Assert(events, IsNil)

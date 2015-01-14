@@ -100,7 +100,7 @@ type MockEventStore struct {
 	loaded UUID
 }
 
-func (m *MockEventStore) Append(events []Event) error {
+func (m *MockEventStore) Save(events []Event) error {
 	m.events = append(m.events, events...)
 	return nil
 }
