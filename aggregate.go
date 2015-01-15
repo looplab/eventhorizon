@@ -14,17 +14,12 @@
 
 package eventhorizon
 
-// Aggregate is a CQRS aggregate base to embed in domain specific aggregates.
+// Aggregate is an interface representing a versioned data entity created from
+// events. It receives commands and generates evens that are stored.
 //
-// A domain specific aggregate is any struct that implements the Aggregate
-// interface, often by embedding. A typical aggregate example:
-//   type UserAggregate struct {
-//       *eventhorizon.AggregateBase
-//
-//       name string
-//   }
-// The embedded aggregate is then initialized by the factory function in the
-// repository.
+// The aggregate is created/loaded and saved by the Repository inside the
+// Dispatcher. A domain specific aggregate can either imlement the full interface,
+// or more commonly embed *AggregateBase to take care of the common methods.
 type Aggregate interface {
 	// AggregateID returns the id of the aggregate.
 	AggregateID() UUID
@@ -54,10 +49,16 @@ type Aggregate interface {
 	ClearUncommittedEvents()
 }
 
-// AggregateBase is an implementation of Aggregate using delegation.
+// AggregateBase is a CQRS aggregate base to embed in domain specific aggregates.
 //
-// This implementation is used by the Dispatcher and will delegate all
-// event handling to the concrete aggregate.
+// A typical aggregate example:
+//   type UserAggregate struct {
+//       *eventhorizon.AggregateBase
+//
+//       name string
+//   }
+// The embedded aggregate is then initialized by the factory function in the
+// callback repository.
 type AggregateBase struct {
 	id                UUID
 	version           int
