@@ -103,7 +103,7 @@ func (d *Dispatcher) Dispatch(command Command) error {
 		return err
 	}
 
-	if err = aggregate.(CommandHandler).HandleCommand(command); err != nil {
+	if err = aggregate.HandleCommand(command); err != nil {
 		return err
 	}
 

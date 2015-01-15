@@ -59,6 +59,10 @@ func (t *TestRepositoryAggregate) AggregateType() string {
 	return "TestRepositoryAggregate"
 }
 
+func (t *TestRepositoryAggregate) HandleCommand(command Command) error {
+	return nil
+}
+
 func (t *TestRepositoryAggregate) ApplyEvent(event Event) {
 	t.event = event
 }

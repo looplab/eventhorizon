@@ -38,6 +38,9 @@ type Aggregate interface {
 	// IncrementVersion increments the aggregate version.
 	IncrementVersion()
 
+	// HandleCommand handles a command and stores events.
+	HandleCommand(Command) error
+
 	// ApplyEvent applies an event to the aggregate by setting its values.
 	ApplyEvent(events Event)
 

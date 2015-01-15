@@ -38,7 +38,7 @@ func (t *TestAggregate) AggregateType() string {
 }
 
 func (t *TestAggregate) ApplyEvent(event Event) {
-	a.events = append(a.events, event)
+	t.events = append(t.events, event)
 }
 
 type TestEvent struct {
