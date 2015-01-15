@@ -19,20 +19,36 @@ package eventhorizon
 // A domain specific aggregate is any struct that implements the Aggregate
 // interface, often by embedding. A typical aggregate example:
 //   type UserAggregate struct {
-//       eventhorizon.Aggregate
+//       *eventhorizon.AggregateBase
 //
 //       name string
 //   }
-// The embedded aggregate is then initialized by the dispatcher with AggregateBase.
+// The embedded aggregate is then initialized by the factory function in the
+// repository.
 type Aggregate interface {
 	// AggregateID returns the id of the aggregate.
 	AggregateID() UUID
 
-	// ApplyEvent applies an event to the aggregate by setting its values.
-	ApplyEvent(event Event)
+	// AggregateType returns the type name of the aggregate.
+	AggregateType() string
 
-	// ApplyEvents applies several events by calling ApplyEvent.
-	ApplyEvents(events []Event)
+	// Version returns the version of the aggregate.
+	Version() int
+
+	// IncrementVersion increments the aggregate version.
+	IncrementVersion()
+
+	// ApplyEvent applies an event to the aggregate by setting its values.
+	ApplyEvent(events Event)
+
+	// StoreEvent stores an event until as uncommitted.
+	StoreEvent(Event)
+
+	// GetUncommittedEvents gets all uncommitted events for storing.
+	GetUncommittedEvents() []Event
+
+	// ClearUncommittedEvents clears all uncommitted events after storing.
+	ClearUncommittedEvents()
 }
 
 // AggregateBase is an implementation of Aggregate using delegation.
@@ -40,17 +56,16 @@ type Aggregate interface {
 // This implementation is used by the Dispatcher and will delegate all
 // event handling to the concrete aggregate.
 type AggregateBase struct {
-	id           UUID
-	eventsLoaded int
-	delegate     EventHandler
+	id                UUID
+	version           int
+	uncommittedEvents []Event
 }
 
 // NewAggregateBase creates an aggregate.
-func NewAggregateBase(id UUID, delegate EventHandler) *AggregateBase {
+func NewAggregateBase(id UUID) *AggregateBase {
 	return &AggregateBase{
-		id:           id,
-		eventsLoaded: 0,
-		delegate:     delegate,
+		id:                id,
+		uncommittedEvents: []Event{},
 	}
 }
 
@@ -59,15 +74,27 @@ func (a *AggregateBase) AggregateID() UUID {
 	return a.id
 }
 
-// ApplyEvent applies an event using the handler.
-func (a *AggregateBase) ApplyEvent(event Event) {
-	a.delegate.HandleEvent(event)
-	a.eventsLoaded++
+// Version returns the version of the aggregate.
+func (a *AggregateBase) Version() int {
+	return a.version
 }
 
-// ApplyEvents applies an event stream using the handler.
-func (a *AggregateBase) ApplyEvents(events []Event) {
-	for _, event := range events {
-		a.ApplyEvent(event)
-	}
+// IncrementVersion increments the aggregate version.
+func (a *AggregateBase) IncrementVersion() {
+	a.version++
+}
+
+// StoreEvent stores an event until as uncommitted.
+func (a *AggregateBase) StoreEvent(event Event) {
+	a.uncommittedEvents = append(a.uncommittedEvents, event)
+}
+
+// GetUncommittedEvents gets all uncommitted events for storing.
+func (a *AggregateBase) GetUncommittedEvents() []Event {
+	return a.uncommittedEvents
+}
+
+// ClearUncommittedEvents clears all uncommitted events after storing.
+func (a *AggregateBase) ClearUncommittedEvents() {
+	a.uncommittedEvents = []Event{}
 }

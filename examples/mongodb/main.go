@@ -39,8 +39,23 @@ func main() {
 	eventStore.RegisterEventType(&InviteAccepted{}, func() interface{} { return &InviteAccepted{} })
 	eventStore.RegisterEventType(&InviteDeclined{}, func() interface{} { return &InviteDeclined{} })
 
+	// Create the aggregate repository.
+	repository, err := eventhorizon.NewCallbackRepository(eventStore)
+	if err != nil {
+		log.Fatalf("could not create repository: %s", err)
+	}
+
+	// Register an aggregate factory.
+	repository.RegisterAggregate(&InvitationAggregate{},
+		func(id eventhorizon.UUID) eventhorizon.Aggregate {
+			return &InvitationAggregate{
+				AggregateBase: eventhorizon.NewAggregateBase(id),
+			}
+		},
+	)
+
 	// Create the dispatcher.
-	disp, err := eventhorizon.NewDispatcher(eventStore)
+	disp, err := eventhorizon.NewDispatcher(repository)
 	if err != nil {
 		log.Fatalf("could not create dispatcher: %s", err)
 	}

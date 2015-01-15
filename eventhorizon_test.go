@@ -29,10 +29,15 @@ type EmptyAggregate struct {
 }
 
 type TestAggregate struct {
+	*AggregateBase
 	events []Event
 }
 
-func (a *TestAggregate) HandleEvent(event Event) {
+func (t *TestAggregate) AggregateType() string {
+	return "TestAggregate"
+}
+
+func (t *TestAggregate) ApplyEvent(event Event) {
 	a.events = append(a.events, event)
 }
 
@@ -82,6 +87,19 @@ type MockEventHandler struct {
 
 func (m *MockEventHandler) HandleEvent(event Event) {
 	m.events = append(m.events, event)
+}
+
+type MockRepository struct {
+	aggregates map[UUID]Aggregate
+}
+
+func (m *MockRepository) Load(aggregateType string, id UUID) (Aggregate, error) {
+	return m.aggregates[id], nil
+}
+
+func (m *MockRepository) Save(aggregate Aggregate) error {
+	m.aggregates[aggregate.AggregateID()] = aggregate
+	return nil
 }
 
 type MockEventStore struct {

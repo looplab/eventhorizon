@@ -28,7 +28,7 @@ import (
 // declined, but not both.
 
 type InvitationAggregate struct {
-	eventhorizon.Aggregate
+	*eventhorizon.AggregateBase
 
 	name     string
 	age      int
@@ -36,51 +36,52 @@ type InvitationAggregate struct {
 	declined bool
 }
 
-func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) ([]eventhorizon.Event, error) {
+func (i *InvitationAggregate) AggregateType() string {
+	return "Invitation"
+}
+
+func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) error {
 	switch command := command.(type) {
 	case *CreateInvite:
-		return []eventhorizon.Event{
-			&InviteCreated{command.InvitationID, command.Name, command.Age},
-		}, nil
+		i.StoreEvent(&InviteCreated{command.InvitationID, command.Name, command.Age})
+		return nil
 
 	case *AcceptInvite:
 		if i.name == "" {
-			return nil, fmt.Errorf("invitee does not exist")
+			return fmt.Errorf("invitee does not exist")
 		}
 
 		if i.declined {
-			return nil, fmt.Errorf("%s already declined", i.name)
+			return fmt.Errorf("%s already declined", i.name)
 		}
 
 		if i.accepted {
-			return nil, nil
+			return nil
 		}
 
-		return []eventhorizon.Event{
-			&InviteAccepted{i.AggregateID()},
-		}, nil
+		i.StoreEvent(&InviteAccepted{i.AggregateID()})
+		return nil
 
 	case *DeclineInvite:
 		if i.name == "" {
-			return nil, fmt.Errorf("invitee does not exist")
+			return fmt.Errorf("invitee does not exist")
 		}
 
 		if i.accepted {
-			return nil, fmt.Errorf("%s already accepted", i.name)
+			return fmt.Errorf("%s already accepted", i.name)
 		}
 
 		if i.declined {
-			return nil, nil
+			return nil
 		}
 
-		return []eventhorizon.Event{
-			&InviteDeclined{i.AggregateID()},
-		}, nil
+		i.StoreEvent(&InviteDeclined{i.AggregateID()})
+		return nil
 	}
-	return nil, fmt.Errorf("couldn't handle command")
+	return fmt.Errorf("couldn't handle command")
 }
 
-func (i *InvitationAggregate) HandleEvent(event eventhorizon.Event) {
+func (i *InvitationAggregate) ApplyEvent(event eventhorizon.Event) {
 	switch event := event.(type) {
 	case *InviteCreated:
 		i.name = event.Name

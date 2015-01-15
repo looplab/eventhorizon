@@ -20,8 +20,8 @@ import (
 	"time"
 )
 
-// Error returned when a dispatcher is created with a nil event store.
-var ErrNilEventStore = errors.New("event store is nil")
+// Error returned when a dispatcher is created with a nil repository.
+var ErrNilRepository = errors.New("repository is nil")
 
 // Error returned when a handler is already registered for a command.
 var ErrHandlerAlreadySet = errors.New("handler is already set")
@@ -48,27 +48,40 @@ func (c CommandFieldError) Error() string {
 //
 // The dispatch process is as follows:
 // 1. The dispatcher receives a command
-// 2. An aggregate is created or rebuilt from previous events in event store
+// 2. An aggregate is created or rebuilt from previous events by the repository
 // 3. The aggregate's command handler is called
-// 4. The aggregate generates events in response to the command
-// 5. The events are stored in the event store
-// 6. The events are published to the event bus
+// 4. The aggregate stores events in response to the command
+// 5. The new events are stored in the event store by the repository
+// 6. The events are published to the event bus when stored by the event store
 type Dispatcher struct {
-	eventStore      EventStore
-	commandHandlers map[string]reflect.Type
+	repository   Repository
+	handlerTypes map[string]string
 }
 
 // NewDispatcher creates a dispatcher and associates it with an event store.
-func NewDispatcher(eventStore EventStore) (*Dispatcher, error) {
-	if eventStore == nil {
-		return nil, ErrNilEventStore
+func NewDispatcher(repository Repository) (*Dispatcher, error) {
+	if repository == nil {
+		return nil, ErrNilRepository
 	}
 
 	d := &Dispatcher{
-		eventStore:      eventStore,
-		commandHandlers: make(map[string]reflect.Type),
+		repository:   repository,
+		handlerTypes: make(map[string]string),
 	}
 	return d, nil
+}
+
+// SetHandler sets a handler for a command.
+func (d *Dispatcher) SetHandler(aggregate Aggregate, command Command) error {
+	// Check for already existing handler.
+	if _, ok := d.handlerTypes[command.CommandType()]; ok {
+		return ErrHandlerAlreadySet
+	}
+
+	// Add aggregate type to command type.
+	d.handlerTypes[command.CommandType()] = aggregate.AggregateType()
+
+	return nil
 }
 
 // Dispatch dispatches a command to the registered command handler.
@@ -79,22 +92,24 @@ func (d *Dispatcher) Dispatch(command Command) error {
 		return err
 	}
 
-	if handlerType, ok := d.commandHandlers[command.CommandType()]; ok {
-		return d.handleCommand(handlerType, command)
-	}
-	return ErrHandlerNotFound
-}
-
-// SetHandler sets a handler for a command.
-func (d *Dispatcher) SetHandler(handler CommandHandler, command Command) error {
-	// Check for already existing handler.
-	if _, ok := d.commandHandlers[command.CommandType()]; ok {
-		return ErrHandlerAlreadySet
+	var aggregateType string
+	var ok bool
+	if aggregateType, ok = d.handlerTypes[command.CommandType()]; !ok {
+		return ErrHandlerNotFound
 	}
 
-	// Add aggregate type to command type.
-	handlerBaseType := reflect.Indirect(reflect.ValueOf(handler)).Type()
-	d.commandHandlers[command.CommandType()] = handlerBaseType
+	var aggregate Aggregate
+	if aggregate, err = d.repository.Load(aggregateType, command.AggregateID()); err != nil {
+		return err
+	}
+
+	if err = aggregate.(CommandHandler).HandleCommand(command); err != nil {
+		return err
+	}
+
+	if err = d.repository.Save(aggregate); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -119,39 +134,6 @@ func (d *Dispatcher) checkCommand(command Command) error {
 		}
 	}
 	return nil
-}
-
-func (d *Dispatcher) handleCommand(handlerType reflect.Type, command Command) error {
-	// Create aggregate from its type
-	aggregate := d.createAggregate(command.AggregateID(), handlerType)
-
-	// Load aggregate events
-	events, _ := d.eventStore.Load(aggregate.AggregateID())
-	aggregate.ApplyEvents(events)
-
-	// Call handler, keep events
-	resultEvents, err := aggregate.(CommandHandler).HandleCommand(command)
-	if err != nil {
-		return err
-	}
-
-	if len(resultEvents) > 0 {
-		// Store events
-		err := d.eventStore.Save(resultEvents)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (d *Dispatcher) createAggregate(id UUID, handlerType reflect.Type) Aggregate {
-	handlerObj := reflect.New(handlerType)
-	handlerValue := reflect.ValueOf(NewAggregateBase(id, handlerObj.Interface().(EventHandler)))
-	handlerObj.Elem().FieldByName("Aggregate").Set(handlerValue)
-	aggregate := handlerObj.Interface().(Aggregate)
-	return aggregate
 }
 
 func isZero(v reflect.Value) bool {

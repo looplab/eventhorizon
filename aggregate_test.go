@@ -23,80 +23,41 @@ var _ = Suite(&AggregateBaseSuite{})
 type AggregateBaseSuite struct{}
 
 func (s *AggregateBaseSuite) Test_NewAggregateBase(c *C) {
-	var nilID UUID
-	delegate := &TestAggregate{}
-	agg := NewAggregateBase(nilID, delegate)
-	c.Assert(agg, Not(Equals), nil)
-	c.Assert(agg.id, Equals, nilID)
-	c.Assert(agg.eventsLoaded, Equals, 0)
-	c.Assert(agg.delegate, Equals, delegate)
+	id := NewUUID()
+	agg := NewAggregateBase(id)
+	c.Assert(agg, NotNil)
+	c.Assert(agg.AggregateID(), Equals, id)
+	c.Assert(agg.Version(), Equals, 0)
 }
 
-func (s *AggregateBaseSuite) Test_AggregateID(c *C) {
-	id := NewUUID()
-	agg := NewAggregateBase(id, nil)
-	result := agg.AggregateID()
-	c.Assert(result, Equals, id)
+func (s *AggregateBaseSuite) Test_IncrementVersion(c *C) {
+	agg := NewAggregateBase(NewUUID())
+	c.Assert(agg.Version(), Equals, 0)
+	agg.IncrementVersion()
+	c.Assert(agg.Version(), Equals, 1)
 }
 
-func (s *AggregateBaseSuite) Test_ApplyEvent_OneEvent(c *C) {
-	id := NewUUID()
-	delegate := &TestAggregate{
-		events: make([]Event, 0),
-	}
-	agg := NewAggregateBase(id, delegate)
+func (s *AggregateBaseSuite) Test_StoreEvent_OneEvent(c *C) {
+	agg := NewAggregateBase(NewUUID())
 	event1 := &TestEvent{NewUUID(), "event1"}
-	agg.ApplyEvent(event1)
-	c.Assert(agg.eventsLoaded, Equals, 1)
-	c.Assert(delegate.events, DeepEquals, []Event{event1})
+	agg.StoreEvent(event1)
+	c.Assert(agg.GetUncommittedEvents(), DeepEquals, []Event{event1})
 }
 
-func (s *AggregateBaseSuite) Test_ApplyEvent_TwoEvents(c *C) {
-	id := NewUUID()
-	delegate := &TestAggregate{
-		events: make([]Event, 0),
-	}
-	agg := NewAggregateBase(id, delegate)
+func (s *AggregateBaseSuite) Test_StoreEvent_TwoEvents(c *C) {
+	agg := NewAggregateBase(NewUUID())
 	event1 := &TestEvent{NewUUID(), "event1"}
 	event2 := &TestEvent{NewUUID(), "event2"}
-	agg.ApplyEvent(event1)
-	agg.ApplyEvent(event2)
-	c.Assert(agg.eventsLoaded, Equals, 2)
-	c.Assert(delegate.events, DeepEquals, []Event{event1, event2})
+	agg.StoreEvent(event1)
+	agg.StoreEvent(event2)
+	c.Assert(agg.GetUncommittedEvents(), DeepEquals, []Event{event1, event2})
 }
 
-func (s *AggregateBaseSuite) Test_ApplyEvents_OneEvent(c *C) {
-	id := NewUUID()
-	delegate := &TestAggregate{
-		events: make([]Event, 0),
-	}
-	agg := NewAggregateBase(id, delegate)
+func (s *AggregateBaseSuite) Test_ClearUncommittedEvent_OneEvent(c *C) {
+	agg := NewAggregateBase(NewUUID())
 	event1 := &TestEvent{NewUUID(), "event1"}
-	agg.ApplyEvents([]Event{event1})
-	c.Assert(agg.eventsLoaded, Equals, 1)
-	c.Assert(delegate.events, DeepEquals, []Event{event1})
-}
-
-func (s *AggregateBaseSuite) Test_ApplyEvents_TwoEvents(c *C) {
-	id := NewUUID()
-	delegate := &TestAggregate{
-		events: make([]Event, 0),
-	}
-	agg := NewAggregateBase(id, delegate)
-	event1 := &TestEvent{NewUUID(), "event1"}
-	event2 := &TestEvent{NewUUID(), "event2"}
-	agg.ApplyEvents([]Event{event1, event2})
-	c.Assert(agg.eventsLoaded, Equals, 2)
-	c.Assert(delegate.events, DeepEquals, []Event{event1, event2})
-}
-
-func (s *AggregateBaseSuite) Test_ApplyEvents_NoEvent(c *C) {
-	id := NewUUID()
-	delegate := &TestAggregate{
-		events: make([]Event, 0),
-	}
-	agg := NewAggregateBase(id, delegate)
-	agg.ApplyEvents([]Event{})
-	c.Assert(agg.eventsLoaded, Equals, 0)
-	c.Assert(delegate.events, DeepEquals, []Event{})
+	agg.StoreEvent(event1)
+	c.Assert(agg.GetUncommittedEvents(), DeepEquals, []Event{event1})
+	agg.ClearUncommittedEvents()
+	c.Assert(agg.GetUncommittedEvents(), DeepEquals, []Event{})
 }

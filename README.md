@@ -40,6 +40,8 @@ See the example folder for a basic usage example to get you started.
 
 ### 2015-01-14
 
+Add Repository that creates/loads and saves aggregates. This needed additional methods in the Aggregate interface.
+
 Removed the reflection based dispatcher, the code was worse performing and harder to test. There was also a bit too much magic going on. If you would like it back open an issue for further discussion.
 
 Renamed Repository to ReadRepository to better adhere to CQRS standards and to free the name to a Aggregate/Saga repository in development.

@@ -24,66 +24,77 @@ import (
 var _ = Suite(&DispatcherSuite{})
 
 type DispatcherSuite struct {
-	store *MockEventStore
-	disp  *Dispatcher
+	repo *MockRepository
+	disp *Dispatcher
 }
 
 func (s *DispatcherSuite) SetUpTest(c *C) {
-	s.store = &MockEventStore{
-		events: make([]Event, 0),
+	s.repo = &MockRepository{
+		aggregates: make(map[UUID]Aggregate),
 	}
-	s.disp, _ = NewDispatcher(s.store)
+	s.disp, _ = NewDispatcher(s.repo)
 }
 
 func (s *DispatcherSuite) Test_NewDispatcher(c *C) {
-	store := &MockEventStore{
-		events: make([]Event, 0),
+	repo := &MockRepository{
+		aggregates: make(map[UUID]Aggregate),
 	}
-	disp, err := NewDispatcher(store)
+	disp, err := NewDispatcher(repo)
 	c.Assert(disp, NotNil)
 	c.Assert(err, IsNil)
 }
 
-func (s *DispatcherSuite) Test_NewDispatcher_NilEventStore(c *C) {
+func (s *DispatcherSuite) Test_NewDispatcher_ErrNilRepository(c *C) {
 	disp, err := NewDispatcher(nil)
 	c.Assert(disp, IsNil)
-	c.Assert(err, Equals, ErrNilEventStore)
+	c.Assert(err, Equals, ErrNilRepository)
 }
 
 var dispatchedCommand Command
 
 type TestDispatcherAggregate struct {
-	Aggregate
+	*AggregateBase
 }
 
-func (t *TestDispatcherAggregate) HandleCommand(command Command) ([]Event, error) {
+func (t *TestDispatcherAggregate) AggregateType() string {
+	return "TestDispatcherAggregate"
+}
+
+func (t *TestDispatcherAggregate) HandleCommand(command Command) error {
 	dispatchedCommand = command
 	switch command := command.(type) {
 	case *TestCommand:
 		if command.Content == "error" {
-			return nil, fmt.Errorf("command error")
+			return fmt.Errorf("command error")
 		}
-		return []Event{&TestEvent{command.TestID, command.Content}}, nil
+		t.StoreEvent(&TestEvent{command.TestID, command.Content})
+		return nil
 	}
-	return nil, fmt.Errorf("couldn't handle command")
+	return fmt.Errorf("couldn't handle command")
 }
 
-func (t *TestDispatcherAggregate) HandleEvent(event Event) {
+func (t *TestDispatcherAggregate) ApplyEvent(event Event) {
 }
 
 func (s *DispatcherSuite) Test_Simple(c *C) {
-	aggregate := &TestDispatcherAggregate{}
+	aggregate := &TestDispatcherAggregate{
+		AggregateBase: NewAggregateBase(NewUUID()),
+	}
+	s.repo.aggregates[aggregate.AggregateID()] = aggregate
 	s.disp.SetHandler(aggregate, &TestCommand{})
-	command1 := &TestCommand{NewUUID(), "command1"}
+	command1 := &TestCommand{aggregate.AggregateID(), "command1"}
 	err := s.disp.Dispatch(command1)
 	c.Assert(dispatchedCommand, Equals, command1)
 	c.Assert(err, IsNil)
 }
 
 func (s *DispatcherSuite) Test_ErrorInHandler(c *C) {
-	aggregate := &TestDispatcherAggregate{}
+	aggregate := &TestDispatcherAggregate{
+		AggregateBase: NewAggregateBase(NewUUID()),
+	}
+	s.repo.aggregates[aggregate.AggregateID()] = aggregate
 	s.disp.SetHandler(aggregate, &TestCommand{})
-	commandError := &TestCommand{NewUUID(), "error"}
+	commandError := &TestCommand{aggregate.AggregateID(), "error"}
 	err := s.disp.Dispatch(commandError)
 	c.Assert(err, ErrorMatches, "command error")
 	c.Assert(dispatchedCommand, Equals, commandError)
@@ -107,27 +118,34 @@ func (s *DispatcherSuite) Test_SetHandler_Twice(c *C) {
 var callCountDispatcher int
 
 type BenchmarkDispatcherAggregate struct {
-	Aggregate
+	*AggregateBase
 }
 
-func (t *BenchmarkDispatcherAggregate) HandleCommand(command Command) ([]Event, error) {
+func (t *BenchmarkDispatcherAggregate) AggregateType() string {
+	return "BenchmarkDispatcherAggregate"
+}
+
+func (t *BenchmarkDispatcherAggregate) HandleCommand(command Command) error {
 	callCountDispatcher++
-	return nil, nil
+	return nil
 }
 
-func (t *BenchmarkDispatcherAggregate) HandleEvent(event Event) {
+func (t *BenchmarkDispatcherAggregate) ApplyEvent(event Event) {
 }
 
 func (s *DispatcherSuite) Benchmark_Dispatcher(c *C) {
-	store := &MockEventStore{
-		events: make([]Event, 0),
+	repo := &MockRepository{
+		aggregates: make(map[UUID]Aggregate),
 	}
-	disp, _ := NewDispatcher(store)
-	agg := &BenchmarkDispatcherAggregate{}
+	disp, _ := NewDispatcher(repo)
+	agg := &TestDispatcherAggregate{
+		AggregateBase: NewAggregateBase(NewUUID()),
+	}
+	repo.aggregates[agg.AggregateID()] = agg
 	disp.SetHandler(agg, &TestCommand{})
 
 	callCountDispatcher = 0
-	command1 := &TestCommand{NewUUID(), "command1"}
+	command1 := &TestCommand{agg.AggregateID(), "command1"}
 	for i := 0; i < c.N; i++ {
 		disp.Dispatch(command1)
 	}
