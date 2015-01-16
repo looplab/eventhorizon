@@ -53,7 +53,7 @@ type MongoEventStore struct {
 	eventBus  EventBus
 	session   *mgo.Session
 	db        string
-	factories map[string]func() interface{}
+	factories map[string]func() Event
 }
 
 // NewMongoEventStore creates a new MongoEventStore.
@@ -73,7 +73,7 @@ func NewMongoEventStore(eventBus EventBus, host, database string) (*MongoEventSt
 func NewMongoEventStoreWithSession(eventBus EventBus, session *mgo.Session, database string) (*MongoEventStore, error) {
 	s := &MongoEventStore{
 		eventBus:  eventBus,
-		factories: make(map[string]func() interface{}),
+		factories: make(map[string]func() Event),
 		session:   session,
 		db:        database,
 	}
@@ -213,7 +213,7 @@ func (s *MongoEventStore) Load(id UUID) ([]Event, error) {
 //
 // An example would be:
 //     eventStore.RegisterEventType(&MyEvent{}, func() interface{} { return &MyEvent{} })
-func (s *MongoEventStore) RegisterEventType(event Event, factory func() interface{}) error {
+func (s *MongoEventStore) RegisterEventType(event Event, factory func() Event) error {
 	if _, ok := s.factories[event.EventType()]; ok {
 		return ErrHandlerAlreadySet
 	}

@@ -34,7 +34,7 @@ func (s *MongoEventStoreSuite) SetUpTest(c *C) {
 	var err error
 	s.store, err = NewMongoEventStore(s.bus, "localhost", "test")
 	c.Assert(err, IsNil)
-	err = s.store.RegisterEventType(&TestEvent{}, func() interface{} { return &TestEvent{} })
+	err = s.store.RegisterEventType(&TestEvent{}, func() Event { return &TestEvent{} })
 	c.Assert(err, IsNil)
 	err = s.store.Clear()
 	c.Assert(err, IsNil)
