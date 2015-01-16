@@ -55,5 +55,59 @@ func (p *InvitationProjector) HandleEvent(event eventhorizon.Event) {
 		i := m.(*Invitation)
 		i.Status = "declined"
 		p.repository.Save(i.ID, i)
+	case *InviteConfirmed:
+		m, _ := p.repository.Find(event.InvitationID)
+		i := m.(*Invitation)
+		i.Status = "declined"
+		p.repository.Save(i.ID, i)
+	}
+}
+
+type GuestList struct {
+	NumGuests    int
+	NumAccepted  int
+	NumDeclined  int
+	NumConfirmed int
+}
+
+// Projector that writes to a read model
+
+type GuestListProjector struct {
+	repository eventhorizon.ReadRepository
+	eventID    eventhorizon.UUID
+}
+
+func NewGuestListProjector(repository eventhorizon.ReadRepository, eventID eventhorizon.UUID) *GuestListProjector {
+	p := &GuestListProjector{
+		repository: repository,
+		eventID:    eventID,
+	}
+	return p
+}
+
+func (p *GuestListProjector) HandleEvent(event eventhorizon.Event) {
+	switch event.(type) {
+	case *InviteCreated:
+		m, _ := p.repository.Find(p.eventID)
+		if m == nil {
+			m = &GuestList{}
+		}
+		g := m.(*GuestList)
+		p.repository.Save(p.eventID, g)
+	case *InviteAccepted:
+		m, _ := p.repository.Find(p.eventID)
+		g := m.(*GuestList)
+		g.NumAccepted++
+		p.repository.Save(p.eventID, g)
+	case *InviteDeclined:
+		m, _ := p.repository.Find(p.eventID)
+		g := m.(*GuestList)
+		g.NumDeclined++
+		p.repository.Save(p.eventID, g)
+	case *InviteConfirmed:
+		m, _ := p.repository.Find(p.eventID)
+		g := m.(*GuestList)
+		g.NumConfirmed++
+		p.repository.Save(p.eventID, g)
 	}
 }
