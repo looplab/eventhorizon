@@ -38,9 +38,14 @@ See the example folder for a basic usage example to get you started.
 
 # Changes
 
+### 2015-01-20
+
+Addded CommandBus that routes commands to handlers. This is for upcoming Saga support. The dispatcher is now renamed to AggregateCommandHandler and must be added to the CommandBus. At the moment Commands have to registered both in the handler and on the bus, this may change in the future.
+
+
 ### 2015-01-14
 
-Add Repository that creates/loads and saves aggregates. This needed additional methods in the Aggregate interface.
+Added Repository that creates/loads and saves aggregates. This needed additional methods in the Aggregate interface.
 
 Removed the reflection based dispatcher, the code was worse performing and harder to test. There was also a bit too much magic going on. If you would like it back open an issue for further discussion.
 
