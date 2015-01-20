@@ -24,7 +24,7 @@ var ErrModelNotFound = errors.New("could not find model")
 // ReadRepository is a storage for read models.
 type ReadRepository interface {
 	// Save saves a read model with id to the repository.
-	Save(UUID, interface{})
+	Save(UUID, interface{}) error
 
 	// Find returns one read model with using an id.
 	Find(UUID) (interface{}, error)
@@ -50,8 +50,9 @@ func NewMemoryReadRepository() *MemoryReadRepository {
 }
 
 // Save saves a read model with id to the repository.
-func (r *MemoryReadRepository) Save(id UUID, model interface{}) {
+func (r *MemoryReadRepository) Save(id UUID, model interface{}) error {
 	r.data[id] = model
+	return nil
 }
 
 // Find returns one read model with using an id. Returns
