@@ -51,7 +51,6 @@ func NewMemoryReadRepository() *MemoryReadRepository {
 
 // Save saves a read model with id to the repository.
 func (r *MemoryReadRepository) Save(id UUID, model interface{}) {
-	// log.Printf("read model: saving %#v", model)
 	r.data[id] = model
 }
 
@@ -59,7 +58,6 @@ func (r *MemoryReadRepository) Save(id UUID, model interface{}) {
 // ErrModelNotFound if no model could be found.
 func (r *MemoryReadRepository) Find(id UUID) (interface{}, error) {
 	if model, ok := r.data[id]; ok {
-		// log.Printf("read model: found %#v", model)
 		return model, nil
 	}
 
@@ -80,7 +78,6 @@ func (r *MemoryReadRepository) FindAll() ([]interface{}, error) {
 func (r *MemoryReadRepository) Remove(id UUID) error {
 	if _, ok := r.data[id]; ok {
 		delete(r.data, id)
-		// log.Printf("read model: removed %#v", model)
 		return nil
 	}
 
