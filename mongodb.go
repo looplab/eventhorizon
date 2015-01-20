@@ -212,7 +212,7 @@ func (s *MongoEventStore) Load(id UUID) ([]Event, error) {
 // used to create concrete event types when loading from the database.
 //
 // An example would be:
-//     eventStore.RegisterEventType(&MyEvent{}, func() interface{} { return &MyEvent{} })
+//     eventStore.RegisterEventType(&MyEvent{}, func() Event { return &MyEvent{} })
 func (s *MongoEventStore) RegisterEventType(event Event, factory func() Event) error {
 	if _, ok := s.factories[event.EventType()]; ok {
 		return ErrHandlerAlreadySet
