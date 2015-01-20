@@ -32,7 +32,7 @@ type CommandHandler interface {
 // CommandBus is an interface defining an event bus for distributing events.
 type CommandBus interface {
 	// HandleCommand handles a command on the event bus.
-	HandleCommand(Event) error
+	HandleCommand(Command) error
 	// SetHandler registers a handler with a command.
 	SetHandler(CommandHandler, Command) error
 }
