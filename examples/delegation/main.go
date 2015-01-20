@@ -45,25 +45,23 @@ func main() {
 		},
 	)
 
-	// Create the dispatcher.
-	disp, err := eventhorizon.NewDispatcher(repository)
+	// Create the aggregate command handler.
+	handler, err := eventhorizon.NewAggregateCommandHandler(repository)
 	if err != nil {
-		log.Fatalf("could not create dispatcher: %s", err)
+		log.Fatalf("could not create command handler: %s", err)
 	}
 
-	// Register the domain aggregates with the dispather.
-	err = disp.SetHandler(&InvitationAggregate{}, &CreateInvite{})
-	if err != nil {
-		log.Fatalf("could not add command: %s", err)
-	}
-	err = disp.SetHandler(&InvitationAggregate{}, &AcceptInvite{})
-	if err != nil {
-		log.Fatalf("could not add command: %s", err)
-	}
-	err = disp.SetHandler(&InvitationAggregate{}, &DeclineInvite{})
-	if err != nil {
-		log.Fatalf("could not add command: %s", err)
-	}
+	// Register the domain aggregates with the dispather. Remember to check for
+	// errors here in a real app!
+	handler.SetAggregate(&InvitationAggregate{}, &CreateInvite{})
+	handler.SetAggregate(&InvitationAggregate{}, &AcceptInvite{})
+	handler.SetAggregate(&InvitationAggregate{}, &DeclineInvite{})
+
+	// Create the command bus and register the handler for the commands.
+	commandBus := eventhorizon.NewInternalCommandBus()
+	commandBus.SetHandler(handler, &CreateInvite{})
+	commandBus.SetHandler(handler, &AcceptInvite{})
+	commandBus.SetHandler(handler, &DeclineInvite{})
 
 	// Create and register a read model for individual invitations.
 	invitationRepository := eventhorizon.NewMemoryReadRepository()
@@ -85,20 +83,20 @@ func main() {
 	// by the domain logic in InvitationAggregate. The result is that she is
 	// still accepted.
 	athenaID := eventhorizon.NewUUID()
-	disp.Dispatch(&CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
-	disp.Dispatch(&AcceptInvite{InvitationID: athenaID})
-	err = disp.Dispatch(&DeclineInvite{InvitationID: athenaID})
+	commandBus.HandleCommand(&CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
+	commandBus.HandleCommand(&AcceptInvite{InvitationID: athenaID})
+	err = commandBus.HandleCommand(&DeclineInvite{InvitationID: athenaID})
 	if err != nil {
 		fmt.Printf("error: %s\n", err)
 	}
 
 	hadesID := eventhorizon.NewUUID()
-	disp.Dispatch(&CreateInvite{InvitationID: hadesID, Name: "Hades"})
-	disp.Dispatch(&AcceptInvite{InvitationID: hadesID})
+	commandBus.HandleCommand(&CreateInvite{InvitationID: hadesID, Name: "Hades"})
+	commandBus.HandleCommand(&AcceptInvite{InvitationID: hadesID})
 
 	zeusID := eventhorizon.NewUUID()
-	disp.Dispatch(&CreateInvite{InvitationID: zeusID, Name: "Zeus"})
-	disp.Dispatch(&DeclineInvite{InvitationID: zeusID})
+	commandBus.HandleCommand(&CreateInvite{InvitationID: zeusID, Name: "Zeus"})
+	commandBus.HandleCommand(&DeclineInvite{InvitationID: zeusID})
 
 	// Read all invites.
 	invitations, _ := invitationRepository.FindAll()

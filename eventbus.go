@@ -14,6 +14,11 @@
 
 package eventhorizon
 
+// EventHandler is an interface that all handlers of events should implement.
+type EventHandler interface {
+	HandleEvent(Event)
+}
+
 // EventBus is an interface defining an event bus for distributing events.
 type EventBus interface {
 	// PublishEvent publishes an event on the event bus.

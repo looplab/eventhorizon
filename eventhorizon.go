@@ -38,8 +38,3 @@ type Event interface {
 	AggregateID() UUID
 	EventType() string
 }
-
-// EventHandler is an interface that all handlers of events should implement.
-type EventHandler interface {
-	HandleEvent(Event)
-}

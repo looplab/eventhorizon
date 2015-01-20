@@ -23,17 +23,11 @@ import (
 // Error returned when a dispatcher is created with a nil repository.
 var ErrNilRepository = errors.New("repository is nil")
 
-// Error returned when a handler is already registered for a command.
-var ErrHandlerAlreadySet = errors.New("handler is already set")
+// Error returned when an aggregate is already registered for a command.
+var ErrAggregateAlreadySet = errors.New("aggregate is already set")
 
-// Error returned when a handler is missing a method for a command.
-var ErrMissingHandlerMethod = errors.New("missing handler method")
-
-// Error returned when a handler has an incorrect method for a command.
-var ErrIncorrectHandlerMethod = errors.New("incorrect handler method")
-
-// Error returned when no handler can be found.
-var ErrHandlerNotFound = errors.New("no handlers for command")
+// Error returned when no aggregate can be found.
+var ErrAggregateNotFound = errors.New("no aggregate for command")
 
 // CommandFieldError is returned by Dispatch when a field is incorrect.
 type CommandFieldError struct {
@@ -44,62 +38,62 @@ func (c CommandFieldError) Error() string {
 	return "missing field: " + c.Field
 }
 
-// Dispatcher dispatches commands based to registered handlers.
+// AggregateCommandHandler dispatches commands to registered aggregates.
 //
 // The dispatch process is as follows:
-// 1. The dispatcher receives a command
+// 1. The handler receives a command
 // 2. An aggregate is created or rebuilt from previous events by the repository
 // 3. The aggregate's command handler is called
 // 4. The aggregate stores events in response to the command
 // 5. The new events are stored in the event store by the repository
 // 6. The events are published to the event bus when stored by the event store
-type Dispatcher struct {
-	repository   Repository
-	handlerTypes map[string]string
+type AggregateCommandHandler struct {
+	repository Repository
+	aggregates map[string]string
 }
 
-// NewDispatcher creates a dispatcher and associates it with an event store.
-func NewDispatcher(repository Repository) (*Dispatcher, error) {
+// NewAggregateCommandHandler creates a new AggregateCommandHandler.
+func NewAggregateCommandHandler(repository Repository) (*AggregateCommandHandler, error) {
 	if repository == nil {
 		return nil, ErrNilRepository
 	}
 
-	d := &Dispatcher{
-		repository:   repository,
-		handlerTypes: make(map[string]string),
+	h := &AggregateCommandHandler{
+		repository: repository,
+		aggregates: make(map[string]string),
 	}
-	return d, nil
+	return h, nil
 }
 
-// SetHandler sets a handler for a command.
-func (d *Dispatcher) SetHandler(aggregate Aggregate, command Command) error {
+// SetAggregate sets an aggregate as handler for a command.
+func (h *AggregateCommandHandler) SetAggregate(aggregate Aggregate, command Command) error {
 	// Check for already existing handler.
-	if _, ok := d.handlerTypes[command.CommandType()]; ok {
-		return ErrHandlerAlreadySet
+	if _, ok := h.aggregates[command.CommandType()]; ok {
+		return ErrAggregateAlreadySet
 	}
 
 	// Add aggregate type to command type.
-	d.handlerTypes[command.CommandType()] = aggregate.AggregateType()
+	h.aggregates[command.CommandType()] = aggregate.AggregateType()
 
 	return nil
 }
 
-// Dispatch dispatches a command to the registered command handler.
-// Returns ErrHandlerNotFound if no handler could be found.
-func (d *Dispatcher) Dispatch(command Command) error {
-	err := d.checkCommand(command)
+// HandleCommand handles a command with the registered aggregate.
+// Returns ErrAggregateNotFound if no aggregate could be found.
+func (h *AggregateCommandHandler) HandleCommand(command Command) error {
+	err := h.checkCommand(command)
 	if err != nil {
 		return err
 	}
 
 	var aggregateType string
 	var ok bool
-	if aggregateType, ok = d.handlerTypes[command.CommandType()]; !ok {
-		return ErrHandlerNotFound
+	if aggregateType, ok = h.aggregates[command.CommandType()]; !ok {
+		return ErrAggregateNotFound
 	}
 
 	var aggregate Aggregate
-	if aggregate, err = d.repository.Load(aggregateType, command.AggregateID()); err != nil {
+	if aggregate, err = h.repository.Load(aggregateType, command.AggregateID()); err != nil {
 		return err
 	}
 
@@ -107,14 +101,14 @@ func (d *Dispatcher) Dispatch(command Command) error {
 		return err
 	}
 
-	if err = d.repository.Save(aggregate); err != nil {
+	if err = h.repository.Save(aggregate); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (d *Dispatcher) checkCommand(command Command) error {
+func (h *AggregateCommandHandler) checkCommand(command Command) error {
 	rv := reflect.Indirect(reflect.ValueOf(command))
 	rt := rv.Type()
 
