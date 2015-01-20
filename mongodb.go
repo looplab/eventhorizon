@@ -225,7 +225,7 @@ func (s *MongoEventStore) RegisterEventType(event Event, factory func() Event) e
 
 // Clear clears the event storge.
 func (s *MongoEventStore) Clear() error {
-	if err := s.session.DB(s.db).DropDatabase(); err != nil {
+	if err := s.session.DB(s.db).C("events").DropCollection(); err != nil {
 		return ErrCouldNotClearDB
 	}
 	return nil
