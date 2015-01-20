@@ -18,34 +18,34 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-var _ = Suite(&HandlerEventBusSuite{})
+var _ = Suite(&InternalEventBusSuite{})
 
-type HandlerEventBusSuite struct {
-	bus *HandlerEventBus
+type InternalEventBusSuite struct {
+	bus *InternalEventBus
 }
 
-func (s *HandlerEventBusSuite) SetUpTest(c *C) {
-	s.bus = NewHandlerEventBus()
+func (s *InternalEventBusSuite) SetUpTest(c *C) {
+	s.bus = NewInternalEventBus()
 }
 
-func (s *HandlerEventBusSuite) Test_NewHandlerEventBus(c *C) {
-	bus := NewHandlerEventBus()
+func (s *InternalEventBusSuite) Test_NewHandlerEventBus(c *C) {
+	bus := NewInternalEventBus()
 	c.Assert(bus, Not(Equals), nil)
 	c.Assert(bus.eventHandlers, Not(Equals), nil)
 	c.Assert(bus.globalHandlers, Not(Equals), nil)
 }
 
-type TestHandlerEventBus struct {
+type TestInternalEventBus struct {
 	event Event
 }
 
-func (t *TestHandlerEventBus) HandleEvent(event Event) {
+func (t *TestInternalEventBus) HandleEvent(event Event) {
 	t.event = event
 }
 
-func (s *HandlerEventBusSuite) Test_PublishEvent_Simple(c *C) {
-	handler := &TestHandlerEventBus{}
-	globalHandler := &TestHandlerEventBus{}
+func (s *InternalEventBusSuite) Test_PublishEvent_Simple(c *C) {
+	handler := &TestInternalEventBus{}
+	globalHandler := &TestInternalEventBus{}
 	s.bus.eventHandlers[(&TestEvent{}).EventType()] = []EventHandler{handler}
 	s.bus.globalHandlers = append(s.bus.globalHandlers, globalHandler)
 	event1 := &TestEvent{NewUUID(), "event1"}
@@ -54,9 +54,9 @@ func (s *HandlerEventBusSuite) Test_PublishEvent_Simple(c *C) {
 	c.Assert(globalHandler.event, Equals, event1)
 }
 
-func (s *HandlerEventBusSuite) Test_PublishEvent_AnotherEvent(c *C) {
-	handler := &TestHandlerEventBus{}
-	globalHandler := &TestHandlerEventBus{}
+func (s *InternalEventBusSuite) Test_PublishEvent_AnotherEvent(c *C) {
+	handler := &TestInternalEventBus{}
+	globalHandler := &TestInternalEventBus{}
 	s.bus.eventHandlers[(&TestEventOther{}).EventType()] = []EventHandler{handler}
 	s.bus.globalHandlers = append(s.bus.globalHandlers, globalHandler)
 	event1 := &TestEvent{NewUUID(), "event1"}
@@ -65,24 +65,24 @@ func (s *HandlerEventBusSuite) Test_PublishEvent_AnotherEvent(c *C) {
 	c.Assert(globalHandler.event, Equals, event1)
 }
 
-func (s *HandlerEventBusSuite) Test_PublishEvent_NoHandler(c *C) {
-	globalHandler := &TestHandlerEventBus{}
+func (s *InternalEventBusSuite) Test_PublishEvent_NoHandler(c *C) {
+	globalHandler := &TestInternalEventBus{}
 	s.bus.globalHandlers = append(s.bus.globalHandlers, globalHandler)
 	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
 	c.Assert(globalHandler.event, Equals, event1)
 }
 
-func (s *HandlerEventBusSuite) Test_PublishEvent_NoGlobalHandler(c *C) {
-	handler := &TestHandlerEventBus{}
+func (s *InternalEventBusSuite) Test_PublishEvent_NoGlobalHandler(c *C) {
+	handler := &TestInternalEventBus{}
 	s.bus.eventHandlers[(&TestEvent{}).EventType()] = []EventHandler{handler}
 	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
 	c.Assert(handler.event, Equals, event1)
 }
 
-func (s *HandlerEventBusSuite) Test_AddHandler(c *C) {
-	handler := &TestHandlerEventBus{}
+func (s *InternalEventBusSuite) Test_AddHandler(c *C) {
+	handler := &TestInternalEventBus{}
 	s.bus.AddHandler(handler, &TestEvent{})
 	c.Assert(len(s.bus.eventHandlers), Equals, 1)
 	eventType := (&TestEvent{}).EventType()
@@ -92,12 +92,12 @@ func (s *HandlerEventBusSuite) Test_AddHandler(c *C) {
 	c.Assert(handlers[0], Equals, handler)
 }
 
-func (s *HandlerEventBusSuite) Test_AddGlobalHandler(c *C) {
-	globalHandler := &TestHandlerEventBus{}
+func (s *InternalEventBusSuite) Test_AddGlobalHandler(c *C) {
+	globalHandler := &TestInternalEventBus{}
 	s.bus.AddGlobalHandler(globalHandler)
 	c.Assert(len(s.bus.globalHandlers), Equals, 1)
 	c.Assert(s.bus.globalHandlers[0], Equals, globalHandler)
 }
 
-func (s *HandlerEventBusSuite) Test_ScanHandler(c *C) {
+func (s *InternalEventBusSuite) Test_ScanHandler(c *C) {
 }

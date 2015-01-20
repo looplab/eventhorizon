@@ -16,6 +16,7 @@ package eventhorizon
 
 // EventHandler is an interface that all handlers of events should implement.
 type EventHandler interface {
+	// HandleEvent handles an event.
 	HandleEvent(Event)
 }
 
@@ -25,16 +26,16 @@ type EventBus interface {
 	PublishEvent(Event)
 }
 
-// HandlerEventBus is an event bus that notifies registered EventHandlers of
+// InternalEventBus is an event bus that notifies registered EventHandlers of
 // published events.
-type HandlerEventBus struct {
+type InternalEventBus struct {
 	eventHandlers  map[string][]EventHandler
 	globalHandlers []EventHandler
 }
 
-// NewHandlerEventBus creates a HandlerEventBus.
-func NewHandlerEventBus() *HandlerEventBus {
-	b := &HandlerEventBus{
+// NewInternalEventBus creates a InternalEventBus.
+func NewInternalEventBus() *InternalEventBus {
+	b := &InternalEventBus{
 		eventHandlers:  make(map[string][]EventHandler),
 		globalHandlers: make([]EventHandler, 0),
 	}
@@ -42,7 +43,7 @@ func NewHandlerEventBus() *HandlerEventBus {
 }
 
 // PublishEvent publishes an event to all handlers capable of handling it.
-func (b *HandlerEventBus) PublishEvent(event Event) {
+func (b *InternalEventBus) PublishEvent(event Event) {
 	if handlers, ok := b.eventHandlers[event.EventType()]; ok {
 		for _, handler := range handlers {
 			handler.HandleEvent(event)
@@ -56,7 +57,7 @@ func (b *HandlerEventBus) PublishEvent(event Event) {
 }
 
 // AddHandler adds a handler for a specific event.
-func (b *HandlerEventBus) AddHandler(handler EventHandler, event Event) {
+func (b *InternalEventBus) AddHandler(handler EventHandler, event Event) {
 	// Create handler list for new event types.
 	if _, ok := b.eventHandlers[event.EventType()]; !ok {
 		b.eventHandlers[event.EventType()] = make([]EventHandler, 0)
@@ -67,6 +68,6 @@ func (b *HandlerEventBus) AddHandler(handler EventHandler, event Event) {
 }
 
 // AddGlobalHandler adds the handler for a specific event.
-func (b *HandlerEventBus) AddGlobalHandler(handler EventHandler) {
+func (b *InternalEventBus) AddGlobalHandler(handler EventHandler) {
 	b.globalHandlers = append(b.globalHandlers, handler)
 }

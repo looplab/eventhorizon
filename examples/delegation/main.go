@@ -24,7 +24,7 @@ import (
 
 func main() {
 	// Create the event bus that distributes events.
-	eventBus := eventhorizon.NewHandlerEventBus()
+	eventBus := eventhorizon.NewInternalEventBus()
 	eventBus.AddGlobalHandler(&LoggerSubscriber{})
 
 	// Create the event store.
