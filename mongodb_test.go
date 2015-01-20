@@ -18,6 +18,7 @@ package eventhorizon
 
 import (
 	. "gopkg.in/check.v1"
+	"time"
 )
 
 var _ = Suite(&MongoEventStoreSuite{})
@@ -36,15 +37,14 @@ func (s *MongoEventStoreSuite) SetUpTest(c *C) {
 	c.Assert(err, IsNil)
 	err = s.store.RegisterEventType(&TestEvent{}, func() Event { return &TestEvent{} })
 	c.Assert(err, IsNil)
-	err = s.store.Clear()
-	c.Assert(err, IsNil)
+	s.store.Clear()
 }
 
 func (s *MongoEventStoreSuite) TearDownTest(c *C) {
 	s.store.Close()
 }
 
-func (s *MongoEventStoreSuite) Test_NewMemoryEventStore(c *C) {
+func (s *MongoEventStoreSuite) Test_NewMongoEventStore(c *C) {
 	bus := &MockEventBus{
 		events: make([]Event, 0),
 	}
@@ -111,4 +111,68 @@ func (s *MongoEventStoreSuite) Test_LoadNoEvents(c *C) {
 	events, err := s.store.Load(NewUUID())
 	c.Assert(err, ErrorMatches, "could not find events")
 	c.Assert(events, DeepEquals, []Event(nil))
+}
+
+type MongoReadRepositorySuite struct {
+	repo *MongoReadRepository
+}
+
+func (s *MongoReadRepositorySuite) SetUpTest(c *C) {
+	var err error
+	s.repo, err = NewMongoReadRepository("localhost", "test", "testmodel",
+		func() interface{} { return &TestModel{} })
+	c.Assert(err, IsNil)
+	s.repo.Clear()
+}
+
+func (s *MongoReadRepositorySuite) TearDownTest(c *C) {
+	s.repo.Close()
+}
+
+func (s *MongoReadRepositorySuite) Test_NewMongoReadRepository(c *C) {
+	repo, err := NewMongoReadRepository("localhost", "test", "testmodel",
+		func() interface{} { return &TestModel{} })
+	c.Assert(repo, NotNil)
+	c.Assert(err, IsNil)
+}
+
+func (s *MongoReadRepositorySuite) Test_SaveFind(c *C) {
+	model1 := &TestModel{NewUUID(), "event1", time.Now()}
+	err := s.repo.Save(model1.ID, model1)
+	c.Assert(err, IsNil)
+	model, err := s.repo.Find(model1.ID)
+	c.Assert(err, IsNil)
+	c.Assert(model, DeepEquals, model1)
+}
+
+func (s *MongoReadRepositorySuite) Test_FindAll(c *C) {
+	model1 := &TestModel{NewUUID(), "event1", time.Now()}
+	model2 := &TestModel{NewUUID(), "event2", time.Now()}
+	err := s.repo.Save(model1.ID, model1)
+	c.Assert(err, IsNil)
+	err = s.repo.Save(model2.ID, model2)
+	c.Assert(err, IsNil)
+	models, err := s.repo.FindAll()
+	c.Assert(err, IsNil)
+	c.Assert(models, HasLen, 2)
+}
+
+func (s *MongoReadRepositorySuite) Test_Remove(c *C) {
+	model1 := &TestModel{NewUUID(), "event1", time.Now()}
+	err := s.repo.Save(model1.ID, model1)
+	c.Assert(err, IsNil)
+	model, err := s.repo.Find(model1.ID)
+	c.Assert(err, IsNil)
+	c.Assert(model, NotNil)
+	err = s.repo.Remove(model1.ID)
+	c.Assert(err, IsNil)
+	model, err = s.repo.Find(model1.ID)
+	c.Assert(err, Equals, ErrModelNotFound)
+	c.Assert(model, IsNil)
+}
+
+type TestModel struct {
+	ID        UUID      `json:"id"         bson:"_id"`
+	Content   string    `json:"content"    bson:"content"`
+	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 }

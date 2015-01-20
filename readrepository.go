@@ -19,6 +19,9 @@ import (
 )
 
 // Error returned when a model could not be found.
+var ErrCouldNotSaveModel = errors.New("could not save model")
+
+// Error returned when a model could not be found.
 var ErrModelNotFound = errors.New("could not find model")
 
 // ReadRepository is a storage for read models.

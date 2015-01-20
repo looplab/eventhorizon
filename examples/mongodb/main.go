@@ -73,8 +73,11 @@ func main() {
 	commandBus.SetHandler(handler, &DeclineInvite{})
 
 	// Create and register a read model for individual invitations.
-	// invitationRepository := eventhorizon.NewMongoRepository("localhost", "demo", "invitations")
-	invitationRepository := eventhorizon.NewMemoryReadRepository()
+	invitationRepository, err := eventhorizon.NewMongoReadRepository("localhost", "demo", "invitations",
+		func() interface{} { return &Invitation{} })
+	if err != nil {
+		log.Fatalf("could not create invitation repository: %s", err)
+	}
 	invitationProjector := NewInvitationProjector(invitationRepository)
 	eventBus.AddHandler(invitationProjector, &InviteCreated{})
 	eventBus.AddHandler(invitationProjector, &InviteAccepted{})
@@ -82,12 +85,20 @@ func main() {
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
-	// guestListRepository := eventhorizon.NewMongoRepository("localhost", "demo", "guest_lists")
-	guestListRepository := eventhorizon.NewMemoryReadRepository()
+	guestListRepository, err := eventhorizon.NewMongoReadRepository("localhost", "demo", "guest_lists",
+		func() interface{} { return &GuestList{} })
+	if err != nil {
+		log.Fatalf("could not create guest list repository: %s", err)
+	}
 	guestListProjector := NewGuestListProjector(guestListRepository, eventID)
 	eventBus.AddHandler(guestListProjector, &InviteCreated{})
 	eventBus.AddHandler(guestListProjector, &InviteAccepted{})
 	eventBus.AddHandler(guestListProjector, &InviteDeclined{})
+
+	// Clear DB collections.
+	eventStore.Clear()
+	invitationRepository.Clear()
+	guestListRepository.Clear()
 
 	// Issue some invitations and responses.
 	// Note that Athena tries to decline the event, but that is not allowed

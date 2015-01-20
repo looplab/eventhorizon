@@ -235,3 +235,108 @@ func (s *MongoEventStore) Clear() error {
 func (s *MongoEventStore) Close() {
 	s.session.Close()
 }
+
+// MongoReadRepository implements an MongoDB repository of read models.
+type MongoReadRepository struct {
+	session    *mgo.Session
+	db         string
+	collection string
+	factory    func() interface{}
+}
+
+// NewMongoReadRepository creates a new MongoReadRepository.
+func NewMongoReadRepository(host, database, collection string, factory func() interface{}) (*MongoReadRepository, error) {
+	session, err := mgo.Dial(host)
+	if err != nil {
+		return nil, ErrCouldNotDialDB
+	}
+
+	session.SetMode(mgo.Strong, true)
+	session.SetSafe(&mgo.Safe{W: 1})
+
+	return NewMongoReadRepositoryWithSession(session, database, collection, factory)
+}
+
+// NewMongoReadRepositoryWithSession creates a new MongoReadRepository with a session.
+func NewMongoReadRepositoryWithSession(session *mgo.Session, database, collection string, factory func() interface{}) (*MongoReadRepository, error) {
+	r := &MongoReadRepository{
+		session:    session,
+		db:         database,
+		collection: collection,
+		factory:    factory,
+	}
+
+	return r, nil
+}
+
+// Save saves a read model with id to the repository.
+func (r *MongoReadRepository) Save(id UUID, model interface{}) error {
+	sess := r.session.Copy()
+	defer sess.Close()
+
+	if _, err := sess.DB(r.db).C(r.collection).UpsertId(id, model); err != nil {
+		return ErrCouldNotSaveModel
+	}
+	return nil
+}
+
+// Find returns one read model with using an id. Returns
+// ErrModelNotFound if no model could be found.
+func (r *MongoReadRepository) Find(id UUID) (interface{}, error) {
+	sess := r.session.Copy()
+	defer sess.Close()
+
+	model := r.factory()
+	err := sess.DB(r.db).C(r.collection).FindId(id).One(model)
+	if err != nil {
+		return nil, ErrModelNotFound
+	}
+
+	return model, nil
+}
+
+// FindAll returns all read models in the repository.
+func (r *MongoReadRepository) FindAll() ([]interface{}, error) {
+	sess := r.session.Copy()
+	defer sess.Close()
+
+	iter := sess.DB(r.db).C(r.collection).Find(nil).Iter()
+	result := []interface{}{}
+	model := r.factory()
+	for iter.Next(model) {
+		result = append(result, model)
+		model = r.factory()
+	}
+	if err := iter.Close(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// Remove removes a read model with id from the repository. Returns
+// ErrModelNotFound if no model could be found.
+func (r *MongoReadRepository) Remove(id UUID) error {
+	sess := r.session.Copy()
+	defer sess.Close()
+
+	err := sess.DB(r.db).C(r.collection).RemoveId(id)
+	if err != nil {
+		return ErrModelNotFound
+	}
+
+	return nil
+}
+
+// Clear clears the read model database.
+func (r *MongoReadRepository) Clear() error {
+	if err := r.session.DB(r.db).C(r.collection).DropCollection(); err != nil {
+		return ErrCouldNotClearDB
+	}
+	return nil
+}
+
+// Close closes a database session.
+func (r *MongoReadRepository) Close() {
+	r.session.Close()
+}
