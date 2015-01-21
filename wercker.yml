@@ -1,5 +1,8 @@
 box: wercker/golang
 
+services:
+    - wercker/mongodb
+
 build:
   steps:
     # Sets the go workspace and places you package
@@ -12,17 +15,17 @@ build:
         code: |
           cd $WERCKER_SOURCE_DIR
           go version
-          go get -t ./...
+          go get -tags mongo -t ./...
 
     # Build the project
     - script:
         name: go build
         code: |
-          go build ./...
+          go build -tags mongo ./...
 
     # Test the project
     - script:
-        name: go test
+        name: go test -tags mongo
         code: |
           go get -d golang.org/x/tools/cmd/cover
           go get github.com/axw/gocov/gocov

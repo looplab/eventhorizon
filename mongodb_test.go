@@ -17,15 +17,30 @@
 package eventhorizon
 
 import (
-	. "gopkg.in/check.v1"
+	"os"
 	"time"
+
+	. "gopkg.in/check.v1"
 )
 
 var _ = Suite(&MongoEventStoreSuite{})
 
 type MongoEventStoreSuite struct {
+	url   string
 	store *MongoEventStore
 	bus   *MockEventBus
+}
+
+func (s *MongoEventStoreSuite) SetUpSuite(c *C) {
+	// Support Wercker testing with MongoDB.
+	host := os.Getenv("WERCKER_MONGODB_HOST")
+	port := os.Getenv("WERCKER_MONGODB_PORT")
+
+	if host != "" && port != "" {
+		s.url = host + ":" + port
+	} else {
+		s.url = "localhost"
+	}
 }
 
 func (s *MongoEventStoreSuite) SetUpTest(c *C) {
@@ -33,7 +48,7 @@ func (s *MongoEventStoreSuite) SetUpTest(c *C) {
 		events: make([]Event, 0),
 	}
 	var err error
-	s.store, err = NewMongoEventStore(s.bus, "localhost", "test")
+	s.store, err = NewMongoEventStore(s.bus, s.url, "test")
 	c.Assert(err, IsNil)
 	err = s.store.RegisterEventType(&TestEvent{}, func() Event { return &TestEvent{} })
 	c.Assert(err, IsNil)
@@ -48,7 +63,7 @@ func (s *MongoEventStoreSuite) Test_NewMongoEventStore(c *C) {
 	bus := &MockEventBus{
 		events: make([]Event, 0),
 	}
-	store, err := NewMongoEventStore(bus, "localhost", "test")
+	store, err := NewMongoEventStore(bus, s.url, "test")
 	c.Assert(store, NotNil)
 	c.Assert(err, IsNil)
 }
@@ -114,12 +129,25 @@ func (s *MongoEventStoreSuite) Test_LoadNoEvents(c *C) {
 }
 
 type MongoReadRepositorySuite struct {
+	url  string
 	repo *MongoReadRepository
+}
+
+func (s *MongoReadRepositorySuite) SetUpSuite(c *C) {
+	// Support Wercker testing with MongoDB.
+	host := os.Getenv("WERCKER_MONGODB_HOST")
+	port := os.Getenv("WERCKER_MONGODB_PORT")
+
+	if host != "" && port != "" {
+		s.url = host + ":" + port
+	} else {
+		s.url = "localhost"
+	}
 }
 
 func (s *MongoReadRepositorySuite) SetUpTest(c *C) {
 	var err error
-	s.repo, err = NewMongoReadRepository("localhost", "test", "testmodel")
+	s.repo, err = NewMongoReadRepository(s.url, "test", "testmodel")
 	s.repo.SetModel(func() interface{} { return &TestModel{} })
 	c.Assert(err, IsNil)
 	s.repo.Clear()
@@ -130,7 +158,7 @@ func (s *MongoReadRepositorySuite) TearDownTest(c *C) {
 }
 
 func (s *MongoReadRepositorySuite) Test_NewMongoReadRepository(c *C) {
-	repo, err := NewMongoReadRepository("localhost", "test", "testmodel")
+	repo, err := NewMongoReadRepository(s.url, "test", "testmodel")
 	c.Assert(repo, NotNil)
 	c.Assert(err, IsNil)
 }
