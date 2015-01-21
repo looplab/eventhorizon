@@ -31,5 +31,5 @@ build:
           go get github.com/axw/gocov/gocov
           go get github.com/mattn/goveralls
           git checkout master
-          gocov test -tags mongo out.json
-          goveralls -gocovdata=out.json -service wercker.com -repotoken $COVERALLS_TOKEN
+          gocov test -tags mongo > gocov.json
+          goveralls -gocovdata=gocov.json -service wercker.com -repotoken $COVERALLS_TOKEN
