@@ -25,10 +25,11 @@ build:
 
     # Test the project
     - script:
-        name: go test -tags mongo
+        name: go test
         code: |
           go get -d golang.org/x/tools/cmd/cover
           go get github.com/axw/gocov/gocov
           go get github.com/mattn/goveralls
           git checkout master
-          goveralls -service wercker.com -repotoken $COVERALLS_TOKEN
+          gocov test -tags mongo out.json
+          goveralls -gocovdata=out.json -service wercker.com -repotoken $COVERALLS_TOKEN
