@@ -24,6 +24,7 @@ import (
 )
 
 var _ = Suite(&MongoEventStoreSuite{})
+var _ = Suite(&MongoReadRepositorySuite{})
 
 type MongoEventStoreSuite struct {
 	url   string
@@ -164,7 +165,7 @@ func (s *MongoReadRepositorySuite) Test_NewMongoReadRepository(c *C) {
 }
 
 func (s *MongoReadRepositorySuite) Test_SaveFind(c *C) {
-	model1 := &TestModel{NewUUID(), "event1", time.Now()}
+	model1 := &TestModel{NewUUID(), "event1", time.Now().Round(time.Millisecond)}
 	err := s.repo.Save(model1.ID, model1)
 	c.Assert(err, IsNil)
 	model, err := s.repo.Find(model1.ID)
@@ -173,8 +174,8 @@ func (s *MongoReadRepositorySuite) Test_SaveFind(c *C) {
 }
 
 func (s *MongoReadRepositorySuite) Test_FindAll(c *C) {
-	model1 := &TestModel{NewUUID(), "event1", time.Now()}
-	model2 := &TestModel{NewUUID(), "event2", time.Now()}
+	model1 := &TestModel{NewUUID(), "event1", time.Now().Round(time.Millisecond)}
+	model2 := &TestModel{NewUUID(), "event2", time.Now().Round(time.Millisecond)}
 	err := s.repo.Save(model1.ID, model1)
 	c.Assert(err, IsNil)
 	err = s.repo.Save(model2.ID, model2)
@@ -185,7 +186,7 @@ func (s *MongoReadRepositorySuite) Test_FindAll(c *C) {
 }
 
 func (s *MongoReadRepositorySuite) Test_Remove(c *C) {
-	model1 := &TestModel{NewUUID(), "event1", time.Now()}
+	model1 := &TestModel{NewUUID(), "event1", time.Now().Round(time.Millisecond)}
 	err := s.repo.Save(model1.ID, model1)
 	c.Assert(err, IsNil)
 	model, err := s.repo.Find(model1.ID)
