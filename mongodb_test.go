@@ -119,8 +119,8 @@ type MongoReadRepositorySuite struct {
 
 func (s *MongoReadRepositorySuite) SetUpTest(c *C) {
 	var err error
-	s.repo, err = NewMongoReadRepository("localhost", "test", "testmodel",
-		func() interface{} { return &TestModel{} })
+	s.repo, err = NewMongoReadRepository("localhost", "test", "testmodel")
+	s.repo.SetModel(func() interface{} { return &TestModel{} })
 	c.Assert(err, IsNil)
 	s.repo.Clear()
 }
@@ -130,8 +130,7 @@ func (s *MongoReadRepositorySuite) TearDownTest(c *C) {
 }
 
 func (s *MongoReadRepositorySuite) Test_NewMongoReadRepository(c *C) {
-	repo, err := NewMongoReadRepository("localhost", "test", "testmodel",
-		func() interface{} { return &TestModel{} })
+	repo, err := NewMongoReadRepository("localhost", "test", "testmodel")
 	c.Assert(repo, NotNil)
 	c.Assert(err, IsNil)
 }

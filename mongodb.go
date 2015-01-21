@@ -33,6 +33,9 @@ var ErrCouldNotClearDB = errors.New("could not clear database")
 // Error returned when an event is not registered.
 var ErrEventNotRegistered = errors.New("event not registered")
 
+// Error returned when an model is not set on a read repository.
+var ErrModelNotSet = errors.New("model not set")
+
 // Error returned when an event could not be marshaled into BSON.
 var ErrCouldNotMarshalEvent = errors.New("could not marshal event")
 
@@ -245,7 +248,7 @@ type MongoReadRepository struct {
 }
 
 // NewMongoReadRepository creates a new MongoReadRepository.
-func NewMongoReadRepository(host, database, collection string, factory func() interface{}) (*MongoReadRepository, error) {
+func NewMongoReadRepository(host, database, collection string) (*MongoReadRepository, error) {
 	session, err := mgo.Dial(host)
 	if err != nil {
 		return nil, ErrCouldNotDialDB
@@ -254,16 +257,15 @@ func NewMongoReadRepository(host, database, collection string, factory func() in
 	session.SetMode(mgo.Strong, true)
 	session.SetSafe(&mgo.Safe{W: 1})
 
-	return NewMongoReadRepositoryWithSession(session, database, collection, factory)
+	return NewMongoReadRepositoryWithSession(session, database, collection)
 }
 
 // NewMongoReadRepositoryWithSession creates a new MongoReadRepository with a session.
-func NewMongoReadRepositoryWithSession(session *mgo.Session, database, collection string, factory func() interface{}) (*MongoReadRepository, error) {
+func NewMongoReadRepositoryWithSession(session *mgo.Session, database, collection string) (*MongoReadRepository, error) {
 	r := &MongoReadRepository{
 		session:    session,
 		db:         database,
 		collection: collection,
-		factory:    factory,
 	}
 
 	return r, nil
@@ -286,6 +288,10 @@ func (r *MongoReadRepository) Find(id UUID) (interface{}, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
 
+	if r.factory == nil {
+		return nil, ErrModelNotSet
+	}
+
 	model := r.factory()
 	err := sess.DB(r.db).C(r.collection).FindId(id).One(model)
 	if err != nil {
@@ -299,6 +305,10 @@ func (r *MongoReadRepository) Find(id UUID) (interface{}, error) {
 func (r *MongoReadRepository) FindAll() ([]interface{}, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
+
+	if r.factory == nil {
+		return nil, ErrModelNotSet
+	}
 
 	iter := sess.DB(r.db).C(r.collection).Find(nil).Iter()
 	result := []interface{}{}
@@ -326,6 +336,11 @@ func (r *MongoReadRepository) Remove(id UUID) error {
 	}
 
 	return nil
+}
+
+// SetModel sets a factory function that creates concrete model types.
+func (r *MongoReadRepository) SetModel(factory func() interface{}) {
+	r.factory = factory
 }
 
 // Clear clears the read model database.

@@ -73,11 +73,11 @@ func main() {
 	commandBus.SetHandler(handler, &DeclineInvite{})
 
 	// Create and register a read model for individual invitations.
-	invitationRepository, err := eventhorizon.NewMongoReadRepository("localhost", "demo", "invitations",
-		func() interface{} { return &Invitation{} })
+	invitationRepository, err := eventhorizon.NewMongoReadRepository("localhost", "demo", "invitations")
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
+	invitationRepository.SetModel(func() interface{} { return &Invitation{} })
 	invitationProjector := NewInvitationProjector(invitationRepository)
 	eventBus.AddHandler(invitationProjector, &InviteCreated{})
 	eventBus.AddHandler(invitationProjector, &InviteAccepted{})
@@ -85,11 +85,11 @@ func main() {
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
-	guestListRepository, err := eventhorizon.NewMongoReadRepository("localhost", "demo", "guest_lists",
-		func() interface{} { return &GuestList{} })
+	guestListRepository, err := eventhorizon.NewMongoReadRepository("localhost", "demo", "guest_lists")
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}
+	guestListRepository.SetModel(func() interface{} { return &GuestList{} })
 	guestListProjector := NewGuestListProjector(guestListRepository, eventID)
 	eventBus.AddHandler(guestListProjector, &InviteCreated{})
 	eventBus.AddHandler(guestListProjector, &InviteAccepted{})
