@@ -60,8 +60,8 @@ type MongoEventStore struct {
 }
 
 // NewMongoEventStore creates a new MongoEventStore.
-func NewMongoEventStore(eventBus EventBus, host, database string) (*MongoEventStore, error) {
-	session, err := mgo.Dial(host)
+func NewMongoEventStore(eventBus EventBus, url, database string) (*MongoEventStore, error) {
+	session, err := mgo.Dial(url)
 	if err != nil {
 		return nil, ErrCouldNotDialDB
 	}
@@ -248,8 +248,8 @@ type MongoReadRepository struct {
 }
 
 // NewMongoReadRepository creates a new MongoReadRepository.
-func NewMongoReadRepository(host, database, collection string) (*MongoReadRepository, error) {
-	session, err := mgo.Dial(host)
+func NewMongoReadRepository(url, database, collection string) (*MongoReadRepository, error) {
+	session, err := mgo.Dial(url)
 	if err != nil {
 		return nil, ErrCouldNotDialDB
 	}
