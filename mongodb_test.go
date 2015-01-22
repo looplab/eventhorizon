@@ -20,6 +20,9 @@ import (
 	"os"
 	"time"
 
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
+
 	. "gopkg.in/check.v1"
 )
 
@@ -165,7 +168,7 @@ func (s *MongoReadRepositorySuite) Test_NewMongoReadRepository(c *C) {
 }
 
 func (s *MongoReadRepositorySuite) Test_SaveFind(c *C) {
-	model1 := &TestModel{NewUUID(), "event1", time.Now().Round(time.Millisecond)}
+	model1 := &TestModel{NewUUID(), "model1", time.Now().Round(time.Millisecond)}
 	err := s.repo.Save(model1.ID, model1)
 	c.Assert(err, IsNil)
 	model, err := s.repo.Find(model1.ID)
@@ -174,8 +177,8 @@ func (s *MongoReadRepositorySuite) Test_SaveFind(c *C) {
 }
 
 func (s *MongoReadRepositorySuite) Test_FindAll(c *C) {
-	model1 := &TestModel{NewUUID(), "event1", time.Now().Round(time.Millisecond)}
-	model2 := &TestModel{NewUUID(), "event2", time.Now().Round(time.Millisecond)}
+	model1 := &TestModel{NewUUID(), "model1", time.Now().Round(time.Millisecond)}
+	model2 := &TestModel{NewUUID(), "model2", time.Now().Round(time.Millisecond)}
 	err := s.repo.Save(model1.ID, model1)
 	c.Assert(err, IsNil)
 	err = s.repo.Save(model2.ID, model2)
@@ -185,8 +188,20 @@ func (s *MongoReadRepositorySuite) Test_FindAll(c *C) {
 	c.Assert(models, HasLen, 2)
 }
 
+func (s *MongoReadRepositorySuite) Test_FindCustom(c *C) {
+	model1 := &TestModel{NewUUID(), "model1", time.Now().Round(time.Millisecond)}
+	err := s.repo.Save(model1.ID, model1)
+	c.Assert(err, IsNil)
+	models, err := s.repo.FindCustom(func(c *mgo.Collection) *mgo.Query {
+		return c.Find(bson.M{"content": "model1"})
+	})
+	c.Assert(err, IsNil)
+	c.Assert(models, HasLen, 1)
+	c.Assert(models[0], DeepEquals, model1)
+}
+
 func (s *MongoReadRepositorySuite) Test_Remove(c *C) {
-	model1 := &TestModel{NewUUID(), "event1", time.Now().Round(time.Millisecond)}
+	model1 := &TestModel{NewUUID(), "model1", time.Now().Round(time.Millisecond)}
 	err := s.repo.Save(model1.ID, model1)
 	c.Assert(err, IsNil)
 	model, err := s.repo.Find(model1.ID)

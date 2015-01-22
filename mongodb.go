@@ -301,6 +301,32 @@ func (r *MongoReadRepository) Find(id UUID) (interface{}, error) {
 	return model, nil
 }
 
+// FindCustom uses a callback to specify a custom query.
+func (r *MongoReadRepository) FindCustom(callback func(*mgo.Collection) *mgo.Query) ([]interface{}, error) {
+	sess := r.session.Copy()
+	defer sess.Close()
+
+	if r.factory == nil {
+		return nil, ErrModelNotSet
+	}
+
+	collection := sess.DB(r.db).C(r.collection)
+	query := callback(collection)
+
+	iter := query.Iter()
+	result := []interface{}{}
+	model := r.factory()
+	for iter.Next(model) {
+		result = append(result, model)
+		model = r.factory()
+	}
+	if err := iter.Close(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 // FindAll returns all read models in the repository.
 func (r *MongoReadRepository) FindAll() ([]interface{}, error) {
 	sess := r.session.Copy()
