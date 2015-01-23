@@ -33,57 +33,49 @@ func (s *InternalEventBusSuite) Test_NewHandlerEventBus(c *C) {
 	c.Assert(bus, Not(Equals), nil)
 }
 
-type TestInternalEventBus struct {
-	event Event
-}
-
-func (t *TestInternalEventBus) HandleEvent(event Event) {
-	t.event = event
-}
-
 func (s *InternalEventBusSuite) Test_PublishEvent_Simple(c *C) {
-	handler := &TestInternalEventBus{}
-	localHandler := &TestInternalEventBus{}
-	globalHandler := &TestInternalEventBus{}
+	handler := &MockEventHandler{make([]Event, 0)}
+	localHandler := &MockEventHandler{make([]Event, 0)}
+	globalHandler := &MockEventHandler{make([]Event, 0)}
 	s.bus.AddHandler(handler, &TestEvent{})
 	s.bus.AddLocalHandler(localHandler)
 	s.bus.AddGlobalHandler(globalHandler)
 	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
-	c.Assert(handler.event, Equals, event1)
-	c.Assert(localHandler.event, Equals, event1)
-	c.Assert(globalHandler.event, Equals, event1)
+	c.Assert(handler.events[0], Equals, event1)
+	c.Assert(localHandler.events[0], Equals, event1)
+	c.Assert(globalHandler.events[0], Equals, event1)
 }
 
 func (s *InternalEventBusSuite) Test_PublishEvent_AnotherEvent(c *C) {
-	handler := &TestInternalEventBus{}
-	localHandler := &TestInternalEventBus{}
-	globalHandler := &TestInternalEventBus{}
+	handler := &MockEventHandler{make([]Event, 0)}
+	localHandler := &MockEventHandler{make([]Event, 0)}
+	globalHandler := &MockEventHandler{make([]Event, 0)}
 	s.bus.AddHandler(handler, &TestEventOther{})
 	s.bus.AddLocalHandler(localHandler)
 	s.bus.AddGlobalHandler(globalHandler)
 	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
-	c.Assert(handler.event, Equals, nil)
-	c.Assert(localHandler.event, Equals, event1)
-	c.Assert(globalHandler.event, Equals, event1)
+	c.Assert(handler.events, HasLen, 0)
+	c.Assert(localHandler.events[0], Equals, event1)
+	c.Assert(globalHandler.events[0], Equals, event1)
 }
 
 func (s *InternalEventBusSuite) Test_PublishEvent_NoHandler(c *C) {
-	localHandler := &TestInternalEventBus{}
-	globalHandler := &TestInternalEventBus{}
+	localHandler := &MockEventHandler{make([]Event, 0)}
+	globalHandler := &MockEventHandler{make([]Event, 0)}
 	s.bus.AddLocalHandler(localHandler)
 	s.bus.AddGlobalHandler(globalHandler)
 	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
-	c.Assert(localHandler.event, Equals, event1)
-	c.Assert(globalHandler.event, Equals, event1)
+	c.Assert(localHandler.events[0], Equals, event1)
+	c.Assert(globalHandler.events[0], Equals, event1)
 }
 
 func (s *InternalEventBusSuite) Test_PublishEvent_NoLocalOrGlobalHandler(c *C) {
-	handler := &TestInternalEventBus{}
+	handler := &MockEventHandler{make([]Event, 0)}
 	s.bus.AddHandler(handler, &TestEvent{})
 	event1 := &TestEvent{NewUUID(), "event1"}
 	s.bus.PublishEvent(event1)
-	c.Assert(handler.event, Equals, event1)
+	c.Assert(handler.events[0], Equals, event1)
 }
