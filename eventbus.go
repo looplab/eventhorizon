@@ -35,17 +35,17 @@ type EventBus interface {
 // InternalEventBus is an event bus that notifies registered EventHandlers of
 // published events.
 type InternalEventBus struct {
-	eventHandlers  map[string][]EventHandler
-	localHandlers  []EventHandler
-	globalHandlers []EventHandler
+	eventHandlers  map[string]map[EventHandler]bool
+	localHandlers  map[EventHandler]bool
+	globalHandlers map[EventHandler]bool
 }
 
 // NewInternalEventBus creates a InternalEventBus.
 func NewInternalEventBus() *InternalEventBus {
 	b := &InternalEventBus{
-		eventHandlers:  make(map[string][]EventHandler),
-		localHandlers:  make([]EventHandler, 0),
-		globalHandlers: make([]EventHandler, 0),
+		eventHandlers:  make(map[string]map[EventHandler]bool),
+		localHandlers:  make(map[EventHandler]bool),
+		globalHandlers: make(map[EventHandler]bool),
 	}
 	return b
 }
@@ -53,16 +53,16 @@ func NewInternalEventBus() *InternalEventBus {
 // PublishEvent publishes an event to all handlers capable of handling it.
 func (b *InternalEventBus) PublishEvent(event Event) {
 	if handlers, ok := b.eventHandlers[event.EventType()]; ok {
-		for _, handler := range handlers {
+		for handler := range handlers {
 			handler.HandleEvent(event)
 		}
 	}
 
 	// Publish to local and global handlers.
-	for _, handler := range b.localHandlers {
+	for handler := range b.localHandlers {
 		handler.HandleEvent(event)
 	}
-	for _, handler := range b.globalHandlers {
+	for handler := range b.globalHandlers {
 		handler.HandleEvent(event)
 	}
 }
@@ -71,19 +71,19 @@ func (b *InternalEventBus) PublishEvent(event Event) {
 func (b *InternalEventBus) AddHandler(handler EventHandler, event Event) {
 	// Create handler list for new event types.
 	if _, ok := b.eventHandlers[event.EventType()]; !ok {
-		b.eventHandlers[event.EventType()] = make([]EventHandler, 0)
+		b.eventHandlers[event.EventType()] = make(map[EventHandler]bool)
 	}
 
 	// Add handler to event type.
-	b.eventHandlers[event.EventType()] = append(b.eventHandlers[event.EventType()], handler)
+	b.eventHandlers[event.EventType()][handler] = true
 }
 
 // AddLocalHandler adds a handler for local events.
 func (b *InternalEventBus) AddLocalHandler(handler EventHandler) {
-	b.localHandlers = append(b.localHandlers, handler)
+	b.localHandlers[handler] = true
 }
 
 // AddGlobalHandler adds a handler for global (remote) events.
 func (b *InternalEventBus) AddGlobalHandler(handler EventHandler) {
-	b.globalHandlers = append(b.globalHandlers, handler)
+	b.globalHandlers[handler] = true
 }
