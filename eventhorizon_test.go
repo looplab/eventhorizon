@@ -124,3 +124,7 @@ type MockEventBus struct {
 func (m *MockEventBus) PublishEvent(event Event) {
 	m.events = append(m.events, event)
 }
+
+func (m *MockEventBus) AddHandler(handler EventHandler, event Event) {}
+func (m *MockEventBus) AddLocalHandler(handler EventHandler)         {}
+func (m *MockEventBus) AddGlobalHandler(handler EventHandler)        {}
