@@ -46,40 +46,45 @@ type TestEvent struct {
 	Content string
 }
 
-func (t *TestEvent) AggregateID() UUID { return t.TestID }
-func (t *TestEvent) EventType() string { return "TestEvent" }
+func (t *TestEvent) AggregateID() UUID     { return t.TestID }
+func (t *TestEvent) AggregateType() string { return "Test" }
+func (t *TestEvent) EventType() string     { return "TestEvent" }
 
 type TestEventOther struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestEventOther) AggregateID() UUID { return t.TestID }
-func (t *TestEventOther) EventType() string { return "TestEventOther" }
+func (t *TestEventOther) AggregateID() UUID     { return t.TestID }
+func (t *TestEventOther) AggregateType() string { return "Test" }
+func (t *TestEventOther) EventType() string     { return "TestEventOther" }
 
 type TestCommand struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestCommand) AggregateID() UUID   { return t.TestID }
-func (t *TestCommand) CommandType() string { return "TestCommand" }
+func (t *TestCommand) AggregateID() UUID     { return t.TestID }
+func (t *TestCommand) AggregateType() string { return "Test" }
+func (t *TestCommand) CommandType() string   { return "TestCommand" }
 
 type TestCommandOther struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestCommandOther) AggregateID() UUID   { return t.TestID }
-func (t *TestCommandOther) CommandType() string { return "TestCommandOther" }
+func (t *TestCommandOther) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandOther) AggregateType() string { return "Test" }
+func (t *TestCommandOther) CommandType() string   { return "TestCommandOther" }
 
 type TestCommandOther2 struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestCommandOther2) AggregateID() UUID   { return t.TestID }
-func (t *TestCommandOther2) CommandType() string { return "TestCommandOther2" }
+func (t *TestCommandOther2) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandOther2) AggregateType() string { return "Test" }
+func (t *TestCommandOther2) CommandType() string   { return "TestCommandOther2" }
 
 type MockEventHandler struct {
 	events []Event

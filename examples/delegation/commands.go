@@ -25,6 +25,7 @@ type CreateInvite struct {
 }
 
 func (c *CreateInvite) AggregateID() eventhorizon.UUID { return c.InvitationID }
+func (c *CreateInvite) AggregateType() string          { return "Invitation" }
 func (c *CreateInvite) CommandType() string            { return "CreateInvite" }
 
 type AcceptInvite struct {
@@ -32,6 +33,7 @@ type AcceptInvite struct {
 }
 
 func (c *AcceptInvite) AggregateID() eventhorizon.UUID { return c.InvitationID }
+func (c *AcceptInvite) AggregateType() string          { return "Invitation" }
 func (c *AcceptInvite) CommandType() string            { return "AcceptInvite" }
 
 type DeclineInvite struct {
@@ -39,4 +41,5 @@ type DeclineInvite struct {
 }
 
 func (c *DeclineInvite) AggregateID() eventhorizon.UUID { return c.InvitationID }
+func (c *DeclineInvite) AggregateType() string          { return "Invitation" }
 func (c *DeclineInvite) CommandType() string            { return "DeclineInvite" }

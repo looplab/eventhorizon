@@ -162,8 +162,9 @@ type TestCommandValue struct {
 	Content string
 }
 
-func (t *TestCommandValue) AggregateID() UUID   { return t.TestID }
-func (t *TestCommandValue) CommandType() string { return "TestCommandValue" }
+func (t *TestCommandValue) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandValue) AggregateType() string { return "Test" }
+func (t *TestCommandValue) CommandType() string   { return "TestCommandValue" }
 
 func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingRequired_Value(c *C) {
 	err := s.handler.checkCommand(&TestCommandValue{TestID: NewUUID()})
@@ -175,8 +176,9 @@ type TestCommandSlice struct {
 	Slice  []string
 }
 
-func (t *TestCommandSlice) AggregateID() UUID   { return t.TestID }
-func (t *TestCommandSlice) CommandType() string { return "TestCommandSlice" }
+func (t *TestCommandSlice) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandSlice) AggregateType() string { return "Test" }
+func (t *TestCommandSlice) CommandType() string   { return "TestCommandSlice" }
 
 func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingRequired_Slice(c *C) {
 	err := s.handler.checkCommand(&TestCommandSlice{TestID: NewUUID()})
@@ -188,8 +190,9 @@ type TestCommandMap struct {
 	Map    map[string]string
 }
 
-func (t *TestCommandMap) AggregateID() UUID   { return t.TestID }
-func (t *TestCommandMap) CommandType() string { return "TestCommandMap" }
+func (t *TestCommandMap) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandMap) AggregateType() string { return "Test" }
+func (t *TestCommandMap) CommandType() string   { return "TestCommandMap" }
 
 func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingRequired_Map(c *C) {
 	err := s.handler.checkCommand(&TestCommandMap{TestID: NewUUID()})
@@ -203,8 +206,9 @@ type TestCommandStruct struct {
 	}
 }
 
-func (t *TestCommandStruct) AggregateID() UUID   { return t.TestID }
-func (t *TestCommandStruct) CommandType() string { return "TestCommandStruct" }
+func (t *TestCommandStruct) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandStruct) AggregateType() string { return "Test" }
+func (t *TestCommandStruct) CommandType() string   { return "TestCommandStruct" }
 
 func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingRequired_Struct(c *C) {
 	err := s.handler.checkCommand(&TestCommandStruct{TestID: NewUUID()})
@@ -216,8 +220,9 @@ type TestCommandTime struct {
 	Time   time.Time
 }
 
-func (t *TestCommandTime) AggregateID() UUID   { return t.TestID }
-func (t *TestCommandTime) CommandType() string { return "TestCommandTime" }
+func (t *TestCommandTime) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandTime) AggregateType() string { return "Test" }
+func (t *TestCommandTime) CommandType() string   { return "TestCommandTime" }
 
 func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingRequired_Time(c *C) {
 	err := s.handler.checkCommand(&TestCommandTime{TestID: NewUUID()})
@@ -229,8 +234,9 @@ type TestCommandOptional struct {
 	Content string `eh:"optional"`
 }
 
-func (t *TestCommandOptional) AggregateID() UUID   { return t.TestID }
-func (t *TestCommandOptional) CommandType() string { return "TestCommandOptional" }
+func (t *TestCommandOptional) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandOptional) AggregateType() string { return "Test" }
+func (t *TestCommandOptional) CommandType() string   { return "TestCommandOptional" }
 
 func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingOptionalField(c *C) {
 	err := s.handler.checkCommand(&TestCommandOptional{TestID: NewUUID()})
@@ -242,8 +248,9 @@ type TestCommandPrivate struct {
 	private string
 }
 
-func (t *TestCommandPrivate) AggregateID() UUID   { return t.TestID }
-func (t *TestCommandPrivate) CommandType() string { return "TestCommandPrivate" }
+func (t *TestCommandPrivate) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandPrivate) AggregateType() string { return "Test" }
+func (t *TestCommandPrivate) CommandType() string   { return "TestCommandPrivate" }
 
 func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingPrivateField(c *C) {
 	err := s.handler.checkCommand(&TestCommandPrivate{TestID: NewUUID()})
