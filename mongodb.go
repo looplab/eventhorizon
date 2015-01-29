@@ -27,6 +27,9 @@ import (
 // Error returned when the database could not be dialed.
 var ErrCouldNotDialDB = errors.New("could not dial database")
 
+// Error returned when no database session is set.
+var ErrNoDBSession = errors.New("no database session")
+
 // Error returned when the database could not be cleared.
 var ErrCouldNotClearDB = errors.New("could not clear database")
 
@@ -106,6 +109,9 @@ func (s *MongoEventStore) Save(events []Event) error {
 		return ErrNoEventsToAppend
 	}
 
+	if s.session == nil {
+		return ErrNoDBSession
+	}
 	sess := s.session.Copy()
 	defer sess.Close()
 
@@ -177,6 +183,9 @@ func (s *MongoEventStore) Save(events []Event) error {
 // Load loads all events for the aggregate id from the database.
 // Returns ErrNoEventsFound if no events can be found.
 func (s *MongoEventStore) Load(id UUID) ([]Event, error) {
+	if s.session == nil {
+		return nil, ErrNoDBSession
+	}
 	sess := s.session.Copy()
 	defer sess.Close()
 
@@ -226,17 +235,28 @@ func (s *MongoEventStore) RegisterEventType(event Event, factory func() Event) e
 	return nil
 }
 
+// SetSessionAndDB sets the database session.
+func (s *MongoEventStore) SetSessionAndDB(session *mgo.Session, db string) {
+	s.session = session
+	s.db = db
+}
+
 // Clear clears the event storge.
 func (s *MongoEventStore) Clear() error {
+	if s.session == nil {
+		return ErrNoDBSession
+	}
 	if err := s.session.DB(s.db).C("events").DropCollection(); err != nil {
 		return ErrCouldNotClearDB
 	}
 	return nil
 }
 
-// Close closes a database session.
+// Close closes the database session.
 func (s *MongoEventStore) Close() {
-	s.session.Close()
+	if s.session != nil {
+		s.session.Close()
+	}
 }
 
 // MongoReadRepository implements an MongoDB repository of read models.
@@ -273,6 +293,9 @@ func NewMongoReadRepositoryWithSession(session *mgo.Session, database, collectio
 
 // Save saves a read model with id to the repository.
 func (r *MongoReadRepository) Save(id UUID, model interface{}) error {
+	if r.session == nil {
+		return ErrNoDBSession
+	}
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -285,6 +308,9 @@ func (r *MongoReadRepository) Save(id UUID, model interface{}) error {
 // Find returns one read model with using an id. Returns
 // ErrModelNotFound if no model could be found.
 func (r *MongoReadRepository) Find(id UUID) (interface{}, error) {
+	if r.session == nil {
+		return nil, ErrNoDBSession
+	}
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -303,6 +329,9 @@ func (r *MongoReadRepository) Find(id UUID) (interface{}, error) {
 
 // FindCustom uses a callback to specify a custom query.
 func (r *MongoReadRepository) FindCustom(callback func(*mgo.Collection) *mgo.Query) ([]interface{}, error) {
+	if r.session == nil {
+		return nil, ErrNoDBSession
+	}
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -329,6 +358,9 @@ func (r *MongoReadRepository) FindCustom(callback func(*mgo.Collection) *mgo.Que
 
 // FindAll returns all read models in the repository.
 func (r *MongoReadRepository) FindAll() ([]interface{}, error) {
+	if r.session == nil {
+		return nil, ErrNoDBSession
+	}
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -353,6 +385,9 @@ func (r *MongoReadRepository) FindAll() ([]interface{}, error) {
 // Remove removes a read model with id from the repository. Returns
 // ErrModelNotFound if no model could be found.
 func (r *MongoReadRepository) Remove(id UUID) error {
+	if r.session == nil {
+		return ErrNoDBSession
+	}
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -369,8 +404,17 @@ func (r *MongoReadRepository) SetModel(factory func() interface{}) {
 	r.factory = factory
 }
 
+// SetSessionAndDB sets the database session and database.
+func (r *MongoReadRepository) SetSessionAndDB(session *mgo.Session, db string) {
+	r.session = session
+	r.db = db
+}
+
 // Clear clears the read model database.
 func (r *MongoReadRepository) Clear() error {
+	if r.session == nil {
+		return ErrNoDBSession
+	}
 	if err := r.session.DB(r.db).C(r.collection).DropCollection(); err != nil {
 		return ErrCouldNotClearDB
 	}
@@ -379,5 +423,7 @@ func (r *MongoReadRepository) Clear() error {
 
 // Close closes a database session.
 func (r *MongoReadRepository) Close() {
-	r.session.Close()
+	if r.session != nil {
+		r.session.Close()
+	}
 }
