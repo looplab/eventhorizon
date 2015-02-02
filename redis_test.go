@@ -40,13 +40,16 @@ func (s *RedisEventBusSuite) SetUpSuite(c *C) {
 	}
 }
 func (s *RedisEventBusSuite) SetUpTest(c *C) {
-	s.bus = NewRedisEventBus("test", s.url, "")
-	c.Assert(s.bus, Not(Equals), nil)
-	err := s.bus.RegisterEventType(&TestEvent{}, func() Event { return &TestEvent{} })
+	var err error
+	s.bus, err = NewRedisEventBus("test", s.url, "")
+	c.Assert(s.bus, NotNil)
+	c.Assert(err, IsNil)
+	err = s.bus.RegisterEventType(&TestEvent{}, func() Event { return &TestEvent{} })
 	c.Assert(err, IsNil)
 
-	s.bus2 = NewRedisEventBus("test", s.url, "")
-	c.Assert(s.bus2, Not(Equals), nil)
+	s.bus2, err = NewRedisEventBus("test", s.url, "")
+	c.Assert(s.bus2, NotNil)
+	c.Assert(err, IsNil)
 	err = s.bus2.RegisterEventType(&TestEvent{}, func() Event { return &TestEvent{} })
 	c.Assert(err, IsNil)
 }
@@ -57,8 +60,9 @@ func (s *RedisEventBusSuite) TearDownTest(c *C) {
 }
 
 func (s *RedisEventBusSuite) Test_NewHandlerEventBus(c *C) {
-	bus := NewRedisEventBus("test", s.url, "")
-	c.Assert(bus, Not(Equals), nil)
+	bus, err := NewRedisEventBus("test", s.url, "")
+	c.Assert(bus, NotNil)
+	c.Assert(err, IsNil)
 	bus.Close()
 }
 

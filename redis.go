@@ -39,7 +39,7 @@ type RedisEventBus struct {
 }
 
 // NewRedisEventBus creates a RedisEventBus for remote events.
-func NewRedisEventBus(appID, server, password string) *RedisEventBus {
+func NewRedisEventBus(appID, server, password string) (*RedisEventBus, error) {
 	pool := &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
@@ -66,7 +66,7 @@ func NewRedisEventBus(appID, server, password string) *RedisEventBus {
 }
 
 // NewRedisEventBusWithPool creates a RedisEventBus for remote events.
-func NewRedisEventBusWithPool(appID string, pool *redis.Pool) *RedisEventBus {
+func NewRedisEventBusWithPool(appID string, pool *redis.Pool) (*RedisEventBus, error) {
 	b := &RedisEventBus{
 		eventHandlers:  make(map[string]map[EventHandler]bool),
 		localHandlers:  make(map[EventHandler]bool),
@@ -84,11 +84,11 @@ func NewRedisEventBusWithPool(appID string, pool *redis.Pool) *RedisEventBus {
 	err := b.conn.PSubscribe(b.prefix + "*")
 	if err != nil {
 		b.Close()
-		return nil
+		return nil, err
 	}
 	<-ready
 
-	return b
+	return b, nil
 }
 
 // PublishEvent publishes an event to all handlers capable of handling it.
