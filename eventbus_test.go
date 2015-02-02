@@ -30,7 +30,7 @@ func (s *InternalEventBusSuite) SetUpTest(c *C) {
 
 func (s *InternalEventBusSuite) Test_NewHandlerEventBus(c *C) {
 	bus := NewInternalEventBus()
-	c.Assert(bus, Not(Equals), nil)
+	c.Assert(bus, NotNil)
 }
 
 func (s *InternalEventBusSuite) Test_PublishEvent_Simple(c *C) {
