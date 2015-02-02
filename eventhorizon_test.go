@@ -88,10 +88,19 @@ func (t *TestCommandOther2) CommandType() string   { return "TestCommandOther2" 
 
 type MockEventHandler struct {
 	events []Event
+	recv   chan struct{}
+}
+
+func NewMockEventHandler() *MockEventHandler {
+	return &MockEventHandler{
+		make([]Event, 0),
+		make(chan struct{}),
+	}
 }
 
 func (m *MockEventHandler) HandleEvent(event Event) {
 	m.events = append(m.events, event)
+	close(m.recv)
 }
 
 type MockRepository struct {
