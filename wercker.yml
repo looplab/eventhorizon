@@ -15,13 +15,13 @@ build:
         code: |
           cd $WERCKER_SOURCE_DIR
           go version
-          go get -tags mongo -t ./...
+          go get -tags 'mongo redis' -t ./...
 
     # Build the project
     - script:
         name: go build
         code: |
-          go build -tags mongo ./...
+          go build -tags 'mongo redis' ./...
 
     # Test the project
     - script:
@@ -31,5 +31,5 @@ build:
           go get github.com/axw/gocov/gocov
           go get github.com/mattn/goveralls
           git checkout master
-          gocov test -tags mongo > gocov.json
+          gocov test -tags 'mongo redis' > gocov.json
           goveralls -gocovdata=gocov.json -service wercker.com -repotoken $COVERALLS_TOKEN
