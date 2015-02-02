@@ -2,6 +2,7 @@ box: wercker/golang
 
 services:
     - wercker/mongodb
+    - wercker/redis
 
 build:
   steps:
