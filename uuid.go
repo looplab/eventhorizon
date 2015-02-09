@@ -46,13 +46,9 @@ func NewUUID() UUID {
 	}
 
 	// Set the RFC4122 flag.
-	// Set the two most significant bits (bits 6 and 7) of the
-	// clock_seq_hi_and_reserved to zero and one, respectively.
-	u[8] = (u[8] | 0x40) & 0x7F
+	u[8] = (u[8] & 0xBF) | 0x80
 
 	// Set the version to 4.
-	// Set the four most significant bits (bits 12 through 15) of the
-	// time_hi_and_version field to the 4-bit version number.
 	u[6] = (u[6] & 0xF) | 0x40
 
 	return UUID(u[:])
