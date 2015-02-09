@@ -33,7 +33,7 @@ func (s *UUIDSuite) TestNewUUID(c *C) {
 	c.Assert(id, Not(Equals), id2)
 
 	// Check variant.
-	c.Assert(id[8]&0x40, Equals, uint8(0x40))
+	c.Assert((id[8]&0xC0)|0x80, Equals, uint8(0x80))
 
 	// Check version.
 	c.Assert(id[6]>>4, Equals, uint8(4))
