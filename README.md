@@ -7,7 +7,7 @@
 
 Event Horizon is a CQRS/ES toolkit for Go.
 
-**Event Horizon is currently under heavy development and is not considered to be stable!**
+**Event Horizon is used in at least one production system but may not be considered stable just yet!**
 
 CQRS stands for Command Query Responsibility Segregation and is a technique where object access (the Query part) and modification (the Command part) are separated from each other. This helps in designing complex data models where the actions can be totally independent from the data output.
 
