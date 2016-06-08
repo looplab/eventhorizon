@@ -1,4 +1,4 @@
-// Copyright (c) 2015 - Max Persson <max@looplab.se>
+// Copyright (c) 2015 - Max Ekman <max@looplab.se>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
