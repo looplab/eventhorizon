@@ -29,8 +29,7 @@ build:
         name: go test
         code: |
           go get -d golang.org/x/tools/cmd/cover
-          go get github.com/axw/gocov/gocov
           go get github.com/mattn/goveralls
           git checkout master
-          gocov test -tags 'mongo redis' > gocov.json
-          goveralls -gocovdata=gocov.json -service wercker.com -repotoken $COVERALLS_TOKEN
+          go test -tags 'mongo redis' -cover -coverprofile=profile.cov
+          goveralls -coverprofile=profile.cov -service=wercker.com -repotoken=$COVERALLS_TOKEN
