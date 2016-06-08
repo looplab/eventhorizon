@@ -18,18 +18,19 @@ import (
 	"github.com/looplab/eventhorizon"
 )
 
+// Invitation is a read model object for an invitation.
 type Invitation struct {
 	ID     eventhorizon.UUID
 	Name   string
 	Status string
 }
 
-// Projector that writes to a read model
-
+// InvitationProjector is a projector that updates the invitations.
 type InvitationProjector struct {
 	repository eventhorizon.ReadRepository
 }
 
+// NewInvitationProjector creates a new InvitationProjector.
 func NewInvitationProjector(repository eventhorizon.ReadRepository) *InvitationProjector {
 	p := &InvitationProjector{
 		repository: repository,
@@ -37,6 +38,7 @@ func NewInvitationProjector(repository eventhorizon.ReadRepository) *InvitationP
 	return p
 }
 
+// HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (p *InvitationProjector) HandleEvent(event eventhorizon.Event) {
 	switch event := event.(type) {
 	case *InviteCreated:
@@ -58,19 +60,20 @@ func (p *InvitationProjector) HandleEvent(event eventhorizon.Event) {
 	}
 }
 
+// GuestList is a read model object for the guest list.
 type GuestList struct {
 	NumGuests   int
 	NumAccepted int
 	NumDeclined int
 }
 
-// Projector that writes to a read model
-
+// GuestListProjector is a projector that updates the guest list.
 type GuestListProjector struct {
 	repository eventhorizon.ReadRepository
 	eventID    eventhorizon.UUID
 }
 
+// NewGuestListProjector creates a new GuestListProjector.
 func NewGuestListProjector(repository eventhorizon.ReadRepository, eventID eventhorizon.UUID) *GuestListProjector {
 	p := &GuestListProjector{
 		repository: repository,
@@ -79,6 +82,7 @@ func NewGuestListProjector(repository eventhorizon.ReadRepository, eventID event
 	return p
 }
 
+// HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (p *GuestListProjector) HandleEvent(event eventhorizon.Event) {
 	switch event.(type) {
 	case *InviteCreated:

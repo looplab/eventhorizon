@@ -22,12 +22,15 @@ import (
 	"github.com/looplab/eventhorizon"
 )
 
-// Invitation aggregate root.
+// InvitationAggregateType is the type name of the aggregate.
+const InvitationAggregateType = "Invitation"
+
+// InvitationAggregate is the root aggregate.
 //
 // The aggregate root will guard that the invitation can only be accepted OR
 // declined, but not both.
-
 type InvitationAggregate struct {
+	// AggregateBase implements most of the eventhorizon.Aggregate interface.
 	*eventhorizon.AggregateBase
 
 	name     string
@@ -36,10 +39,12 @@ type InvitationAggregate struct {
 	declined bool
 }
 
+// AggregateType implements the AggregateType method of the Aggregate interface.
 func (i *InvitationAggregate) AggregateType() string {
-	return "Invitation"
+	return InvitationAggregateType
 }
 
+// HandleCommand implements the HandleCommand method of the Aggregate interface.
 func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) error {
 	switch command := command.(type) {
 	case *CreateInvite:
@@ -81,6 +86,7 @@ func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) error 
 	return fmt.Errorf("couldn't handle command")
 }
 
+// ApplyEvent implements the ApplyEvent method of the Aggregate interface.
 func (i *InvitationAggregate) ApplyEvent(event eventhorizon.Event) {
 	switch event := event.(type) {
 	case *InviteCreated:

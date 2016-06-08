@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package example contains a simple runnable example of a CQRS/ES app.
+// Package delegation contains a simple runnable example of a CQRS/ES app.
 package main
 
 import (
@@ -109,8 +109,10 @@ func main() {
 	fmt.Printf("guest list: %#v\n", guestList)
 }
 
+// LoggerSubscriber is a simple event handler for logging all events.
 type LoggerSubscriber struct{}
 
+// HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (l *LoggerSubscriber) HandleEvent(event eventhorizon.Event) {
 	log.Printf("event: %#v\n", event)
 }

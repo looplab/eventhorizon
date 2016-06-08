@@ -14,7 +14,7 @@
 
 // +build mongo
 
-// Package example contains a simple runnable example of a CQRS/ES app.
+// Package mongodb contains an example of a CQRS/ES app using the MongoDB adapter.
 package main
 
 import (
@@ -137,8 +137,10 @@ func main() {
 	// }
 }
 
+// LoggerSubscriber is a simple event handler for logging all events.
 type LoggerSubscriber struct{}
 
+// HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (l *LoggerSubscriber) HandleEvent(event eventhorizon.Event) {
 	log.Printf("event: %#v\n", event)
 }

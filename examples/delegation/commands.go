@@ -18,6 +18,7 @@ import (
 	"github.com/looplab/eventhorizon"
 )
 
+// CreateInvite is a command for creating invites.
 type CreateInvite struct {
 	InvitationID eventhorizon.UUID
 	Name         string
@@ -25,21 +26,23 @@ type CreateInvite struct {
 }
 
 func (c *CreateInvite) AggregateID() eventhorizon.UUID { return c.InvitationID }
-func (c *CreateInvite) AggregateType() string          { return "Invitation" }
+func (c *CreateInvite) AggregateType() string          { return InvitationAggregateType }
 func (c *CreateInvite) CommandType() string            { return "CreateInvite" }
 
+// AcceptInvite is a command for accepting invites.
 type AcceptInvite struct {
 	InvitationID eventhorizon.UUID
 }
 
 func (c *AcceptInvite) AggregateID() eventhorizon.UUID { return c.InvitationID }
-func (c *AcceptInvite) AggregateType() string          { return "Invitation" }
+func (c *AcceptInvite) AggregateType() string          { return InvitationAggregateType }
 func (c *AcceptInvite) CommandType() string            { return "AcceptInvite" }
 
+// DeclineInvite is a command for declining invites.
 type DeclineInvite struct {
 	InvitationID eventhorizon.UUID
 }
 
 func (c *DeclineInvite) AggregateID() eventhorizon.UUID { return c.InvitationID }
-func (c *DeclineInvite) AggregateType() string          { return "Invitation" }
+func (c *DeclineInvite) AggregateType() string          { return InvitationAggregateType }
 func (c *DeclineInvite) CommandType() string            { return "DeclineInvite" }
