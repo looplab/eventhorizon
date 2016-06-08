@@ -18,10 +18,10 @@ import (
 	"errors"
 )
 
-// Error returned when a handler is already registered for a command.
+// ErrHandlerAlreadySet is when a handler is already registered for a command.
 var ErrHandlerAlreadySet = errors.New("handler is already set")
 
-// Error returned when no handler can be found.
+// ErrHandlerNotFound is when no handler can be found.
 var ErrHandlerNotFound = errors.New("no handlers for command")
 
 // CommandHandler is an interface that all handlers of commands should implement.

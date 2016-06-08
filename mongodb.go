@@ -24,34 +24,34 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// Error returned when the database could not be dialed.
+// ErrCouldNotDialDB is when the database could not be dialed.
 var ErrCouldNotDialDB = errors.New("could not dial database")
 
-// Error returned when no database session is set.
+// ErrNoDBSession is when no database session is set.
 var ErrNoDBSession = errors.New("no database session")
 
-// Error returned when the database could not be cleared.
+// ErrCouldNotClearDB is when the database could not be cleared.
 var ErrCouldNotClearDB = errors.New("could not clear database")
 
-// Error returned when an event is not registered.
+// ErrEventNotRegistered is when an event is not registered.
 var ErrEventNotRegistered = errors.New("event not registered")
 
-// Error returned when an model is not set on a read repository.
+// ErrModelNotSet is when an model is not set on a read repository.
 var ErrModelNotSet = errors.New("model not set")
 
-// Error returned when an event could not be marshaled into BSON.
+// ErrCouldNotMarshalEvent is when an event could not be marshaled into BSON.
 var ErrCouldNotMarshalEvent = errors.New("could not marshal event")
 
-// Error returned when an event could not be unmarshaled into a concrete type.
+// ErrCouldNotUnmarshalEvent is when an event could not be unmarshaled into a concrete type.
 var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
 
-// Error returned when an aggregate could not be loaded.
+// ErrCouldNotLoadAggregate is when an aggregate could not be loaded.
 var ErrCouldNotLoadAggregate = errors.New("could not load aggregate")
 
-// Error returned when an aggregate could not be saved.
+// ErrCouldNotSaveAggregate is when an aggregate could not be saved.
 var ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
 
-// Error returned when an event does not implement the Event interface.
+// ErrInvalidEvent is when an event does not implement the Event interface.
 var ErrInvalidEvent = errors.New("invalid event")
 
 // MongoEventStore implements an EventStore for MongoDB.

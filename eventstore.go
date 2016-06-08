@@ -19,13 +19,13 @@ import (
 	"time"
 )
 
-// Error returned when no events are available to append.
+// ErrNoEventsToAppend is when no events are available to append.
 var ErrNoEventsToAppend = errors.New("no events to append")
 
-// Error returned when no events are found.
+// ErrNoEventsFound is when no events are found.
 var ErrNoEventsFound = errors.New("could not find events")
 
-// Error returned if no event store has been defined.
+// ErrNoEventStoreDefined is if no event store has been defined.
 var ErrNoEventStoreDefined = errors.New("no event store defined")
 
 // EventStore is an interface for an event sourcing event store.

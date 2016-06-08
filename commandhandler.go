@@ -20,13 +20,13 @@ import (
 	"time"
 )
 
-// Error returned when a dispatcher is created with a nil repository.
+// ErrNilRepository is when a dispatcher is created with a nil repository.
 var ErrNilRepository = errors.New("repository is nil")
 
-// Error returned when an aggregate is already registered for a command.
+// ErrAggregateAlreadySet is when an aggregate is already registered for a command.
 var ErrAggregateAlreadySet = errors.New("aggregate is already set")
 
-// Error returned when no aggregate can be found.
+// ErrAggregateNotFound is when no aggregate can be found.
 var ErrAggregateNotFound = errors.New("no aggregate for command")
 
 // CommandFieldError is returned by Dispatch when a field is incorrect.

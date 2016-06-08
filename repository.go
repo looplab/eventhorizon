@@ -18,13 +18,13 @@ import (
 	"errors"
 )
 
-// Error returned when a dispatcher is created with a nil event store.
+// ErrNilEventStore is when a dispatcher is created with a nil event store.
 var ErrNilEventStore = errors.New("event store is nil")
 
-// Error returned when an aggregate is already registered.
+// ErrAggregateAlreadyRegistered is when an aggregate is already registered.
 var ErrAggregateAlreadyRegistered = errors.New("aggregate is already registered")
 
-// Error returned when an aggregate is not registered.
+// ErrAggregateNotRegistered is when an aggregate is not registered.
 var ErrAggregateNotRegistered = errors.New("aggregate is not registered")
 
 // Repository is a repository responsible for loading and saving aggregates.
