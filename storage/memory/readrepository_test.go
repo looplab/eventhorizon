@@ -12,75 +12,77 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package eventhorizon
+package memory
 
 import (
 	. "gopkg.in/check.v1"
+
+	"github.com/looplab/eventhorizon"
 )
 
-type MemoryReadRepositorySuite struct{}
+type ReadRepositorySuite struct{}
 
-var _ = Suite(&MemoryReadRepositorySuite{})
+var _ = Suite(&ReadRepositorySuite{})
 
-func (s *MemoryReadRepositorySuite) TestNewMemoryReadRepository(c *C) {
-	repo := NewMemoryReadRepository()
+func (s *ReadRepositorySuite) TestNewReadRepository(c *C) {
+	repo := NewReadRepository()
 	c.Assert(repo, Not(Equals), nil)
 	c.Assert(repo.data, Not(Equals), nil)
 	c.Assert(len(repo.data), Equals, 0)
 }
 
-func (s *MemoryReadRepositorySuite) TestSave(c *C) {
+func (s *ReadRepositorySuite) TestSave(c *C) {
 	// Simple save.
-	repo := NewMemoryReadRepository()
-	id := NewUUID()
+	repo := NewReadRepository()
+	id := eventhorizon.NewUUID()
 	repo.Save(id, 42)
 	c.Assert(len(repo.data), Equals, 1)
 	c.Assert(repo.data[id], Equals, 42)
 
 	// Overwrite with same ID.
-	repo = NewMemoryReadRepository()
-	id = NewUUID()
+	repo = NewReadRepository()
+	id = eventhorizon.NewUUID()
 	repo.Save(id, 42)
 	repo.Save(id, 43)
 	c.Assert(len(repo.data), Equals, 1)
 	c.Assert(repo.data[id], Equals, 43)
 }
 
-func (s *MemoryReadRepositorySuite) TestFind(c *C) {
+func (s *ReadRepositorySuite) TestFind(c *C) {
 	// Simple find.
-	repo := NewMemoryReadRepository()
-	id := NewUUID()
+	repo := NewReadRepository()
+	id := eventhorizon.NewUUID()
 	repo.data[id] = 42
 	result, err := repo.Find(id)
 	c.Assert(err, Equals, nil)
 	c.Assert(result, Equals, 42)
 
 	// Empty repo.
-	repo = NewMemoryReadRepository()
-	result, err = repo.Find(NewUUID())
+	repo = NewReadRepository()
+	result, err = repo.Find(eventhorizon.NewUUID())
 	c.Assert(err, ErrorMatches, "could not find model")
 	c.Assert(result, Equals, nil)
 
 	// Non existing ID.
-	repo = NewMemoryReadRepository()
-	repo.data[NewUUID()] = 42
-	result, err = repo.Find(NewUUID())
+	repo = NewReadRepository()
+	repo.data[eventhorizon.NewUUID()] = 42
+	result, err = repo.Find(eventhorizon.NewUUID())
 	c.Assert(err, ErrorMatches, "could not find model")
 	c.Assert(result, Equals, nil)
 }
 
-func (s *MemoryReadRepositorySuite) TestFindAll(c *C) {
+func (s *ReadRepositorySuite) TestFindAll(c *C) {
 	// Find one.
-	repo := NewMemoryReadRepository()
-	repo.data[NewUUID()] = 42
+	repo := NewReadRepository()
+	repo.data[eventhorizon.NewUUID()] = 42
 	result, err := repo.FindAll()
 	c.Assert(err, Equals, nil)
 	c.Assert(result, DeepEquals, []interface{}{42})
 
 	// Find two.
-	repo = NewMemoryReadRepository()
-	repo.data[NewUUID()] = 42
-	repo.data[NewUUID()] = 43
+	repo = NewReadRepository()
+	repo.data[eventhorizon.NewUUID()] = 42
+	repo.data[eventhorizon.NewUUID()] = 43
 	result, err = repo.FindAll()
 	c.Assert(err, Equals, nil)
 	sum := 0
@@ -90,25 +92,25 @@ func (s *MemoryReadRepositorySuite) TestFindAll(c *C) {
 	c.Assert(sum, Equals, 85)
 
 	// Find none.
-	repo = NewMemoryReadRepository()
+	repo = NewReadRepository()
 	result, err = repo.FindAll()
 	c.Assert(err, Equals, nil)
 	c.Assert(result, DeepEquals, []interface{}{})
 }
 
-func (s *MemoryReadRepositorySuite) TestRemove(c *C) {
+func (s *ReadRepositorySuite) TestRemove(c *C) {
 	// Simple remove.
-	repo := NewMemoryReadRepository()
-	id := NewUUID()
+	repo := NewReadRepository()
+	id := eventhorizon.NewUUID()
 	repo.data[id] = 42
 	err := repo.Remove(id)
 	c.Assert(err, Equals, nil)
 	c.Assert(len(repo.data), Equals, 0)
 
 	// Non existing ID.
-	repo = NewMemoryReadRepository()
+	repo = NewReadRepository()
 	repo.data[id] = 42
-	err = repo.Remove(NewUUID())
+	err = repo.Remove(eventhorizon.NewUUID())
 	c.Assert(err, ErrorMatches, "could not find model")
 	c.Assert(len(repo.data), Equals, 1)
 }

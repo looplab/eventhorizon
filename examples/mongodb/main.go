@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build mongo
-
 // Package mongodb contains an example of a CQRS/ES app using the MongoDB adapter.
 package main
 
@@ -22,15 +20,17 @@ import (
 	"log"
 
 	"github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/messaging/local"
+	"github.com/looplab/eventhorizon/storage/mongodb"
 )
 
 func main() {
 	// Create the event bus that distributes events.
-	eventBus := eventhorizon.NewInternalEventBus()
+	eventBus := local.NewEventBus()
 	eventBus.AddGlobalHandler(&LoggerSubscriber{})
 
 	// Create the event store.
-	eventStore, err := eventhorizon.NewMongoEventStore(eventBus, "localhost", "demo")
+	eventStore, err := mongodb.NewEventStore(eventBus, "localhost", "demo")
 	if err != nil {
 		log.Fatalf("could not create event store: %s", err)
 	}
@@ -67,13 +67,13 @@ func main() {
 	handler.SetAggregate(&InvitationAggregate{}, &DeclineInvite{})
 
 	// Create the command bus and register the handler for the commands.
-	commandBus := eventhorizon.NewInternalCommandBus()
+	commandBus := local.NewCommandBus()
 	commandBus.SetHandler(handler, &CreateInvite{})
 	commandBus.SetHandler(handler, &AcceptInvite{})
 	commandBus.SetHandler(handler, &DeclineInvite{})
 
 	// Create and register a read model for individual invitations.
-	invitationRepository, err := eventhorizon.NewMongoReadRepository("localhost", "demo", "invitations")
+	invitationRepository, err := mongodb.NewReadRepository("localhost", "demo", "invitations")
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
@@ -85,7 +85,7 @@ func main() {
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
-	guestListRepository, err := eventhorizon.NewMongoReadRepository("localhost", "demo", "guest_lists")
+	guestListRepository, err := mongodb.NewReadRepository("localhost", "demo", "guest_lists")
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}

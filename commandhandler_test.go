@@ -30,14 +30,14 @@ type AggregateCommandHandlerSuite struct {
 
 func (s *AggregateCommandHandlerSuite) SetUpTest(c *C) {
 	s.repo = &MockRepository{
-		aggregates: make(map[UUID]Aggregate),
+		Aggregates: make(map[UUID]Aggregate),
 	}
 	s.handler, _ = NewAggregateCommandHandler(s.repo)
 }
 
 func (s *AggregateCommandHandlerSuite) Test_NewDispatcher(c *C) {
 	repo := &MockRepository{
-		aggregates: make(map[UUID]Aggregate),
+		Aggregates: make(map[UUID]Aggregate),
 	}
 	handler, err := NewAggregateCommandHandler(repo)
 	c.Assert(handler, NotNil)
@@ -80,7 +80,7 @@ func (s *AggregateCommandHandlerSuite) Test_Simple(c *C) {
 	aggregate := &TestDispatcherAggregate{
 		AggregateBase: NewAggregateBase(NewUUID()),
 	}
-	s.repo.aggregates[aggregate.AggregateID()] = aggregate
+	s.repo.Aggregates[aggregate.AggregateID()] = aggregate
 	s.handler.SetAggregate(aggregate, &TestCommand{})
 	command1 := &TestCommand{aggregate.AggregateID(), "command1"}
 	err := s.handler.HandleCommand(command1)
@@ -92,7 +92,7 @@ func (s *AggregateCommandHandlerSuite) Test_ErrorInHandler(c *C) {
 	aggregate := &TestDispatcherAggregate{
 		AggregateBase: NewAggregateBase(NewUUID()),
 	}
-	s.repo.aggregates[aggregate.AggregateID()] = aggregate
+	s.repo.Aggregates[aggregate.AggregateID()] = aggregate
 	s.handler.SetAggregate(aggregate, &TestCommand{})
 	commandError := &TestCommand{aggregate.AggregateID(), "error"}
 	err := s.handler.HandleCommand(commandError)
@@ -135,13 +135,13 @@ func (t *BenchmarkDispatcherAggregate) ApplyEvent(event Event) {
 
 func (s *AggregateCommandHandlerSuite) Benchmark_Dispatcher(c *C) {
 	repo := &MockRepository{
-		aggregates: make(map[UUID]Aggregate),
+		Aggregates: make(map[UUID]Aggregate),
 	}
 	handler, _ := NewAggregateCommandHandler(repo)
 	agg := &TestDispatcherAggregate{
 		AggregateBase: NewAggregateBase(NewUUID()),
 	}
-	repo.aggregates[agg.AggregateID()] = agg
+	repo.Aggregates[agg.AggregateID()] = agg
 	handler.SetAggregate(agg, &TestCommand{})
 
 	callCountDispatcher = 0

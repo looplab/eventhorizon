@@ -36,34 +36,3 @@ type CommandBus interface {
 	// SetHandler registers a handler with a command.
 	SetHandler(CommandHandler, Command) error
 }
-
-// InternalCommandBus is a command bus that handles commands with the
-// registered CommandHandlers
-type InternalCommandBus struct {
-	handlers map[string]CommandHandler
-}
-
-// NewInternalCommandBus creates a InternalCommandBus.
-func NewInternalCommandBus() *InternalCommandBus {
-	b := &InternalCommandBus{
-		handlers: make(map[string]CommandHandler),
-	}
-	return b
-}
-
-// HandleCommand handles a command with a handler capable of handling it.
-func (b *InternalCommandBus) HandleCommand(command Command) error {
-	if handler, ok := b.handlers[command.CommandType()]; ok {
-		return handler.HandleCommand(command)
-	}
-	return ErrHandlerNotFound
-}
-
-// SetHandler adds a handler for a specific command.
-func (b *InternalCommandBus) SetHandler(handler CommandHandler, command Command) error {
-	if _, ok := b.handlers[command.CommandType()]; ok {
-		return ErrHandlerAlreadySet
-	}
-	b.handlers[command.CommandType()] = handler
-	return nil
-}

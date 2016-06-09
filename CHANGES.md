@@ -1,5 +1,10 @@
 # Changes
 
+### 2016-06-09
+
+Restructure storage and messaging implementations in its own folders for better dependency management and readability.
+
+
 ### 2015-01-20
 
 Addded CommandBus that routes commands to handlers. This is for upcoming Saga support. The dispatcher is now renamed to AggregateCommandHandler and must be added to the CommandBus. At the moment Commands have to registered both in the handler and on the bus, this may change in the future.

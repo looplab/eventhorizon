@@ -12,34 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build redis
-
-package eventhorizon
+package redis
 
 import (
+	"errors"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
 	"gopkg.in/mgo.v2/bson"
+
+	"github.com/looplab/eventhorizon"
 )
 
-// RedisEventBus is an event bus that notifies registered EventHandlers of
+// ErrEventNotRegistered is when an event is not registered.
+var ErrEventNotRegistered = errors.New("event not registered")
+
+// ErrCouldNotMarshalEvent is when an event could not be marshaled into BSON.
+var ErrCouldNotMarshalEvent = errors.New("could not marshal event")
+
+// ErrCouldNotUnmarshalEvent is when an event could not be unmarshaled into a concrete type.
+var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
+
+// EventBus is an event bus that notifies registered EventHandlers of
 // published events.
-type RedisEventBus struct {
-	eventHandlers  map[string]map[EventHandler]bool
-	localHandlers  map[EventHandler]bool
-	globalHandlers map[EventHandler]bool
+type EventBus struct {
+	eventHandlers  map[string]map[eventhorizon.EventHandler]bool
+	localHandlers  map[eventhorizon.EventHandler]bool
+	globalHandlers map[eventhorizon.EventHandler]bool
 	prefix         string
 	pool           *redis.Pool
 	conn           *redis.PubSubConn
-	factories      map[string]func() Event
+	factories      map[string]func() eventhorizon.Event
 	exit           chan struct{}
 }
 
-// NewRedisEventBus creates a RedisEventBus for remote events.
-func NewRedisEventBus(appID, server, password string) (*RedisEventBus, error) {
+// NewEventBus creates a EventBus for remote events.
+func NewEventBus(appID, server, password string) (*EventBus, error) {
 	pool := &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
@@ -62,18 +72,18 @@ func NewRedisEventBus(appID, server, password string) (*RedisEventBus, error) {
 		},
 	}
 
-	return NewRedisEventBusWithPool(appID, pool)
+	return NewEventBusWithPool(appID, pool)
 }
 
-// NewRedisEventBusWithPool creates a RedisEventBus for remote events.
-func NewRedisEventBusWithPool(appID string, pool *redis.Pool) (*RedisEventBus, error) {
-	b := &RedisEventBus{
-		eventHandlers:  make(map[string]map[EventHandler]bool),
-		localHandlers:  make(map[EventHandler]bool),
-		globalHandlers: make(map[EventHandler]bool),
+// NewEventBusWithPool creates a EventBus for remote events.
+func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
+	b := &EventBus{
+		eventHandlers:  make(map[string]map[eventhorizon.EventHandler]bool),
+		localHandlers:  make(map[eventhorizon.EventHandler]bool),
+		globalHandlers: make(map[eventhorizon.EventHandler]bool),
 		prefix:         appID + ":events:",
 		pool:           pool,
-		factories:      make(map[string]func() Event),
+		factories:      make(map[string]func() eventhorizon.Event),
 		exit:           make(chan struct{}),
 	}
 
@@ -92,7 +102,7 @@ func NewRedisEventBusWithPool(appID string, pool *redis.Pool) (*RedisEventBus, e
 }
 
 // PublishEvent publishes an event to all handlers capable of handling it.
-func (b *RedisEventBus) PublishEvent(event Event) {
+func (b *EventBus) PublishEvent(event eventhorizon.Event) {
 	if handlers, ok := b.eventHandlers[event.EventType()]; ok {
 		for handler := range handlers {
 			handler.HandleEvent(event)
@@ -110,10 +120,10 @@ func (b *RedisEventBus) PublishEvent(event Event) {
 }
 
 // AddHandler adds a handler for a specific local event.
-func (b *RedisEventBus) AddHandler(handler EventHandler, event Event) {
+func (b *EventBus) AddHandler(handler eventhorizon.EventHandler, event eventhorizon.Event) {
 	// Create handler list for new event types.
 	if _, ok := b.eventHandlers[event.EventType()]; !ok {
-		b.eventHandlers[event.EventType()] = make(map[EventHandler]bool)
+		b.eventHandlers[event.EventType()] = make(map[eventhorizon.EventHandler]bool)
 	}
 
 	// Add handler to event type.
@@ -121,12 +131,12 @@ func (b *RedisEventBus) AddHandler(handler EventHandler, event Event) {
 }
 
 // AddLocalHandler adds a handler for local events.
-func (b *RedisEventBus) AddLocalHandler(handler EventHandler) {
+func (b *EventBus) AddLocalHandler(handler eventhorizon.EventHandler) {
 	b.localHandlers[handler] = true
 }
 
 // AddGlobalHandler adds a handler for global (remote) events.
-func (b *RedisEventBus) AddGlobalHandler(handler EventHandler) {
+func (b *EventBus) AddGlobalHandler(handler eventhorizon.EventHandler) {
 	b.globalHandlers[handler] = true
 }
 
@@ -135,9 +145,9 @@ func (b *RedisEventBus) AddGlobalHandler(handler EventHandler) {
 //
 // An example would be:
 //     eventStore.RegisterEventType(&MyEvent{}, func() Event { return &MyEvent{} })
-func (b *RedisEventBus) RegisterEventType(event Event, factory func() Event) error {
+func (b *EventBus) RegisterEventType(event eventhorizon.Event, factory func() eventhorizon.Event) error {
 	if _, ok := b.factories[event.EventType()]; ok {
-		return ErrHandlerAlreadySet
+		return eventhorizon.ErrHandlerAlreadySet
 	}
 
 	b.factories[event.EventType()] = factory
@@ -146,7 +156,7 @@ func (b *RedisEventBus) RegisterEventType(event Event, factory func() Event) err
 }
 
 // Close exits the recive goroutine by unsubscribing to all channels.
-func (b *RedisEventBus) Close() {
+func (b *EventBus) Close() {
 	err := b.conn.PUnsubscribe()
 	if err != nil {
 		log.Printf("error: event bus close: %v\n", err)
@@ -158,7 +168,7 @@ func (b *RedisEventBus) Close() {
 	}
 }
 
-func (b *RedisEventBus) publishGlobal(event Event) {
+func (b *EventBus) publishGlobal(event eventhorizon.Event) {
 	conn := b.pool.Get()
 	defer conn.Close()
 	if err := conn.Err(); err != nil {
@@ -178,7 +188,7 @@ func (b *RedisEventBus) publishGlobal(event Event) {
 	}
 }
 
-func (b *RedisEventBus) receiveGlobal(ready chan struct{}) {
+func (b *EventBus) receiveGlobal(ready chan struct{}) {
 	for {
 		switch n := b.conn.Receive().(type) {
 		case redis.PMessage:

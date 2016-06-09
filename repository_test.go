@@ -30,14 +30,14 @@ type CallbackRepositorySuite struct {
 
 func (s *CallbackRepositorySuite) SetUpTest(c *C) {
 	s.store = &MockEventStore{
-		events: make([]Event, 0),
+		Events: make([]Event, 0),
 	}
 	s.repo, _ = NewCallbackRepository(s.store)
 }
 
 func (s *CallbackRepositorySuite) Test_NewDispatcher(c *C) {
 	store := &MockEventStore{
-		events: make([]Event, 0),
+		Events: make([]Event, 0),
 	}
 	repo, err := NewCallbackRepository(store)
 	c.Assert(repo, NotNil)

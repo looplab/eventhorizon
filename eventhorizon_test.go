@@ -25,22 +25,6 @@ import (
 // Run benchmarks with "go test -check.b"
 func Test(t *testing.T) { TestingT(t) }
 
-type EmptyAggregate struct {
-}
-
-type TestAggregate struct {
-	*AggregateBase
-	events []Event
-}
-
-func (t *TestAggregate) AggregateType() string {
-	return "TestAggregate"
-}
-
-func (t *TestAggregate) ApplyEvent(event Event) {
-	t.events = append(t.events, event)
-}
-
 type TestEvent struct {
 	TestID  UUID
 	Content string
@@ -49,15 +33,6 @@ type TestEvent struct {
 func (t *TestEvent) AggregateID() UUID     { return t.TestID }
 func (t *TestEvent) AggregateType() string { return "Test" }
 func (t *TestEvent) EventType() string     { return "TestEvent" }
-
-type TestEventOther struct {
-	TestID  UUID
-	Content string
-}
-
-func (t *TestEventOther) AggregateID() UUID     { return t.TestID }
-func (t *TestEventOther) AggregateType() string { return "Test" }
-func (t *TestEventOther) EventType() string     { return "TestEventOther" }
 
 type TestCommand struct {
 	TestID  UUID
@@ -68,77 +43,30 @@ func (t *TestCommand) AggregateID() UUID     { return t.TestID }
 func (t *TestCommand) AggregateType() string { return "Test" }
 func (t *TestCommand) CommandType() string   { return "TestCommand" }
 
-type TestCommandOther struct {
-	TestID  UUID
-	Content string
-}
-
-func (t *TestCommandOther) AggregateID() UUID     { return t.TestID }
-func (t *TestCommandOther) AggregateType() string { return "Test" }
-func (t *TestCommandOther) CommandType() string   { return "TestCommandOther" }
-
-type TestCommandOther2 struct {
-	TestID  UUID
-	Content string
-}
-
-func (t *TestCommandOther2) AggregateID() UUID     { return t.TestID }
-func (t *TestCommandOther2) AggregateType() string { return "Test" }
-func (t *TestCommandOther2) CommandType() string   { return "TestCommandOther2" }
-
-type MockEventHandler struct {
-	events []Event
-	recv   chan struct{}
-}
-
-func NewMockEventHandler() *MockEventHandler {
-	return &MockEventHandler{
-		make([]Event, 0),
-		make(chan struct{}),
-	}
-}
-
-func (m *MockEventHandler) HandleEvent(event Event) {
-	m.events = append(m.events, event)
-	close(m.recv)
-}
-
 type MockRepository struct {
-	aggregates map[UUID]Aggregate
+	Aggregates map[UUID]Aggregate
 }
 
 func (m *MockRepository) Load(aggregateType string, id UUID) (Aggregate, error) {
-	return m.aggregates[id], nil
+	return m.Aggregates[id], nil
 }
 
 func (m *MockRepository) Save(aggregate Aggregate) error {
-	m.aggregates[aggregate.AggregateID()] = aggregate
+	m.Aggregates[aggregate.AggregateID()] = aggregate
 	return nil
 }
 
 type MockEventStore struct {
-	events []Event
-	loaded UUID
+	Events []Event
+	Loaded UUID
 }
 
 func (m *MockEventStore) Save(events []Event) error {
-	m.events = append(m.events, events...)
+	m.Events = append(m.Events, events...)
 	return nil
 }
 
 func (m *MockEventStore) Load(id UUID) ([]Event, error) {
-	m.loaded = id
-	return m.events, nil
+	m.Loaded = id
+	return m.Events, nil
 }
-
-type MockEventBus struct {
-	events []Event
-}
-
-func (m *MockEventBus) PublishEvent(event Event) {
-	m.events = append(m.events, event)
-}
-
-func (m *MockEventBus) AddHandler(handler EventHandler, event Event) {}
-func (m *MockEventBus) AddLocalHandler(handler EventHandler)         {}
-func (m *MockEventBus) AddGlobalHandler(handler EventHandler)        {}

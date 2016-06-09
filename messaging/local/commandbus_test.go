@@ -12,58 +12,61 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package eventhorizon
+package local
 
 import (
 	. "gopkg.in/check.v1"
+
+	"github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/testing"
 )
 
-var _ = Suite(&InternalCommandBusSuite{})
+var _ = Suite(&CommandBusSuite{})
 
-type InternalCommandBusSuite struct {
-	bus *InternalCommandBus
+type CommandBusSuite struct {
+	bus *CommandBus
 }
 
-func (s *InternalCommandBusSuite) SetUpTest(c *C) {
-	s.bus = NewInternalCommandBus()
+func (s *CommandBusSuite) SetUpTest(c *C) {
+	s.bus = NewCommandBus()
 }
 
-func (s *InternalCommandBusSuite) Test_NewHandlerCommandBus(c *C) {
-	bus := NewInternalCommandBus()
+func (s *CommandBusSuite) Test_NewHandlerCommandBus(c *C) {
+	bus := NewCommandBus()
 	c.Assert(bus, Not(Equals), nil)
 }
 
 type TestCommandHandler struct {
-	command Command
+	command eventhorizon.Command
 }
 
-func (t *TestCommandHandler) HandleCommand(command Command) error {
+func (t *TestCommandHandler) HandleCommand(command eventhorizon.Command) error {
 	t.command = command
 	return nil
 }
 
-func (s *InternalCommandBusSuite) Test_HandleCommand_Simple(c *C) {
+func (s *CommandBusSuite) Test_HandleCommand_Simple(c *C) {
 	handler := &TestCommandHandler{}
-	err := s.bus.SetHandler(handler, &TestCommand{})
+	err := s.bus.SetHandler(handler, &testing.TestCommand{})
 	c.Assert(err, IsNil)
-	command1 := &TestCommand{NewUUID(), "command1"}
+	command1 := &testing.TestCommand{eventhorizon.NewUUID(), "command1"}
 	err = s.bus.HandleCommand(command1)
 	c.Assert(err, IsNil)
 	c.Assert(handler.command, Equals, command1)
 }
 
-func (s *InternalCommandBusSuite) Test_HandleCommand_NoHandler(c *C) {
+func (s *CommandBusSuite) Test_HandleCommand_NoHandler(c *C) {
 	handler := &TestCommandHandler{}
-	command1 := &TestCommand{NewUUID(), "command1"}
+	command1 := &testing.TestCommand{eventhorizon.NewUUID(), "command1"}
 	err := s.bus.HandleCommand(command1)
-	c.Assert(err, Equals, ErrHandlerNotFound)
+	c.Assert(err, Equals, eventhorizon.ErrHandlerNotFound)
 	c.Assert(handler.command, IsNil)
 }
 
-func (s *InternalCommandBusSuite) Test_SetHandler_Twice(c *C) {
+func (s *CommandBusSuite) Test_SetHandler_Twice(c *C) {
 	handler := &TestCommandHandler{}
-	err := s.bus.SetHandler(handler, &TestCommand{})
+	err := s.bus.SetHandler(handler, &testing.TestCommand{})
 	c.Assert(err, IsNil)
-	err = s.bus.SetHandler(handler, &TestCommand{})
-	c.Assert(err, Equals, ErrHandlerAlreadySet)
+	err = s.bus.SetHandler(handler, &testing.TestCommand{})
+	c.Assert(err, Equals, eventhorizon.ErrHandlerAlreadySet)
 }
