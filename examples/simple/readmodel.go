@@ -16,6 +16,8 @@ package main
 
 import (
 	"github.com/looplab/eventhorizon"
+
+	"github.com/looplab/eventhorizon/examples/domain"
 )
 
 // Invitation is a read model object for an invitation.
@@ -41,18 +43,18 @@ func NewInvitationProjector(repository eventhorizon.ReadRepository) *InvitationP
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (p *InvitationProjector) HandleEvent(event eventhorizon.Event) {
 	switch event := event.(type) {
-	case *InviteCreated:
+	case *domain.InviteCreated:
 		i := &Invitation{
 			ID:   event.InvitationID,
 			Name: event.Name,
 		}
 		p.repository.Save(i.ID, i)
-	case *InviteAccepted:
+	case *domain.InviteAccepted:
 		m, _ := p.repository.Find(event.InvitationID)
 		i := m.(*Invitation)
 		i.Status = "accepted"
 		p.repository.Save(i.ID, i)
-	case *InviteDeclined:
+	case *domain.InviteDeclined:
 		m, _ := p.repository.Find(event.InvitationID)
 		i := m.(*Invitation)
 		i.Status = "declined"
@@ -85,19 +87,19 @@ func NewGuestListProjector(repository eventhorizon.ReadRepository, eventID event
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (p *GuestListProjector) HandleEvent(event eventhorizon.Event) {
 	switch event.(type) {
-	case *InviteCreated:
+	case *domain.InviteCreated:
 		m, _ := p.repository.Find(p.eventID)
 		if m == nil {
 			m = &GuestList{}
 		}
 		g := m.(*GuestList)
 		p.repository.Save(p.eventID, g)
-	case *InviteAccepted:
+	case *domain.InviteAccepted:
 		m, _ := p.repository.Find(p.eventID)
 		g := m.(*GuestList)
 		g.NumAccepted++
 		p.repository.Save(p.eventID, g)
-	case *InviteDeclined:
+	case *domain.InviteDeclined:
 		m, _ := p.repository.Find(p.eventID)
 		g := m.(*GuestList)
 		g.NumDeclined++

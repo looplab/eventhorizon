@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package domain
 
 import (
 	"github.com/looplab/eventhorizon"
@@ -20,9 +20,9 @@ import (
 
 // InviteCreated is an event for when an invite has been created.
 type InviteCreated struct {
-	InvitationID eventhorizon.UUID
-	Name         string
-	Age          int
+	InvitationID eventhorizon.UUID `bson:"invitation_id"`
+	Name         string            `bson:"name"`
+	Age          int               `bson:"age"`
 }
 
 func (c *InviteCreated) AggregateID() eventhorizon.UUID { return c.InvitationID }
@@ -31,7 +31,7 @@ func (c *InviteCreated) EventType() string              { return "InviteCreated"
 
 // InviteAccepted is an event for when an invite has been accepted.
 type InviteAccepted struct {
-	InvitationID eventhorizon.UUID
+	InvitationID eventhorizon.UUID `bson:"invitation_id"`
 }
 
 func (c *InviteAccepted) AggregateID() eventhorizon.UUID { return c.InvitationID }
@@ -40,7 +40,7 @@ func (c *InviteAccepted) EventType() string              { return "InviteAccepte
 
 // InviteDeclined is an event for when an invite has been declined.
 type InviteDeclined struct {
-	InvitationID eventhorizon.UUID
+	InvitationID eventhorizon.UUID `bson:"invitation_id"`
 }
 
 func (c *InviteDeclined) AggregateID() eventhorizon.UUID { return c.InvitationID }

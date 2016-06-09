@@ -22,6 +22,8 @@ import (
 	"github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/messaging/local"
 	"github.com/looplab/eventhorizon/storage/memory"
+
+	"github.com/looplab/eventhorizon/examples/domain"
 )
 
 func main() {
@@ -39,9 +41,9 @@ func main() {
 	}
 
 	// Register an aggregate factory.
-	repository.RegisterAggregate(&InvitationAggregate{},
+	repository.RegisterAggregate(&domain.InvitationAggregate{},
 		func(id eventhorizon.UUID) eventhorizon.Aggregate {
-			return &InvitationAggregate{
+			return &domain.InvitationAggregate{
 				AggregateBase: eventhorizon.NewAggregateBase(id),
 			}
 		},
@@ -55,50 +57,50 @@ func main() {
 
 	// Register the domain aggregates with the dispather. Remember to check for
 	// errors here in a real app!
-	handler.SetAggregate(&InvitationAggregate{}, &CreateInvite{})
-	handler.SetAggregate(&InvitationAggregate{}, &AcceptInvite{})
-	handler.SetAggregate(&InvitationAggregate{}, &DeclineInvite{})
+	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.CreateInvite{})
+	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.AcceptInvite{})
+	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.DeclineInvite{})
 
 	// Create the command bus and register the handler for the commands.
 	commandBus := local.NewCommandBus()
-	commandBus.SetHandler(handler, &CreateInvite{})
-	commandBus.SetHandler(handler, &AcceptInvite{})
-	commandBus.SetHandler(handler, &DeclineInvite{})
+	commandBus.SetHandler(handler, &domain.CreateInvite{})
+	commandBus.SetHandler(handler, &domain.AcceptInvite{})
+	commandBus.SetHandler(handler, &domain.DeclineInvite{})
 
 	// Create and register a read model for individual invitations.
 	invitationRepository := memory.NewReadRepository()
 	invitationProjector := NewInvitationProjector(invitationRepository)
-	eventBus.AddHandler(invitationProjector, &InviteCreated{})
-	eventBus.AddHandler(invitationProjector, &InviteAccepted{})
-	eventBus.AddHandler(invitationProjector, &InviteDeclined{})
+	eventBus.AddHandler(invitationProjector, &domain.InviteCreated{})
+	eventBus.AddHandler(invitationProjector, &domain.InviteAccepted{})
+	eventBus.AddHandler(invitationProjector, &domain.InviteDeclined{})
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
 	guestListRepository := memory.NewReadRepository()
 	guestListProjector := NewGuestListProjector(guestListRepository, eventID)
-	eventBus.AddHandler(guestListProjector, &InviteCreated{})
-	eventBus.AddHandler(guestListProjector, &InviteAccepted{})
-	eventBus.AddHandler(guestListProjector, &InviteDeclined{})
+	eventBus.AddHandler(guestListProjector, &domain.InviteCreated{})
+	eventBus.AddHandler(guestListProjector, &domain.InviteAccepted{})
+	eventBus.AddHandler(guestListProjector, &domain.InviteDeclined{})
 
 	// Issue some invitations and responses.
 	// Note that Athena tries to decline the event, but that is not allowed
 	// by the domain logic in InvitationAggregate. The result is that she is
 	// still accepted.
 	athenaID := eventhorizon.NewUUID()
-	commandBus.HandleCommand(&CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
-	commandBus.HandleCommand(&AcceptInvite{InvitationID: athenaID})
-	err = commandBus.HandleCommand(&DeclineInvite{InvitationID: athenaID})
+	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
+	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: athenaID})
+	err = commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: athenaID})
 	if err != nil {
 		fmt.Printf("error: %s\n", err)
 	}
 
 	hadesID := eventhorizon.NewUUID()
-	commandBus.HandleCommand(&CreateInvite{InvitationID: hadesID, Name: "Hades"})
-	commandBus.HandleCommand(&AcceptInvite{InvitationID: hadesID})
+	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: hadesID, Name: "Hades"})
+	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: hadesID})
 
 	zeusID := eventhorizon.NewUUID()
-	commandBus.HandleCommand(&CreateInvite{InvitationID: zeusID, Name: "Zeus"})
-	commandBus.HandleCommand(&DeclineInvite{InvitationID: zeusID})
+	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
+	commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: zeusID})
 
 	// Read all invites.
 	invitations, _ := invitationRepository.FindAll()

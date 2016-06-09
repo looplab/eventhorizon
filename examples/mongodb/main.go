@@ -22,6 +22,8 @@ import (
 	"github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/messaging/local"
 	"github.com/looplab/eventhorizon/storage/mongodb"
+
+	"github.com/looplab/eventhorizon/examples/domain"
 )
 
 func main() {
@@ -35,9 +37,9 @@ func main() {
 		log.Fatalf("could not create event store: %s", err)
 	}
 
-	eventStore.RegisterEventType(&InviteCreated{}, func() eventhorizon.Event { return &InviteCreated{} })
-	eventStore.RegisterEventType(&InviteAccepted{}, func() eventhorizon.Event { return &InviteAccepted{} })
-	eventStore.RegisterEventType(&InviteDeclined{}, func() eventhorizon.Event { return &InviteDeclined{} })
+	eventStore.RegisterEventType(&domain.InviteCreated{}, func() eventhorizon.Event { return &domain.InviteCreated{} })
+	eventStore.RegisterEventType(&domain.InviteAccepted{}, func() eventhorizon.Event { return &domain.InviteAccepted{} })
+	eventStore.RegisterEventType(&domain.InviteDeclined{}, func() eventhorizon.Event { return &domain.InviteDeclined{} })
 
 	// Create the aggregate repository.
 	repository, err := eventhorizon.NewCallbackRepository(eventStore)
@@ -46,9 +48,9 @@ func main() {
 	}
 
 	// Register an aggregate factory.
-	repository.RegisterAggregate(&InvitationAggregate{},
+	repository.RegisterAggregate(&domain.InvitationAggregate{},
 		func(id eventhorizon.UUID) eventhorizon.Aggregate {
-			return &InvitationAggregate{
+			return &domain.InvitationAggregate{
 				AggregateBase: eventhorizon.NewAggregateBase(id),
 			}
 		},
@@ -62,15 +64,15 @@ func main() {
 
 	// Register the domain aggregates with the dispather. Remember to check for
 	// errors here in a real app!
-	handler.SetAggregate(&InvitationAggregate{}, &CreateInvite{})
-	handler.SetAggregate(&InvitationAggregate{}, &AcceptInvite{})
-	handler.SetAggregate(&InvitationAggregate{}, &DeclineInvite{})
+	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.CreateInvite{})
+	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.AcceptInvite{})
+	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.DeclineInvite{})
 
 	// Create the command bus and register the handler for the commands.
 	commandBus := local.NewCommandBus()
-	commandBus.SetHandler(handler, &CreateInvite{})
-	commandBus.SetHandler(handler, &AcceptInvite{})
-	commandBus.SetHandler(handler, &DeclineInvite{})
+	commandBus.SetHandler(handler, &domain.CreateInvite{})
+	commandBus.SetHandler(handler, &domain.AcceptInvite{})
+	commandBus.SetHandler(handler, &domain.DeclineInvite{})
 
 	// Create and register a read model for individual invitations.
 	invitationRepository, err := mongodb.NewReadRepository("localhost", "demo", "invitations")
@@ -79,9 +81,9 @@ func main() {
 	}
 	invitationRepository.SetModel(func() interface{} { return &Invitation{} })
 	invitationProjector := NewInvitationProjector(invitationRepository)
-	eventBus.AddHandler(invitationProjector, &InviteCreated{})
-	eventBus.AddHandler(invitationProjector, &InviteAccepted{})
-	eventBus.AddHandler(invitationProjector, &InviteDeclined{})
+	eventBus.AddHandler(invitationProjector, &domain.InviteCreated{})
+	eventBus.AddHandler(invitationProjector, &domain.InviteAccepted{})
+	eventBus.AddHandler(invitationProjector, &domain.InviteDeclined{})
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
@@ -91,9 +93,9 @@ func main() {
 	}
 	guestListRepository.SetModel(func() interface{} { return &GuestList{} })
 	guestListProjector := NewGuestListProjector(guestListRepository, eventID)
-	eventBus.AddHandler(guestListProjector, &InviteCreated{})
-	eventBus.AddHandler(guestListProjector, &InviteAccepted{})
-	eventBus.AddHandler(guestListProjector, &InviteDeclined{})
+	eventBus.AddHandler(guestListProjector, &domain.InviteCreated{})
+	eventBus.AddHandler(guestListProjector, &domain.InviteAccepted{})
+	eventBus.AddHandler(guestListProjector, &domain.InviteDeclined{})
 
 	// Clear DB collections.
 	eventStore.Clear()
@@ -105,20 +107,20 @@ func main() {
 	// by the domain logic in InvitationAggregate. The result is that she is
 	// still accepted.
 	athenaID := eventhorizon.NewUUID()
-	commandBus.HandleCommand(&CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
-	commandBus.HandleCommand(&AcceptInvite{InvitationID: athenaID})
-	err = commandBus.HandleCommand(&DeclineInvite{InvitationID: athenaID})
+	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
+	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: athenaID})
+	err = commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: athenaID})
 	if err != nil {
 		fmt.Printf("error: %s\n", err)
 	}
 
 	hadesID := eventhorizon.NewUUID()
-	commandBus.HandleCommand(&CreateInvite{InvitationID: hadesID, Name: "Hades"})
-	commandBus.HandleCommand(&AcceptInvite{InvitationID: hadesID})
+	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: hadesID, Name: "Hades"})
+	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: hadesID})
 
 	zeusID := eventhorizon.NewUUID()
-	commandBus.HandleCommand(&CreateInvite{InvitationID: zeusID, Name: "Zeus"})
-	commandBus.HandleCommand(&DeclineInvite{InvitationID: zeusID})
+	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
+	commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: zeusID})
 
 	// Read all invites.
 	invitations, _ := invitationRepository.FindAll()

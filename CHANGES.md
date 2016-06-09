@@ -2,7 +2,9 @@
 
 ### 2016-06-09
 
-Restructure storage and messaging implementations in its own folders for better dependency management and readability.
+Move storage and messaging implementations to its own packages for better dependency management and readability.
+
+Move common domain objects to its own package for the examples.
 
 
 ### 2015-01-20
