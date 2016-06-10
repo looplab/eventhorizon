@@ -16,20 +16,22 @@ build:
         code: |
           cd $WERCKER_SOURCE_DIR
           go version
-          go get -tags 'mongo redis' -t ./...
+          go get -t ./...
 
     # Build the project
     - script:
         name: go build
         code: |
-          go build -tags 'mongo redis' ./...
+          go build ./...
 
     # Test the project
     - script:
         name: go test
         code: |
           go get -d golang.org/x/tools/cmd/cover
+          go get github.com/modocache/gover
           go get github.com/mattn/goveralls
           git checkout master
-          go test -tags 'mongo redis' -cover -coverprofile=profile.cov
-          goveralls -coverprofile=profile.cov -service=wercker.com -repotoken=$COVERALLS_TOKEN
+          go list -f '{{if len .TestGoFiles}}"go test -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
+          gover
+          goveralls -coverprofile=gover.coverprofile -service=wercker.com -repotoken=$COVERALLS_TOKEN
