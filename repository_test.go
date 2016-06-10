@@ -15,136 +15,173 @@
 package eventhorizon
 
 import (
-	// "fmt"
-	// "time"
-
-	. "gopkg.in/check.v1"
+	"testing"
 )
 
-var _ = Suite(&CallbackRepositorySuite{})
-
-type CallbackRepositorySuite struct {
-	store *MockEventStore
-	repo  *CallbackRepository
-}
-
-func (s *CallbackRepositorySuite) SetUpTest(c *C) {
-	s.store = &MockEventStore{
-		Events: make([]Event, 0),
-	}
-	s.repo, _ = NewCallbackRepository(s.store)
-}
-
-func (s *CallbackRepositorySuite) Test_NewDispatcher(c *C) {
+func TestNewRepository(t *testing.T) {
 	store := &MockEventStore{
 		Events: make([]Event, 0),
 	}
 	repo, err := NewCallbackRepository(store)
-	c.Assert(repo, NotNil)
-	c.Assert(err, IsNil)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if repo == nil {
+		t.Error("there should be a repository")
+	}
 }
 
-func (s *CallbackRepositorySuite) Test_NewDispatcher_NilEventStore(c *C) {
+func TestNewRepositoryNilEventStore(t *testing.T) {
 	repo, err := NewCallbackRepository(nil)
-	c.Assert(repo, IsNil)
-	c.Assert(err, Equals, ErrNilEventStore)
+	if err != ErrNilEventStore {
+		t.Error("there should be a ErrNilEventStore error:", err)
+	}
+	if repo != nil {
+		t.Error("there should be no repository:", repo)
+	}
 }
 
-type TestRepositoryAggregate struct {
-	*AggregateBase
-	event Event
-}
+func TestRepositoryLoadNoEvents(t *testing.T) {
+	repo, _ := createRepoAndStore(t)
 
-func (t *TestRepositoryAggregate) AggregateType() string {
-	return "TestRepositoryAggregate"
-}
-
-func (t *TestRepositoryAggregate) HandleCommand(command Command) error {
-	return nil
-}
-
-func (t *TestRepositoryAggregate) ApplyEvent(event Event) {
-	t.event = event
-}
-
-func (s *CallbackRepositorySuite) Test_Load_NoEvents(c *C) {
-	err := s.repo.RegisterAggregate(&TestRepositoryAggregate{},
+	err := repo.RegisterAggregate(&TestAggregate{},
 		func(id UUID) Aggregate {
-			return &TestRepositoryAggregate{
+			return &TestAggregate{
 				AggregateBase: NewAggregateBase(id),
 			}
 		},
 	)
-	c.Assert(err, IsNil)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
 
 	id := NewUUID()
-	agg, err := s.repo.Load("TestRepositoryAggregate", id)
-	c.Assert(err, IsNil)
-	c.Assert(agg.AggregateID(), Equals, id)
-	c.Assert(agg.Version(), Equals, 0)
+	agg, err := repo.Load("TestAggregate", id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if agg.AggregateID() != id {
+		t.Error("the aggregate ID should be correct: ", agg.AggregateID(), id)
+	}
+	if agg.Version() != 0 {
+		t.Error("the version should be 0:", agg.Version())
+	}
 }
 
-func (s *CallbackRepositorySuite) Test_Load_Events(c *C) {
-	err := s.repo.RegisterAggregate(&TestRepositoryAggregate{},
+func TestRepositoryLoadEvents(t *testing.T) {
+	repo, store := createRepoAndStore(t)
+
+	err := repo.RegisterAggregate(&TestAggregate{},
 		func(id UUID) Aggregate {
-			return &TestRepositoryAggregate{
+			return &TestAggregate{
 				AggregateBase: NewAggregateBase(id),
 			}
 		},
 	)
-	c.Assert(err, IsNil)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
 
 	id := NewUUID()
 	event1 := &TestEvent{id, "event"}
-	s.store.Save([]Event{event1})
-	agg, err := s.repo.Load("TestRepositoryAggregate", id)
-	c.Assert(err, IsNil)
-	c.Assert(agg.AggregateID(), Equals, id)
-	c.Assert(agg.Version(), Equals, 1)
-	c.Assert(agg.(*TestRepositoryAggregate).event, DeepEquals, event1)
+	store.Save([]Event{event1})
+	agg, err := repo.Load("TestAggregate", id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if agg.AggregateID() != id {
+		t.Error("the aggregate ID should be correct: ", agg.AggregateID(), id)
+	}
+	if agg.Version() != 1 {
+		t.Error("the version should be 1:", agg.Version())
+	}
+	if agg.(*TestAggregate).appliedEvent != event1 {
+		t.Error("the event should be correct:", agg.(*TestAggregate).appliedEvent)
+	}
 }
 
-func (s *CallbackRepositorySuite) Test_Save_Events(c *C) {
+func TestRepositorySaveEvents(t *testing.T) {
+	repo, store := createRepoAndStore(t)
+
 	id := NewUUID()
-	agg := &TestRepositoryAggregate{
+	agg := &TestAggregate{
 		AggregateBase: NewAggregateBase(id),
 	}
 
 	event1 := &TestEvent{id, "event"}
 	agg.StoreEvent(event1)
-	err := s.repo.Save(agg)
-	c.Assert(err, IsNil)
+	err := repo.Save(agg)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
 
-	events, err := s.store.Load(id)
-	c.Assert(err, IsNil)
-	c.Assert(events, DeepEquals, []Event{event1})
-	c.Assert(agg.GetUncommittedEvents(), DeepEquals, []Event{})
-	c.Assert(agg.Version(), Equals, 0)
+	events, err := store.Load(id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if len(events) != 1 {
+		t.Fatal("there should be one event stored:", len(events))
+	}
+	if events[0] != event1 {
+		t.Error("the stored event should be correct:", events[0])
+	}
+	if len(agg.GetUncommittedEvents()) != 0 {
+		t.Error("there should be no uncommitted events:", agg.GetUncommittedEvents())
+	}
+	if agg.Version() != 0 {
+		t.Error("the version should be 0:", agg.Version())
+	}
 }
 
-func (s *CallbackRepositorySuite) Test_NotRegistered(c *C) {
+func TestRepositoryAggregateNotRegistered(t *testing.T) {
+	repo, _ := createRepoAndStore(t)
+
 	id := NewUUID()
-	agg, err := s.repo.Load("TestRepositoryAggregate", id)
-	c.Assert(err, Equals, ErrAggregateNotRegistered)
-	c.Assert(agg, IsNil)
+	agg, err := repo.Load("TestAggregate", id)
+	if err != ErrAggregateNotRegistered {
+		t.Error("there should be a ErrAggregateNotRegistered error:", err)
+	}
+	if agg != nil {
+		t.Fatal("there should be no aggregate")
+	}
 }
 
-func (s *CallbackRepositorySuite) Test_RegisterTwice(c *C) {
-	err := s.repo.RegisterAggregate(&TestRepositoryAggregate{},
-		func(id UUID) Aggregate {
-			return &TestRepositoryAggregate{
-				AggregateBase: NewAggregateBase(id),
-			}
-		},
-	)
-	c.Assert(err, IsNil)
+func TestRepositoryRegisterAggregateTwice(t *testing.T) {
+	repo, _ := createRepoAndStore(t)
 
-	err = s.repo.RegisterAggregate(&TestRepositoryAggregate{},
+	err := repo.RegisterAggregate(&TestAggregate{},
 		func(id UUID) Aggregate {
-			return &TestRepositoryAggregate{
+			return &TestAggregate{
 				AggregateBase: NewAggregateBase(id),
 			}
 		},
 	)
-	c.Assert(err, Equals, ErrAggregateAlreadyRegistered)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	err = repo.RegisterAggregate(&TestAggregate{},
+		func(id UUID) Aggregate {
+			return &TestAggregate{
+				AggregateBase: NewAggregateBase(id),
+			}
+		},
+	)
+	if err != ErrAggregateAlreadyRegistered {
+		t.Error("there should be a ErrAggregateAlreadyRegistered error:", err)
+	}
+}
+
+func createRepoAndStore(t *testing.T) (*CallbackRepository, *MockEventStore) {
+	store := &MockEventStore{
+		Events: make([]Event, 0),
+	}
+	repo, err := NewCallbackRepository(store)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	if repo == nil {
+		t.Fatal("there should be a repository")
+	}
+	return repo, store
 }

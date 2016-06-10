@@ -1,5 +1,10 @@
 # Changes
 
+### 2016-06-10
+
+Use native Go testing instead of Go check for the core types. Fix a small, unlikely bug where the aggregate could be nil in the command handler.
+
+
 ### 2016-06-09
 
 Move storage and messaging implementations to its own packages for better dependency management and readability.

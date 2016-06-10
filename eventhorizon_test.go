@@ -15,15 +15,38 @@
 package eventhorizon
 
 import (
-	"testing"
-
-	. "gopkg.in/check.v1"
+	"errors"
 )
 
-// Hook up gocheck into the "go test" runner.
-//
-// Run benchmarks with "go test -check.b"
-func Test(t *testing.T) { TestingT(t) }
+type TestAggregate struct {
+	*AggregateBase
+
+	dispatchedCommand Command
+	appliedEvent      Event
+	numHandled        int
+}
+
+func (a *TestAggregate) AggregateType() string {
+	return "TestAggregate"
+}
+
+func (a *TestAggregate) HandleCommand(command Command) error {
+	a.dispatchedCommand = command
+	a.numHandled++
+	switch command := command.(type) {
+	case *TestCommand:
+		if command.Content == "error" {
+			return errors.New("command error")
+		}
+		a.StoreEvent(&TestEvent{command.TestID, command.Content})
+		return nil
+	}
+	return errors.New("couldn't handle command")
+}
+
+func (a *TestAggregate) ApplyEvent(event Event) {
+	a.appliedEvent = event
+}
 
 type TestEvent struct {
 	TestID  UUID

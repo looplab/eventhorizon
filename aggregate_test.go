@@ -15,49 +15,79 @@
 package eventhorizon
 
 import (
-	. "gopkg.in/check.v1"
+	"testing"
 )
 
-var _ = Suite(&AggregateBaseSuite{})
-
-type AggregateBaseSuite struct{}
-
-func (s *AggregateBaseSuite) Test_NewAggregateBase(c *C) {
+func TestNewAggregateBase(t *testing.T) {
 	id := NewUUID()
 	agg := NewAggregateBase(id)
-	c.Assert(agg, NotNil)
-	c.Assert(agg.AggregateID(), Equals, id)
-	c.Assert(agg.Version(), Equals, 0)
+	if agg == nil {
+		t.Fatal("there should be an aggregate")
+	}
+	if agg.AggregateID() != id {
+		t.Error("the aggregate ID should be correct: ", agg.AggregateID(), id)
+	}
+	if agg.Version() != 0 {
+		t.Error("the version should be 0:", agg.Version())
+	}
 }
 
-func (s *AggregateBaseSuite) Test_IncrementVersion(c *C) {
+func TestAggregateIncrementVersion(t *testing.T) {
 	agg := NewAggregateBase(NewUUID())
-	c.Assert(agg.Version(), Equals, 0)
+	if agg.Version() != 0 {
+		t.Error("the version should be 0:", agg.Version())
+	}
+
 	agg.IncrementVersion()
-	c.Assert(agg.Version(), Equals, 1)
+	if agg.Version() != 1 {
+		t.Error("the version should be 1:", agg.Version())
+	}
 }
 
-func (s *AggregateBaseSuite) Test_StoreEvent_OneEvent(c *C) {
+func TestAggregateStoreEvent(t *testing.T) {
 	agg := NewAggregateBase(NewUUID())
 	event1 := &TestEvent{NewUUID(), "event1"}
 	agg.StoreEvent(event1)
-	c.Assert(agg.GetUncommittedEvents(), DeepEquals, []Event{event1})
-}
+	events := agg.GetUncommittedEvents()
+	if len(events) != 1 {
+		t.Fatal("there should be one event stored:", len(events))
+	}
+	if events[0] != event1 {
+		t.Error("the stored event should be correct:", events[0])
+	}
 
-func (s *AggregateBaseSuite) Test_StoreEvent_TwoEvents(c *C) {
-	agg := NewAggregateBase(NewUUID())
-	event1 := &TestEvent{NewUUID(), "event1"}
+	agg = NewAggregateBase(NewUUID())
+	event1 = &TestEvent{NewUUID(), "event1"}
 	event2 := &TestEvent{NewUUID(), "event2"}
 	agg.StoreEvent(event1)
 	agg.StoreEvent(event2)
-	c.Assert(agg.GetUncommittedEvents(), DeepEquals, []Event{event1, event2})
+	events = agg.GetUncommittedEvents()
+	if len(events) != 2 {
+		t.Fatal("there should be 2 events stored:", len(events))
+	}
+	if events[0] != event1 {
+		t.Error("the first stored event should be correct:", events[0])
+	}
+	if events[1] != event2 {
+		t.Error("the second stored event should be correct:", events[0])
+	}
 }
 
-func (s *AggregateBaseSuite) Test_ClearUncommittedEvent_OneEvent(c *C) {
+func TestAggregateClearUncommittedEvents(t *testing.T) {
 	agg := NewAggregateBase(NewUUID())
 	event1 := &TestEvent{NewUUID(), "event1"}
 	agg.StoreEvent(event1)
-	c.Assert(agg.GetUncommittedEvents(), DeepEquals, []Event{event1})
+	events := agg.GetUncommittedEvents()
+	if len(events) != 1 {
+		t.Fatal("there should be one event stored:", len(events))
+	}
+	if events[0] != event1 {
+		t.Error("the stored event should be correct:", events[0])
+	}
+
 	agg.ClearUncommittedEvents()
-	c.Assert(agg.GetUncommittedEvents(), DeepEquals, []Event{})
+	events = agg.GetUncommittedEvents()
+	if len(events) != 0 {
+		t.Error("there should be no events stored:", len(events))
+	}
 }

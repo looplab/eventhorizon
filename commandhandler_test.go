@@ -15,146 +15,179 @@
 package eventhorizon
 
 import (
-	"fmt"
+	"testing"
 	"time"
-
-	. "gopkg.in/check.v1"
 )
 
-var _ = Suite(&AggregateCommandHandlerSuite{})
-
-type AggregateCommandHandlerSuite struct {
-	repo    *MockRepository
-	handler *AggregateCommandHandler
-}
-
-func (s *AggregateCommandHandlerSuite) SetUpTest(c *C) {
-	s.repo = &MockRepository{
-		Aggregates: make(map[UUID]Aggregate),
-	}
-	s.handler, _ = NewAggregateCommandHandler(s.repo)
-}
-
-func (s *AggregateCommandHandlerSuite) Test_NewDispatcher(c *C) {
+func TestNewCommandHandler(t *testing.T) {
 	repo := &MockRepository{
 		Aggregates: make(map[UUID]Aggregate),
 	}
 	handler, err := NewAggregateCommandHandler(repo)
-	c.Assert(handler, NotNil)
-	c.Assert(err, IsNil)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if handler == nil {
+		t.Error("there should be a handler")
+	}
 }
 
-func (s *AggregateCommandHandlerSuite) Test_NewDispatcher_ErrNilRepository(c *C) {
+func TestNewCommandHandlerWithNilRepository(t *testing.T) {
 	handler, err := NewAggregateCommandHandler(nil)
-	c.Assert(handler, IsNil)
-	c.Assert(err, Equals, ErrNilRepository)
-}
-
-var dispatchedCommand Command
-
-type TestDispatcherAggregate struct {
-	*AggregateBase
-}
-
-func (t *TestDispatcherAggregate) AggregateType() string {
-	return "TestDispatcherAggregate"
-}
-
-func (t *TestDispatcherAggregate) HandleCommand(command Command) error {
-	dispatchedCommand = command
-	switch command := command.(type) {
-	case *TestCommand:
-		if command.Content == "error" {
-			return fmt.Errorf("command error")
-		}
-		t.StoreEvent(&TestEvent{command.TestID, command.Content})
-		return nil
+	if err != ErrNilRepository {
+		t.Error("there should be a ErrNilRepository error:", err)
 	}
-	return fmt.Errorf("couldn't handle command")
-}
-
-func (t *TestDispatcherAggregate) ApplyEvent(event Event) {
-}
-
-func (s *AggregateCommandHandlerSuite) Test_Simple(c *C) {
-	aggregate := &TestDispatcherAggregate{
-		AggregateBase: NewAggregateBase(NewUUID()),
+	if handler != nil {
+		t.Error("there should be no handler:", handler)
 	}
-	s.repo.Aggregates[aggregate.AggregateID()] = aggregate
-	s.handler.SetAggregate(aggregate, &TestCommand{})
+}
+
+func TestCommandHandlerSimple(t *testing.T) {
+	aggregate, handler := createAggregateAndHandler(t)
+
 	command1 := &TestCommand{aggregate.AggregateID(), "command1"}
-	err := s.handler.HandleCommand(command1)
-	c.Assert(dispatchedCommand, Equals, command1)
-	c.Assert(err, IsNil)
+	err := handler.HandleCommand(command1)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if aggregate.dispatchedCommand != command1 {
+		t.Error("the dispatched command should be correct:", aggregate.dispatchedCommand)
+	}
 }
 
-func (s *AggregateCommandHandlerSuite) Test_ErrorInHandler(c *C) {
-	aggregate := &TestDispatcherAggregate{
-		AggregateBase: NewAggregateBase(NewUUID()),
-	}
-	s.repo.Aggregates[aggregate.AggregateID()] = aggregate
-	s.handler.SetAggregate(aggregate, &TestCommand{})
+func TestCommandHandlerErrorInHandler(t *testing.T) {
+	aggregate, handler := createAggregateAndHandler(t)
+
 	commandError := &TestCommand{aggregate.AggregateID(), "error"}
-	err := s.handler.HandleCommand(commandError)
-	c.Assert(err, ErrorMatches, "command error")
-	c.Assert(dispatchedCommand, Equals, commandError)
-}
-
-func (s *AggregateCommandHandlerSuite) Test_NoHandlers(c *C) {
-	command1 := &TestCommand{NewUUID(), "command1"}
-	err := s.handler.HandleCommand(command1)
-	c.Assert(err, Equals, ErrAggregateNotFound)
-}
-
-func (s *AggregateCommandHandlerSuite) Test_SetHandler_Twice(c *C) {
-	aggregate := &TestDispatcherAggregate{}
-	err := s.handler.SetAggregate(aggregate, &TestCommand{})
-	c.Assert(err, IsNil)
-	aggregate2 := &TestDispatcherAggregate{}
-	err = s.handler.SetAggregate(aggregate2, &TestCommand{})
-	c.Assert(err, Equals, ErrAggregateAlreadySet)
-}
-
-var callCountDispatcher int
-
-type BenchmarkDispatcherAggregate struct {
-	*AggregateBase
-}
-
-func (t *BenchmarkDispatcherAggregate) AggregateType() string {
-	return "BenchmarkDispatcherAggregate"
-}
-
-func (t *BenchmarkDispatcherAggregate) HandleCommand(command Command) error {
-	callCountDispatcher++
-	return nil
-}
-
-func (t *BenchmarkDispatcherAggregate) ApplyEvent(event Event) {
-}
-
-func (s *AggregateCommandHandlerSuite) Benchmark_Dispatcher(c *C) {
-	repo := &MockRepository{
-		Aggregates: make(map[UUID]Aggregate),
+	err := handler.HandleCommand(commandError)
+	if err == nil || err.Error() != "command error" {
+		t.Error("there should be a command error:", err)
 	}
-	handler, _ := NewAggregateCommandHandler(repo)
-	agg := &TestDispatcherAggregate{
+	if aggregate.dispatchedCommand != commandError {
+		t.Error("the dispatched command should be correct:", aggregate.dispatchedCommand)
+	}
+}
+
+func TestCommandHandlerNoHandlers(t *testing.T) {
+	_, handler := createAggregateAndHandler(t)
+
+	command1 := &TestCommand{NewUUID(), "command1"}
+	err := handler.HandleCommand(command1)
+	if err != ErrAggregateNotFound {
+		t.Error("there should be a ErrAggregateNotFound error:", nil)
+	}
+}
+
+func TestCommandHandlerSetHandlerTwice(t *testing.T) {
+	_, handler := createAggregateAndHandler(t)
+
+	aggregate2 := &TestAggregate{}
+	err := handler.SetAggregate(aggregate2, &TestCommand{})
+	if err != ErrAggregateAlreadySet {
+		t.Error("there should be a ErrAggregateAlreadySet error:", err)
+	}
+}
+
+func TestCommandHandlerCheckCommand(t *testing.T) {
+	_, handler := createAggregateAndHandler(t)
+
+	// Check all fields.
+	err := handler.checkCommand(&TestCommand{NewUUID(), "command1"})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	// Missing required value.
+	err = handler.checkCommand(&TestCommandValue{TestID: NewUUID()})
+	if err == nil || err.Error() != "missing field: Content" {
+		t.Error("there should be a missing field error:", err)
+	}
+
+	// Missing required slice.
+	err = handler.checkCommand(&TestCommandSlice{TestID: NewUUID()})
+	if err == nil || err.Error() != "missing field: Slice" {
+		t.Error("there should be a missing field error:", err)
+	}
+
+	// Missing required map.
+	err = handler.checkCommand(&TestCommandMap{TestID: NewUUID()})
+	if err == nil || err.Error() != "missing field: Map" {
+		t.Error("there should be a missing field error:", err)
+	}
+
+	// Missing required struct.
+	err = handler.checkCommand(&TestCommandStruct{TestID: NewUUID()})
+	if err == nil || err.Error() != "missing field: Struct" {
+		t.Error("there should be a missing field error:", err)
+	}
+
+	// Missing required time.
+	err = handler.checkCommand(&TestCommandTime{TestID: NewUUID()})
+	if err == nil || err.Error() != "missing field: Time" {
+		t.Error("there should be a missing field error:", err)
+	}
+
+	// Missing optional field.
+	err = handler.checkCommand(&TestCommandOptional{TestID: NewUUID()})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	// Missing private field.
+	err = handler.checkCommand(&TestCommandPrivate{TestID: NewUUID()})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+}
+
+func BenchmarkCommandHandler(b *testing.B) {
+	aggregate := &TestAggregate{
 		AggregateBase: NewAggregateBase(NewUUID()),
 	}
-	repo.Aggregates[agg.AggregateID()] = agg
-	handler.SetAggregate(agg, &TestCommand{})
+	repo := &MockRepository{
+		Aggregates: map[UUID]Aggregate{
+			aggregate.AggregateID(): aggregate,
+		},
+	}
+	handler, err := NewAggregateCommandHandler(repo)
+	if err != nil {
+		b.Fatal("there should be no error:", err)
+	}
+	err = handler.SetAggregate(aggregate, &TestCommand{})
+	if err != nil {
+		b.Fatal("there should be no error:", err)
+	}
 
-	callCountDispatcher = 0
-	command1 := &TestCommand{agg.AggregateID(), "command1"}
-	for i := 0; i < c.N; i++ {
+	command1 := &TestCommand{aggregate.AggregateID(), "command1"}
+	for i := 0; i < b.N; i++ {
 		handler.HandleCommand(command1)
 	}
-	c.Assert(callCountDispatcher, Equals, c.N)
+	if aggregate.numHandled != b.N {
+		b.Error("the num handled commands should be correct:", aggregate.numHandled, b.N)
+	}
 }
 
-func (s *AggregateCommandHandlerSuite) Test_CheckCommand_AllFields(c *C) {
-	err := s.handler.checkCommand(&TestCommand{NewUUID(), "command1"})
-	c.Assert(err, Equals, nil)
+func createAggregateAndHandler(t *testing.T) (*TestAggregate, *AggregateCommandHandler) {
+	aggregate := &TestAggregate{
+		AggregateBase: NewAggregateBase(NewUUID()),
+	}
+	repo := &MockRepository{
+		Aggregates: map[UUID]Aggregate{
+			aggregate.AggregateID(): aggregate,
+		},
+	}
+	handler, err := NewAggregateCommandHandler(repo)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	if handler == nil {
+		t.Fatal("there should be a handler")
+	}
+	err = handler.SetAggregate(aggregate, &TestCommand{})
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	return aggregate, handler
 }
 
 type TestCommandValue struct {
@@ -166,11 +199,6 @@ func (t *TestCommandValue) AggregateID() UUID     { return t.TestID }
 func (t *TestCommandValue) AggregateType() string { return "Test" }
 func (t *TestCommandValue) CommandType() string   { return "TestCommandValue" }
 
-func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingRequired_Value(c *C) {
-	err := s.handler.checkCommand(&TestCommandValue{TestID: NewUUID()})
-	c.Assert(err, ErrorMatches, "missing field: Content")
-}
-
 type TestCommandSlice struct {
 	TestID UUID
 	Slice  []string
@@ -180,11 +208,6 @@ func (t *TestCommandSlice) AggregateID() UUID     { return t.TestID }
 func (t *TestCommandSlice) AggregateType() string { return "Test" }
 func (t *TestCommandSlice) CommandType() string   { return "TestCommandSlice" }
 
-func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingRequired_Slice(c *C) {
-	err := s.handler.checkCommand(&TestCommandSlice{TestID: NewUUID()})
-	c.Assert(err, ErrorMatches, "missing field: Slice")
-}
-
 type TestCommandMap struct {
 	TestID UUID
 	Map    map[string]string
@@ -193,11 +216,6 @@ type TestCommandMap struct {
 func (t *TestCommandMap) AggregateID() UUID     { return t.TestID }
 func (t *TestCommandMap) AggregateType() string { return "Test" }
 func (t *TestCommandMap) CommandType() string   { return "TestCommandMap" }
-
-func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingRequired_Map(c *C) {
-	err := s.handler.checkCommand(&TestCommandMap{TestID: NewUUID()})
-	c.Assert(err, ErrorMatches, "missing field: Map")
-}
 
 type TestCommandStruct struct {
 	TestID UUID
@@ -210,11 +228,6 @@ func (t *TestCommandStruct) AggregateID() UUID     { return t.TestID }
 func (t *TestCommandStruct) AggregateType() string { return "Test" }
 func (t *TestCommandStruct) CommandType() string   { return "TestCommandStruct" }
 
-func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingRequired_Struct(c *C) {
-	err := s.handler.checkCommand(&TestCommandStruct{TestID: NewUUID()})
-	c.Assert(err, ErrorMatches, "missing field: Struct")
-}
-
 type TestCommandTime struct {
 	TestID UUID
 	Time   time.Time
@@ -223,11 +236,6 @@ type TestCommandTime struct {
 func (t *TestCommandTime) AggregateID() UUID     { return t.TestID }
 func (t *TestCommandTime) AggregateType() string { return "Test" }
 func (t *TestCommandTime) CommandType() string   { return "TestCommandTime" }
-
-func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingRequired_Time(c *C) {
-	err := s.handler.checkCommand(&TestCommandTime{TestID: NewUUID()})
-	c.Assert(err, ErrorMatches, "missing field: Time")
-}
 
 type TestCommandOptional struct {
 	TestID  UUID
@@ -238,11 +246,6 @@ func (t *TestCommandOptional) AggregateID() UUID     { return t.TestID }
 func (t *TestCommandOptional) AggregateType() string { return "Test" }
 func (t *TestCommandOptional) CommandType() string   { return "TestCommandOptional" }
 
-func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingOptionalField(c *C) {
-	err := s.handler.checkCommand(&TestCommandOptional{TestID: NewUUID()})
-	c.Assert(err, Equals, nil)
-}
-
 type TestCommandPrivate struct {
 	TestID  UUID
 	private string
@@ -251,8 +254,3 @@ type TestCommandPrivate struct {
 func (t *TestCommandPrivate) AggregateID() UUID     { return t.TestID }
 func (t *TestCommandPrivate) AggregateType() string { return "Test" }
 func (t *TestCommandPrivate) CommandType() string   { return "TestCommandPrivate" }
-
-func (s *AggregateCommandHandlerSuite) Test_CheckCommand_MissingPrivateField(c *C) {
-	err := s.handler.checkCommand(&TestCommandPrivate{TestID: NewUUID()})
-	c.Assert(err, Equals, nil)
-}

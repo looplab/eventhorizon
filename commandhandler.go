@@ -96,6 +96,9 @@ func (h *AggregateCommandHandler) HandleCommand(command Command) error {
 	if aggregate, err = h.repository.Load(aggregateType, command.AggregateID()); err != nil {
 		return err
 	}
+	if aggregate == nil {
+		return ErrAggregateNotFound
+	}
 
 	if err = aggregate.HandleCommand(command); err != nil {
 		return err
