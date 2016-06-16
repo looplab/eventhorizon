@@ -15,251 +15,207 @@
 package memory
 
 import (
-	. "gopkg.in/check.v1"
+	"reflect"
+	"testing"
 
 	"github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/testing"
+	"github.com/looplab/eventhorizon/testutil"
 )
 
-var _ = Suite(&EventStoreSuite{})
-var _ = Suite(&TraceEventStoreSuite{})
-
-type EventStoreSuite struct {
-	store *EventStore
-	bus   *testing.MockEventBus
-}
-
-func (s *EventStoreSuite) SetUpTest(c *C) {
-	s.bus = &testing.MockEventBus{
-		Events: make([]eventhorizon.Event, 0),
-	}
-	s.store = NewEventStore(s.bus)
-}
-
-func (s *EventStoreSuite) Test_NewEventStore(c *C) {
-	bus := &testing.MockEventBus{
+func TestEventStore(t *testing.T) {
+	bus := &testutil.MockEventBus{
 		Events: make([]eventhorizon.Event, 0),
 	}
 	store := NewEventStore(bus)
-	c.Assert(store, NotNil)
-}
+	if store == nil {
+		t.Fatal("there should be a store")
+	}
 
-func (s *EventStoreSuite) Test_NoEvents(c *C) {
-	err := s.store.Save([]eventhorizon.Event{})
-	c.Assert(err, Equals, eventhorizon.ErrNoEventsToAppend)
-}
+	t.Log("save no events")
+	err := store.Save([]eventhorizon.Event{})
+	if err != eventhorizon.ErrNoEventsToAppend {
+		t.Error("there shoud be a ErrNoEventsToAppend error:", err)
+	}
 
-func (s *EventStoreSuite) Test_OneEvent(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	err := s.store.Save([]eventhorizon.Event{event1})
-	c.Assert(err, IsNil)
-	events, err := s.store.Load(event1.TestID)
-	c.Assert(err, IsNil)
-	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], DeepEquals, event1)
-	c.Assert(s.bus.Events, DeepEquals, events)
-}
+	t.Log("save event, version 1")
+	id, _ := eventhorizon.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
+	event1 := &testutil.TestEvent{id, "event1"}
+	err = store.Save([]eventhorizon.Event{event1})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(bus.Events, []eventhorizon.Event{event1}) {
+		t.Error("there should be an event on the bus:", bus.Events)
+	}
 
-func (s *EventStoreSuite) Test_TwoEvents(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	event2 := &testing.TestEvent{event1.TestID, "event2"}
-	err := s.store.Save([]eventhorizon.Event{event1, event2})
-	c.Assert(err, IsNil)
-	events, err := s.store.Load(event1.TestID)
-	c.Assert(err, IsNil)
-	c.Assert(events, HasLen, 2)
-	c.Assert(events[0], DeepEquals, event1)
-	c.Assert(events[1], DeepEquals, event2)
-	c.Assert(s.bus.Events, DeepEquals, events)
-}
+	t.Log("save event, version 2")
+	err = store.Save([]eventhorizon.Event{event1})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(bus.Events, []eventhorizon.Event{event1, event1}) {
+		t.Error("there should be events on the bus:", bus.Events)
+	}
 
-func (s *EventStoreSuite) Test_DifferentAggregates(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	event2 := &testing.TestEvent{eventhorizon.NewUUID(), "event2"}
-	err := s.store.Save([]eventhorizon.Event{event1, event2})
-	c.Assert(err, IsNil)
-	events, err := s.store.Load(event1.TestID)
-	c.Assert(err, IsNil)
-	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], DeepEquals, event1)
-	events, err = s.store.Load(event2.TestID)
-	c.Assert(err, IsNil)
-	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], DeepEquals, event2)
-	c.Assert(s.bus.Events, DeepEquals, []eventhorizon.Event{event1, event2})
-}
+	t.Log("save event, version 3")
+	event2 := &testutil.TestEvent{id, "event2"}
+	err = store.Save([]eventhorizon.Event{event2})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
 
-func (s *EventStoreSuite) Test_LoadNoEvents(c *C) {
-	events, err := s.store.Load(eventhorizon.NewUUID())
-	c.Assert(err, ErrorMatches, "could not find events")
-	c.Assert(events, DeepEquals, []eventhorizon.Event(nil))
-}
+	t.Log("save event for another aggregate")
+	id2, _ := eventhorizon.ParseUUID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
+	event3 := &testutil.TestEvent{id2, "event3"}
+	err = store.Save([]eventhorizon.Event{event3})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
 
-type TraceEventStoreSuite struct {
-	baseStore *EventStore
-	store     *TraceEventStore
-}
+	if !reflect.DeepEqual(bus.Events, []eventhorizon.Event{event1, event1, event2, event3}) {
+		t.Error("there should be events on the bus:", bus.Events)
+	}
 
-func (s *TraceEventStoreSuite) SetUpTest(c *C) {
-	s.baseStore = NewEventStore(nil)
-	s.store = NewTraceEventStore(s.baseStore)
-}
-
-func (s *TraceEventStoreSuite) Test_NewTraceEventStore(c *C) {
-	store := NewTraceEventStore(NewEventStore(nil))
-	c.Assert(store, NotNil)
-}
-
-func (s *TraceEventStoreSuite) Test_AppendNoEvents_NotTracing(c *C) {
-	err := s.store.Save([]eventhorizon.Event{})
-	c.Assert(err, Equals, eventhorizon.ErrNoEventsToAppend)
-}
-
-func (s *TraceEventStoreSuite) Test_OneEvent_NotTracing(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	err := s.store.Save([]eventhorizon.Event{event1})
-	c.Assert(err, IsNil)
-	events, err := s.store.Load(event1.TestID)
-	c.Assert(err, IsNil)
-	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], DeepEquals, event1)
-}
-
-func (s *TraceEventStoreSuite) Test_TwoEvents_NotTracing(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	event2 := &testing.TestEvent{event1.TestID, "event2"}
-	err := s.store.Save([]eventhorizon.Event{event1, event2})
-	c.Assert(err, IsNil)
-	events, err := s.store.Load(event1.TestID)
-	c.Assert(err, IsNil)
-	c.Assert(events, HasLen, 2)
-	c.Assert(events[0], DeepEquals, event1)
-	c.Assert(events[1], DeepEquals, event2)
-}
-
-func (s *TraceEventStoreSuite) Test_DifferentAggregates_NotTracing(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	event2 := &testing.TestEvent{eventhorizon.NewUUID(), "event2"}
-	err := s.store.Save([]eventhorizon.Event{event1, event2})
-	c.Assert(err, IsNil)
-	events, err := s.store.Load(event1.TestID)
-	c.Assert(err, IsNil)
-	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], DeepEquals, event1)
-	events, err = s.store.Load(event2.TestID)
-	c.Assert(err, IsNil)
-	c.Assert(events, HasLen, 1)
-	c.Assert(events[0], DeepEquals, event2)
-}
-
-func (s *TraceEventStoreSuite) Test_NoEvents_Tracing(c *C) {
-	s.store.StartTracing()
-	err := s.store.Save([]eventhorizon.Event{})
-	c.Assert(err, Equals, eventhorizon.ErrNoEventsToAppend)
-	s.store.StopTracing()
-	trace := s.store.GetTrace()
-	c.Assert(trace, HasLen, 0)
-}
-
-func (s *TraceEventStoreSuite) Test_OneEvent_Tracing(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	s.store.StartTracing()
-	err := s.store.Save([]eventhorizon.Event{event1})
-	c.Assert(err, IsNil)
-	s.store.StopTracing()
-	trace := s.store.GetTrace()
-	c.Assert(trace, HasLen, 1)
-	c.Assert(trace[0], DeepEquals, event1)
-}
-
-func (s *TraceEventStoreSuite) Test_TwoEvents_Tracing(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	event2 := &testing.TestEvent{event1.TestID, "event2"}
-	s.store.StartTracing()
-	err := s.store.Save([]eventhorizon.Event{event1, event2})
-	c.Assert(err, IsNil)
-	s.store.StopTracing()
-	trace := s.store.GetTrace()
-	c.Assert(trace, HasLen, 2)
-	c.Assert(trace[0], DeepEquals, event1)
-	c.Assert(trace[1], DeepEquals, event2)
-}
-
-func (s *TraceEventStoreSuite) Test_OneOfTwoEvents_Tracing(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	event2 := &testing.TestEvent{event1.TestID, "event2"}
-	err := s.store.Save([]eventhorizon.Event{event1})
-	c.Assert(err, IsNil)
-	s.store.StartTracing()
-	err = s.store.Save([]eventhorizon.Event{event2})
-	c.Assert(err, IsNil)
-	s.store.StopTracing()
-	trace := s.store.GetTrace()
-	c.Assert(trace, HasLen, 1)
-	c.Assert(trace[0], DeepEquals, event2)
-}
-
-func (s *TraceEventStoreSuite) Test_OneOfTwoEventsOtherOrder_Tracing(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	event2 := &testing.TestEvent{event1.TestID, "event2"}
-	s.store.StartTracing()
-	err := s.store.Save([]eventhorizon.Event{event1})
-	c.Assert(err, IsNil)
-	s.store.StopTracing()
-	err = s.store.Save([]eventhorizon.Event{event2})
-	c.Assert(err, IsNil)
-	trace := s.store.GetTrace()
-	c.Assert(trace, HasLen, 1)
-	c.Assert(trace[0], DeepEquals, event1)
-}
-
-func (s *TraceEventStoreSuite) Test_DifferentAggregates_Tracing(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	event2 := &testing.TestEvent{eventhorizon.NewUUID(), "event2"}
-	s.store.StartTracing()
-	err := s.store.Save([]eventhorizon.Event{event1, event2})
-	c.Assert(err, IsNil)
-	s.store.StopTracing()
-	trace := s.store.GetTrace()
-	c.Assert(trace, HasLen, 2)
-	c.Assert(trace[0], DeepEquals, event1)
-	c.Assert(trace[1], DeepEquals, event2)
-}
-
-func (s *TraceEventStoreSuite) Test_OneEvent_NoBaseStore(c *C) {
-	store := NewTraceEventStore(nil)
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	store.StartTracing()
-	err := store.Save([]eventhorizon.Event{event1})
-	c.Assert(err, IsNil)
-	store.StopTracing()
-	trace := store.GetTrace()
-	c.Assert(trace, HasLen, 1)
-	c.Assert(trace[0], DeepEquals, event1)
-}
-
-func (s *TraceEventStoreSuite) Test_LoadNoBaseStore(c *C) {
-	store := NewTraceEventStore(nil)
+	t.Log("load events for non-existing aggregate")
 	events, err := store.Load(eventhorizon.NewUUID())
-	c.Assert(err, ErrorMatches, "no event store defined")
-	c.Assert(events, DeepEquals, []eventhorizon.Event(nil))
+	if err == nil || err.Error() != "could not find events" {
+		t.Error("there should be a 'could not find events' error:", err)
+	}
+	if !reflect.DeepEqual(events, []eventhorizon.Event(nil)) {
+		t.Error("there should be no loaded events:", events)
+	}
+
+	t.Log("load events")
+	events, err = store.Load(id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(events, []eventhorizon.Event{event1, event1, event2}) {
+		t.Error("the loaded events should be correct:", events)
+	}
+
+	t.Log("load events for another aggregate")
+	events, err = store.Load(id2)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(events, []eventhorizon.Event{event3}) {
+		t.Error("the loaded events should be correct:", events)
+	}
 }
 
-func (s *TraceEventStoreSuite) Test_LoadNoEvents(c *C) {
-	events, err := s.store.Load(eventhorizon.NewUUID())
-	c.Assert(err, ErrorMatches, "could not find events")
-	c.Assert(events, DeepEquals, []eventhorizon.Event(nil))
-}
+func TestTraceEventStore(t *testing.T) {
+	baseStore := NewEventStore(nil)
+	store := NewTraceEventStore(baseStore)
+	if store == nil {
+		t.Fatal("there should be a store")
+	}
 
-func (s *TraceEventStoreSuite) Test_ResetTrace(c *C) {
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	s.store.StartTracing()
-	err := s.store.Save([]eventhorizon.Event{event1})
-	c.Assert(err, IsNil)
-	s.store.StopTracing()
-	trace := s.store.GetTrace()
-	c.Assert(trace, HasLen, 1)
-	s.store.ResetTrace()
-	trace = s.store.GetTrace()
-	c.Assert(trace, HasLen, 0)
+	store.StartTracing()
+
+	t.Log("save no events")
+	err := store.Save([]eventhorizon.Event{})
+	if err != eventhorizon.ErrNoEventsToAppend {
+		t.Error("there shoud be a ErrNoEventsToAppend error:", err)
+	}
+	trace := store.GetTrace()
+	if !reflect.DeepEqual(trace, []eventhorizon.Event{}) {
+		t.Error("there should be no events traced:", trace)
+	}
+
+	t.Log("save event, version 1")
+	id, _ := eventhorizon.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
+	event1 := &testutil.TestEvent{id, "event1"}
+	err = store.Save([]eventhorizon.Event{event1})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	trace = store.GetTrace()
+	if !reflect.DeepEqual(trace, []eventhorizon.Event{event1}) {
+		t.Error("there should be an event traced:", trace)
+	}
+
+	t.Log("save event, version 2")
+	err = store.Save([]eventhorizon.Event{event1})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	trace = store.GetTrace()
+	if !reflect.DeepEqual(trace, []eventhorizon.Event{event1, event1}) {
+		t.Error("there should be events traced:", trace)
+	}
+
+	t.Log("save event, version 3")
+	event2 := &testutil.TestEvent{id, "event2"}
+	err = store.Save([]eventhorizon.Event{event2})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	t.Log("save event for another aggregate")
+	id2, _ := eventhorizon.ParseUUID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
+	event3 := &testutil.TestEvent{id2, "event3"}
+	err = store.Save([]eventhorizon.Event{event3})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	trace = store.GetTrace()
+	if !reflect.DeepEqual(trace, []eventhorizon.Event{event1, event1, event2, event3}) {
+		t.Error("there should be events traced:", trace)
+	}
+
+	t.Log("load events for non-existing aggregate")
+	events, err := store.Load(eventhorizon.NewUUID())
+	if err == nil || err.Error() != "could not find events" {
+		t.Error("there should be a 'could not find events' error:", err)
+	}
+	if !reflect.DeepEqual(events, []eventhorizon.Event(nil)) {
+		t.Error("there should be no loaded events:", events)
+	}
+
+	t.Log("load events")
+	events, err = store.Load(id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(events, []eventhorizon.Event{event1, event1, event2}) {
+		t.Error("the loaded events should be correct:", events)
+	}
+
+	t.Log("load events for another aggregate")
+	events, err = store.Load(id2)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(events, []eventhorizon.Event{event3}) {
+		t.Error("the loaded events should be correct:", events)
+	}
+
+	store.StopTracing()
+
+	store.ResetTrace()
+	trace = store.GetTrace()
+	if len(trace) != 0 {
+		t.Error("there should be no events traced:", trace)
+	}
+
+	t.Log("save event, version 4")
+	err = store.Save([]eventhorizon.Event{event1})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	trace = store.GetTrace()
+	if len(trace) != 0 {
+		t.Error("there should be no events traced:", trace)
+	}
+
+	t.Log("load events without tracing")
+	events, err = store.Load(id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(events, []eventhorizon.Event{event1, event1, event2, event1}) {
+		t.Error("the loaded events should be correct:", events)
+	}
 }

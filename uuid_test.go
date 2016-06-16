@@ -18,88 +18,130 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"regexp"
-
-	. "gopkg.in/check.v1"
+	"testing"
 )
 
-type UUIDSuite struct{}
-
-var _ = Suite(&UUIDSuite{})
-
-func (s *UUIDSuite) TestNewUUID(c *C) {
+func TestNewUUID(t *testing.T) {
 	id := NewUUID()
-	c.Assert(id, NotNil)
+	if id == UUID("") {
+		t.Error("there should be a ID")
+	}
 	id2 := NewUUID()
-	c.Assert(id, Not(Equals), id2)
+	if id == id2 {
+		t.Error("the IDs should be unique")
+	}
 
-	// Check variant.
-	c.Assert((id[8]&0xC0)|0x80, Equals, uint8(0x80))
+	if (id[8]&0xC0)|0x80 != uint8(0x80) {
+		t.Error("the variant should be correct")
+	}
 
-	// Check version.
-	c.Assert(id[6]>>4, Equals, uint8(4))
+	if id[6]>>4 != uint8(4) {
+		t.Error("the version should be correct")
+	}
 
-	// Check format.
 	re := regexp.MustCompile("^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$")
-	c.Assert(re.MatchString(id.String()), Equals, true)
+	if !re.MatchString(id.String()) {
+		t.Error("the string format should be correct:", id.String())
+	}
 }
 
-func (s *UUIDSuite) TestParseUUID(c *C) {
+func TestParseUUID(t *testing.T) {
 	b, err := hex.DecodeString("a4da289d466d4a5645211dbd455aa0cd")
-	c.Assert(err, Equals, nil)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
 	id := UUID(b)
 
 	parsed, err := ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
-	c.Assert(err, Equals, nil)
-	c.Assert(parsed, Equals, id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if parsed != id {
+		t.Error("the ID should be correct:", parsed)
+	}
 
 	parsed, err = ParseUUID("{a4da289d-466d-4a56-4521-1dbd455aa0cd}")
-	c.Assert(err, Equals, nil)
-	c.Assert(parsed, Equals, id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if parsed != id {
+		t.Error("the ID should be correct:", parsed)
+	}
 
 	parsed, err = ParseUUID("urn:uuid:a4da289d-466d-4a56-4521-1dbd455aa0cd")
-	c.Assert(err, Equals, nil)
-	c.Assert(parsed, Equals, id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if parsed != id {
+		t.Error("the ID should be correct:", parsed)
+	}
 
 	parsed, err = ParseUUID("not-a-uuid")
-	c.Assert(err, Not(Equals), nil)
-	c.Assert(err, ErrorMatches, "Invalid UUID string")
-	c.Assert(parsed, Equals, UUID(""))
+	if err == nil || err.Error() != "Invalid UUID string" {
+		t.Error("there should be a 'Invalid UUID string' error:", err)
+	}
+	if parsed != UUID("") {
+		t.Error("the ID should be empty:", parsed)
+	}
 }
 
-func (s *UUIDSuite) TestString(c *C) {
+func TestString(t *testing.T) {
 	b, err := hex.DecodeString("a4da289d466d4a5645211dbd455aa0cd")
-	c.Assert(err, Equals, nil)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
 	id := UUID(b)
-	c.Assert(id.String(), Equals, "a4da289d-466d-4a56-4521-1dbd455aa0cd")
+	if id.String() != "a4da289d-466d-4a56-4521-1dbd455aa0cd" {
+		t.Error("the ID should be correct:", id)
+	}
 }
 
 type jsonType struct {
 	ID *UUID
 }
 
-func (s *UUIDSuite) TestMarshalJSON(c *C) {
+func TestMarshalJSON(t *testing.T) {
 	id, err := ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
-	c.Assert(err, IsNil)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
 	v := jsonType{ID: &id}
-	data, err := json.Marshal(&v)
-	c.Assert(err, IsNil)
-	c.Assert(string(data), Equals, `{"ID":"a4da289d-466d-4a56-4521-1dbd455aa0cd"}`)
+	js, err := json.Marshal(&v)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if string(js) != `{"ID":"a4da289d-466d-4a56-4521-1dbd455aa0cd"}` {
+		t.Error("the JSON should be correct:", string(js))
+	}
 }
 
-func (s *UUIDSuite) TestUnmarshalJSON(c *C) {
-	data := []byte(`{"ID":"a4da289d-466d-4a56-4521-1dbd455aa0cd"}`)
+func TestUnmarshalJSON(t *testing.T) {
+	js := []byte(`{"ID":"a4da289d-466d-4a56-4521-1dbd455aa0cd"}`)
 	v := jsonType{}
-	err := json.Unmarshal(data, &v)
-	c.Assert(err, IsNil)
+	err := json.Unmarshal(js, &v)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
 	id, err := ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
-	c.Assert(err, IsNil)
-	c.Assert(*v.ID, Equals, id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if *v.ID != id {
+		t.Error("the ID should be correct:", *v.ID)
+	}
 }
 
-func (s *UUIDSuite) TestUnmarshalJSONError(c *C) {
+func TestUnmarshalJSONError(t *testing.T) {
 	v := jsonType{}
 	err := json.Unmarshal([]byte(`{"ID":"not-uuid"}`), &v)
-	c.Assert(err, ErrorMatches, `invalid UUID in JSON, not-uuid: Invalid UUID string`)
+	if err == nil || err.Error() != "invalid UUID in JSON, not-uuid: Invalid UUID string" {
+		t.Error("there should be a 'invalid UUID in JSON, not-uuid: Invalid UUID string' error:", err)
+	}
+
 	err = json.Unmarshal([]byte(`{"ID":"819c4ff4-31b4-4519-xxxx-3c4a129b8649"}`), &v)
-	c.Assert(err.Error(), Equals, `invalid UUID in JSON, 819c4ff4-31b4-4519-xxxx-3c4a129b8649: encoding/hex: invalid byte: U+0078 'x'`)
+	if err == nil || err.Error() != "invalid UUID in JSON, 819c4ff4-31b4-4519-xxxx-3c4a129b8649: encoding/hex: invalid byte: U+0078 'x'" {
+		t.Error("there should be a \"invalid UUID in JSON, 819c4ff4-31b4-4519-xxxx-3c4a129b8649: encoding/hex: invalid byte: U+0078 'x'\"", err)
+	}
 }

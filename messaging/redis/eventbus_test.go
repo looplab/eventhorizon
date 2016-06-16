@@ -16,132 +16,115 @@ package redis
 
 import (
 	"os"
-
-	. "gopkg.in/check.v1"
+	"reflect"
+	"testing"
 
 	"github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/testing"
+	"github.com/looplab/eventhorizon/testutil"
 )
 
-var _ = Suite(&EventBusSuite{})
-
-type EventBusSuite struct {
-	url  string
-	bus  *EventBus
-	bus2 *EventBus
-}
-
-func (s *EventBusSuite) SetUpSuite(c *C) {
+func TestEventBus(t *testing.T) {
 	// Support Wercker testing with MongoDB.
 	host := os.Getenv("WERCKER_REDIS_HOST")
 	port := os.Getenv("WERCKER_REDIS_PORT")
 
+	url := ":6379"
 	if host != "" && port != "" {
-		s.url = host + ":" + port
-	} else {
-		s.url = ":6379"
+		url = host + ":" + port
 	}
-}
-func (s *EventBusSuite) SetUpTest(c *C) {
-	var err error
-	s.bus, err = NewEventBus("test", s.url, "")
-	c.Assert(s.bus, NotNil)
-	c.Assert(err, IsNil)
-	err = s.bus.RegisterEventType(&testing.TestEvent{}, func() eventhorizon.Event { return &testing.TestEvent{} })
-	c.Assert(err, IsNil)
 
-	s.bus2, err = NewEventBus("test", s.url, "")
-	c.Assert(s.bus2, NotNil)
-	c.Assert(err, IsNil)
-	err = s.bus2.RegisterEventType(&testing.TestEvent{}, func() eventhorizon.Event { return &testing.TestEvent{} })
-	c.Assert(err, IsNil)
-}
+	bus, err := NewEventBus("test", url, "")
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	if bus == nil {
+		t.Fatal("there should be a bus")
+	}
+	defer bus.Close()
+	if err = bus.RegisterEventType(&testutil.TestEvent{}, func() eventhorizon.Event {
+		return &testutil.TestEvent{}
+	}); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if err = bus.RegisterEventType(&testutil.TestEventOther{}, func() eventhorizon.Event {
+		return &testutil.TestEventOther{}
+	}); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	localHandler := testutil.NewMockEventHandler()
+	globalHandler := testutil.NewMockEventHandler()
+	bus.AddLocalHandler(localHandler)
+	bus.AddGlobalHandler(globalHandler)
 
-func (s *EventBusSuite) TearDownTest(c *C) {
-	s.bus.Close()
-	s.bus2.Close()
-}
+	// Another bus to test the global handlers.
+	bus2, err := NewEventBus("test", url, "")
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	defer bus2.Close()
+	if err = bus2.RegisterEventType(&testutil.TestEvent{}, func() eventhorizon.Event {
+		return &testutil.TestEvent{}
+	}); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if err = bus2.RegisterEventType(&testutil.TestEventOther{}, func() eventhorizon.Event {
+		return &testutil.TestEventOther{}
+	}); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	globalHandler2 := testutil.NewMockEventHandler()
+	bus2.AddGlobalHandler(globalHandler2)
 
-func (s *EventBusSuite) Test_NewHandlerEventBus(c *C) {
-	bus, err := NewEventBus("test", s.url, "")
-	c.Assert(bus, NotNil)
-	c.Assert(err, IsNil)
-	bus.Close()
-}
-
-func (s *EventBusSuite) Test_PublishEvent_Simple(c *C) {
-	handler := testing.NewMockEventHandler()
-	localHandler := testing.NewMockEventHandler()
-	globalHandler := testing.NewMockEventHandler()
-	globalHandler2 := testing.NewMockEventHandler()
-	s.bus.AddHandler(handler, &testing.TestEvent{})
-	s.bus.AddLocalHandler(localHandler)
-	s.bus.AddGlobalHandler(globalHandler)
-	s.bus2.AddGlobalHandler(globalHandler2)
-
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	s.bus.PublishEvent(event1)
+	t.Log("publish event without handler")
+	event1 := &testutil.TestEvent{eventhorizon.NewUUID(), "event1"}
+	bus.PublishEvent(event1)
+	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1}) {
+		t.Error("the local handler events should be correct:", localHandler.Events)
+	}
 	<-globalHandler.Recv
+	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1}) {
+		t.Error("the global handler events should be correct:", globalHandler.Events)
+	}
 	<-globalHandler2.Recv
-	c.Assert(handler.Events, HasLen, 1)
-	c.Assert(handler.Events[0], DeepEquals, event1)
-	c.Assert(localHandler.Events, HasLen, 1)
-	c.Assert(localHandler.Events[0], DeepEquals, event1)
-	c.Assert(globalHandler.Events, HasLen, 1)
-	c.Assert(globalHandler.Events[0], DeepEquals, event1)
-	c.Assert(globalHandler2.Events, HasLen, 1)
-	c.Assert(globalHandler2.Events[0], DeepEquals, event1)
-}
+	if !reflect.DeepEqual(globalHandler2.Events, []eventhorizon.Event{event1}) {
+		t.Error("the second global handler events should be correct:", globalHandler2.Events)
+	}
 
-func (s *EventBusSuite) Test_PublishEvent_AnotherEvent(c *C) {
-	handler := testing.NewMockEventHandler()
-	localHandler := testing.NewMockEventHandler()
-	globalHandler := testing.NewMockEventHandler()
-	globalHandler2 := testing.NewMockEventHandler()
-	s.bus.AddHandler(handler, &testing.TestEventOther{})
-	s.bus.AddLocalHandler(localHandler)
-	s.bus.AddGlobalHandler(globalHandler)
-	s.bus2.AddGlobalHandler(globalHandler2)
-
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	s.bus.PublishEvent(event1)
+	t.Log("publish event")
+	handler := testutil.NewMockEventHandler()
+	bus.AddHandler(handler, &testutil.TestEvent{})
+	bus.PublishEvent(event1)
+	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1}) {
+		t.Error("the handler events should be correct:", handler.Events)
+	}
+	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1, event1}) {
+		t.Error("the local handler events should be correct:", localHandler.Events)
+	}
 	<-globalHandler.Recv
+	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1, event1}) {
+		t.Error("the global handler events should be correct:", globalHandler.Events)
+	}
 	<-globalHandler2.Recv
-	c.Assert(handler.Events, HasLen, 0)
-	c.Assert(localHandler.Events, HasLen, 1)
-	c.Assert(localHandler.Events[0], DeepEquals, event1)
-	c.Assert(globalHandler.Events, HasLen, 1)
-	c.Assert(globalHandler.Events[0], DeepEquals, event1)
-	c.Assert(globalHandler2.Events, HasLen, 1)
-	c.Assert(globalHandler2.Events[0], DeepEquals, event1)
-}
+	if !reflect.DeepEqual(globalHandler2.Events, []eventhorizon.Event{event1, event1}) {
+		t.Error("the second global handler events should be correct:", globalHandler2.Events)
+	}
 
-func (s *EventBusSuite) Test_PublishEvent_NoHandler(c *C) {
-	localHandler := testing.NewMockEventHandler()
-	globalHandler := testing.NewMockEventHandler()
-	globalHandler2 := testing.NewMockEventHandler()
-	s.bus.AddLocalHandler(localHandler)
-	s.bus.AddGlobalHandler(globalHandler)
-	s.bus2.AddGlobalHandler(globalHandler2)
-
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	s.bus.PublishEvent(event1)
+	t.Log("publish another event")
+	bus.AddHandler(handler, &testutil.TestEventOther{})
+	event2 := &testutil.TestEventOther{eventhorizon.NewUUID(), "event2"}
+	bus.PublishEvent(event2)
+	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1, event2}) {
+		t.Error("the handler events should be correct:", handler.Events)
+	}
+	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1, event1, event2}) {
+		t.Error("the local handler events should be correct:", localHandler.Events)
+	}
 	<-globalHandler.Recv
+	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1, event1, event2}) {
+		t.Error("the global handler events should be correct:", globalHandler.Events)
+	}
 	<-globalHandler2.Recv
-	c.Assert(localHandler.Events, HasLen, 1)
-	c.Assert(localHandler.Events[0], DeepEquals, event1)
-	c.Assert(globalHandler.Events, HasLen, 1)
-	c.Assert(globalHandler.Events[0], DeepEquals, event1)
-	c.Assert(globalHandler2.Events, HasLen, 1)
-	c.Assert(globalHandler2.Events[0], DeepEquals, event1)
-}
-
-func (s *EventBusSuite) Test_PublishEvent_NoLocalOrGlobalHandler(c *C) {
-	handler := testing.NewMockEventHandler()
-	s.bus.AddHandler(handler, &testing.TestEvent{})
-
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	s.bus.PublishEvent(event1)
-	c.Assert(handler.Events, HasLen, 1)
-	c.Assert(handler.Events[0], DeepEquals, event1)
+	if !reflect.DeepEqual(globalHandler2.Events, []eventhorizon.Event{event1, event1, event2}) {
+		t.Error("the second global handler events should be correct:", globalHandler2.Events)
+	}
 }

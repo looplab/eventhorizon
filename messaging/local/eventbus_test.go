@@ -15,70 +15,59 @@
 package local
 
 import (
-	. "gopkg.in/check.v1"
+	"reflect"
+	"testing"
 
 	"github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/testing"
+	"github.com/looplab/eventhorizon/testutil"
 )
 
-var _ = Suite(&EventBusSuite{})
-
-type EventBusSuite struct {
-	bus *EventBus
-}
-
-func (s *EventBusSuite) SetUpTest(c *C) {
-	s.bus = NewEventBus()
-}
-
-func (s *EventBusSuite) Test_NewHandlerEventBus(c *C) {
+func TestEventBus(t *testing.T) {
 	bus := NewEventBus()
-	c.Assert(bus, NotNil)
-}
+	if bus == nil {
+		t.Fatal("there should be a bus")
+	}
 
-func (s *EventBusSuite) Test_PublishEvent_Simple(c *C) {
-	handler := testing.NewMockEventHandler()
-	localHandler := testing.NewMockEventHandler()
-	globalHandler := testing.NewMockEventHandler()
-	s.bus.AddHandler(handler, &testing.TestEvent{})
-	s.bus.AddLocalHandler(localHandler)
-	s.bus.AddGlobalHandler(globalHandler)
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	s.bus.PublishEvent(event1)
-	c.Assert(handler.Events[0], Equals, event1)
-	c.Assert(localHandler.Events[0], Equals, event1)
-	c.Assert(globalHandler.Events[0], Equals, event1)
-}
+	localHandler := testutil.NewMockEventHandler()
+	globalHandler := testutil.NewMockEventHandler()
+	bus.AddLocalHandler(localHandler)
+	bus.AddGlobalHandler(globalHandler)
 
-func (s *EventBusSuite) Test_PublishEvent_AnotherEvent(c *C) {
-	handler := testing.NewMockEventHandler()
-	localHandler := testing.NewMockEventHandler()
-	globalHandler := testing.NewMockEventHandler()
-	s.bus.AddHandler(handler, &testing.TestEventOther{})
-	s.bus.AddLocalHandler(localHandler)
-	s.bus.AddGlobalHandler(globalHandler)
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	s.bus.PublishEvent(event1)
-	c.Assert(handler.Events, HasLen, 0)
-	c.Assert(localHandler.Events[0], Equals, event1)
-	c.Assert(globalHandler.Events[0], Equals, event1)
-}
+	t.Log("publish event without handler")
+	event1 := &testutil.TestEvent{eventhorizon.NewUUID(), "event1"}
+	bus.PublishEvent(event1)
+	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1}) {
+		t.Error("the local handler events should be correct:", localHandler.Events)
+	}
+	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1}) {
+		t.Error("the global handler events should be correct:", globalHandler.Events)
+	}
 
-func (s *EventBusSuite) Test_PublishEvent_NoHandler(c *C) {
-	localHandler := testing.NewMockEventHandler()
-	globalHandler := testing.NewMockEventHandler()
-	s.bus.AddLocalHandler(localHandler)
-	s.bus.AddGlobalHandler(globalHandler)
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	s.bus.PublishEvent(event1)
-	c.Assert(localHandler.Events[0], Equals, event1)
-	c.Assert(globalHandler.Events[0], Equals, event1)
-}
+	t.Log("publish event")
+	handler := testutil.NewMockEventHandler()
+	bus.AddHandler(handler, &testutil.TestEvent{})
+	bus.PublishEvent(event1)
+	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1}) {
+		t.Error("the handler events should be correct:", handler.Events)
+	}
+	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1, event1}) {
+		t.Error("the local handler events should be correct:", localHandler.Events)
+	}
+	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1, event1}) {
+		t.Error("the global handler events should be correct:", globalHandler.Events)
+	}
 
-func (s *EventBusSuite) Test_PublishEvent_NoLocalOrGlobalHandler(c *C) {
-	handler := testing.NewMockEventHandler()
-	s.bus.AddHandler(handler, &testing.TestEvent{})
-	event1 := &testing.TestEvent{eventhorizon.NewUUID(), "event1"}
-	s.bus.PublishEvent(event1)
-	c.Assert(handler.Events[0], Equals, event1)
+	t.Log("publish another event")
+	bus.AddHandler(handler, &testutil.TestEventOther{})
+	event2 := &testutil.TestEventOther{eventhorizon.NewUUID(), "event2"}
+	bus.PublishEvent(event2)
+	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1, event2}) {
+		t.Error("the handler events should be correct:", handler.Events)
+	}
+	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1, event1, event2}) {
+		t.Error("the local handler events should be correct:", localHandler.Events)
+	}
+	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1, event1, event2}) {
+		t.Error("the global handler events should be correct:", globalHandler.Events)
+	}
 }

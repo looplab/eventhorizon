@@ -15,25 +15,45 @@
 package local
 
 import (
-	. "gopkg.in/check.v1"
+	"testing"
 
 	"github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/testing"
+	"github.com/looplab/eventhorizon/testutil"
 )
 
-var _ = Suite(&CommandBusSuite{})
-
-type CommandBusSuite struct {
-	bus *CommandBus
-}
-
-func (s *CommandBusSuite) SetUpTest(c *C) {
-	s.bus = NewCommandBus()
-}
-
-func (s *CommandBusSuite) Test_NewHandlerCommandBus(c *C) {
+func TestCommandBus(t *testing.T) {
 	bus := NewCommandBus()
-	c.Assert(bus, Not(Equals), nil)
+	if bus == nil {
+		t.Fatal("there should be a bus")
+	}
+
+	t.Log("handle with no handler")
+	command1 := &testutil.TestCommand{eventhorizon.NewUUID(), "command1"}
+	err := bus.HandleCommand(command1)
+	if err != eventhorizon.ErrHandlerNotFound {
+		t.Error("there should be a ErrHandlerNotFound error:", err)
+	}
+
+	t.Log("set handler")
+	handler := &TestCommandHandler{}
+	err = bus.SetHandler(handler, &testutil.TestCommand{})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	t.Log("handle with handler")
+	err = bus.HandleCommand(command1)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if handler.command != command1 {
+		t.Error("the handled command should be correct:", handler.command)
+	}
+
+	err = bus.SetHandler(handler, &testutil.TestCommand{})
+	if err != eventhorizon.ErrHandlerAlreadySet {
+		t.Error("there should be a ErrHandlerAlreadySet error:", err)
+	}
 }
 
 type TestCommandHandler struct {
@@ -43,30 +63,4 @@ type TestCommandHandler struct {
 func (t *TestCommandHandler) HandleCommand(command eventhorizon.Command) error {
 	t.command = command
 	return nil
-}
-
-func (s *CommandBusSuite) Test_HandleCommand_Simple(c *C) {
-	handler := &TestCommandHandler{}
-	err := s.bus.SetHandler(handler, &testing.TestCommand{})
-	c.Assert(err, IsNil)
-	command1 := &testing.TestCommand{eventhorizon.NewUUID(), "command1"}
-	err = s.bus.HandleCommand(command1)
-	c.Assert(err, IsNil)
-	c.Assert(handler.command, Equals, command1)
-}
-
-func (s *CommandBusSuite) Test_HandleCommand_NoHandler(c *C) {
-	handler := &TestCommandHandler{}
-	command1 := &testing.TestCommand{eventhorizon.NewUUID(), "command1"}
-	err := s.bus.HandleCommand(command1)
-	c.Assert(err, Equals, eventhorizon.ErrHandlerNotFound)
-	c.Assert(handler.command, IsNil)
-}
-
-func (s *CommandBusSuite) Test_SetHandler_Twice(c *C) {
-	handler := &TestCommandHandler{}
-	err := s.bus.SetHandler(handler, &testing.TestCommand{})
-	c.Assert(err, IsNil)
-	err = s.bus.SetHandler(handler, &testing.TestCommand{})
-	c.Assert(err, Equals, eventhorizon.ErrHandlerAlreadySet)
 }

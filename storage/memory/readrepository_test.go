@@ -15,102 +15,114 @@
 package memory
 
 import (
-	. "gopkg.in/check.v1"
+	"reflect"
+	"testing"
+	"time"
 
 	"github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/testutil"
 )
 
-type ReadRepositorySuite struct{}
-
-var _ = Suite(&ReadRepositorySuite{})
-
-func (s *ReadRepositorySuite) TestNewReadRepository(c *C) {
+func TestReadRepository(t *testing.T) {
 	repo := NewReadRepository()
-	c.Assert(repo, Not(Equals), nil)
-	c.Assert(repo.data, Not(Equals), nil)
-	c.Assert(len(repo.data), Equals, 0)
-}
-
-func (s *ReadRepositorySuite) TestSave(c *C) {
-	// Simple save.
-	repo := NewReadRepository()
-	id := eventhorizon.NewUUID()
-	repo.Save(id, 42)
-	c.Assert(len(repo.data), Equals, 1)
-	c.Assert(repo.data[id], Equals, 42)
-
-	// Overwrite with same ID.
-	repo = NewReadRepository()
-	id = eventhorizon.NewUUID()
-	repo.Save(id, 42)
-	repo.Save(id, 43)
-	c.Assert(len(repo.data), Equals, 1)
-	c.Assert(repo.data[id], Equals, 43)
-}
-
-func (s *ReadRepositorySuite) TestFind(c *C) {
-	// Simple find.
-	repo := NewReadRepository()
-	id := eventhorizon.NewUUID()
-	repo.data[id] = 42
-	result, err := repo.Find(id)
-	c.Assert(err, Equals, nil)
-	c.Assert(result, Equals, 42)
-
-	// Empty repo.
-	repo = NewReadRepository()
-	result, err = repo.Find(eventhorizon.NewUUID())
-	c.Assert(err, ErrorMatches, "could not find model")
-	c.Assert(result, Equals, nil)
-
-	// Non existing ID.
-	repo = NewReadRepository()
-	repo.data[eventhorizon.NewUUID()] = 42
-	result, err = repo.Find(eventhorizon.NewUUID())
-	c.Assert(err, ErrorMatches, "could not find model")
-	c.Assert(result, Equals, nil)
-}
-
-func (s *ReadRepositorySuite) TestFindAll(c *C) {
-	// Find one.
-	repo := NewReadRepository()
-	repo.data[eventhorizon.NewUUID()] = 42
-	result, err := repo.FindAll()
-	c.Assert(err, Equals, nil)
-	c.Assert(result, DeepEquals, []interface{}{42})
-
-	// Find two.
-	repo = NewReadRepository()
-	repo.data[eventhorizon.NewUUID()] = 42
-	repo.data[eventhorizon.NewUUID()] = 43
-	result, err = repo.FindAll()
-	c.Assert(err, Equals, nil)
-	sum := 0
-	for _, v := range result {
-		sum += v.(int)
+	if repo == nil {
+		t.Error("there should be a repository")
 	}
-	c.Assert(sum, Equals, 85)
 
-	// Find none.
-	repo = NewReadRepository()
+	// TODO: Share these tests between implementations.
+
+	t.Log("FindAll with no items")
+	result, err := repo.FindAll()
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if len(result) != 0 {
+		t.Error("there should be no items:", len(result))
+	}
+
+	t.Log("Save one item")
+	model1 := &testutil.TestModel{eventhorizon.NewUUID(), "model1", time.Now().Round(time.Millisecond)}
+	if err = repo.Save(model1.ID, model1); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	model, err := repo.Find(model1.ID)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(model, model1) {
+		t.Error("the item should be correct:", model)
+	}
+
+	t.Log("Save and overwrite with same ID")
+	model1Alt := &testutil.TestModel{model1.ID, "model1Alt", time.Now().Round(time.Millisecond)}
+	if err = repo.Save(model1Alt.ID, model1Alt); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	model, err = repo.Find(model1Alt.ID)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(model, model1Alt) {
+		t.Error("the item should be correct:", model)
+	}
+
+	t.Log("FindAll with one item")
 	result, err = repo.FindAll()
-	c.Assert(err, Equals, nil)
-	c.Assert(result, DeepEquals, []interface{}{})
-}
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if len(result) != 1 {
+		t.Error("there should be one item:", len(result))
+	}
+	if !reflect.DeepEqual(result[0], model1Alt) {
+		t.Error("the item should be correct:", model)
+	}
 
-func (s *ReadRepositorySuite) TestRemove(c *C) {
-	// Simple remove.
-	repo := NewReadRepository()
-	id := eventhorizon.NewUUID()
-	repo.data[id] = 42
-	err := repo.Remove(id)
-	c.Assert(err, Equals, nil)
-	c.Assert(len(repo.data), Equals, 0)
+	t.Log("Save with another ID")
+	model2 := &testutil.TestModel{eventhorizon.NewUUID(), "model2", time.Now().Round(time.Millisecond)}
+	if err = repo.Save(model2.ID, model2); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	model, err = repo.Find(model2.ID)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(model, model2) {
+		t.Error("the item should be correct:", model)
+	}
 
-	// Non existing ID.
-	repo = NewReadRepository()
-	repo.data[id] = 42
-	err = repo.Remove(eventhorizon.NewUUID())
-	c.Assert(err, ErrorMatches, "could not find model")
-	c.Assert(len(repo.data), Equals, 1)
+	t.Log("FindAll with two items")
+	result, err = repo.FindAll()
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if len(result) != 2 {
+		t.Error("there should be two items:", len(result))
+	}
+	if (!reflect.DeepEqual(result[0], model1Alt) || !reflect.DeepEqual(result[1], model2)) &&
+		(!reflect.DeepEqual(result[0], model2) || !reflect.DeepEqual(result[1], model1Alt)) {
+		t.Error("the items should be correct:", result)
+	}
+
+	t.Log("Remove one item")
+	err = repo.Remove(model1Alt.ID)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	result, err = repo.FindAll()
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if len(result) != 1 {
+		t.Error("there should be one item:", len(result))
+	}
+	if !reflect.DeepEqual(result[0], model2) {
+		t.Error("the item should be correct:", result[0])
+	}
+
+	t.Log("Remove non-existing item")
+	err = repo.Remove(model1Alt.ID)
+	if err != eventhorizon.ErrModelNotFound {
+		t.Error("there should be a ErrModelNotFound error:", err)
+	}
 }

@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package testing
+package testutil
 
 import (
 	"github.com/looplab/eventhorizon"
+	"time"
 )
 
 type EmptyAggregate struct {
@@ -79,21 +80,27 @@ func (t *TestCommandOther2) AggregateID() eventhorizon.UUID { return t.TestID }
 func (t *TestCommandOther2) AggregateType() string          { return "Test" }
 func (t *TestCommandOther2) CommandType() string            { return "TestCommandOther2" }
 
+type TestModel struct {
+	ID        eventhorizon.UUID `json:"id"         bson:"_id"`
+	Content   string            `json:"content"    bson:"content"`
+	CreatedAt time.Time         `json:"created_at" bson:"created_at"`
+}
+
 type MockEventHandler struct {
 	Events []eventhorizon.Event
-	Recv   chan struct{}
+	Recv   chan eventhorizon.Event
 }
 
 func NewMockEventHandler() *MockEventHandler {
 	return &MockEventHandler{
 		make([]eventhorizon.Event, 0),
-		make(chan struct{}),
+		make(chan eventhorizon.Event, 10),
 	}
 }
 
 func (m *MockEventHandler) HandleEvent(event eventhorizon.Event) {
 	m.Events = append(m.Events, event)
-	close(m.Recv)
+	m.Recv <- event
 }
 
 type MockRepository struct {

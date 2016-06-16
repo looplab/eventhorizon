@@ -1,5 +1,10 @@
 # Changes
 
+### 2016-06-16
+
+Use native Go testing instead of Go check everywhere.
+
+
 ### 2016-06-10
 
 Use native Go testing instead of Go check for the core types. Fix a small, unlikely bug where the aggregate could be nil in the command handler.
