@@ -65,15 +65,27 @@ func (p *InvitationProjector) HandleEvent(event eh.Event) {
 		i := m.(*Invitation)
 		i.Status = "declined"
 		p.repository.Save(i.ID, i)
+	case *InviteConfirmed:
+		m, _ := p.repository.Find(event.InvitationID)
+		i := m.(*Invitation)
+		i.Status = "confirmed"
+		p.repository.Save(i.ID, i)
+	case *InviteDenied:
+		m, _ := p.repository.Find(event.InvitationID)
+		i := m.(*Invitation)
+		i.Status = "denied"
+		p.repository.Save(i.ID, i)
 	}
 }
 
 // GuestList is a read model object for the guest list.
 type GuestList struct {
-	Id          eh.UUID `json:"id"         bson:"_id"`
-	NumGuests   int
-	NumAccepted int
-	NumDeclined int
+	ID           eh.UUID
+	NumGuests    int
+	NumAccepted  int
+	NumDeclined  int
+	NumConfirmed int
+	NumDenied    int
 }
 
 // GuestListProjector is a projector that updates the guest list.
@@ -98,27 +110,28 @@ func (p *GuestListProjector) HandlerType() eh.EventHandlerType {
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (p *GuestListProjector) HandleEvent(event eh.Event) {
-	switch event.(type) {
-	case *InviteCreated:
-		m, _ := p.repository.Find(p.eventID)
-		if m == nil {
-			m = &GuestList{
-				Id: p.eventID,
-			}
+	// Load or create the guest list.
+	var g *GuestList
+	if m, _ := p.repository.Find(p.eventID); m != nil {
+		g = m.(*GuestList)
+	} else {
+		g = &GuestList{
+			ID: p.eventID,
 		}
-		g := m.(*GuestList)
-		p.repository.Save(p.eventID, g)
+	}
+
+	switch event.(type) {
 	case *InviteAccepted:
-		m, _ := p.repository.Find(p.eventID)
-		g := m.(*GuestList)
 		g.NumAccepted++
 		g.NumGuests++
-		p.repository.Save(p.eventID, g)
 	case *InviteDeclined:
-		m, _ := p.repository.Find(p.eventID)
-		g := m.(*GuestList)
 		g.NumDeclined++
 		g.NumGuests++
-		p.repository.Save(p.eventID, g)
+	case *InviteConfirmed:
+		g.NumConfirmed++
+	case *InviteDenied:
+		g.NumDenied++
 	}
+
+	p.repository.Save(p.eventID, g)
 }

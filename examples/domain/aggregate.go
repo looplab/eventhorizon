@@ -37,10 +37,14 @@ type InvitationAggregate struct {
 	// AggregateBase implements most of the eventhorizon.Aggregate interface.
 	*eh.AggregateBase
 
-	name     string
-	age      int
-	accepted bool
-	declined bool
+	name string
+	age  int
+
+	// TODO: Replace with FSM.
+	accepted  bool
+	declined  bool
+	confirmed bool
+	denied    bool
 }
 
 // NewInvitationAggregate creates a new InvitationAggregate with an ID.
@@ -93,6 +97,30 @@ func (i *InvitationAggregate) HandleCommand(command eh.Command) error {
 
 		i.StoreEvent(&InviteDeclined{i.AggregateID()})
 		return nil
+
+	case *ConfirmInvite:
+		if i.name == "" {
+			return fmt.Errorf("invitee does not exist")
+		}
+
+		if !i.accepted || i.declined {
+			return fmt.Errorf("only accepted invites can be confirmed")
+		}
+
+		i.StoreEvent(&InviteConfirmed{i.AggregateID()})
+		return nil
+
+	case *DenyInvite:
+		if i.name == "" {
+			return fmt.Errorf("invitee does not exist")
+		}
+
+		if !i.accepted || i.declined {
+			return fmt.Errorf("only accepted invites can be denied")
+		}
+
+		i.StoreEvent(&InviteDenied{i.AggregateID()})
+		return nil
 	}
 	return fmt.Errorf("couldn't handle command")
 }
@@ -107,5 +135,9 @@ func (i *InvitationAggregate) ApplyEvent(event eh.Event) {
 		i.accepted = true
 	case *InviteDeclined:
 		i.declined = true
+	case *InviteConfirmed:
+		i.confirmed = true
+	case *InviteDenied:
+		i.denied = true
 	}
 }
