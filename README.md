@@ -11,7 +11,7 @@ Event Horizon is a CQRS/ES toolkit for Go.
 
 CQRS stands for Command Query Responsibility Segregation and is a technique where object access (the Query part) and modification (the Command part) are separated from each other. This helps in designing complex data models where the actions can be totally independent from the data output.
 
-ES stands for Event Sourcing and is a technique where all events that have happened in a system are recorded, and all future actions are based on the events instead of a single data model. The main benefit of adding Event Sourcing is tracability of changes which can be used for example in audit logging. Additionally, "incorrect" events that happened in the past (for example due to a bug) can be edited which will make the current data "correct", as that is based on the events.
+ES stands for Event Sourcing and is a technique where all events that have happened in a system are recorded, and all future actions are based on the events instead of a single data model. The main benefit of adding Event Sourcing is traceability of changes which can be used for example in audit logging. Additionally, "incorrect" events that happened in the past (for example due to a bug) can be edited which will make the current data "correct", as that is based on the events.
 
 Read more about CQRS/ES from one of the major authors/contributors on the subject: http://codebetter.com/gregyoung/2010/02/16/cqrs-task-based-uis-event-sourcing-agh/
 
@@ -34,6 +34,15 @@ Suggestions are welcome!
 # Usage
 
 See the example folder for a basic usage example to get you started.
+
+
+# Storage and messaging implementations
+
+There are simple in memory implementations of all components in the toolkit (event store, read repository, event bus, command bus). Most of these are meant for testing and development, the command bus (and in some cases the event bus) could however fulfill the needs of a production system.
+
+In addition there is MongoDB implementations of the event store and a simple read repository, and a Redis implementation of the event bus.
+
+There is also experimental support for AWS DynamoDB in the "dynamodb" branch (kept separately for now due to breaking changes to the UUID type). Support for a event bus using AWS SQS is also planned but not started.
 
 
 # License

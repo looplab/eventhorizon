@@ -1,5 +1,10 @@
 # Changes
 
+### 2016-06-17
+
+Added exprimental support for an event store using AWS DynamoDB in the branch "dynamodb".
+
+
 ### 2016-06-16
 
 Use native Go testing instead of Go check everywhere.
