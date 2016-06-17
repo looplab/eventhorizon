@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
 // Pattern used to parse hex string representation of the UUID.
@@ -102,6 +104,29 @@ func (id *UUID) UnmarshalJSON(data []byte) error {
 	parsed, err := ParseUUID(value)
 	if err != nil {
 		return fmt.Errorf("invalid UUID in JSON, %v: %v", value, err)
+	}
+
+	// Dereference pointer value and store parsed
+	*id = parsed
+	return nil
+}
+
+// MarshalDynamoDBAttributeValue marshals a UUID into a DynamoDB type.
+func (id UUID) MarshalDynamoDBAttributeValue(av *dynamodb.AttributeValue) error {
+	s := id.String()
+	av.S = &s
+	return nil
+}
+
+// UnmarshalDynamoDBAttributeValue unmarshals a DynamoDB type into a UUID.
+func (id *UUID) UnmarshalDynamoDBAttributeValue(av *dynamodb.AttributeValue) error {
+	if av.S == nil {
+		return errors.New("invalid UUID")
+	}
+
+	parsed, err := ParseUUID(*av.S)
+	if err != nil {
+		return fmt.Errorf("invalid UUID, %v: %v", *av.S, err)
 	}
 
 	// Dereference pointer value and store parsed
