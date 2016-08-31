@@ -22,18 +22,6 @@ import (
 	"github.com/looplab/eventhorizon/testutil"
 )
 
-// func (s *EventStoreSuite) SetUpSuite(c *C) {
-// 	// Support Wercker testing with MongoDB.
-// 	host := os.Getenv("WERCKER_MONGODB_HOST")
-// 	port := os.Getenv("WERCKER_MONGODB_PORT")
-
-// 	if host != "" && port != "" {
-// 		s.url = host + ":" + port
-// 	} else {
-// 		s.url = "localhost"
-// 	}
-// }
-
 func TestEventStore(t *testing.T) {
 	bus := &testutil.MockEventBus{
 		Events: make([]eventhorizon.Event, 0),
