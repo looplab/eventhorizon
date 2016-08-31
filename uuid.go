@@ -16,20 +16,17 @@ package eventhorizon
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
-
-	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
 // Pattern used to parse hex string representation of the UUID.
 // FIXME: do something to consider both brackets at one time,
 // current one allows to parse string with only one opening
 // or closing bracket.
-const hexPattern = "^(urn\\:uuid\\:)?\\{?([a-z0-9]{8})-([a-z0-9]{4})-" +
-	"([1-5][a-z0-9]{3})-([a-z0-9]{4})-([a-z0-9]{12})\\}?$"
+const hexPattern = "^(urn\\:uuid\\:)?\\{?([a-f0-9]{8})-([a-f0-9]{4})-" +
+	"([1-5][a-f0-9]{3})-([a-f0-9]{4})-([a-f0-9]{12})\\}?$"
 
 var re = regexp.MustCompile(hexPattern)
 
@@ -53,7 +50,7 @@ func NewUUID() UUID {
 	// Set the version to 4.
 	u[6] = (u[6] & 0xF) | 0x40
 
-	return UUID(u[:])
+	return UUID(fmt.Sprintf("%x-%x-%x-%x-%x", u[0:4], u[4:6], u[6:8], u[8:10], u[10:]))
 }
 
 // ParseUUID parses a UUID from a string representation.
@@ -69,27 +66,18 @@ func ParseUUID(s string) (UUID, error) {
 	if md == nil {
 		return "", errors.New("Invalid UUID string")
 	}
-	hash := md[2] + md[3] + md[4] + md[5] + md[6]
-	b, err := hex.DecodeString(hash)
-	if err != nil {
-		return "", err
-	}
-	return UUID(b), nil
+	return UUID(fmt.Sprintf("%s-%s-%s-%s-%s", md[2], md[3], md[4], md[5], md[6])), nil
 }
 
 // String implements the Stringer interface for UUID.
 func (id UUID) String() string {
-	if len(id) == 16 {
-		u := []byte(id)
-		return fmt.Sprintf("%x-%x-%x-%x-%x", u[0:4], u[4:6], u[6:8], u[8:10], u[10:])
-	}
-	return ""
+	return string(id)
 }
 
 // MarshalJSON turns UUID into a json.Marshaller.
 func (id UUID) MarshalJSON() ([]byte, error) {
 	// Pack the string representation in quotes
-	return []byte(fmt.Sprintf(`"%s"`, id.String())), nil
+	return []byte(fmt.Sprintf(`"%s"`, id)), nil
 }
 
 // UnmarshalJSON turns *UUID into a json.Unmarshaller.
@@ -104,29 +92,6 @@ func (id *UUID) UnmarshalJSON(data []byte) error {
 	parsed, err := ParseUUID(value)
 	if err != nil {
 		return fmt.Errorf("invalid UUID in JSON, %v: %v", value, err)
-	}
-
-	// Dereference pointer value and store parsed
-	*id = parsed
-	return nil
-}
-
-// MarshalDynamoDBAttributeValue marshals a UUID into a DynamoDB type.
-func (id UUID) MarshalDynamoDBAttributeValue(av *dynamodb.AttributeValue) error {
-	s := id.String()
-	av.S = &s
-	return nil
-}
-
-// UnmarshalDynamoDBAttributeValue unmarshals a DynamoDB type into a UUID.
-func (id *UUID) UnmarshalDynamoDBAttributeValue(av *dynamodb.AttributeValue) error {
-	if av.S == nil {
-		return errors.New("invalid UUID")
-	}
-
-	parsed, err := ParseUUID(*av.S)
-	if err != nil {
-		return fmt.Errorf("invalid UUID, %v: %v", *av.S, err)
 	}
 
 	// Dereference pointer value and store parsed
