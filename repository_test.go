@@ -43,7 +43,6 @@ func TestNewRepositoryNilEventStore(t *testing.T) {
 
 func TestRepositoryLoadNoEvents(t *testing.T) {
 	repo, _ := createRepoAndStore(t)
-
 	err := repo.RegisterAggregate(&TestAggregate{},
 		func(id UUID) Aggregate {
 			return &TestAggregate{

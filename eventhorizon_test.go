@@ -54,7 +54,7 @@ type TestEvent struct {
 }
 
 func (t *TestEvent) AggregateID() UUID     { return t.TestID }
-func (t *TestEvent) AggregateType() string { return "Test" }
+func (t *TestEvent) AggregateType() string { return "TestAggregate" }
 func (t *TestEvent) EventType() string     { return "TestEvent" }
 
 type TestCommand struct {
@@ -63,7 +63,7 @@ type TestCommand struct {
 }
 
 func (t *TestCommand) AggregateID() UUID     { return t.TestID }
-func (t *TestCommand) AggregateType() string { return "Test" }
+func (t *TestCommand) AggregateType() string { return "TestAggregate" }
 func (t *TestCommand) CommandType() string   { return "TestCommand" }
 
 type MockRepository struct {
