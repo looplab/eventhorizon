@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -31,26 +32,29 @@ func TestNewUUID(t *testing.T) {
 		t.Error("the IDs should be unique")
 	}
 
-	if (id[8]&0xC0)|0x80 != uint8(0x80) {
+	parts := strings.Split(string(id), "-")
+	hash := parts[0] + parts[1] + parts[2] + parts[3] + parts[4]
+	b, err := hex.DecodeString(hash)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if (b[8]&0xC0)|0x80 != uint8(0x80) {
 		t.Error("the variant should be correct")
 	}
 
-	if id[6]>>4 != uint8(4) {
+	if b[6]>>4 != uint8(4) {
 		t.Error("the version should be correct")
 	}
 
 	re := regexp.MustCompile("^[a-z0-9]{8}-[a-z0-9]{4}-[1-5][a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}$")
-	if !re.MatchString(id.String()) {
-		t.Error("the string format should be correct:", id.String())
+	if !re.MatchString(string(id)) {
+		t.Error("the string format should be correct:", id)
 	}
 }
 
 func TestParseUUID(t *testing.T) {
-	b, err := hex.DecodeString("a4da289d466d4a5645211dbd455aa0cd")
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	id := UUID(b)
+	id := UUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
 
 	parsed, err := ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
 	if err != nil {
@@ -86,11 +90,7 @@ func TestParseUUID(t *testing.T) {
 }
 
 func TestString(t *testing.T) {
-	b, err := hex.DecodeString("a4da289d466d4a5645211dbd455aa0cd")
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	id := UUID(b)
+	id := UUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
 	if id.String() != "a4da289d-466d-4a56-4521-1dbd455aa0cd" {
 		t.Error("the ID should be correct:", id)
 	}
@@ -141,7 +141,7 @@ func TestUnmarshalJSONError(t *testing.T) {
 	}
 
 	err = json.Unmarshal([]byte(`{"ID":"819c4ff4-31b4-4519-xxxx-3c4a129b8649"}`), &v)
-	if err == nil || err.Error() != "invalid UUID in JSON, 819c4ff4-31b4-4519-xxxx-3c4a129b8649: encoding/hex: invalid byte: U+0078 'x'" {
-		t.Error("there should be a \"invalid UUID in JSON, 819c4ff4-31b4-4519-xxxx-3c4a129b8649: encoding/hex: invalid byte: U+0078 'x'\"", err)
+	if err == nil || err.Error() != "invalid UUID in JSON, 819c4ff4-31b4-4519-xxxx-3c4a129b8649: Invalid UUID string" {
+		t.Error("there should be a 'invalid UUID in JSON, 819c4ff4-31b4-4519-xxxx-3c4a129b8649: Invalid UUID string' error:", err)
 	}
 }

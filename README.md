@@ -42,7 +42,7 @@ There are simple in memory implementations of all components in the toolkit (eve
 
 In addition there is MongoDB implementations of the event store and a simple read repository, and a Redis implementation of the event bus.
 
-There is also experimental support for AWS DynamoDB in the "dynamodb" branch (kept separately for now due to breaking changes to the UUID type). Support for a event bus using AWS SQS is also planned but not started.
+There is also experimental support for AWS DynamoDB as an event store. Support for a event bus using AWS SQS is also planned but not started.
 
 
 # License
