@@ -1,5 +1,9 @@
 # Changes
 
+### 2016-09-18
+
+AWS DynamoDB event store is now in master. Also the Wercker CI config was updated to use the new Docker pipeline.
+
 ### 2016-06-17
 
 Added exprimental support for an event store using AWS DynamoDB in the branch "dynamodb".
