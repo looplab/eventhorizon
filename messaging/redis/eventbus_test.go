@@ -25,8 +25,8 @@ import (
 
 func TestEventBus(t *testing.T) {
 	// Support Wercker testing with MongoDB.
-	host := os.Getenv("WERCKER_REDIS_HOST")
-	port := os.Getenv("WERCKER_REDIS_PORT")
+	host := os.Getenv("REDIS_PORT_6379_TCP_ADDR")
+	port := os.Getenv("REDIS_PORT_6379_TCP_PORT")
 
 	url := ":6379"
 	if host != "" && port != "" {
