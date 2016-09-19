@@ -27,6 +27,9 @@ var ErrAggregateAlreadyRegistered = errors.New("aggregate is already registered"
 // ErrAggregateNotRegistered is when an aggregate is not registered.
 var ErrAggregateNotRegistered = errors.New("aggregate is not registered")
 
+// ErrMismatchedEventType occurs when loaded events from ID does not match aggregate type.
+var ErrMismatchedEventType = errors.New("mismatched event type and aggregate type")
+
 // Repository is a repository responsible for loading and saving aggregates.
 type Repository interface {
 	// Load loads an aggregate with a type and id.
@@ -86,11 +89,12 @@ func (r *CallbackRepository) Load(aggregateType string, id UUID) (Aggregate, err
 
 	// Apply the events.
 	for _, event := range events {
-		// Events must be of same aggregate type as the command
-		if event.AggregateType() == aggregateType {
-			aggregate.ApplyEvent(event)
-			aggregate.IncrementVersion()
+		if event.AggregateType() != aggregateType {
+			return nil, ErrMismatchedEventType
 		}
+
+		aggregate.ApplyEvent(event)
+		aggregate.IncrementVersion()
 	}
 
 	return aggregate, nil

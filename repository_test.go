@@ -14,9 +14,7 @@
 
 package eventhorizon
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestNewRepository(t *testing.T) {
 	store := &MockEventStore{
@@ -96,6 +94,47 @@ func TestRepositoryLoadEvents(t *testing.T) {
 	}
 	if agg.(*TestAggregate).appliedEvent != event1 {
 		t.Error("the event should be correct:", agg.(*TestAggregate).appliedEvent)
+	}
+}
+
+func TestRepositoryLoadEventsMismatchedEventType(t *testing.T) {
+	repo, store := createRepoAndStore(t)
+
+	err := repo.RegisterAggregate(&TestAggregate{},
+		func(id UUID) Aggregate {
+			return &TestAggregate{
+				AggregateBase: NewAggregateBase(id),
+			}
+		},
+	)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	err = repo.RegisterAggregate(&TestAggregate2{},
+		func(id UUID) Aggregate {
+			return &TestAggregate2{
+				AggregateBase: NewAggregateBase(id),
+			}
+		},
+	)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	id := NewUUID()
+	event1 := &TestEvent{id, "event"}
+	store.Save([]Event{event1})
+
+	otherAggregateID := NewUUID()
+	event2 := &TestEvent2{otherAggregateID, "event2"}
+	store.Save([]Event{event2})
+
+	agg, err := repo.Load("TestAggregate", otherAggregateID)
+	if err != ErrMismatchedEventType {
+		t.Error("there should be a ErrMismatchedEventType error:", err)
+	}
+	if agg != nil {
+		t.Error("the aggregate should be nil")
 	}
 }
 

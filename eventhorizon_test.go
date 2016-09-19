@@ -66,6 +66,54 @@ func (t *TestCommand) AggregateID() UUID     { return t.TestID }
 func (t *TestCommand) AggregateType() string { return "TestAggregate" }
 func (t *TestCommand) CommandType() string   { return "TestCommand" }
 
+type TestAggregate2 struct {
+	*AggregateBase
+
+	dispatchedCommand Command
+	appliedEvent      Event
+	numHandled        int
+}
+
+func (a *TestAggregate2) AggregateType() string {
+	return "TestAggregate2"
+}
+
+func (a *TestAggregate2) HandleCommand(command Command) error {
+	a.dispatchedCommand = command
+	a.numHandled++
+	switch command := command.(type) {
+	case *TestCommand2:
+		if command.Content == "error" {
+			return errors.New("command error")
+		}
+		a.StoreEvent(&TestEvent2{command.TestID, command.Content})
+		return nil
+	}
+	return errors.New("couldn't handle command")
+}
+
+func (a *TestAggregate2) ApplyEvent(event Event) {
+	a.appliedEvent = event
+}
+
+type TestEvent2 struct {
+	TestID  UUID
+	Content string
+}
+
+func (t *TestEvent2) AggregateID() UUID     { return t.TestID }
+func (t *TestEvent2) AggregateType() string { return "TestAggregate2" }
+func (t *TestEvent2) EventType() string     { return "TestEvent2" }
+
+type TestCommand2 struct {
+	TestID  UUID
+	Content string
+}
+
+func (t *TestCommand2) AggregateID() UUID     { return t.TestID }
+func (t *TestCommand2) AggregateType() string { return "TestAggregate2" }
+func (t *TestCommand2) CommandType() string   { return "TestCommand2" }
+
 type MockRepository struct {
 	Aggregates map[UUID]Aggregate
 }
