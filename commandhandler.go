@@ -135,8 +135,15 @@ func (h *AggregateCommandHandler) checkCommand(command Command) error {
 
 func isZero(v reflect.Value) bool {
 	switch v.Kind() {
-	case reflect.Func, reflect.Map, reflect.Slice:
+	case reflect.Func, reflect.Chan, reflect.Uintptr, reflect.Ptr, reflect.UnsafePointer:
+		// Types that are not allowed at all.
+		// NOTE: Would be better with its own error for this.
+		return true
+	case reflect.Map, reflect.Array, reflect.Slice:
 		return v.IsNil()
+	case reflect.Interface, reflect.String:
+		z := reflect.Zero(v.Type())
+		return v.Interface() == z.Interface()
 	case reflect.Struct:
 		// Special case to get zero values by method.
 		switch obj := v.Interface().(type) {
@@ -153,9 +160,10 @@ func isZero(v reflect.Value) bool {
 			z = z && isZero(v.Field(i))
 		}
 		return z
+	default:
+		// Don't check for zero for value types:
+		// Bool, Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32,
+		// Uint64, Float32, Float64, Complex64, Complex128
+		return false
 	}
-
-	// Compare other types directly:
-	z := reflect.Zero(v.Type())
-	return v.Interface() == z.Interface()
 }
