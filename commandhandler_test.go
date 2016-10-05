@@ -97,10 +97,28 @@ func TestCommandHandlerCheckCommand(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	// Missing required value.
-	err = handler.checkCommand(&TestCommandValue{TestID: NewUUID()})
+	// Missing required string value.
+	err = handler.checkCommand(&TestCommandStringValue{TestID: NewUUID()})
 	if err == nil || err.Error() != "missing field: Content" {
 		t.Error("there should be a missing field error:", err)
+	}
+
+	// Missing required int value.
+	err = handler.checkCommand(&TestCommandIntValue{TestID: NewUUID()})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	// Missing required float value.
+	err = handler.checkCommand(&TestCommandFloatValue{TestID: NewUUID()})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	// Missing required bool value.
+	err = handler.checkCommand(&TestCommandBoolValue{TestID: NewUUID()})
+	if err != nil {
+		t.Error("there should be no error:", err)
 	}
 
 	// Missing required slice.
@@ -190,14 +208,41 @@ func createAggregateAndHandler(t *testing.T) (*TestAggregate, *AggregateCommandH
 	return aggregate, handler
 }
 
-type TestCommandValue struct {
+type TestCommandStringValue struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestCommandValue) AggregateID() UUID     { return t.TestID }
-func (t *TestCommandValue) AggregateType() string { return "Test" }
-func (t *TestCommandValue) CommandType() string   { return "TestCommandValue" }
+func (t *TestCommandStringValue) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandStringValue) AggregateType() string { return "Test" }
+func (t *TestCommandStringValue) CommandType() string   { return "TestCommandStringValue" }
+
+type TestCommandIntValue struct {
+	TestID  UUID
+	Content int
+}
+
+func (t *TestCommandIntValue) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandIntValue) AggregateType() string { return "Test" }
+func (t *TestCommandIntValue) CommandType() string   { return "TestCommandIntValue" }
+
+type TestCommandFloatValue struct {
+	TestID  UUID
+	Content float32
+}
+
+func (t *TestCommandFloatValue) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandFloatValue) AggregateType() string { return "Test" }
+func (t *TestCommandFloatValue) CommandType() string   { return "TestCommandFloatValue" }
+
+type TestCommandBoolValue struct {
+	TestID  UUID
+	Content bool
+}
+
+func (t *TestCommandBoolValue) AggregateID() UUID     { return t.TestID }
+func (t *TestCommandBoolValue) AggregateType() string { return "Test" }
+func (t *TestCommandBoolValue) CommandType() string   { return "TestCommandBoolValue" }
 
 type TestCommandSlice struct {
 	TestID UUID
