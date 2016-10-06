@@ -34,12 +34,6 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	if err = store.RegisterEventType(testutil.TestEventType, func() eh.Event {
-		return &testutil.TestEvent{}
-	}); err != nil {
-		t.Fatal("there should be no error:", err)
-	}
-
 	t.Log("creating table:", config.Table)
 	if err := store.CreateTable(); err != nil {
 		t.Fatal("could not create table:", err)

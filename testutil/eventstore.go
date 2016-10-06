@@ -26,7 +26,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	savedEvents := []eh.Event{}
 
 	t.Log("save no events")
-	err := store.Save([]eh.Event{})
+	err := store.Save([]eh.Event{}, 0)
 	if err != eh.ErrNoEventsToAppend {
 		t.Error("there shoud be a ErrNoEventsToAppend error:", err)
 	}
@@ -34,14 +34,14 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	t.Log("save event, version 1")
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
 	event1 := &TestEvent{id, "event1"}
-	err = store.Save([]eh.Event{event1})
+	err = store.Save([]eh.Event{event1}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	savedEvents = append(savedEvents, event1)
 
 	t.Log("save event, version 2")
-	err = store.Save([]eh.Event{event1})
+	err = store.Save([]eh.Event{event1}, 1)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -49,16 +49,23 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 
 	t.Log("save event, version 3")
 	event2 := &TestEvent{id, "event2"}
-	err = store.Save([]eh.Event{event2})
+	err = store.Save([]eh.Event{event2}, 2)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	savedEvents = append(savedEvents, event2)
 
+	t.Log("save multiple events, version 4, 5 and 6")
+	err = store.Save([]eh.Event{event1, event2, event1}, 3)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	savedEvents = append(savedEvents, event1, event2, event1)
+
 	t.Log("save event for another aggregate")
 	id2, _ := eh.ParseUUID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
 	event3 := &TestEvent{id2, "event3"}
-	err = store.Save([]eh.Event{event3})
+	err = store.Save([]eh.Event{event3}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -78,7 +85,12 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(events, []eh.Event{event1, event1, event2}) {
+	if !reflect.DeepEqual(events, []eh.Event{
+		event1,                 // Version 1
+		event1,                 // Version 2
+		event2,                 // Version 3
+		event1, event2, event1, // Version 4, 5 and 6
+	}) {
 		t.Error("the loaded events should be correct:", eventsToString(events))
 	}
 

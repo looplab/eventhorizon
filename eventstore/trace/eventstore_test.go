@@ -56,8 +56,8 @@ func TestEventStore(t *testing.T) {
 		}
 	}
 
-	t.Log("save event, version 4")
-	err := store.Save([]eh.Event{event1})
+	t.Log("save event, version 7")
+	err := store.Save([]eh.Event{event1}, 6)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

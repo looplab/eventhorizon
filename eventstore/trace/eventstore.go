@@ -40,13 +40,13 @@ func NewEventStore(eventStore eh.EventStore) *EventStore {
 }
 
 // Save appends all events to the base store and trace them if enabled.
-func (s *EventStore) Save(events []eh.Event) error {
+func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 	if s.tracing {
 		s.trace = append(s.trace, events...)
 	}
 
 	if s.eventStore != nil {
-		return s.eventStore.Save(events)
+		return s.eventStore.Save(events, originalVersion)
 	}
 
 	return nil

@@ -33,9 +33,6 @@ var ErrNoDBSession = errors.New("no database session")
 // ErrCouldNotClearDB is when the database could not be cleared.
 var ErrCouldNotClearDB = errors.New("could not clear database")
 
-// ErrEventNotRegistered is when an event is not registered.
-var ErrEventNotRegistered = errors.New("event not registered")
-
 // ErrCouldNotMarshalEvent is when an event could not be marshaled into BSON.
 var ErrCouldNotMarshalEvent = errors.New("could not marshal event")
 
@@ -84,15 +81,15 @@ func NewEventStoreWithSession(session *mgo.Session, database string) (*EventStor
 	return s, nil
 }
 
-type mongoAggregateRecord struct {
-	AggregateID string              `bson:"_id"`
-	Version     int                 `bson:"version"`
-	Events      []*mongoEventRecord `bson:"events"`
+type aggregateRecord struct {
+	AggregateID string         `bson:"_id"`
+	Version     int            `bson:"version"`
+	Events      []*eventRecord `bson:"events"`
 	// Type        string        `bson:"type"`
 	// Snapshot    bson.Raw      `bson:"snapshot"`
 }
 
-type mongoEventRecord struct {
+type eventRecord struct {
 	EventType eh.EventType `bson:"type"`
 	Version   int          `bson:"version"`
 	Timestamp time.Time    `bson:"timestamp"`
@@ -101,7 +98,7 @@ type mongoEventRecord struct {
 }
 
 // Save appends all events in the event stream to the database.
-func (s *EventStore) Save(events []eh.Event) error {
+func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return eh.ErrNoEventsToAppend
 	}
@@ -109,60 +106,57 @@ func (s *EventStore) Save(events []eh.Event) error {
 	sess := s.session.Copy()
 	defer sess.Close()
 
-	for _, event := range events {
-		// Get an existing aggregate, if any.
-		var existing []mongoAggregateRecord
-		err := sess.DB(s.db).C("events").FindId(event.AggregateID().String()).
-			Select(bson.M{"version": 1}).Limit(1).All(&existing)
-		if err != nil || len(existing) > 1 {
-			return ErrCouldNotLoadAggregate
+	// Build all event records, with incrementing versions starting from the
+	// original aggregate version.
+	eventRecords := make([]*eventRecord, len(events))
+	aggregateID := events[0].AggregateID()
+	for i, event := range events {
+		// Only accept events belonging to the same aggregate.
+		if event.AggregateID() != aggregateID {
+			return ErrInvalidEvent
 		}
 
 		// Marshal event data.
-		var data []byte
-		if data, err = bson.Marshal(event); err != nil {
+		data, err := bson.Marshal(event)
+		if err != nil {
 			return ErrCouldNotMarshalEvent
 		}
 
 		// Create the event record with timestamp.
-		r := &mongoEventRecord{
+		eventRecords[i] = &eventRecord{
 			EventType: event.EventType(),
-			Version:   1,
+			Version:   1 + originalVersion + i,
 			Timestamp: time.Now(),
 			Data:      bson.Raw{3, data},
 		}
+	}
 
-		// Either insert a new aggregate or append to an existing.
-		if len(existing) == 0 {
-			aggregate := mongoAggregateRecord{
-				AggregateID: event.AggregateID().String(),
-				Version:     1,
-				Events:      []*mongoEventRecord{r},
-			}
+	// Either insert a new aggregate or append to an existing.
+	if originalVersion == 0 {
+		aggregate := aggregateRecord{
+			AggregateID: aggregateID.String(),
+			Version:     len(eventRecords),
+			Events:      eventRecords,
+		}
 
-			if err := sess.DB(s.db).C("events").Insert(aggregate); err != nil {
-				return ErrCouldNotSaveAggregate
-			}
-		} else {
-			// Increment record version before inserting.
-			r.Version = existing[0].Version + 1
-
-			// Increment aggregate version on insert of new event record, and
-			// only insert if version of aggregate is matching (ie not changed
-			// since the query above).
-			err = sess.DB(s.db).C("events").Update(
-				bson.M{
-					"_id":     event.AggregateID().String(),
-					"version": existing[0].Version,
-				},
-				bson.M{
-					"$push": bson.M{"events": r},
-					"$inc":  bson.M{"version": 1},
-				},
-			)
-			if err != nil {
-				return ErrCouldNotSaveAggregate
-			}
+		if err := sess.DB(s.db).C("events").Insert(aggregate); err != nil {
+			return ErrCouldNotSaveAggregate
+		}
+	} else {
+		// Increment aggregate version on insert of new event record, and
+		// only insert if version of aggregate is matching (ie not changed
+		// since loading the aggregate).
+		if err := sess.DB(s.db).C("events").Update(
+			bson.M{
+				"_id":     aggregateID.String(),
+				"version": originalVersion,
+			},
+			bson.M{
+				"$push": bson.M{"events": bson.M{"$each": eventRecords}},
+				"$inc":  bson.M{"version": len(eventRecords)},
+			},
+		); err != nil {
+			return ErrCouldNotSaveAggregate
 		}
 	}
 
@@ -175,7 +169,7 @@ func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
 	sess := s.session.Copy()
 	defer sess.Close()
 
-	var aggregate mongoAggregateRecord
+	var aggregate aggregateRecord
 	err := sess.DB(s.db).C("events").FindId(id.String()).One(&aggregate)
 	if err == mgo.ErrNotFound {
 		return []eh.Event{}, nil
