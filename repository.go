@@ -85,7 +85,10 @@ func (r *CallbackRepository) Load(aggregateType string, id UUID) (Aggregate, err
 	aggregate := f(id)
 
 	// Load aggregate events.
-	events, _ := r.eventStore.Load(aggregate.AggregateID())
+	events, err := r.eventStore.Load(aggregate.AggregateID())
+	if err != nil {
+		return nil, err
+	}
 
 	// Apply the events.
 	for _, event := range events {

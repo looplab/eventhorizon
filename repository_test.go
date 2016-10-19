@@ -14,7 +14,11 @@
 
 package eventhorizon
 
-import "testing"
+import (
+	"errors"
+
+	"testing"
+)
 
 func TestNewRepository(t *testing.T) {
 	store := &MockEventStore{
@@ -95,6 +99,11 @@ func TestRepositoryLoadEvents(t *testing.T) {
 	if agg.(*TestAggregate).appliedEvent != event1 {
 		t.Error("the event should be correct:", agg.(*TestAggregate).appliedEvent)
 	}
+
+	store.err = errors.New("error")
+	if _, err = repo.Load("TestAggregate", id); err == nil || err.Error() != "error" {
+		t.Error("there should be an error named 'error':", err)
+	}
 }
 
 func TestRepositoryLoadEventsMismatchedEventType(t *testing.T) {
@@ -168,6 +177,12 @@ func TestRepositorySaveEvents(t *testing.T) {
 	}
 	if agg.Version() != 0 {
 		t.Error("the version should be 0:", agg.Version())
+	}
+
+	agg.StoreEvent(event1)
+	store.err = errors.New("error")
+	if err = repo.Save(agg); err == nil || err.Error() != "error" {
+		t.Error("there should be an error named 'error':", err)
 	}
 }
 
