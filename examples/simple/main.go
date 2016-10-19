@@ -27,15 +27,15 @@ import (
 )
 
 func main() {
+	// Create the event store.
+	eventStore := memory.NewEventStore()
+
 	// Create the event bus that distributes events.
 	eventBus := local.NewEventBus()
 	eventBus.AddGlobalHandler(&LoggerSubscriber{})
 
-	// Create the event store.
-	eventStore := memory.NewEventStore(eventBus)
-
 	// Create the aggregate repository.
-	repository, err := eventhorizon.NewCallbackRepository(eventStore)
+	repository, err := eventhorizon.NewCallbackRepository(eventStore, eventBus)
 	if err != nil {
 		log.Fatalf("could not create repository: %s", err)
 	}

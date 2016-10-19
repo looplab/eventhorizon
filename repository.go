@@ -18,8 +18,11 @@ import (
 	"errors"
 )
 
-// ErrNilEventStore is when a dispatcher is created with a nil event store.
-var ErrNilEventStore = errors.New("event store is nil")
+// ErrInvalidEventStore is when a dispatcher is created with a nil event store.
+var ErrInvalidEventStore = errors.New("invalid event store")
+
+// ErrInvalidEventBus is when a dispatcher is created with a nil event bus.
+var ErrInvalidEventBus = errors.New("invalid event bus")
 
 // ErrAggregateAlreadyRegistered is when an aggregate is already registered.
 var ErrAggregateAlreadyRegistered = errors.New("aggregate is already registered")
@@ -42,17 +45,23 @@ type Repository interface {
 // CallbackRepository is an aggregate repository using factory functions.
 type CallbackRepository struct {
 	eventStore EventStore
+	eventBus   EventBus
 	callbacks  map[string]func(UUID) Aggregate
 }
 
 // NewCallbackRepository creates a repository and associates it with an event store.
-func NewCallbackRepository(eventStore EventStore) (*CallbackRepository, error) {
+func NewCallbackRepository(eventStore EventStore, eventBus EventBus) (*CallbackRepository, error) {
 	if eventStore == nil {
-		return nil, ErrNilEventStore
+		return nil, ErrInvalidEventStore
+	}
+
+	if eventBus == nil {
+		return nil, ErrInvalidEventBus
 	}
 
 	d := &CallbackRepository{
 		eventStore: eventStore,
+		eventBus:   eventBus,
 		callbacks:  make(map[string]func(UUID) Aggregate),
 	}
 	return d, nil
@@ -106,13 +115,18 @@ func (r *CallbackRepository) Load(aggregateType string, id UUID) (Aggregate, err
 // Save saves all uncommitted events from an aggregate.
 func (r *CallbackRepository) Save(aggregate Aggregate) error {
 	resultEvents := aggregate.GetUncommittedEvents()
+	if len(resultEvents) < 1 {
+		return nil
+	}
 
-	if len(resultEvents) > 0 {
-		// Store events
-		err := r.eventStore.Save(resultEvents)
-		if err != nil {
-			return err
-		}
+	// Store events, check for error after publishing on the bus.
+	if err := r.eventStore.Save(resultEvents); err != nil {
+		return err
+	}
+
+	// Publish all events on the bus.
+	for _, event := range resultEvents {
+		r.eventBus.PublishEvent(event)
 	}
 
 	aggregate.ClearUncommittedEvents()

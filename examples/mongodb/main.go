@@ -27,12 +27,8 @@ import (
 )
 
 func main() {
-	// Create the event bus that distributes events.
-	eventBus := local.NewEventBus()
-	eventBus.AddGlobalHandler(&LoggerSubscriber{})
-
 	// Create the event store.
-	eventStore, err := mongodb.NewEventStore(eventBus, "localhost", "demo")
+	eventStore, err := mongodb.NewEventStore("localhost", "demo")
 	if err != nil {
 		log.Fatalf("could not create event store: %s", err)
 	}
@@ -41,8 +37,12 @@ func main() {
 	eventStore.RegisterEventType(&domain.InviteAccepted{}, func() eventhorizon.Event { return &domain.InviteAccepted{} })
 	eventStore.RegisterEventType(&domain.InviteDeclined{}, func() eventhorizon.Event { return &domain.InviteDeclined{} })
 
+	// Create the event bus that distributes events.
+	eventBus := local.NewEventBus()
+	eventBus.AddGlobalHandler(&LoggerSubscriber{})
+
 	// Create the aggregate repository.
-	repository, err := eventhorizon.NewCallbackRepository(eventStore)
+	repository, err := eventhorizon.NewCallbackRepository(eventStore, eventBus)
 	if err != nil {
 		log.Fatalf("could not create repository: %s", err)
 	}

@@ -23,14 +23,12 @@ import (
 
 // EventStore implements EventStore as an in memory structure.
 type EventStore struct {
-	eventBus         eventhorizon.EventBus
 	aggregateRecords map[eventhorizon.UUID]*memoryAggregateRecord
 }
 
 // NewEventStore creates a new EventStore.
-func NewEventStore(eventBus eventhorizon.EventBus) *EventStore {
+func NewEventStore() *EventStore {
 	s := &EventStore{
-		eventBus:         eventBus,
 		aggregateRecords: make(map[eventhorizon.UUID]*memoryAggregateRecord),
 	}
 	return s
@@ -59,11 +57,6 @@ func (s *EventStore) Save(events []eventhorizon.Event) error {
 				version:     0,
 				events:      []*memoryEventRecord{r},
 			}
-		}
-
-		// Publish event on the bus.
-		if s.eventBus != nil {
-			s.eventBus.PublishEvent(event)
 		}
 	}
 

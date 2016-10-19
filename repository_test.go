@@ -16,7 +16,7 @@ package eventhorizon
 
 import (
 	"errors"
-
+	"reflect"
 	"testing"
 )
 
@@ -24,7 +24,27 @@ func TestNewRepository(t *testing.T) {
 	store := &MockEventStore{
 		Events: make([]Event, 0),
 	}
-	repo, err := NewCallbackRepository(store)
+	bus := &MockEventBus{
+		Events: make([]Event, 0),
+	}
+
+	repo, err := NewCallbackRepository(nil, bus)
+	if err != ErrInvalidEventStore {
+		t.Error("there should be a ErrInvalidEventStore error:", err)
+	}
+	if repo != nil {
+		t.Error("there should be no repository:", repo)
+	}
+
+	repo, err = NewCallbackRepository(store, nil)
+	if err != ErrInvalidEventBus {
+		t.Error("there should be a ErrInvalidEventBus error:", err)
+	}
+	if repo != nil {
+		t.Error("there should be no repository:", repo)
+	}
+
+	repo, err = NewCallbackRepository(store, bus)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -33,18 +53,8 @@ func TestNewRepository(t *testing.T) {
 	}
 }
 
-func TestNewRepositoryNilEventStore(t *testing.T) {
-	repo, err := NewCallbackRepository(nil)
-	if err != ErrNilEventStore {
-		t.Error("there should be a ErrNilEventStore error:", err)
-	}
-	if repo != nil {
-		t.Error("there should be no repository:", repo)
-	}
-}
-
 func TestRepositoryLoadNoEvents(t *testing.T) {
-	repo, _ := createRepoAndStore(t)
+	repo, _, _ := createRepoAndStore(t)
 	err := repo.RegisterAggregate(&TestAggregate{},
 		func(id UUID) Aggregate {
 			return &TestAggregate{
@@ -70,7 +80,7 @@ func TestRepositoryLoadNoEvents(t *testing.T) {
 }
 
 func TestRepositoryLoadEvents(t *testing.T) {
-	repo, store := createRepoAndStore(t)
+	repo, store, _ := createRepoAndStore(t)
 
 	err := repo.RegisterAggregate(&TestAggregate{},
 		func(id UUID) Aggregate {
@@ -107,7 +117,7 @@ func TestRepositoryLoadEvents(t *testing.T) {
 }
 
 func TestRepositoryLoadEventsMismatchedEventType(t *testing.T) {
-	repo, store := createRepoAndStore(t)
+	repo, store, _ := createRepoAndStore(t)
 
 	err := repo.RegisterAggregate(&TestAggregate{},
 		func(id UUID) Aggregate {
@@ -148,7 +158,7 @@ func TestRepositoryLoadEventsMismatchedEventType(t *testing.T) {
 }
 
 func TestRepositorySaveEvents(t *testing.T) {
-	repo, store := createRepoAndStore(t)
+	repo, store, bus := createRepoAndStore(t)
 
 	id := NewUUID()
 	agg := &TestAggregate{
@@ -179,6 +189,10 @@ func TestRepositorySaveEvents(t *testing.T) {
 		t.Error("the version should be 0:", agg.Version())
 	}
 
+	if !reflect.DeepEqual(bus.Events, []Event{event1}) {
+		t.Error("there should be an event on the bus:", bus.Events)
+	}
+
 	agg.StoreEvent(event1)
 	store.err = errors.New("error")
 	if err = repo.Save(agg); err == nil || err.Error() != "error" {
@@ -187,7 +201,7 @@ func TestRepositorySaveEvents(t *testing.T) {
 }
 
 func TestRepositoryAggregateNotRegistered(t *testing.T) {
-	repo, _ := createRepoAndStore(t)
+	repo, _, _ := createRepoAndStore(t)
 
 	id := NewUUID()
 	agg, err := repo.Load("TestAggregate", id)
@@ -200,7 +214,7 @@ func TestRepositoryAggregateNotRegistered(t *testing.T) {
 }
 
 func TestRepositoryRegisterAggregateTwice(t *testing.T) {
-	repo, _ := createRepoAndStore(t)
+	repo, _, _ := createRepoAndStore(t)
 
 	err := repo.RegisterAggregate(&TestAggregate{},
 		func(id UUID) Aggregate {
@@ -225,16 +239,19 @@ func TestRepositoryRegisterAggregateTwice(t *testing.T) {
 	}
 }
 
-func createRepoAndStore(t *testing.T) (*CallbackRepository, *MockEventStore) {
+func createRepoAndStore(t *testing.T) (*CallbackRepository, *MockEventStore, *MockEventBus) {
 	store := &MockEventStore{
 		Events: make([]Event, 0),
 	}
-	repo, err := NewCallbackRepository(store)
+	bus := &MockEventBus{
+		Events: make([]Event, 0),
+	}
+	repo, err := NewCallbackRepository(store, bus)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 	if repo == nil {
 		t.Fatal("there should be a repository")
 	}
-	return repo, store
+	return repo, store, bus
 }
