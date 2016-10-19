@@ -143,6 +143,31 @@ func TestReadRepository(t *testing.T) {
 		t.Error("the item should be correct:", model)
 	}
 
+	t.Log("FindCustom with no query")
+	result, err = repo.FindCustom(func(c *mgo.Collection) *mgo.Query {
+		return nil
+	})
+	if err == nil || err != ErrInvalidQuery {
+		t.Error("there should be a invalid query error:", err)
+	}
+
+	count := 0
+	t.Log("FindCustom with query execution in the callback")
+	_, err = repo.FindCustom(func(c *mgo.Collection) *mgo.Query {
+		if count, err = c.Count(); err != nil {
+			t.Error("there should be no error:", err)
+		}
+
+		// Be sure to return nil to not execute the query again in FindCustom.
+		return nil
+	})
+	if err == nil || err != ErrInvalidQuery {
+		t.Error("there should be a invalid query error:", err)
+	}
+	if count != 2 {
+		t.Error("the count should be correct:", count)
+	}
+
 	t.Log("Remove one item")
 	err = repo.Remove(model1Alt.ID)
 	if err != nil {
