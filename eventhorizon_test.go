@@ -130,14 +130,22 @@ func (m *MockRepository) Save(aggregate Aggregate) error {
 type MockEventStore struct {
 	Events []Event
 	Loaded UUID
+	// Used to simulate errors in the store.
+	err error
 }
 
 func (m *MockEventStore) Save(events []Event) error {
+	if m.err != nil {
+		return m.err
+	}
 	m.Events = append(m.Events, events...)
 	return nil
 }
 
 func (m *MockEventStore) Load(id UUID) ([]Event, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
 	m.Loaded = id
 	return m.Events, nil
 }
