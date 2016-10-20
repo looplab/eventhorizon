@@ -15,10 +15,8 @@
 package memory
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/testutil"
 )
 
@@ -30,58 +28,4 @@ func TestEventStore(t *testing.T) {
 
 	// Run the actual test suite.
 	testutil.EventStoreCommonTests(t, store)
-}
-
-func TestTraceEventStore(t *testing.T) {
-	baseStore := NewEventStore()
-	store := NewTraceEventStore(baseStore)
-	if store == nil {
-		t.Fatal("there should be a store")
-	}
-
-	// Run the actual test suite.
-	store.StartTracing()
-	savedEvents := testutil.EventStoreCommonTests(t, store)
-	store.StopTracing()
-
-	trace := store.GetTrace()
-	if !reflect.DeepEqual(trace, savedEvents) {
-		t.Error("there should be events traced:", trace)
-	}
-
-	// And then some more tracing specific testing.
-
-	store.ResetTrace()
-	trace = store.GetTrace()
-	if len(trace) != 0 {
-		t.Error("there should be no events traced:", trace)
-	}
-
-	event1 := savedEvents[0]
-	aggregate1events := []eventhorizon.Event{}
-	for _, e := range savedEvents {
-		if e.AggregateID() == event1.AggregateID() {
-			aggregate1events = append(aggregate1events, e)
-		}
-	}
-
-	t.Log("save event, version 4")
-	err := store.Save([]eventhorizon.Event{event1})
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	trace = store.GetTrace()
-	if len(trace) != 0 {
-		t.Error("there should be no events traced:", trace)
-	}
-	aggregate1events = append(aggregate1events, event1)
-
-	t.Log("load events without tracing")
-	events, err := store.Load(event1.AggregateID())
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if !reflect.DeepEqual(events, aggregate1events) {
-		t.Error("the loaded events should be correct:", events)
-	}
 }
