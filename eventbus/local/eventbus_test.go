@@ -28,33 +28,25 @@ func TestEventBus(t *testing.T) {
 		t.Fatal("there should be a bus")
 	}
 
-	localHandler := testutil.NewMockEventHandler()
-	globalHandler := testutil.NewMockEventHandler()
-	bus.AddLocalHandler(localHandler)
-	bus.AddGlobalHandler(globalHandler)
+	observer := testutil.NewMockEventObserver()
+	bus.AddObserver(observer)
 
 	t.Log("publish event without handler")
 	event1 := &testutil.TestEvent{eventhorizon.NewUUID(), "event1"}
 	bus.PublishEvent(event1)
-	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1}) {
-		t.Error("the local handler events should be correct:", localHandler.Events)
-	}
-	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1}) {
-		t.Error("the global handler events should be correct:", globalHandler.Events)
+	if !reflect.DeepEqual(observer.Events, []eventhorizon.Event{event1}) {
+		t.Error("the observed events should be correct:", observer.Events)
 	}
 
 	t.Log("publish event")
-	handler := testutil.NewMockEventHandler()
+	handler := testutil.NewMockEventHandler("testHandler")
 	bus.AddHandler(handler, &testutil.TestEvent{})
 	bus.PublishEvent(event1)
 	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1}) {
 		t.Error("the handler events should be correct:", handler.Events)
 	}
-	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1, event1}) {
-		t.Error("the local handler events should be correct:", localHandler.Events)
-	}
-	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1, event1}) {
-		t.Error("the global handler events should be correct:", globalHandler.Events)
+	if !reflect.DeepEqual(observer.Events, []eventhorizon.Event{event1, event1}) {
+		t.Error("the observed events should be correct:", observer.Events)
 	}
 
 	t.Log("publish another event")
@@ -64,10 +56,7 @@ func TestEventBus(t *testing.T) {
 	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1, event2}) {
 		t.Error("the handler events should be correct:", handler.Events)
 	}
-	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1, event1, event2}) {
-		t.Error("the local handler events should be correct:", localHandler.Events)
-	}
-	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1, event1, event2}) {
-		t.Error("the global handler events should be correct:", globalHandler.Events)
+	if !reflect.DeepEqual(observer.Events, []eventhorizon.Event{event1, event1, event2}) {
+		t.Error("the observed events should be correct:", observer.Events)
 	}
 }

@@ -14,20 +14,39 @@
 
 package eventhorizon
 
-// EventHandler is an interface that all handlers of events should implement.
-type EventHandler interface {
-	// HandleEvent handles an event.
-	HandleEvent(Event)
-}
-
 // EventBus is an interface defining an event bus for distributing events.
 type EventBus interface {
 	// PublishEvent publishes an event on the event bus.
+	// Only one handler of each handler type that is registered for the event
+	// will receive it.
+	// All the observers will receive the event.
 	PublishEvent(Event)
-	// AddHandler adds a handler for a specific local event.
+
+	// AddHandler adds a handler for an event.
+	// TODO: Use a pattern instead of event for what to handle.
 	AddHandler(EventHandler, Event)
-	// AddLocalHandler adds a handler for local events.
-	AddLocalHandler(EventHandler)
-	// AddGlobalHandler adds a handler for global (remote) events.
-	AddGlobalHandler(EventHandler)
+	// AddObserver adds an observer.
+	// TODO: Add pattern for what to observe.
+	AddObserver(EventObserver)
+}
+
+// EventHandler is a handler of events.
+// Only one handler of the same type will receive an event.
+type EventHandler interface {
+	// HandleEvent handles an event.
+	HandleEvent(Event)
+
+	// HandlerType returns the type of the handler.
+	HandlerType() EventHandlerType
+}
+
+// EventHandlerType is the type of an event handler. Used to serve only handle
+// an event by one handler of each type.
+type EventHandlerType string
+
+// EventObserver is an observer of events.
+// All observers will receive an event.
+type EventObserver interface {
+	// Notify is notifed about an event.
+	Notify(Event)
 }

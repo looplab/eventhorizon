@@ -40,6 +40,11 @@ func NewInvitationProjector(repository eventhorizon.ReadRepository) *InvitationP
 	return p
 }
 
+// HandlerType implements the HandlerType method of the EventHandler interface.
+func (p *InvitationProjector) HandlerType() eventhorizon.EventHandlerType {
+	return eventhorizon.EventHandlerType("InvitationProjector")
+}
+
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (p *InvitationProjector) HandleEvent(event eventhorizon.Event) {
 	switch event := event.(type) {
@@ -82,6 +87,11 @@ func NewGuestListProjector(repository eventhorizon.ReadRepository, eventID event
 		eventID:    eventID,
 	}
 	return p
+}
+
+// HandlerType implements the HandlerType method of the EventHandler interface.
+func (p *GuestListProjector) HandlerType() eventhorizon.EventHandlerType {
+	return eventhorizon.EventHandlerType("GuestListProjector")
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.

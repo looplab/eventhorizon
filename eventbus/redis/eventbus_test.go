@@ -51,12 +51,10 @@ func TestEventBus(t *testing.T) {
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	localHandler := testutil.NewMockEventHandler()
-	globalHandler := testutil.NewMockEventHandler()
-	bus.AddLocalHandler(localHandler)
-	bus.AddGlobalHandler(globalHandler)
+	observer := testutil.NewMockEventObserver()
+	bus.AddObserver(observer)
 
-	// Another bus to test the global handlers.
+	// Another bus to test the observer.
 	bus2, err := NewEventBus("test", url, "")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
@@ -72,41 +70,35 @@ func TestEventBus(t *testing.T) {
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	globalHandler2 := testutil.NewMockEventHandler()
-	bus2.AddGlobalHandler(globalHandler2)
+	observer2 := testutil.NewMockEventObserver()
+	bus2.AddObserver(observer2)
 
 	t.Log("publish event without handler")
 	event1 := &testutil.TestEvent{eventhorizon.NewUUID(), "event1"}
 	bus.PublishEvent(event1)
-	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1}) {
-		t.Error("the local handler events should be correct:", localHandler.Events)
+	<-observer.Recv
+	if !reflect.DeepEqual(observer.Events, []eventhorizon.Event{event1}) {
+		t.Error("the observed events should be correct:", observer.Events)
 	}
-	<-globalHandler.Recv
-	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1}) {
-		t.Error("the global handler events should be correct:", globalHandler.Events)
-	}
-	<-globalHandler2.Recv
-	if !reflect.DeepEqual(globalHandler2.Events, []eventhorizon.Event{event1}) {
-		t.Error("the second global handler events should be correct:", globalHandler2.Events)
+	<-observer2.Recv
+	if !reflect.DeepEqual(observer2.Events, []eventhorizon.Event{event1}) {
+		t.Error("the second observed events should be correct:", observer2.Events)
 	}
 
 	t.Log("publish event")
-	handler := testutil.NewMockEventHandler()
+	handler := testutil.NewMockEventHandler("testHandler")
 	bus.AddHandler(handler, &testutil.TestEvent{})
 	bus.PublishEvent(event1)
 	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1}) {
 		t.Error("the handler events should be correct:", handler.Events)
 	}
-	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1, event1}) {
-		t.Error("the local handler events should be correct:", localHandler.Events)
+	<-observer.Recv
+	if !reflect.DeepEqual(observer.Events, []eventhorizon.Event{event1, event1}) {
+		t.Error("the observed events should be correct:", observer.Events)
 	}
-	<-globalHandler.Recv
-	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1, event1}) {
-		t.Error("the global handler events should be correct:", globalHandler.Events)
-	}
-	<-globalHandler2.Recv
-	if !reflect.DeepEqual(globalHandler2.Events, []eventhorizon.Event{event1, event1}) {
-		t.Error("the second global handler events should be correct:", globalHandler2.Events)
+	<-observer2.Recv
+	if !reflect.DeepEqual(observer2.Events, []eventhorizon.Event{event1, event1}) {
+		t.Error("the second observed events should be correct:", observer2.Events)
 	}
 
 	t.Log("publish another event")
@@ -116,15 +108,12 @@ func TestEventBus(t *testing.T) {
 	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1, event2}) {
 		t.Error("the handler events should be correct:", handler.Events)
 	}
-	if !reflect.DeepEqual(localHandler.Events, []eventhorizon.Event{event1, event1, event2}) {
-		t.Error("the local handler events should be correct:", localHandler.Events)
+	<-observer.Recv
+	if !reflect.DeepEqual(observer.Events, []eventhorizon.Event{event1, event1, event2}) {
+		t.Error("the observed events should be correct:", observer.Events)
 	}
-	<-globalHandler.Recv
-	if !reflect.DeepEqual(globalHandler.Events, []eventhorizon.Event{event1, event1, event2}) {
-		t.Error("the global handler events should be correct:", globalHandler.Events)
-	}
-	<-globalHandler2.Recv
-	if !reflect.DeepEqual(globalHandler2.Events, []eventhorizon.Event{event1, event1, event2}) {
-		t.Error("the second global handler events should be correct:", globalHandler2.Events)
+	<-observer2.Recv
+	if !reflect.DeepEqual(observer2.Events, []eventhorizon.Event{event1, event1, event2}) {
+		t.Error("the second observed events should be correct:", observer2.Events)
 	}
 }

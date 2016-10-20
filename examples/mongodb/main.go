@@ -41,7 +41,7 @@ func main() {
 
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
-	eventBus.AddGlobalHandler(&LoggerSubscriber{})
+	eventBus.AddObserver(&domain.Logger{})
 
 	// Create the aggregate repository.
 	repository, err := eventhorizon.NewCallbackRepository(eventStore, eventBus)
@@ -139,12 +139,4 @@ func main() {
 	// for _, r := range records {
 	// 	fmt.Printf("%#v\n", r)
 	// }
-}
-
-// LoggerSubscriber is a simple event handler for logging all events.
-type LoggerSubscriber struct{}
-
-// HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (l *LoggerSubscriber) HandleEvent(event eventhorizon.Event) {
-	log.Printf("event: %#v\n", event)
 }

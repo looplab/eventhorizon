@@ -21,55 +21,48 @@ import (
 // EventBus is an event bus that notifies registered EventHandlers of
 // published events.
 type EventBus struct {
-	eventHandlers  map[string]map[eventhorizon.EventHandler]bool
-	localHandlers  map[eventhorizon.EventHandler]bool
-	globalHandlers map[eventhorizon.EventHandler]bool
+	handlers  map[string]map[eventhorizon.EventHandler]bool
+	observers map[eventhorizon.EventObserver]bool
 }
 
 // NewEventBus creates a EventBus.
 func NewEventBus() *EventBus {
 	b := &EventBus{
-		eventHandlers:  make(map[string]map[eventhorizon.EventHandler]bool),
-		localHandlers:  make(map[eventhorizon.EventHandler]bool),
-		globalHandlers: make(map[eventhorizon.EventHandler]bool),
+		handlers:  make(map[string]map[eventhorizon.EventHandler]bool),
+		observers: make(map[eventhorizon.EventObserver]bool),
 	}
 	return b
 }
 
 // PublishEvent publishes an event to all handlers capable of handling it.
+// TODO: Put the event in a buffered channel consumed by another goroutine
+// to simulate a distributed bus.
 func (b *EventBus) PublishEvent(event eventhorizon.Event) {
-	if handlers, ok := b.eventHandlers[event.EventType()]; ok {
-		for handler := range handlers {
-			handler.HandleEvent(event)
+	// Handle the event if there is a handler registered.
+	if handlers, ok := b.handlers[event.EventType()]; ok {
+		for h := range handlers {
+			h.HandleEvent(event)
 		}
 	}
 
-	// Publish to local and global handlers.
-	for handler := range b.localHandlers {
-		handler.HandleEvent(event)
-	}
-	for handler := range b.globalHandlers {
-		handler.HandleEvent(event)
+	// Notify all observers about the event.
+	for o := range b.observers {
+		o.Notify(event)
 	}
 }
 
-// AddHandler adds a handler for a specific local event.
+// AddHandler implements the AddHandler method of the EventHandler interface.
 func (b *EventBus) AddHandler(handler eventhorizon.EventHandler, event eventhorizon.Event) {
-	// Create handler list for new event types.
-	if _, ok := b.eventHandlers[event.EventType()]; !ok {
-		b.eventHandlers[event.EventType()] = make(map[eventhorizon.EventHandler]bool)
+	// Create list for new event types.
+	if _, ok := b.handlers[event.EventType()]; !ok {
+		b.handlers[event.EventType()] = make(map[eventhorizon.EventHandler]bool)
 	}
 
-	// Add handler to event type.
-	b.eventHandlers[event.EventType()][handler] = true
+	// Add the handler for the event type.
+	b.handlers[event.EventType()][handler] = true
 }
 
-// AddLocalHandler adds a handler for local events.
-func (b *EventBus) AddLocalHandler(handler eventhorizon.EventHandler) {
-	b.localHandlers[handler] = true
-}
-
-// AddGlobalHandler adds a handler for global (remote) events.
-func (b *EventBus) AddGlobalHandler(handler eventhorizon.EventHandler) {
-	b.globalHandlers[handler] = true
+// AddObserver implements the AddObserver method of the EventHandler interface.
+func (b *EventBus) AddObserver(observer eventhorizon.EventObserver) {
+	b.observers[observer] = true
 }

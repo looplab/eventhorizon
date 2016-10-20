@@ -38,14 +38,13 @@ var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
 // EventBus is an event bus that notifies registered EventHandlers of
 // published events.
 type EventBus struct {
-	eventHandlers  map[string]map[eventhorizon.EventHandler]bool
-	localHandlers  map[eventhorizon.EventHandler]bool
-	globalHandlers map[eventhorizon.EventHandler]bool
-	prefix         string
-	pool           *redis.Pool
-	conn           *redis.PubSubConn
-	factories      map[string]func() eventhorizon.Event
-	exit           chan struct{}
+	handlers  map[string]map[eventhorizon.EventHandler]bool
+	observers map[eventhorizon.EventObserver]bool
+	prefix    string
+	pool      *redis.Pool
+	conn      *redis.PubSubConn
+	factories map[string]func() eventhorizon.Event
+	exit      chan struct{}
 }
 
 // NewEventBus creates a EventBus for remote events.
@@ -78,19 +77,18 @@ func NewEventBus(appID, server, password string) (*EventBus, error) {
 // NewEventBusWithPool creates a EventBus for remote events.
 func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
 	b := &EventBus{
-		eventHandlers:  make(map[string]map[eventhorizon.EventHandler]bool),
-		localHandlers:  make(map[eventhorizon.EventHandler]bool),
-		globalHandlers: make(map[eventhorizon.EventHandler]bool),
-		prefix:         appID + ":events:",
-		pool:           pool,
-		factories:      make(map[string]func() eventhorizon.Event),
-		exit:           make(chan struct{}),
+		handlers:  make(map[string]map[eventhorizon.EventHandler]bool),
+		observers: make(map[eventhorizon.EventObserver]bool),
+		prefix:    appID + ":events:",
+		pool:      pool,
+		factories: make(map[string]func() eventhorizon.Event),
+		exit:      make(chan struct{}),
 	}
 
 	// Add a patten matching subscription.
 	b.conn = &redis.PubSubConn{Conn: b.pool.Get()}
 	ready := make(chan struct{})
-	go b.receiveGlobal(ready)
+	go b.recv(ready)
 	err := b.conn.PSubscribe(b.prefix + "*")
 	if err != nil {
 		b.Close()
@@ -103,41 +101,31 @@ func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
 
 // PublishEvent publishes an event to all handlers capable of handling it.
 func (b *EventBus) PublishEvent(event eventhorizon.Event) {
-	if handlers, ok := b.eventHandlers[event.EventType()]; ok {
+	// Handle the event if there is a handler registered.
+	if handlers, ok := b.handlers[event.EventType()]; ok {
 		for handler := range handlers {
 			handler.HandleEvent(event)
 		}
 	}
 
-	// Publish to local handlers.
-	for handler := range b.localHandlers {
-		handler.HandleEvent(event)
-	}
-
-	// Publish to global handlers.
-	b.publishGlobal(event)
-
+	// Notify all observers about the event.
+	b.notify(event)
 }
 
 // AddHandler adds a handler for a specific local event.
 func (b *EventBus) AddHandler(handler eventhorizon.EventHandler, event eventhorizon.Event) {
 	// Create handler list for new event types.
-	if _, ok := b.eventHandlers[event.EventType()]; !ok {
-		b.eventHandlers[event.EventType()] = make(map[eventhorizon.EventHandler]bool)
+	if _, ok := b.handlers[event.EventType()]; !ok {
+		b.handlers[event.EventType()] = make(map[eventhorizon.EventHandler]bool)
 	}
 
 	// Add handler to event type.
-	b.eventHandlers[event.EventType()][handler] = true
+	b.handlers[event.EventType()][handler] = true
 }
 
-// AddLocalHandler adds a handler for local events.
-func (b *EventBus) AddLocalHandler(handler eventhorizon.EventHandler) {
-	b.localHandlers[handler] = true
-}
-
-// AddGlobalHandler adds a handler for global (remote) events.
-func (b *EventBus) AddGlobalHandler(handler eventhorizon.EventHandler) {
-	b.globalHandlers[handler] = true
+// AddObserver implements the AddObserver method of the EventHandler interface.
+func (b *EventBus) AddObserver(observer eventhorizon.EventObserver) {
+	b.observers[observer] = true
 }
 
 // RegisterEventType registers an event factory for a event type. The factory is
@@ -168,7 +156,7 @@ func (b *EventBus) Close() {
 	}
 }
 
-func (b *EventBus) publishGlobal(event eventhorizon.Event) {
+func (b *EventBus) notify(event eventhorizon.Event) {
 	conn := b.pool.Get()
 	defer conn.Close()
 	if err := conn.Err(); err != nil {
@@ -188,7 +176,7 @@ func (b *EventBus) publishGlobal(event eventhorizon.Event) {
 	}
 }
 
-func (b *EventBus) receiveGlobal(ready chan struct{}) {
+func (b *EventBus) recv(ready chan struct{}) {
 	for {
 		switch n := b.conn.Receive().(type) {
 		case redis.PMessage:
@@ -210,8 +198,8 @@ func (b *EventBus) receiveGlobal(ready chan struct{}) {
 				continue
 			}
 
-			for handler := range b.globalHandlers {
-				handler.HandleEvent(event)
+			for o := range b.observers {
+				o.Notify(event)
 			}
 		case redis.Subscription:
 			switch n.Kind {
