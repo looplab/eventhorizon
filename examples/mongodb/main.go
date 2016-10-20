@@ -20,15 +20,16 @@ import (
 	"log"
 
 	"github.com/looplab/eventhorizon"
+	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
 	"github.com/looplab/eventhorizon/messaging/local"
-	"github.com/looplab/eventhorizon/storage/mongodb"
+	readrepository "github.com/looplab/eventhorizon/readrepository/mongodb"
 
 	"github.com/looplab/eventhorizon/examples/domain"
 )
 
 func main() {
 	// Create the event store.
-	eventStore, err := mongodb.NewEventStore("localhost", "demo")
+	eventStore, err := eventstore.NewEventStore("localhost", "demo")
 	if err != nil {
 		log.Fatalf("could not create event store: %s", err)
 	}
@@ -75,7 +76,7 @@ func main() {
 	commandBus.SetHandler(handler, &domain.DeclineInvite{})
 
 	// Create and register a read model for individual invitations.
-	invitationRepository, err := mongodb.NewReadRepository("localhost", "demo", "invitations")
+	invitationRepository, err := readrepository.NewReadRepository("localhost", "demo", "invitations")
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
@@ -87,7 +88,7 @@ func main() {
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
-	guestListRepository, err := mongodb.NewReadRepository("localhost", "demo", "guest_lists")
+	guestListRepository, err := readrepository.NewReadRepository("localhost", "demo", "guest_lists")
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}
