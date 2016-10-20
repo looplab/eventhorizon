@@ -22,6 +22,15 @@ import (
 	"github.com/looplab/eventhorizon"
 )
 
+// ErrCouldNotDialDB is when the database could not be dialed.
+var ErrCouldNotDialDB = errors.New("could not dial database")
+
+// ErrNoDBSession is when no database session is set.
+var ErrNoDBSession = errors.New("no database session")
+
+// ErrCouldNotClearDB is when the database could not be cleared.
+var ErrCouldNotClearDB = errors.New("could not clear database")
+
 // ErrModelNotSet is when an model is not set on a read repository.
 var ErrModelNotSet = errors.New("model not set")
 

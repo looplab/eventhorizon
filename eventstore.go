@@ -21,15 +21,11 @@ import (
 // ErrNoEventsToAppend is when no events are available to append.
 var ErrNoEventsToAppend = errors.New("no events to append")
 
-// ErrNoEventsFound is when no events are found.
-var ErrNoEventsFound = errors.New("could not find events")
-
-// ErrNoEventStoreDefined is if no event store has been defined.
-var ErrNoEventStoreDefined = errors.New("no event store defined")
-
 // EventStore is an interface for an event sourcing event store.
 type EventStore interface {
-	// Save appends all events in the event stream to the store.
+	// Save appends all events in the event stream to the store. It must return
+	// an error if not all events could be saved, preferably with a rewind of
+	// any DB actions performed.
 	Save([]Event) error
 
 	// Load loads all events for the aggregate id from the store.

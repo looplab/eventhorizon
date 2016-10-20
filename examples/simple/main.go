@@ -20,22 +20,23 @@ import (
 	"log"
 
 	"github.com/looplab/eventhorizon"
+	eventstore "github.com/looplab/eventhorizon/eventstore/memory"
 	"github.com/looplab/eventhorizon/messaging/local"
-	"github.com/looplab/eventhorizon/storage/memory"
+	readrepository "github.com/looplab/eventhorizon/readrepository/memory"
 
 	"github.com/looplab/eventhorizon/examples/domain"
 )
 
 func main() {
+	// Create the event store.
+	eventStore := eventstore.NewEventStore()
+
 	// Create the event bus that distributes events.
 	eventBus := local.NewEventBus()
 	eventBus.AddGlobalHandler(&LoggerSubscriber{})
 
-	// Create the event store.
-	eventStore := memory.NewEventStore(eventBus)
-
 	// Create the aggregate repository.
-	repository, err := eventhorizon.NewCallbackRepository(eventStore)
+	repository, err := eventhorizon.NewCallbackRepository(eventStore, eventBus)
 	if err != nil {
 		log.Fatalf("could not create repository: %s", err)
 	}
@@ -68,7 +69,7 @@ func main() {
 	commandBus.SetHandler(handler, &domain.DeclineInvite{})
 
 	// Create and register a read model for individual invitations.
-	invitationRepository := memory.NewReadRepository()
+	invitationRepository := readrepository.NewReadRepository()
 	invitationProjector := NewInvitationProjector(invitationRepository)
 	eventBus.AddHandler(invitationProjector, &domain.InviteCreated{})
 	eventBus.AddHandler(invitationProjector, &domain.InviteAccepted{})
@@ -76,7 +77,7 @@ func main() {
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
-	guestListRepository := memory.NewReadRepository()
+	guestListRepository := readrepository.NewReadRepository()
 	guestListProjector := NewGuestListProjector(guestListRepository, eventID)
 	eventBus.AddHandler(guestListProjector, &domain.InviteCreated{})
 	eventBus.AddHandler(guestListProjector, &domain.InviteAccepted{})

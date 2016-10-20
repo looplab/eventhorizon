@@ -149,3 +149,15 @@ func (m *MockEventStore) Load(id UUID) ([]Event, error) {
 	m.Loaded = id
 	return m.Events, nil
 }
+
+type MockEventBus struct {
+	Events []Event
+}
+
+func (m *MockEventBus) PublishEvent(event Event) {
+	m.Events = append(m.Events, event)
+}
+
+func (m *MockEventBus) AddHandler(handler EventHandler, event Event) {}
+func (m *MockEventBus) AddLocalHandler(handler EventHandler)         {}
+func (m *MockEventBus) AddGlobalHandler(handler EventHandler)        {}

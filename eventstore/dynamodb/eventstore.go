@@ -57,7 +57,6 @@ var ErrInvalidEvent = errors.New("invalid event")
 
 // EventStore implements an EventStore for MongoDB.
 type EventStore struct {
-	eventBus  eventhorizon.EventBus
 	service   *dynamodb.DynamoDB
 	config    *EventStoreConfig
 	factories map[string]func() eventhorizon.Event
@@ -79,7 +78,7 @@ func (c *EventStoreConfig) provideDefaults() {
 }
 
 // NewEventStore creates a new EventStore.
-func NewEventStore(eventBus eventhorizon.EventBus, config *EventStoreConfig) (*EventStore, error) {
+func NewEventStore(config *EventStoreConfig) (*EventStore, error) {
 	config.provideDefaults()
 
 	awsConfig := &aws.Config{
@@ -88,7 +87,6 @@ func NewEventStore(eventBus eventhorizon.EventBus, config *EventStoreConfig) (*E
 	service := dynamodb.New(session.New(), awsConfig)
 
 	s := &EventStore{
-		eventBus:  eventBus,
 		service:   service,
 		config:    config,
 		factories: make(map[string]func() eventhorizon.Event),
@@ -181,11 +179,6 @@ func (s *EventStore) Save(events []eventhorizon.Event) error {
 			}
 			return err
 		}
-
-		// Publish event on the bus.
-		if s.eventBus != nil {
-			s.eventBus.PublishEvent(event)
-		}
 	}
 
 	return nil
@@ -208,7 +201,7 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 	}
 
 	if len(resp.Items) == 0 {
-		return nil, eventhorizon.ErrNoEventsFound
+		return []eventhorizon.Event{}, nil
 	}
 
 	eventRecords := make([]*eventRecord, len(resp.Items))

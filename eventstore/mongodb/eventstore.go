@@ -53,14 +53,13 @@ var ErrInvalidEvent = errors.New("invalid event")
 
 // EventStore implements an EventStore for MongoDB.
 type EventStore struct {
-	eventBus  eventhorizon.EventBus
 	session   *mgo.Session
 	db        string
 	factories map[string]func() eventhorizon.Event
 }
 
 // NewEventStore creates a new EventStore.
-func NewEventStore(eventBus eventhorizon.EventBus, url, database string) (*EventStore, error) {
+func NewEventStore(url, database string) (*EventStore, error) {
 	session, err := mgo.Dial(url)
 	if err != nil {
 		return nil, ErrCouldNotDialDB
@@ -69,17 +68,16 @@ func NewEventStore(eventBus eventhorizon.EventBus, url, database string) (*Event
 	session.SetMode(mgo.Strong, true)
 	session.SetSafe(&mgo.Safe{W: 1})
 
-	return NewEventStoreWithSession(eventBus, session, database)
+	return NewEventStoreWithSession(session, database)
 }
 
 // NewEventStoreWithSession creates a new EventStore with a session.
-func NewEventStoreWithSession(eventBus eventhorizon.EventBus, session *mgo.Session, database string) (*EventStore, error) {
+func NewEventStoreWithSession(session *mgo.Session, database string) (*EventStore, error) {
 	if session == nil {
 		return nil, ErrNoDBSession
 	}
 
 	s := &EventStore{
-		eventBus:  eventBus,
 		factories: make(map[string]func() eventhorizon.Event),
 		session:   session,
 		db:        database,
@@ -168,11 +166,6 @@ func (s *EventStore) Save(events []eventhorizon.Event) error {
 				return ErrCouldNotSaveAggregate
 			}
 		}
-
-		// Publish event on the bus.
-		if s.eventBus != nil {
-			s.eventBus.PublishEvent(event)
-		}
 	}
 
 	return nil
@@ -186,8 +179,10 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 
 	var aggregate mongoAggregateRecord
 	err := sess.DB(s.db).C("events").FindId(id.String()).One(&aggregate)
-	if err != nil {
-		return nil, eventhorizon.ErrNoEventsFound
+	if err == mgo.ErrNotFound {
+		return []eventhorizon.Event{}, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	events := make([]eventhorizon.Event, len(aggregate.Events))
