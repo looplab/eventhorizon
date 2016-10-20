@@ -20,8 +20,9 @@ import (
 	"log"
 
 	"github.com/looplab/eventhorizon"
+	commandbus "github.com/looplab/eventhorizon/commandbus/local"
+	eventbus "github.com/looplab/eventhorizon/eventbus/local"
 	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
-	"github.com/looplab/eventhorizon/messaging/local"
 	readrepository "github.com/looplab/eventhorizon/readrepository/mongodb"
 
 	"github.com/looplab/eventhorizon/examples/domain"
@@ -39,7 +40,7 @@ func main() {
 	eventStore.RegisterEventType(&domain.InviteDeclined{}, func() eventhorizon.Event { return &domain.InviteDeclined{} })
 
 	// Create the event bus that distributes events.
-	eventBus := local.NewEventBus()
+	eventBus := eventbus.NewEventBus()
 	eventBus.AddGlobalHandler(&LoggerSubscriber{})
 
 	// Create the aggregate repository.
@@ -70,7 +71,7 @@ func main() {
 	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.DeclineInvite{})
 
 	// Create the command bus and register the handler for the commands.
-	commandBus := local.NewCommandBus()
+	commandBus := commandbus.NewCommandBus()
 	commandBus.SetHandler(handler, &domain.CreateInvite{})
 	commandBus.SetHandler(handler, &domain.AcceptInvite{})
 	commandBus.SetHandler(handler, &domain.DeclineInvite{})
