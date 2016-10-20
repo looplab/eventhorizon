@@ -25,6 +25,9 @@ import (
 // ErrModelNotSet is when an model is not set on a read repository.
 var ErrModelNotSet = errors.New("model not set")
 
+// ErrInvalidQuery is when a query was not returned from the callback to FindCustom.
+var ErrInvalidQuery = errors.New("invalid query")
+
 // ReadRepository implements an MongoDB repository of read models.
 type ReadRepository struct {
 	session    *mgo.Session
@@ -91,7 +94,11 @@ func (r *ReadRepository) Find(id eventhorizon.UUID) (interface{}, error) {
 	return model, nil
 }
 
-// FindCustom uses a callback to specify a custom query.
+// FindCustom uses a callback to specify a custom query for returning models.
+// It can also be used to do queries that does not map to the model by executing
+// the query in the callback and returning nil to block a second execution of
+// the same query in FindCustom. Expect a ErrInvalidQuery if returning a nil
+// query from the callback.
 func (r *ReadRepository) FindCustom(callback func(*mgo.Collection) *mgo.Query) ([]interface{}, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
@@ -102,6 +109,9 @@ func (r *ReadRepository) FindCustom(callback func(*mgo.Collection) *mgo.Query) (
 
 	collection := sess.DB(r.db).C(r.collection)
 	query := callback(collection)
+	if query == nil {
+		return nil, ErrInvalidQuery
+	}
 
 	iter := query.Iter()
 	result := []interface{}{}
