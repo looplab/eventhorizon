@@ -201,7 +201,7 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 	}
 
 	if len(resp.Items) == 0 {
-		return nil, eventhorizon.ErrNoEventsFound
+		return []eventhorizon.Event{}, nil
 	}
 
 	eventRecords := make([]*eventRecord, len(resp.Items))

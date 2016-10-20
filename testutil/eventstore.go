@@ -66,10 +66,10 @@ func EventStoreCommonTests(t *testing.T, store eventhorizon.EventStore) []eventh
 
 	t.Log("load events for non-existing aggregate")
 	events, err := store.Load(eventhorizon.NewUUID())
-	if err == nil || err.Error() != "could not find events" {
-		t.Error("there should be a 'could not find events' error:", err)
+	if err != nil {
+		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(events, []eventhorizon.Event(nil)) {
+	if len(events) != 0 {
 		t.Error("there should be no loaded events:", eventsToString(events))
 	}
 

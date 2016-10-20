@@ -179,8 +179,10 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 
 	var aggregate mongoAggregateRecord
 	err := sess.DB(s.db).C("events").FindId(id.String()).One(&aggregate)
-	if err != nil {
-		return nil, eventhorizon.ErrNoEventsFound
+	if err == mgo.ErrNotFound {
+		return []eventhorizon.Event{}, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	events := make([]eventhorizon.Event, len(aggregate.Events))

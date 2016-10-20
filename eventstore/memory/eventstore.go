@@ -73,7 +73,7 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 		return events, nil
 	}
 
-	return nil, eventhorizon.ErrNoEventsFound
+	return []eventhorizon.Event{}, nil
 }
 
 type memoryAggregateRecord struct {
