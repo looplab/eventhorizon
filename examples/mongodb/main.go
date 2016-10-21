@@ -81,8 +81,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
-	invitationRepository.SetModel(func() interface{} { return &Invitation{} })
-	invitationProjector := NewInvitationProjector(invitationRepository)
+	invitationRepository.SetModel(func() interface{} { return &domain.Invitation{} })
+	invitationProjector := domain.NewInvitationProjector(invitationRepository)
 	eventBus.AddHandler(invitationProjector, &domain.InviteCreated{})
 	eventBus.AddHandler(invitationProjector, &domain.InviteAccepted{})
 	eventBus.AddHandler(invitationProjector, &domain.InviteDeclined{})
@@ -93,8 +93,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}
-	guestListRepository.SetModel(func() interface{} { return &GuestList{} })
-	guestListProjector := NewGuestListProjector(guestListRepository, eventID)
+	guestListRepository.SetModel(func() interface{} { return &domain.GuestList{} })
+	guestListProjector := domain.NewGuestListProjector(guestListRepository, eventID)
 	eventBus.AddHandler(guestListProjector, &domain.InviteCreated{})
 	eventBus.AddHandler(guestListProjector, &domain.InviteAccepted{})
 	eventBus.AddHandler(guestListProjector, &domain.InviteDeclined{})
