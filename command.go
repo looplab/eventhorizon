@@ -28,15 +28,3 @@ type Command interface {
 	AggregateType() string
 	CommandType() string
 }
-
-// Event is a domain event describing a change that has happened to an aggregate.
-//
-// An event name should 1) be in past tense and 2) contain the intent
-// (CustomerMoved vs CustomerAddressCorrected).
-//
-// The event should contain all the data needed when applying/handling it.
-type Event interface {
-	AggregateID() UUID
-	AggregateType() string
-	EventType() string
-}
