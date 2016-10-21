@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package domain
 
 import (
 	"github.com/looplab/eventhorizon"
-
-	"github.com/looplab/eventhorizon/examples/domain"
 )
 
 // Invitation is a read model object for an invitation.
@@ -40,21 +38,26 @@ func NewInvitationProjector(repository eventhorizon.ReadRepository) *InvitationP
 	return p
 }
 
+// HandlerType implements the HandlerType method of the EventHandler interface.
+func (p *InvitationProjector) HandlerType() eventhorizon.EventHandlerType {
+	return eventhorizon.EventHandlerType("InvitationProjector")
+}
+
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (p *InvitationProjector) HandleEvent(event eventhorizon.Event) {
 	switch event := event.(type) {
-	case *domain.InviteCreated:
+	case *InviteCreated:
 		i := &Invitation{
 			ID:   event.InvitationID,
 			Name: event.Name,
 		}
 		p.repository.Save(i.ID, i)
-	case *domain.InviteAccepted:
+	case *InviteAccepted:
 		m, _ := p.repository.Find(event.InvitationID)
 		i := m.(*Invitation)
 		i.Status = "accepted"
 		p.repository.Save(i.ID, i)
-	case *domain.InviteDeclined:
+	case *InviteDeclined:
 		m, _ := p.repository.Find(event.InvitationID)
 		i := m.(*Invitation)
 		i.Status = "declined"
@@ -84,22 +87,27 @@ func NewGuestListProjector(repository eventhorizon.ReadRepository, eventID event
 	return p
 }
 
+// HandlerType implements the HandlerType method of the EventHandler interface.
+func (p *GuestListProjector) HandlerType() eventhorizon.EventHandlerType {
+	return eventhorizon.EventHandlerType("GuestListProjector")
+}
+
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (p *GuestListProjector) HandleEvent(event eventhorizon.Event) {
 	switch event.(type) {
-	case *domain.InviteCreated:
+	case *InviteCreated:
 		m, _ := p.repository.Find(p.eventID)
 		if m == nil {
 			m = &GuestList{}
 		}
 		g := m.(*GuestList)
 		p.repository.Save(p.eventID, g)
-	case *domain.InviteAccepted:
+	case *InviteAccepted:
 		m, _ := p.repository.Find(p.eventID)
 		g := m.(*GuestList)
 		g.NumAccepted++
 		p.repository.Save(p.eventID, g)
-	case *domain.InviteDeclined:
+	case *InviteDeclined:
 		m, _ := p.repository.Find(p.eventID)
 		g := m.(*GuestList)
 		g.NumDeclined++

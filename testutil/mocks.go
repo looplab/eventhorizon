@@ -87,18 +87,41 @@ type TestModel struct {
 }
 
 type MockEventHandler struct {
+	Type   eventhorizon.EventHandlerType
 	Events []eventhorizon.Event
 	Recv   chan eventhorizon.Event
 }
 
-func NewMockEventHandler() *MockEventHandler {
+func NewMockEventHandler(handlerType string) *MockEventHandler {
 	return &MockEventHandler{
+		eventhorizon.EventHandlerType(handlerType),
 		make([]eventhorizon.Event, 0),
 		make(chan eventhorizon.Event, 10),
 	}
 }
 
+func (m *MockEventHandler) HandlerType() eventhorizon.EventHandlerType {
+	return m.Type
+}
+
 func (m *MockEventHandler) HandleEvent(event eventhorizon.Event) {
+	m.Events = append(m.Events, event)
+	m.Recv <- event
+}
+
+type MockEventObserver struct {
+	Events []eventhorizon.Event
+	Recv   chan eventhorizon.Event
+}
+
+func NewMockEventObserver() *MockEventObserver {
+	return &MockEventObserver{
+		make([]eventhorizon.Event, 0),
+		make(chan eventhorizon.Event, 10),
+	}
+}
+
+func (m *MockEventObserver) Notify(event eventhorizon.Event) {
 	m.Events = append(m.Events, event)
 	m.Recv <- event
 }
@@ -140,5 +163,4 @@ func (m *MockEventBus) PublishEvent(event eventhorizon.Event) {
 }
 
 func (m *MockEventBus) AddHandler(handler eventhorizon.EventHandler, event eventhorizon.Event) {}
-func (m *MockEventBus) AddLocalHandler(handler eventhorizon.EventHandler)                      {}
-func (m *MockEventBus) AddGlobalHandler(handler eventhorizon.EventHandler)                     {}
+func (m *MockEventBus) AddObserver(observer eventhorizon.EventObserver)                        {}

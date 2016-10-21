@@ -159,5 +159,4 @@ func (m *MockEventBus) PublishEvent(event Event) {
 }
 
 func (m *MockEventBus) AddHandler(handler EventHandler, event Event) {}
-func (m *MockEventBus) AddLocalHandler(handler EventHandler)         {}
-func (m *MockEventBus) AddGlobalHandler(handler EventHandler)        {}
+func (m *MockEventBus) AddObserver(observer EventObserver)           {}

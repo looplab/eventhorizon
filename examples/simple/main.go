@@ -20,8 +20,9 @@ import (
 	"log"
 
 	"github.com/looplab/eventhorizon"
+	commandbus "github.com/looplab/eventhorizon/commandbus/local"
+	eventbus "github.com/looplab/eventhorizon/eventbus/local"
 	eventstore "github.com/looplab/eventhorizon/eventstore/memory"
-	"github.com/looplab/eventhorizon/messaging/local"
 	readrepository "github.com/looplab/eventhorizon/readrepository/memory"
 
 	"github.com/looplab/eventhorizon/examples/domain"
@@ -32,8 +33,8 @@ func main() {
 	eventStore := eventstore.NewEventStore()
 
 	// Create the event bus that distributes events.
-	eventBus := local.NewEventBus()
-	eventBus.AddGlobalHandler(&LoggerSubscriber{})
+	eventBus := eventbus.NewEventBus()
+	eventBus.AddObserver(&domain.Logger{})
 
 	// Create the aggregate repository.
 	repository, err := eventhorizon.NewCallbackRepository(eventStore, eventBus)
@@ -63,14 +64,14 @@ func main() {
 	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.DeclineInvite{})
 
 	// Create the command bus and register the handler for the commands.
-	commandBus := local.NewCommandBus()
+	commandBus := commandbus.NewCommandBus()
 	commandBus.SetHandler(handler, &domain.CreateInvite{})
 	commandBus.SetHandler(handler, &domain.AcceptInvite{})
 	commandBus.SetHandler(handler, &domain.DeclineInvite{})
 
 	// Create and register a read model for individual invitations.
 	invitationRepository := readrepository.NewReadRepository()
-	invitationProjector := NewInvitationProjector(invitationRepository)
+	invitationProjector := domain.NewInvitationProjector(invitationRepository)
 	eventBus.AddHandler(invitationProjector, &domain.InviteCreated{})
 	eventBus.AddHandler(invitationProjector, &domain.InviteAccepted{})
 	eventBus.AddHandler(invitationProjector, &domain.InviteDeclined{})
@@ -78,7 +79,7 @@ func main() {
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
 	guestListRepository := readrepository.NewReadRepository()
-	guestListProjector := NewGuestListProjector(guestListRepository, eventID)
+	guestListProjector := domain.NewGuestListProjector(guestListRepository, eventID)
 	eventBus.AddHandler(guestListProjector, &domain.InviteCreated{})
 	eventBus.AddHandler(guestListProjector, &domain.InviteAccepted{})
 	eventBus.AddHandler(guestListProjector, &domain.InviteDeclined{})
@@ -112,12 +113,4 @@ func main() {
 	// Read the guest list.
 	guestList, _ := guestListRepository.Find(eventID)
 	fmt.Printf("guest list: %#v\n", guestList)
-}
-
-// LoggerSubscriber is a simple event handler for logging all events.
-type LoggerSubscriber struct{}
-
-// HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (l *LoggerSubscriber) HandleEvent(event eventhorizon.Event) {
-	log.Printf("event: %#v\n", event)
 }
