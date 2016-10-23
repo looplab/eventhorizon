@@ -106,11 +106,13 @@ func (p *GuestListProjector) HandleEvent(event eventhorizon.Event) {
 		m, _ := p.repository.Find(p.eventID)
 		g := m.(*GuestList)
 		g.NumAccepted++
+		g.NumGuests++
 		p.repository.Save(p.eventID, g)
 	case *InviteDeclined:
 		m, _ := p.repository.Find(p.eventID)
 		g := m.(*GuestList)
 		g.NumDeclined++
+		g.NumGuests++
 		p.repository.Save(p.eventID, g)
 	}
 }

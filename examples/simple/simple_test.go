@@ -125,5 +125,5 @@ func Example() {
 	// invitation: Athena - accepted
 	// invitation: Hades - accepted
 	// invitation: Zeus - declined
-	// guest list: 0 guests (2 accepted, 1 declined)
+	// guest list: 3 guests (2 accepted, 1 declined)
 }
