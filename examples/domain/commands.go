@@ -31,24 +31,24 @@ type CreateInvite struct {
 	Age          int `eh:"optional"`
 }
 
-func (c *CreateInvite) AggregateID() eventhorizon.UUID            { return c.InvitationID }
-func (c *CreateInvite) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
-func (c *CreateInvite) CommandType() eventhorizon.CommandType     { return CreateInviteCommand }
+func (c CreateInvite) AggregateID() eventhorizon.UUID            { return c.InvitationID }
+func (c CreateInvite) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
+func (c CreateInvite) CommandType() eventhorizon.CommandType     { return CreateInviteCommand }
 
 // AcceptInvite is a command for accepting invites.
 type AcceptInvite struct {
 	InvitationID eventhorizon.UUID
 }
 
-func (c *AcceptInvite) AggregateID() eventhorizon.UUID            { return c.InvitationID }
-func (c *AcceptInvite) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
-func (c *AcceptInvite) CommandType() eventhorizon.CommandType     { return AcceptInviteCommand }
+func (c AcceptInvite) AggregateID() eventhorizon.UUID            { return c.InvitationID }
+func (c AcceptInvite) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
+func (c AcceptInvite) CommandType() eventhorizon.CommandType     { return AcceptInviteCommand }
 
 // DeclineInvite is a command for declining invites.
 type DeclineInvite struct {
 	InvitationID eventhorizon.UUID
 }
 
-func (c *DeclineInvite) AggregateID() eventhorizon.UUID            { return c.InvitationID }
-func (c *DeclineInvite) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
-func (c *DeclineInvite) CommandType() eventhorizon.CommandType     { return DeclineInviteCommand }
+func (c DeclineInvite) AggregateID() eventhorizon.UUID            { return c.InvitationID }
+func (c DeclineInvite) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
+func (c DeclineInvite) CommandType() eventhorizon.CommandType     { return DeclineInviteCommand }

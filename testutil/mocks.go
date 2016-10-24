@@ -52,45 +52,45 @@ type TestEvent struct {
 	Content string
 }
 
-func (t *TestEvent) AggregateID() eventhorizon.UUID            { return t.TestID }
-func (t *TestEvent) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
-func (t *TestEvent) EventType() eventhorizon.EventType         { return TestEventType }
+func (t TestEvent) AggregateID() eventhorizon.UUID            { return t.TestID }
+func (t TestEvent) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
+func (t TestEvent) EventType() eventhorizon.EventType         { return TestEventType }
 
 type TestEventOther struct {
 	TestID  eventhorizon.UUID
 	Content string
 }
 
-func (t *TestEventOther) AggregateID() eventhorizon.UUID            { return t.TestID }
-func (t *TestEventOther) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
-func (t *TestEventOther) EventType() eventhorizon.EventType         { return TestEventOtherType }
+func (t TestEventOther) AggregateID() eventhorizon.UUID            { return t.TestID }
+func (t TestEventOther) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
+func (t TestEventOther) EventType() eventhorizon.EventType         { return TestEventOtherType }
 
 type TestCommand struct {
 	TestID  eventhorizon.UUID
 	Content string
 }
 
-func (t *TestCommand) AggregateID() eventhorizon.UUID            { return t.TestID }
-func (t *TestCommand) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
-func (t *TestCommand) CommandType() eventhorizon.CommandType     { return TestCommandType }
+func (t TestCommand) AggregateID() eventhorizon.UUID            { return t.TestID }
+func (t TestCommand) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
+func (t TestCommand) CommandType() eventhorizon.CommandType     { return TestCommandType }
 
 type TestCommandOther struct {
 	TestID  eventhorizon.UUID
 	Content string
 }
 
-func (t *TestCommandOther) AggregateID() eventhorizon.UUID            { return t.TestID }
-func (t *TestCommandOther) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
-func (t *TestCommandOther) CommandType() eventhorizon.CommandType     { return TestCommandOtherType }
+func (t TestCommandOther) AggregateID() eventhorizon.UUID            { return t.TestID }
+func (t TestCommandOther) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
+func (t TestCommandOther) CommandType() eventhorizon.CommandType     { return TestCommandOtherType }
 
 type TestCommandOther2 struct {
 	TestID  eventhorizon.UUID
 	Content string
 }
 
-func (t *TestCommandOther2) AggregateID() eventhorizon.UUID            { return t.TestID }
-func (t *TestCommandOther2) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
-func (t *TestCommandOther2) CommandType() eventhorizon.CommandType     { return TestCommandOther2Type }
+func (t TestCommandOther2) AggregateID() eventhorizon.UUID            { return t.TestID }
+func (t TestCommandOther2) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
+func (t TestCommandOther2) CommandType() eventhorizon.CommandType     { return TestCommandOther2Type }
 
 type TestModel struct {
 	ID        eventhorizon.UUID `json:"id"         bson:"_id"`

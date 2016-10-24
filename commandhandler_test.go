@@ -210,9 +210,9 @@ type TestCommandStringValue struct {
 	Content string
 }
 
-func (t *TestCommandStringValue) AggregateID() UUID            { return t.TestID }
-func (t *TestCommandStringValue) AggregateType() AggregateType { return AggregateType("Test") }
-func (t *TestCommandStringValue) CommandType() CommandType {
+func (t TestCommandStringValue) AggregateID() UUID            { return t.TestID }
+func (t TestCommandStringValue) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandStringValue) CommandType() CommandType {
 	return CommandType("TestCommandStringValue")
 }
 
@@ -221,45 +221,45 @@ type TestCommandIntValue struct {
 	Content int
 }
 
-func (t *TestCommandIntValue) AggregateID() UUID            { return t.TestID }
-func (t *TestCommandIntValue) AggregateType() AggregateType { return AggregateType("Test") }
-func (t *TestCommandIntValue) CommandType() CommandType     { return CommandType("TestCommandIntValue") }
+func (t TestCommandIntValue) AggregateID() UUID            { return t.TestID }
+func (t TestCommandIntValue) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandIntValue) CommandType() CommandType     { return CommandType("TestCommandIntValue") }
 
 type TestCommandFloatValue struct {
 	TestID  UUID
 	Content float32
 }
 
-func (t *TestCommandFloatValue) AggregateID() UUID            { return t.TestID }
-func (t *TestCommandFloatValue) AggregateType() AggregateType { return AggregateType("Test") }
-func (t *TestCommandFloatValue) CommandType() CommandType     { return CommandType("TestCommandFloatValue") }
+func (t TestCommandFloatValue) AggregateID() UUID            { return t.TestID }
+func (t TestCommandFloatValue) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandFloatValue) CommandType() CommandType     { return CommandType("TestCommandFloatValue") }
 
 type TestCommandBoolValue struct {
 	TestID  UUID
 	Content bool
 }
 
-func (t *TestCommandBoolValue) AggregateID() UUID            { return t.TestID }
-func (t *TestCommandBoolValue) AggregateType() AggregateType { return AggregateType("Test") }
-func (t *TestCommandBoolValue) CommandType() CommandType     { return CommandType("TestCommandBoolValue") }
+func (t TestCommandBoolValue) AggregateID() UUID            { return t.TestID }
+func (t TestCommandBoolValue) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandBoolValue) CommandType() CommandType     { return CommandType("TestCommandBoolValue") }
 
 type TestCommandSlice struct {
 	TestID UUID
 	Slice  []string
 }
 
-func (t *TestCommandSlice) AggregateID() UUID            { return t.TestID }
-func (t *TestCommandSlice) AggregateType() AggregateType { return AggregateType("Test") }
-func (t *TestCommandSlice) CommandType() CommandType     { return CommandType("TestCommandSlice") }
+func (t TestCommandSlice) AggregateID() UUID            { return t.TestID }
+func (t TestCommandSlice) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandSlice) CommandType() CommandType     { return CommandType("TestCommandSlice") }
 
 type TestCommandMap struct {
 	TestID UUID
 	Map    map[string]string
 }
 
-func (t *TestCommandMap) AggregateID() UUID            { return t.TestID }
-func (t *TestCommandMap) AggregateType() AggregateType { return AggregateType("Test") }
-func (t *TestCommandMap) CommandType() CommandType     { return CommandType("TestCommandMap") }
+func (t TestCommandMap) AggregateID() UUID            { return t.TestID }
+func (t TestCommandMap) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandMap) CommandType() CommandType     { return CommandType("TestCommandMap") }
 
 type TestCommandStruct struct {
 	TestID UUID
@@ -268,33 +268,33 @@ type TestCommandStruct struct {
 	}
 }
 
-func (t *TestCommandStruct) AggregateID() UUID            { return t.TestID }
-func (t *TestCommandStruct) AggregateType() AggregateType { return AggregateType("Test") }
-func (t *TestCommandStruct) CommandType() CommandType     { return CommandType("TestCommandStruct") }
+func (t TestCommandStruct) AggregateID() UUID            { return t.TestID }
+func (t TestCommandStruct) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandStruct) CommandType() CommandType     { return CommandType("TestCommandStruct") }
 
 type TestCommandTime struct {
 	TestID UUID
 	Time   time.Time
 }
 
-func (t *TestCommandTime) AggregateID() UUID            { return t.TestID }
-func (t *TestCommandTime) AggregateType() AggregateType { return AggregateType("Test") }
-func (t *TestCommandTime) CommandType() CommandType     { return CommandType("TestCommandTime") }
+func (t TestCommandTime) AggregateID() UUID            { return t.TestID }
+func (t TestCommandTime) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandTime) CommandType() CommandType     { return CommandType("TestCommandTime") }
 
 type TestCommandOptional struct {
 	TestID  UUID
 	Content string `eh:"optional"`
 }
 
-func (t *TestCommandOptional) AggregateID() UUID            { return t.TestID }
-func (t *TestCommandOptional) AggregateType() AggregateType { return AggregateType("Test") }
-func (t *TestCommandOptional) CommandType() CommandType     { return CommandType("TestCommandOptional") }
+func (t TestCommandOptional) AggregateID() UUID            { return t.TestID }
+func (t TestCommandOptional) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandOptional) CommandType() CommandType     { return CommandType("TestCommandOptional") }
 
 type TestCommandPrivate struct {
 	TestID  UUID
 	private string
 }
 
-func (t *TestCommandPrivate) AggregateID() UUID            { return t.TestID }
-func (t *TestCommandPrivate) AggregateType() AggregateType { return AggregateType("Test") }
-func (t *TestCommandPrivate) CommandType() CommandType     { return CommandType("TestCommandPrivate") }
+func (t TestCommandPrivate) AggregateID() UUID            { return t.TestID }
+func (t TestCommandPrivate) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandPrivate) CommandType() CommandType     { return CommandType("TestCommandPrivate") }
