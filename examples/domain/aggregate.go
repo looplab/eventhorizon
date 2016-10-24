@@ -37,6 +37,13 @@ type InvitationAggregate struct {
 	declined bool
 }
 
+// NewInvitationAggregate creates a new InvitationAggregate with an ID.
+func NewInvitationAggregate(id eventhorizon.UUID) *InvitationAggregate {
+	return &InvitationAggregate{
+		AggregateBase: eventhorizon.NewAggregateBase(id),
+	}
+}
+
 // AggregateType implements the AggregateType method of the Aggregate interface.
 func (i *InvitationAggregate) AggregateType() eventhorizon.AggregateType {
 	return InvitationAggregateType

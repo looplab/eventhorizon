@@ -44,9 +44,7 @@ func Example() {
 	// Register an aggregate factory.
 	repository.RegisterAggregate(domain.InvitationAggregateType,
 		func(id eventhorizon.UUID) eventhorizon.Aggregate {
-			return &domain.InvitationAggregate{
-				AggregateBase: eventhorizon.NewAggregateBase(id),
-			}
+			return domain.NewInvitationAggregate(id)
 		},
 	)
 
