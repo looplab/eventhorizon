@@ -33,6 +33,7 @@ type EventStore interface {
 }
 
 // AggregateRecord is a stored record of an aggregate in form of its events.
+// NOTE: Not currently used.
 type AggregateRecord interface {
 	AggregateID() UUID
 	Version() int
@@ -40,6 +41,7 @@ type AggregateRecord interface {
 }
 
 // EventRecord is a single event record with timestamp
+// NOTE: Not currently used.
 type EventRecord interface {
 	Type() string
 	Version() int

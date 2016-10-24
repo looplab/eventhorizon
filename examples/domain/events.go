@@ -18,6 +18,12 @@ import (
 	"github.com/looplab/eventhorizon"
 )
 
+const (
+	InviteCreatedEvent  eventhorizon.EventType = "InviteCreated"
+	InviteAcceptedEvent                        = "InviteAccepted"
+	InviteDeclinedEvent                        = "InviteDeclined"
+)
+
 // InviteCreated is an event for when an invite has been created.
 type InviteCreated struct {
 	InvitationID eventhorizon.UUID `bson:"invitation_id"`
@@ -25,24 +31,24 @@ type InviteCreated struct {
 	Age          int               `bson:"age"`
 }
 
-func (c *InviteCreated) AggregateID() eventhorizon.UUID { return c.InvitationID }
-func (c *InviteCreated) AggregateType() string          { return InvitationAggregateType }
-func (c *InviteCreated) EventType() string              { return "InviteCreated" }
+func (c *InviteCreated) AggregateID() eventhorizon.UUID            { return c.InvitationID }
+func (c *InviteCreated) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
+func (c *InviteCreated) EventType() eventhorizon.EventType         { return InviteCreatedEvent }
 
 // InviteAccepted is an event for when an invite has been accepted.
 type InviteAccepted struct {
 	InvitationID eventhorizon.UUID `bson:"invitation_id"`
 }
 
-func (c *InviteAccepted) AggregateID() eventhorizon.UUID { return c.InvitationID }
-func (c *InviteAccepted) AggregateType() string          { return InvitationAggregateType }
-func (c *InviteAccepted) EventType() string              { return "InviteAccepted" }
+func (c *InviteAccepted) AggregateID() eventhorizon.UUID            { return c.InvitationID }
+func (c *InviteAccepted) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
+func (c *InviteAccepted) EventType() eventhorizon.EventType         { return InviteAcceptedEvent }
 
 // InviteDeclined is an event for when an invite has been declined.
 type InviteDeclined struct {
 	InvitationID eventhorizon.UUID `bson:"invitation_id"`
 }
 
-func (c *InviteDeclined) AggregateID() eventhorizon.UUID { return c.InvitationID }
-func (c *InviteDeclined) AggregateType() string          { return InvitationAggregateType }
-func (c *InviteDeclined) EventType() string              { return "InviteDeclined" }
+func (c *InviteDeclined) AggregateID() eventhorizon.UUID            { return c.InvitationID }
+func (c *InviteDeclined) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
+func (c *InviteDeclined) EventType() eventhorizon.EventType         { return InviteDeclinedEvent }

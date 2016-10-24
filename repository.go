@@ -36,7 +36,7 @@ var ErrMismatchedEventType = errors.New("mismatched event type and aggregate typ
 // Repository is a repository responsible for loading and saving aggregates.
 type Repository interface {
 	// Load loads an aggregate with a type and id.
-	Load(string, UUID) (Aggregate, error)
+	Load(AggregateType, UUID) (Aggregate, error)
 
 	// Save saves an aggregets uncommitted events.
 	Save(Aggregate) error
@@ -46,7 +46,7 @@ type Repository interface {
 type CallbackRepository struct {
 	eventStore EventStore
 	eventBus   EventBus
-	callbacks  map[string]func(UUID) Aggregate
+	callbacks  map[AggregateType]func(UUID) Aggregate
 }
 
 // NewCallbackRepository creates a repository and associates it with an event store.
@@ -62,7 +62,7 @@ func NewCallbackRepository(eventStore EventStore, eventBus EventBus) (*CallbackR
 	d := &CallbackRepository{
 		eventStore: eventStore,
 		eventBus:   eventBus,
-		callbacks:  make(map[string]func(UUID) Aggregate),
+		callbacks:  make(map[AggregateType]func(UUID) Aggregate),
 	}
 	return d, nil
 }
@@ -72,18 +72,18 @@ func NewCallbackRepository(eventStore EventStore, eventBus EventBus) (*CallbackR
 //
 // An example would be:
 //     repository.RegisterAggregate(&Aggregate{}, func(id UUID) interface{} { return &Aggregate{id} })
-func (r *CallbackRepository) RegisterAggregate(aggregate Aggregate, callback func(UUID) Aggregate) error {
-	if _, ok := r.callbacks[aggregate.AggregateType()]; ok {
+func (r *CallbackRepository) RegisterAggregate(aggregateType AggregateType, callback func(UUID) Aggregate) error {
+	if _, ok := r.callbacks[aggregateType]; ok {
 		return ErrAggregateAlreadyRegistered
 	}
 
-	r.callbacks[aggregate.AggregateType()] = callback
+	r.callbacks[aggregateType] = callback
 
 	return nil
 }
 
 // Load loads an aggregate by creating it and applying all events.
-func (r *CallbackRepository) Load(aggregateType string, id UUID) (Aggregate, error) {
+func (r *CallbackRepository) Load(aggregateType AggregateType, id UUID) (Aggregate, error) {
 	// Get the registered factory function for creating aggregates.
 	f, ok := r.callbacks[aggregateType]
 	if !ok {

@@ -21,14 +21,14 @@ import (
 // EventBus is an event bus that notifies registered EventHandlers of
 // published events.
 type EventBus struct {
-	handlers  map[string]map[eventhorizon.EventHandler]bool
+	handlers  map[eventhorizon.EventType]map[eventhorizon.EventHandler]bool
 	observers map[eventhorizon.EventObserver]bool
 }
 
 // NewEventBus creates a EventBus.
 func NewEventBus() *EventBus {
 	b := &EventBus{
-		handlers:  make(map[string]map[eventhorizon.EventHandler]bool),
+		handlers:  make(map[eventhorizon.EventType]map[eventhorizon.EventHandler]bool),
 		observers: make(map[eventhorizon.EventObserver]bool),
 	}
 	return b
@@ -52,14 +52,14 @@ func (b *EventBus) PublishEvent(event eventhorizon.Event) {
 }
 
 // AddHandler implements the AddHandler method of the EventHandler interface.
-func (b *EventBus) AddHandler(handler eventhorizon.EventHandler, event eventhorizon.Event) {
+func (b *EventBus) AddHandler(handler eventhorizon.EventHandler, eventType eventhorizon.EventType) {
 	// Create list for new event types.
-	if _, ok := b.handlers[event.EventType()]; !ok {
-		b.handlers[event.EventType()] = make(map[eventhorizon.EventHandler]bool)
+	if _, ok := b.handlers[eventType]; !ok {
+		b.handlers[eventType] = make(map[eventhorizon.EventHandler]bool)
 	}
 
 	// Add the handler for the event type.
-	b.handlers[event.EventType()][handler] = true
+	b.handlers[eventType][handler] = true
 }
 
 // AddObserver implements the AddObserver method of the EventHandler interface.

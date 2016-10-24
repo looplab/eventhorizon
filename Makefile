@@ -3,7 +3,7 @@
 test: docker
 	go test -v ./...
 
-test_cover: docker
+test_cover: clean docker
 	go list -f '{{if len .TestGoFiles}}"go test -v -covermode=count -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
 	gover
 
@@ -15,5 +15,5 @@ docker:
 	-docker run -d --name redis -p 6379:6379 redis
 
 clean:
-	find . -name \.coverprofile -type f -delete
-	rm gover.coverprofile
+	-find . -name \.coverprofile -type f -delete
+	-rm gover.coverprofile

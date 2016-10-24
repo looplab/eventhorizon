@@ -36,7 +36,7 @@ func TestCommandBus(t *testing.T) {
 
 	t.Log("set handler")
 	handler := &TestCommandHandler{}
-	err = bus.SetHandler(handler, &testutil.TestCommand{})
+	err = bus.SetHandler(handler, testutil.TestCommandType)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -50,7 +50,7 @@ func TestCommandBus(t *testing.T) {
 		t.Error("the handled command should be correct:", handler.command)
 	}
 
-	err = bus.SetHandler(handler, &testutil.TestCommand{})
+	err = bus.SetHandler(handler, testutil.TestCommandType)
 	if err != eventhorizon.ErrHandlerAlreadySet {
 		t.Error("there should be a ErrHandlerAlreadySet error:", err)
 	}

@@ -18,6 +18,17 @@ import (
 	"errors"
 )
 
+const (
+	TestAggregateType  AggregateType = "TestAggregate"
+	TestAggregate2Type               = "TestAggregate2"
+
+	TestEventType  EventType = "TestEvent"
+	TestEvent2Type           = "TestEvent2"
+
+	TestCommandType  CommandType = "TestCommand"
+	TestCommand2Type             = "TestCommand2"
+)
+
 type TestAggregate struct {
 	*AggregateBase
 
@@ -26,8 +37,8 @@ type TestAggregate struct {
 	numHandled        int
 }
 
-func (a *TestAggregate) AggregateType() string {
-	return "TestAggregate"
+func (a *TestAggregate) AggregateType() AggregateType {
+	return TestAggregateType
 }
 
 func (a *TestAggregate) HandleCommand(command Command) error {
@@ -48,24 +59,6 @@ func (a *TestAggregate) ApplyEvent(event Event) {
 	a.appliedEvent = event
 }
 
-type TestEvent struct {
-	TestID  UUID
-	Content string
-}
-
-func (t *TestEvent) AggregateID() UUID     { return t.TestID }
-func (t *TestEvent) AggregateType() string { return "TestAggregate" }
-func (t *TestEvent) EventType() string     { return "TestEvent" }
-
-type TestCommand struct {
-	TestID  UUID
-	Content string
-}
-
-func (t *TestCommand) AggregateID() UUID     { return t.TestID }
-func (t *TestCommand) AggregateType() string { return "TestAggregate" }
-func (t *TestCommand) CommandType() string   { return "TestCommand" }
-
 type TestAggregate2 struct {
 	*AggregateBase
 
@@ -74,8 +67,8 @@ type TestAggregate2 struct {
 	numHandled        int
 }
 
-func (a *TestAggregate2) AggregateType() string {
-	return "TestAggregate2"
+func (a *TestAggregate2) AggregateType() AggregateType {
+	return TestAggregate2Type
 }
 
 func (a *TestAggregate2) HandleCommand(command Command) error {
@@ -96,29 +89,47 @@ func (a *TestAggregate2) ApplyEvent(event Event) {
 	a.appliedEvent = event
 }
 
-type TestEvent2 struct {
+type TestCommand struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestEvent2) AggregateID() UUID     { return t.TestID }
-func (t *TestEvent2) AggregateType() string { return "TestAggregate2" }
-func (t *TestEvent2) EventType() string     { return "TestEvent2" }
+func (t *TestCommand) AggregateID() UUID            { return t.TestID }
+func (t *TestCommand) AggregateType() AggregateType { return TestAggregateType }
+func (t *TestCommand) CommandType() CommandType     { return TestCommandType }
 
 type TestCommand2 struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestCommand2) AggregateID() UUID     { return t.TestID }
-func (t *TestCommand2) AggregateType() string { return "TestAggregate2" }
-func (t *TestCommand2) CommandType() string   { return "TestCommand2" }
+func (t *TestCommand2) AggregateID() UUID            { return t.TestID }
+func (t *TestCommand2) AggregateType() AggregateType { return TestAggregate2Type }
+func (t *TestCommand2) CommandType() CommandType     { return TestCommand2Type }
+
+type TestEvent struct {
+	TestID  UUID
+	Content string
+}
+
+func (t *TestEvent) AggregateID() UUID            { return t.TestID }
+func (t *TestEvent) AggregateType() AggregateType { return TestAggregateType }
+func (t *TestEvent) EventType() EventType         { return TestEventType }
+
+type TestEvent2 struct {
+	TestID  UUID
+	Content string
+}
+
+func (t *TestEvent2) AggregateID() UUID            { return t.TestID }
+func (t *TestEvent2) AggregateType() AggregateType { return TestAggregate2Type }
+func (t *TestEvent2) EventType() EventType         { return TestEvent2Type }
 
 type MockRepository struct {
 	Aggregates map[UUID]Aggregate
 }
 
-func (m *MockRepository) Load(aggregateType string, id UUID) (Aggregate, error) {
+func (m *MockRepository) Load(aggregateType AggregateType, id UUID) (Aggregate, error) {
 	return m.Aggregates[id], nil
 }
 
@@ -158,5 +169,5 @@ func (m *MockEventBus) PublishEvent(event Event) {
 	m.Events = append(m.Events, event)
 }
 
-func (m *MockEventBus) AddHandler(handler EventHandler, event Event) {}
-func (m *MockEventBus) AddObserver(observer EventObserver)           {}
+func (m *MockEventBus) AddHandler(handler EventHandler, eventType EventType) {}
+func (m *MockEventBus) AddObserver(observer EventObserver)                   {}

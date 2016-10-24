@@ -34,7 +34,7 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	if err = store.RegisterEventType(&testutil.TestEvent{}, func() eventhorizon.Event {
+	if err = store.RegisterEventType(testutil.TestEventType, func() eventhorizon.Event {
 		return &testutil.TestEvent{}
 	}); err != nil {
 		t.Fatal("there should be no error:", err)

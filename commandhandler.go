@@ -49,7 +49,7 @@ func (c CommandFieldError) Error() string {
 // 6. The events are published to the event bus when stored by the event store
 type AggregateCommandHandler struct {
 	repository Repository
-	aggregates map[string]string
+	aggregates map[CommandType]AggregateType
 }
 
 // NewAggregateCommandHandler creates a new AggregateCommandHandler.
@@ -60,20 +60,20 @@ func NewAggregateCommandHandler(repository Repository) (*AggregateCommandHandler
 
 	h := &AggregateCommandHandler{
 		repository: repository,
-		aggregates: make(map[string]string),
+		aggregates: make(map[CommandType]AggregateType),
 	}
 	return h, nil
 }
 
 // SetAggregate sets an aggregate as handler for a command.
-func (h *AggregateCommandHandler) SetAggregate(aggregate Aggregate, command Command) error {
+func (h *AggregateCommandHandler) SetAggregate(aggregateType AggregateType, commandType CommandType) error {
 	// Check for already existing handler.
-	if _, ok := h.aggregates[command.CommandType()]; ok {
+	if _, ok := h.aggregates[commandType]; ok {
 		return ErrAggregateAlreadySet
 	}
 
 	// Add aggregate type to command type.
-	h.aggregates[command.CommandType()] = aggregate.AggregateType()
+	h.aggregates[commandType] = aggregateType
 
 	return nil
 }
@@ -86,17 +86,15 @@ func (h *AggregateCommandHandler) HandleCommand(command Command) error {
 		return err
 	}
 
-	var aggregateType string
-	var ok bool
-	if aggregateType, ok = h.aggregates[command.CommandType()]; !ok {
+	aggregateType, ok := h.aggregates[command.CommandType()]
+	if !ok {
 		return ErrAggregateNotFound
 	}
 
-	var aggregate Aggregate
-	if aggregate, err = h.repository.Load(aggregateType, command.AggregateID()); err != nil {
+	aggregate, err := h.repository.Load(aggregateType, command.AggregateID())
+	if err != nil {
 		return err
-	}
-	if aggregate == nil {
+	} else if aggregate == nil {
 		return ErrAggregateNotFound
 	}
 

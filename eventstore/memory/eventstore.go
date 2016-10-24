@@ -33,6 +33,19 @@ func NewEventStore() *EventStore {
 	return s
 }
 
+type memoryAggregateRecord struct {
+	aggregateID eventhorizon.UUID
+	version     int
+	events      []*memoryEventRecord
+}
+
+type memoryEventRecord struct {
+	version   int
+	timestamp time.Time
+	eventType eventhorizon.EventType
+	event     eventhorizon.Event
+}
+
 // Save appends all events in the event stream to the memory store.
 func (s *EventStore) Save(events []eventhorizon.Event) error {
 	if len(events) == 0 {
@@ -41,8 +54,8 @@ func (s *EventStore) Save(events []eventhorizon.Event) error {
 
 	for _, event := range events {
 		r := &memoryEventRecord{
-			eventType: event.EventType(),
 			timestamp: time.Now(),
+			eventType: event.EventType(),
 			event:     event,
 		}
 
@@ -74,17 +87,4 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 	}
 
 	return []eventhorizon.Event{}, nil
-}
-
-type memoryAggregateRecord struct {
-	aggregateID eventhorizon.UUID
-	version     int
-	events      []*memoryEventRecord
-}
-
-type memoryEventRecord struct {
-	eventType string
-	version   int
-	timestamp time.Time
-	event     eventhorizon.Event
 }

@@ -24,7 +24,7 @@ type EventBus interface {
 
 	// AddHandler adds a handler for an event.
 	// TODO: Use a pattern instead of event for what to handle.
-	AddHandler(EventHandler, Event)
+	AddHandler(EventHandler, EventType)
 	// AddObserver adds an observer.
 	// TODO: Add pattern for what to observe.
 	AddObserver(EventObserver)

@@ -41,12 +41,12 @@ func TestEventBus(t *testing.T) {
 		t.Fatal("there should be a bus")
 	}
 	defer bus.Close()
-	if err = bus.RegisterEventType(&testutil.TestEvent{}, func() eventhorizon.Event {
+	if err = bus.RegisterEventType(testutil.TestEventType, func() eventhorizon.Event {
 		return &testutil.TestEvent{}
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err = bus.RegisterEventType(&testutil.TestEventOther{}, func() eventhorizon.Event {
+	if err = bus.RegisterEventType(testutil.TestEventOtherType, func() eventhorizon.Event {
 		return &testutil.TestEventOther{}
 	}); err != nil {
 		t.Error("there should be no error:", err)
@@ -60,12 +60,12 @@ func TestEventBus(t *testing.T) {
 		t.Fatal("there should be no error:", err)
 	}
 	defer bus2.Close()
-	if err = bus2.RegisterEventType(&testutil.TestEvent{}, func() eventhorizon.Event {
+	if err = bus2.RegisterEventType(testutil.TestEventType, func() eventhorizon.Event {
 		return &testutil.TestEvent{}
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err = bus2.RegisterEventType(&testutil.TestEventOther{}, func() eventhorizon.Event {
+	if err = bus2.RegisterEventType(testutil.TestEventOtherType, func() eventhorizon.Event {
 		return &testutil.TestEventOther{}
 	}); err != nil {
 		t.Error("there should be no error:", err)
@@ -87,7 +87,7 @@ func TestEventBus(t *testing.T) {
 
 	t.Log("publish event")
 	handler := testutil.NewMockEventHandler("testHandler")
-	bus.AddHandler(handler, &testutil.TestEvent{})
+	bus.AddHandler(handler, testutil.TestEventType)
 	bus.PublishEvent(event1)
 	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1}) {
 		t.Error("the handler events should be correct:", handler.Events)
@@ -102,7 +102,7 @@ func TestEventBus(t *testing.T) {
 	}
 
 	t.Log("publish another event")
-	bus.AddHandler(handler, &testutil.TestEventOther{})
+	bus.AddHandler(handler, testutil.TestEventOtherType)
 	event2 := &testutil.TestEventOther{eventhorizon.NewUUID(), "event2"}
 	bus.PublishEvent(event2)
 	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1, event2}) {

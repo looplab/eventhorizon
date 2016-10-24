@@ -55,7 +55,7 @@ var ErrInvalidEvent = errors.New("invalid event")
 type EventStore struct {
 	session   *mgo.Session
 	db        string
-	factories map[string]func() eventhorizon.Event
+	factories map[eventhorizon.EventType]func() eventhorizon.Event
 }
 
 // NewEventStore creates a new EventStore.
@@ -78,7 +78,7 @@ func NewEventStoreWithSession(session *mgo.Session, database string) (*EventStor
 	}
 
 	s := &EventStore{
-		factories: make(map[string]func() eventhorizon.Event),
+		factories: make(map[eventhorizon.EventType]func() eventhorizon.Event),
 		session:   session,
 		db:        database,
 	}
@@ -95,11 +95,11 @@ type mongoAggregateRecord struct {
 }
 
 type mongoEventRecord struct {
-	Type      string             `bson:"type"`
-	Version   int                `bson:"version"`
-	Timestamp time.Time          `bson:"timestamp"`
-	Event     eventhorizon.Event `bson:"-"`
-	Data      bson.Raw           `bson:"data"`
+	EventType eventhorizon.EventType `bson:"type"`
+	Version   int                    `bson:"version"`
+	Timestamp time.Time              `bson:"timestamp"`
+	Event     eventhorizon.Event     `bson:"-"`
+	Data      bson.Raw               `bson:"data"`
 }
 
 // Save appends all events in the event stream to the database.
@@ -128,7 +128,7 @@ func (s *EventStore) Save(events []eventhorizon.Event) error {
 
 		// Create the event record with timestamp.
 		r := &mongoEventRecord{
-			Type:      event.EventType(),
+			EventType: event.EventType(),
 			Version:   1,
 			Timestamp: time.Now(),
 			Data:      bson.Raw{3, data},
@@ -188,7 +188,7 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 	events := make([]eventhorizon.Event, len(aggregate.Events))
 	for i, record := range aggregate.Events {
 		// Get the registered factory function for creating events.
-		f, ok := s.factories[record.Type]
+		f, ok := s.factories[record.EventType]
 		if !ok {
 			return nil, ErrEventNotRegistered
 		}
@@ -215,12 +215,12 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 //
 // An example would be:
 //     eventStore.RegisterEventType(&MyEvent{}, func() Event { return &MyEvent{} })
-func (s *EventStore) RegisterEventType(event eventhorizon.Event, factory func() eventhorizon.Event) error {
-	if _, ok := s.factories[event.EventType()]; ok {
+func (s *EventStore) RegisterEventType(eventType eventhorizon.EventType, factory func() eventhorizon.Event) error {
+	if _, ok := s.factories[eventType]; ok {
 		return eventhorizon.ErrHandlerAlreadySet
 	}
 
-	s.factories[event.EventType()] = factory
+	s.factories[eventType] = factory
 
 	return nil
 }
