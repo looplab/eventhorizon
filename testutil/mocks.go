@@ -20,6 +20,12 @@ import (
 	"github.com/looplab/eventhorizon"
 )
 
+func init() {
+	eventhorizon.RegisterAggregate(func(id eventhorizon.UUID) eventhorizon.Aggregate {
+		return &TestAggregate{AggregateBase: eventhorizon.NewAggregateBase(id)}
+	})
+}
+
 const (
 	TestAggregateType eventhorizon.AggregateType = "TestAggregate"
 
@@ -37,6 +43,10 @@ type EmptyAggregate struct {
 type TestAggregate struct {
 	*eventhorizon.AggregateBase
 	Events []eventhorizon.Event
+}
+
+func (t *TestAggregate) HandleCommand(command eventhorizon.Command) error {
+	return nil
 }
 
 func (t *TestAggregate) AggregateType() eventhorizon.AggregateType {

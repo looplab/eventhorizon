@@ -18,6 +18,15 @@ import (
 	"errors"
 )
 
+func init() {
+	RegisterAggregate(func(id UUID) Aggregate {
+		return &TestAggregate{AggregateBase: NewAggregateBase(id)}
+	})
+	RegisterAggregate(func(id UUID) Aggregate {
+		return &TestAggregate2{AggregateBase: NewAggregateBase(id)}
+	})
+}
+
 const (
 	TestAggregateType  AggregateType = "TestAggregate"
 	TestAggregate2Type               = "TestAggregate2"

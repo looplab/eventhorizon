@@ -24,12 +24,6 @@ var ErrInvalidEventStore = errors.New("invalid event store")
 // ErrInvalidEventBus is when a dispatcher is created with a nil event bus.
 var ErrInvalidEventBus = errors.New("invalid event bus")
 
-// ErrAggregateAlreadyRegistered is when an aggregate is already registered.
-var ErrAggregateAlreadyRegistered = errors.New("aggregate is already registered")
-
-// ErrAggregateNotRegistered is when an aggregate is not registered.
-var ErrAggregateNotRegistered = errors.New("aggregate is not registered")
-
 // ErrMismatchedEventType occurs when loaded events from ID does not match aggregate type.
 var ErrMismatchedEventType = errors.New("mismatched event type and aggregate type")
 
@@ -47,7 +41,6 @@ type Repository interface {
 type EventSourcingRepository struct {
 	eventStore EventStore
 	eventBus   EventBus
-	callbacks  map[AggregateType]func(UUID) Aggregate
 }
 
 // NewEventSourcingRepository creates a repository that will use an event store
@@ -64,38 +57,19 @@ func NewEventSourcingRepository(eventStore EventStore, eventBus EventBus) (*Even
 	d := &EventSourcingRepository{
 		eventStore: eventStore,
 		eventBus:   eventBus,
-		callbacks:  make(map[AggregateType]func(UUID) Aggregate),
 	}
 	return d, nil
-}
-
-// RegisterAggregate registers an aggregate factory for a type. The factory is
-// used to create concrete aggregate types when loading from the database.
-//
-// An example would be:
-//     repository.RegisterAggregate(&Aggregate{}, func(id UUID) interface{} { return &Aggregate{id} })
-func (r *CallbackRepository) RegisterAggregate(aggregateType AggregateType, callback func(UUID) Aggregate) error {
-	if _, ok := r.callbacks[aggregateType]; ok {
-		return ErrAggregateAlreadyRegistered
-	}
-
-	r.callbacks[aggregateType] = callback
-
-	return nil
 }
 
 // Load loads an aggregate from the event store. It does so by creating a new
 // aggregate of the type with the ID and then applies all events to it, thus
 // making it the most current version of the aggregate.
 func (r *EventSourcingRepository) Load(aggregateType AggregateType, id UUID) (Aggregate, error) {
-	// Get the registered factory function for creating aggregates.
-	f, ok := r.callbacks[aggregateType]
-	if !ok {
-		return nil, ErrAggregateNotRegistered
+	// Create the aggregate.
+	aggregate, err := CreateAggregate(aggregateType, id)
+	if err != nil {
+		return nil, err
 	}
-
-	// Create aggregate with factory.
-	aggregate := f(id)
 
 	// Load aggregate events.
 	events, err := r.eventStore.Load(aggregate.AggregateID())

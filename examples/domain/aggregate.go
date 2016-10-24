@@ -20,6 +20,12 @@ import (
 	"github.com/looplab/eventhorizon"
 )
 
+func init() {
+	eventhorizon.RegisterAggregate(func(id eventhorizon.UUID) eventhorizon.Aggregate {
+		return NewInvitationAggregate(id)
+	})
+}
+
 // InvitationAggregateType is the type name of the aggregate.
 const InvitationAggregateType eventhorizon.AggregateType = "Invitation"
 

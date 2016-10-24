@@ -48,13 +48,6 @@ func Example() {
 		log.Fatalf("could not create repository: %s", err)
 	}
 
-	// Register an aggregate factory.
-	repository.RegisterAggregate(domain.InvitationAggregateType,
-		func(id eventhorizon.UUID) eventhorizon.Aggregate {
-			return domain.NewInvitationAggregate(id)
-		},
-	)
-
 	// Create the aggregate command handler.
 	handler, err := eventhorizon.NewAggregateCommandHandler(repository)
 	if err != nil {
