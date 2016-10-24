@@ -35,22 +35,24 @@ var ErrMismatchedEventType = errors.New("mismatched event type and aggregate typ
 
 // Repository is a repository responsible for loading and saving aggregates.
 type Repository interface {
-	// Load loads an aggregate with a type and id.
+	// Load loads the most recent version of an aggregate with a type and id.
 	Load(AggregateType, UUID) (Aggregate, error)
 
-	// Save saves an aggregets uncommitted events.
+	// Save saves the uncommittend events for an aggregate.
 	Save(Aggregate) error
 }
 
-// CallbackRepository is an aggregate repository using factory functions.
-type CallbackRepository struct {
+// EventSourcingRepository is an aggregate repository using event sourcing. It
+// uses an event store for loading and saving events used to build the aggregate.
+type EventSourcingRepository struct {
 	eventStore EventStore
 	eventBus   EventBus
 	callbacks  map[AggregateType]func(UUID) Aggregate
 }
 
-// NewCallbackRepository creates a repository and associates it with an event store.
-func NewCallbackRepository(eventStore EventStore, eventBus EventBus) (*CallbackRepository, error) {
+// NewEventSourcingRepository creates a repository that will use an event store
+// and bus.
+func NewEventSourcingRepository(eventStore EventStore, eventBus EventBus) (*EventSourcingRepository, error) {
 	if eventStore == nil {
 		return nil, ErrInvalidEventStore
 	}
@@ -59,7 +61,7 @@ func NewCallbackRepository(eventStore EventStore, eventBus EventBus) (*CallbackR
 		return nil, ErrInvalidEventBus
 	}
 
-	d := &CallbackRepository{
+	d := &EventSourcingRepository{
 		eventStore: eventStore,
 		eventBus:   eventBus,
 		callbacks:  make(map[AggregateType]func(UUID) Aggregate),
@@ -82,8 +84,10 @@ func (r *CallbackRepository) RegisterAggregate(aggregateType AggregateType, call
 	return nil
 }
 
-// Load loads an aggregate by creating it and applying all events.
-func (r *CallbackRepository) Load(aggregateType AggregateType, id UUID) (Aggregate, error) {
+// Load loads an aggregate from the event store. It does so by creating a new
+// aggregate of the type with the ID and then applies all events to it, thus
+// making it the most current version of the aggregate.
+func (r *EventSourcingRepository) Load(aggregateType AggregateType, id UUID) (Aggregate, error) {
 	// Get the registered factory function for creating aggregates.
 	f, ok := r.callbacks[aggregateType]
 	if !ok {
@@ -112,8 +116,8 @@ func (r *CallbackRepository) Load(aggregateType AggregateType, id UUID) (Aggrega
 	return aggregate, nil
 }
 
-// Save saves all uncommitted events from an aggregate.
-func (r *CallbackRepository) Save(aggregate Aggregate) error {
+// Save saves all uncommitted events from an aggregate to the event store.
+func (r *EventSourcingRepository) Save(aggregate Aggregate) error {
 	resultEvents := aggregate.GetUncommittedEvents()
 	if len(resultEvents) < 1 {
 		return nil

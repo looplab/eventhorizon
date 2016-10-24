@@ -36,7 +36,7 @@ func Example() {
 	eventBus.AddObserver(&domain.Logger{})
 
 	// Create the aggregate repository.
-	repository, err := eventhorizon.NewCallbackRepository(eventStore, eventBus)
+	repository, err := eventhorizon.NewEventSourcingRepository(eventStore, eventBus)
 	if err != nil {
 		log.Fatalf("could not create repository: %s", err)
 	}
