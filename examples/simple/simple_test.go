@@ -42,7 +42,7 @@ func Example() {
 	}
 
 	// Register an aggregate factory.
-	repository.RegisterAggregate(&domain.InvitationAggregate{},
+	repository.RegisterAggregate(domain.InvitationAggregateType,
 		func(id eventhorizon.UUID) eventhorizon.Aggregate {
 			return &domain.InvitationAggregate{
 				AggregateBase: eventhorizon.NewAggregateBase(id),
@@ -58,30 +58,30 @@ func Example() {
 
 	// Register the domain aggregates with the dispather. Remember to check for
 	// errors here in a real app!
-	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.CreateInvite{})
-	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.AcceptInvite{})
-	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.DeclineInvite{})
+	handler.SetAggregate(domain.InvitationAggregateType, domain.CreateInviteCommand)
+	handler.SetAggregate(domain.InvitationAggregateType, domain.AcceptInviteCommand)
+	handler.SetAggregate(domain.InvitationAggregateType, domain.DeclineInviteCommand)
 
 	// Create the command bus and register the handler for the commands.
 	commandBus := commandbus.NewCommandBus()
-	commandBus.SetHandler(handler, &domain.CreateInvite{})
-	commandBus.SetHandler(handler, &domain.AcceptInvite{})
-	commandBus.SetHandler(handler, &domain.DeclineInvite{})
+	commandBus.SetHandler(handler, domain.CreateInviteCommand)
+	commandBus.SetHandler(handler, domain.AcceptInviteCommand)
+	commandBus.SetHandler(handler, domain.DeclineInviteCommand)
 
 	// Create and register a read model for individual invitations.
 	invitationRepository := readrepository.NewReadRepository()
 	invitationProjector := domain.NewInvitationProjector(invitationRepository)
-	eventBus.AddHandler(invitationProjector, &domain.InviteCreated{})
-	eventBus.AddHandler(invitationProjector, &domain.InviteAccepted{})
-	eventBus.AddHandler(invitationProjector, &domain.InviteDeclined{})
+	eventBus.AddHandler(invitationProjector, domain.InviteCreatedEvent)
+	eventBus.AddHandler(invitationProjector, domain.InviteAcceptedEvent)
+	eventBus.AddHandler(invitationProjector, domain.InviteDeclinedEvent)
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
 	guestListRepository := readrepository.NewReadRepository()
 	guestListProjector := domain.NewGuestListProjector(guestListRepository, eventID)
-	eventBus.AddHandler(guestListProjector, &domain.InviteCreated{})
-	eventBus.AddHandler(guestListProjector, &domain.InviteAccepted{})
-	eventBus.AddHandler(guestListProjector, &domain.InviteDeclined{})
+	eventBus.AddHandler(guestListProjector, domain.InviteCreatedEvent)
+	eventBus.AddHandler(guestListProjector, domain.InviteAcceptedEvent)
+	eventBus.AddHandler(guestListProjector, domain.InviteDeclinedEvent)
 
 	// Issue some invitations and responses.
 	// Note that Athena tries to decline the event, but that is not allowed

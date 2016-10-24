@@ -97,8 +97,8 @@ func EventStoreCommonTests(t *testing.T, store eventhorizon.EventStore) []eventh
 func eventsToString(events []eventhorizon.Event) string {
 	parts := make([]string, len(events))
 	for i, e := range events {
-		parts[i] = e.AggregateType() +
-			":" + e.EventType() +
+		parts[i] = string(e.AggregateType()) +
+			":" + string(e.EventType()) +
 			" (" + e.AggregateID().String() + ")"
 	}
 	return strings.Join(parts, ", ")

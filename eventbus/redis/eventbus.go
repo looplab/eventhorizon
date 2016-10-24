@@ -38,12 +38,12 @@ var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
 // EventBus is an event bus that notifies registered EventHandlers of
 // published events.
 type EventBus struct {
-	handlers  map[string]map[eventhorizon.EventHandler]bool
+	handlers  map[eventhorizon.EventType]map[eventhorizon.EventHandler]bool
 	observers map[eventhorizon.EventObserver]bool
 	prefix    string
 	pool      *redis.Pool
 	conn      *redis.PubSubConn
-	factories map[string]func() eventhorizon.Event
+	factories map[eventhorizon.EventType]func() eventhorizon.Event
 	exit      chan struct{}
 }
 
@@ -77,11 +77,11 @@ func NewEventBus(appID, server, password string) (*EventBus, error) {
 // NewEventBusWithPool creates a EventBus for remote events.
 func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
 	b := &EventBus{
-		handlers:  make(map[string]map[eventhorizon.EventHandler]bool),
+		handlers:  make(map[eventhorizon.EventType]map[eventhorizon.EventHandler]bool),
 		observers: make(map[eventhorizon.EventObserver]bool),
 		prefix:    appID + ":events:",
 		pool:      pool,
-		factories: make(map[string]func() eventhorizon.Event),
+		factories: make(map[eventhorizon.EventType]func() eventhorizon.Event),
 		exit:      make(chan struct{}),
 	}
 
@@ -113,14 +113,14 @@ func (b *EventBus) PublishEvent(event eventhorizon.Event) {
 }
 
 // AddHandler adds a handler for a specific local event.
-func (b *EventBus) AddHandler(handler eventhorizon.EventHandler, event eventhorizon.Event) {
+func (b *EventBus) AddHandler(handler eventhorizon.EventHandler, eventType eventhorizon.EventType) {
 	// Create handler list for new event types.
-	if _, ok := b.handlers[event.EventType()]; !ok {
-		b.handlers[event.EventType()] = make(map[eventhorizon.EventHandler]bool)
+	if _, ok := b.handlers[eventType]; !ok {
+		b.handlers[eventType] = make(map[eventhorizon.EventHandler]bool)
 	}
 
 	// Add handler to event type.
-	b.handlers[event.EventType()][handler] = true
+	b.handlers[eventType][handler] = true
 }
 
 // AddObserver implements the AddObserver method of the EventHandler interface.
@@ -133,12 +133,12 @@ func (b *EventBus) AddObserver(observer eventhorizon.EventObserver) {
 //
 // An example would be:
 //     eventStore.RegisterEventType(&MyEvent{}, func() Event { return &MyEvent{} })
-func (b *EventBus) RegisterEventType(event eventhorizon.Event, factory func() eventhorizon.Event) error {
-	if _, ok := b.factories[event.EventType()]; ok {
+func (b *EventBus) RegisterEventType(eventType eventhorizon.EventType, factory func() eventhorizon.Event) error {
+	if _, ok := b.factories[eventType]; ok {
 		return eventhorizon.ErrHandlerAlreadySet
 	}
 
-	b.factories[event.EventType()] = factory
+	b.factories[eventType] = factory
 
 	return nil
 }
@@ -171,7 +171,7 @@ func (b *EventBus) notify(event eventhorizon.Event) {
 	}
 
 	// Publish all events on their own channel.
-	if _, err = conn.Do("PUBLISH", b.prefix+event.EventType(), data); err != nil {
+	if _, err = conn.Do("PUBLISH", b.prefix+string(event.EventType()), data); err != nil {
 		log.Printf("error: event bus publish: %v\n", err)
 	}
 }
@@ -181,7 +181,7 @@ func (b *EventBus) recv(ready chan struct{}) {
 		switch n := b.conn.Receive().(type) {
 		case redis.PMessage:
 			// Extract the event type from the channel name.
-			eventType := strings.TrimPrefix(n.Channel, b.prefix)
+			eventType := eventhorizon.EventType(strings.TrimPrefix(n.Channel, b.prefix))
 
 			// Get the registered factory function for creating events.
 			f, ok := b.factories[eventType]

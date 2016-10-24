@@ -40,7 +40,7 @@ func TestEventBus(t *testing.T) {
 
 	t.Log("publish event")
 	handler := testutil.NewMockEventHandler("testHandler")
-	bus.AddHandler(handler, &testutil.TestEvent{})
+	bus.AddHandler(handler, testutil.TestEventType)
 	bus.PublishEvent(event1)
 	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1}) {
 		t.Error("the handler events should be correct:", handler.Events)
@@ -50,7 +50,7 @@ func TestEventBus(t *testing.T) {
 	}
 
 	t.Log("publish another event")
-	bus.AddHandler(handler, &testutil.TestEventOther{})
+	bus.AddHandler(handler, testutil.TestEventOtherType)
 	event2 := &testutil.TestEventOther{eventhorizon.NewUUID(), "event2"}
 	bus.PublishEvent(event2)
 	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1, event2}) {

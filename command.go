@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package eventhorizon is a CQRS/ES toolkit.
 package eventhorizon
 
 // Command is a domain command that is sent to a Dispatcher.
@@ -25,6 +24,9 @@ package eventhorizon
 // only "optional" is a valid tag: `eh:"optional"`.
 type Command interface {
 	AggregateID() UUID
-	AggregateType() string
-	CommandType() string
+	AggregateType() AggregateType
+	CommandType() CommandType
 }
+
+// CommandType is the type of a command, used as its unique identifier.
+type CommandType string

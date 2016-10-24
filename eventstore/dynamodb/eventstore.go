@@ -59,7 +59,7 @@ var ErrInvalidEvent = errors.New("invalid event")
 type EventStore struct {
 	service   *dynamodb.DynamoDB
 	config    *EventStoreConfig
-	factories map[string]func() eventhorizon.Event
+	factories map[eventhorizon.EventType]func() eventhorizon.Event
 }
 
 // EventStoreConfig is a config for the DynamoDB event store.
@@ -89,7 +89,7 @@ func NewEventStore(config *EventStoreConfig) (*EventStore, error) {
 	s := &EventStore{
 		service:   service,
 		config:    config,
-		factories: make(map[string]func() eventhorizon.Event),
+		factories: make(map[eventhorizon.EventType]func() eventhorizon.Event),
 	}
 
 	return s, nil
@@ -108,7 +108,7 @@ type eventRecord struct {
 	AggregateID string
 	Version     int
 	Timestamp   time.Time
-	EventType   string
+	EventType   eventhorizon.EventType
 	Payload     map[string]*dynamodb.AttributeValue
 	// Event       eventhorizon.Event
 }
@@ -235,11 +235,11 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 //
 // An example would be:
 //     eventStore.RegisterEventType(&MyEvent{}, func() Event { return &MyEvent{} })
-func (s *EventStore) RegisterEventType(event eventhorizon.Event, factory func() eventhorizon.Event) error {
-	if _, ok := s.factories[event.EventType()]; ok {
+func (s *EventStore) RegisterEventType(eventType eventhorizon.EventType, factory func() eventhorizon.Event) error {
+	if _, ok := s.factories[eventType]; ok {
 		return eventhorizon.ErrHandlerAlreadySet
 	}
-	s.factories[event.EventType()] = factory
+	s.factories[eventType] = factory
 	return nil
 }
 

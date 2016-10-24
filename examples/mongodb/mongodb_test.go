@@ -34,9 +34,9 @@ func Example() {
 		log.Fatalf("could not create event store: %s", err)
 	}
 
-	eventStore.RegisterEventType(&domain.InviteCreated{}, func() eventhorizon.Event { return &domain.InviteCreated{} })
-	eventStore.RegisterEventType(&domain.InviteAccepted{}, func() eventhorizon.Event { return &domain.InviteAccepted{} })
-	eventStore.RegisterEventType(&domain.InviteDeclined{}, func() eventhorizon.Event { return &domain.InviteDeclined{} })
+	eventStore.RegisterEventType(domain.InviteCreatedEvent, func() eventhorizon.Event { return &domain.InviteCreated{} })
+	eventStore.RegisterEventType(domain.InviteAcceptedEvent, func() eventhorizon.Event { return &domain.InviteAccepted{} })
+	eventStore.RegisterEventType(domain.InviteDeclinedEvent, func() eventhorizon.Event { return &domain.InviteDeclined{} })
 
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
@@ -49,7 +49,7 @@ func Example() {
 	}
 
 	// Register an aggregate factory.
-	repository.RegisterAggregate(&domain.InvitationAggregate{},
+	repository.RegisterAggregate(domain.InvitationAggregateType,
 		func(id eventhorizon.UUID) eventhorizon.Aggregate {
 			return &domain.InvitationAggregate{
 				AggregateBase: eventhorizon.NewAggregateBase(id),
@@ -65,15 +65,15 @@ func Example() {
 
 	// Register the domain aggregates with the dispather. Remember to check for
 	// errors here in a real app!
-	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.CreateInvite{})
-	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.AcceptInvite{})
-	handler.SetAggregate(&domain.InvitationAggregate{}, &domain.DeclineInvite{})
+	handler.SetAggregate(domain.InvitationAggregateType, domain.CreateInviteCommand)
+	handler.SetAggregate(domain.InvitationAggregateType, domain.AcceptInviteCommand)
+	handler.SetAggregate(domain.InvitationAggregateType, domain.DeclineInviteCommand)
 
 	// Create the command bus and register the handler for the commands.
 	commandBus := commandbus.NewCommandBus()
-	commandBus.SetHandler(handler, &domain.CreateInvite{})
-	commandBus.SetHandler(handler, &domain.AcceptInvite{})
-	commandBus.SetHandler(handler, &domain.DeclineInvite{})
+	commandBus.SetHandler(handler, domain.CreateInviteCommand)
+	commandBus.SetHandler(handler, domain.AcceptInviteCommand)
+	commandBus.SetHandler(handler, domain.DeclineInviteCommand)
 
 	// Create and register a read model for individual invitations.
 	invitationRepository, err := readrepository.NewReadRepository("localhost", "demo", "invitations")
@@ -82,9 +82,9 @@ func Example() {
 	}
 	invitationRepository.SetModel(func() interface{} { return &domain.Invitation{} })
 	invitationProjector := domain.NewInvitationProjector(invitationRepository)
-	eventBus.AddHandler(invitationProjector, &domain.InviteCreated{})
-	eventBus.AddHandler(invitationProjector, &domain.InviteAccepted{})
-	eventBus.AddHandler(invitationProjector, &domain.InviteDeclined{})
+	eventBus.AddHandler(invitationProjector, domain.InviteCreatedEvent)
+	eventBus.AddHandler(invitationProjector, domain.InviteAcceptedEvent)
+	eventBus.AddHandler(invitationProjector, domain.InviteDeclinedEvent)
 
 	// Create and register a read model for a guest list.
 	eventID := eventhorizon.NewUUID()
@@ -94,9 +94,9 @@ func Example() {
 	}
 	guestListRepository.SetModel(func() interface{} { return &domain.GuestList{} })
 	guestListProjector := domain.NewGuestListProjector(guestListRepository, eventID)
-	eventBus.AddHandler(guestListProjector, &domain.InviteCreated{})
-	eventBus.AddHandler(guestListProjector, &domain.InviteAccepted{})
-	eventBus.AddHandler(guestListProjector, &domain.InviteDeclined{})
+	eventBus.AddHandler(guestListProjector, domain.InviteCreatedEvent)
+	eventBus.AddHandler(guestListProjector, domain.InviteAcceptedEvent)
+	eventBus.AddHandler(guestListProjector, domain.InviteDeclinedEvent)
 
 	// Clear DB collections.
 	eventStore.Clear()

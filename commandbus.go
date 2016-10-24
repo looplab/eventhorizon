@@ -34,5 +34,5 @@ type CommandBus interface {
 	// HandleCommand handles a command on the event bus.
 	HandleCommand(Command) error
 	// SetHandler registers a handler with a command.
-	SetHandler(CommandHandler, Command) error
+	SetHandler(CommandHandler, CommandType) error
 }

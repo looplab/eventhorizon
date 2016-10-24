@@ -17,12 +17,25 @@ package eventhorizon
 
 // Event is a domain event describing a change that has happened to an aggregate.
 //
-// An event name should 1) be in past tense and 2) contain the intent
-// (CustomerMoved vs CustomerAddressCorrected).
+// An event struct and type name should:
+//   1) Be in past tense (CustomerMoved)
+//   2) Contain the intent (CustomerMoved vs CustomerAddressCorrected).
 //
 // The event should contain all the data needed when applying/handling it.
 type Event interface {
+	// AggregateID returns the ID of the aggregate that the event should be
+	// applied to.
 	AggregateID() UUID
-	AggregateType() string
-	EventType() string
+
+	// AggregateType returns the type of the aggregate that the event can be
+	// applied to.
+	// AggregateType() string
+	AggregateType() AggregateType
+
+	// EventType returns the type of the event.
+	// EventType() string
+	EventType() EventType
 }
+
+// EventType is the type of an event, used as its unique identifier.
+type EventType string

@@ -21,13 +21,13 @@ import (
 // CommandBus is a command bus that handles commands with the
 // registered CommandHandlers
 type CommandBus struct {
-	handlers map[string]eventhorizon.CommandHandler
+	handlers map[eventhorizon.CommandType]eventhorizon.CommandHandler
 }
 
 // NewCommandBus creates a CommandBus.
 func NewCommandBus() *CommandBus {
 	b := &CommandBus{
-		handlers: make(map[string]eventhorizon.CommandHandler),
+		handlers: make(map[eventhorizon.CommandType]eventhorizon.CommandHandler),
 	}
 	return b
 }
@@ -41,10 +41,10 @@ func (b *CommandBus) HandleCommand(command eventhorizon.Command) error {
 }
 
 // SetHandler adds a handler for a specific command.
-func (b *CommandBus) SetHandler(handler eventhorizon.CommandHandler, command eventhorizon.Command) error {
-	if _, ok := b.handlers[command.CommandType()]; ok {
+func (b *CommandBus) SetHandler(handler eventhorizon.CommandHandler, commandType eventhorizon.CommandType) error {
+	if _, ok := b.handlers[commandType]; ok {
 		return eventhorizon.ErrHandlerAlreadySet
 	}
-	b.handlers[command.CommandType()] = handler
+	b.handlers[commandType] = handler
 	return nil
 }

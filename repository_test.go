@@ -55,7 +55,7 @@ func TestNewRepository(t *testing.T) {
 
 func TestRepositoryLoadNoEvents(t *testing.T) {
 	repo, _, _ := createRepoAndStore(t)
-	err := repo.RegisterAggregate(&TestAggregate{},
+	err := repo.RegisterAggregate(TestAggregateType,
 		func(id UUID) Aggregate {
 			return &TestAggregate{
 				AggregateBase: NewAggregateBase(id),
@@ -82,7 +82,7 @@ func TestRepositoryLoadNoEvents(t *testing.T) {
 func TestRepositoryLoadEvents(t *testing.T) {
 	repo, store, _ := createRepoAndStore(t)
 
-	err := repo.RegisterAggregate(&TestAggregate{},
+	err := repo.RegisterAggregate(TestAggregateType,
 		func(id UUID) Aggregate {
 			return &TestAggregate{
 				AggregateBase: NewAggregateBase(id),
@@ -119,7 +119,7 @@ func TestRepositoryLoadEvents(t *testing.T) {
 func TestRepositoryLoadEventsMismatchedEventType(t *testing.T) {
 	repo, store, _ := createRepoAndStore(t)
 
-	err := repo.RegisterAggregate(&TestAggregate{},
+	err := repo.RegisterAggregate(TestAggregateType,
 		func(id UUID) Aggregate {
 			return &TestAggregate{
 				AggregateBase: NewAggregateBase(id),
@@ -129,7 +129,7 @@ func TestRepositoryLoadEventsMismatchedEventType(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	err = repo.RegisterAggregate(&TestAggregate2{},
+	err = repo.RegisterAggregate(TestAggregate2Type,
 		func(id UUID) Aggregate {
 			return &TestAggregate2{
 				AggregateBase: NewAggregateBase(id),
@@ -216,7 +216,7 @@ func TestRepositoryAggregateNotRegistered(t *testing.T) {
 func TestRepositoryRegisterAggregateTwice(t *testing.T) {
 	repo, _, _ := createRepoAndStore(t)
 
-	err := repo.RegisterAggregate(&TestAggregate{},
+	err := repo.RegisterAggregate(TestAggregateType,
 		func(id UUID) Aggregate {
 			return &TestAggregate{
 				AggregateBase: NewAggregateBase(id),
@@ -227,7 +227,7 @@ func TestRepositoryRegisterAggregateTwice(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	err = repo.RegisterAggregate(&TestAggregate{},
+	err = repo.RegisterAggregate(TestAggregateType,
 		func(id UUID) Aggregate {
 			return &TestAggregate{
 				AggregateBase: NewAggregateBase(id),

@@ -25,7 +25,8 @@ type Aggregate interface {
 	AggregateID() UUID
 
 	// AggregateType returns the type name of the aggregate.
-	AggregateType() string
+	// AggregateType() string
+	AggregateType() AggregateType
 
 	// Version returns the version of the aggregate.
 	Version() int
@@ -34,20 +35,28 @@ type Aggregate interface {
 	IncrementVersion()
 
 	// HandleCommand handles a command and stores events.
+	// TODO: Rename to Handle()
 	HandleCommand(Command) error
 
 	// ApplyEvent applies an event to the aggregate by setting its values.
-	ApplyEvent(events Event)
+	// TODO: Rename to Apply()
+	ApplyEvent(Event)
 
-	// StoreEvent stores an event until as uncommitted.
+	// StoreEvent stores an event as uncommitted.
+	// TODO: Rename to Store()
 	StoreEvent(Event)
 
 	// GetUncommittedEvents gets all uncommitted events for storing.
+	// TODO: Rename to UncommitedEvents()
 	GetUncommittedEvents() []Event
 
 	// ClearUncommittedEvents clears all uncommitted events after storing.
+	// TODO: Rename to ClearUncommitted()
 	ClearUncommittedEvents()
 }
+
+// AggregateType is the type of an aggregate.
+type AggregateType string
 
 // AggregateBase is a CQRS aggregate base to embed in domain specific aggregates.
 //

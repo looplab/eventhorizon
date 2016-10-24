@@ -21,7 +21,7 @@ import (
 )
 
 // InvitationAggregateType is the type name of the aggregate.
-const InvitationAggregateType = "Invitation"
+const InvitationAggregateType eventhorizon.AggregateType = "Invitation"
 
 // InvitationAggregate is the root aggregate.
 //
@@ -38,7 +38,7 @@ type InvitationAggregate struct {
 }
 
 // AggregateType implements the AggregateType method of the Aggregate interface.
-func (i *InvitationAggregate) AggregateType() string {
+func (i *InvitationAggregate) AggregateType() eventhorizon.AggregateType {
 	return InvitationAggregateType
 }
 
