@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/testutil"
 )
 
@@ -41,7 +41,7 @@ func TestReadRepository(t *testing.T) {
 	}
 
 	t.Log("Save one item")
-	model1 := &testutil.TestModel{eventhorizon.NewUUID(), "model1", time.Now().Round(time.Millisecond)}
+	model1 := &testutil.TestModel{eh.NewUUID(), "model1", time.Now().Round(time.Millisecond)}
 	if err = repo.Save(model1.ID, model1); err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -79,7 +79,7 @@ func TestReadRepository(t *testing.T) {
 	}
 
 	t.Log("Save with another ID")
-	model2 := &testutil.TestModel{eventhorizon.NewUUID(), "model2", time.Now().Round(time.Millisecond)}
+	model2 := &testutil.TestModel{eh.NewUUID(), "model2", time.Now().Round(time.Millisecond)}
 	if err = repo.Save(model2.ID, model2); err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -122,7 +122,7 @@ func TestReadRepository(t *testing.T) {
 
 	t.Log("Remove non-existing item")
 	err = repo.Remove(model1Alt.ID)
-	if err != eventhorizon.ErrModelNotFound {
+	if err != eh.ErrModelNotFound {
 		t.Error("there should be a ErrModelNotFound error:", err)
 	}
 }

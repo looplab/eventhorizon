@@ -25,7 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
 // ErrCouldNotDialDB is when the database could not be dialed.
@@ -59,7 +59,7 @@ var ErrInvalidEvent = errors.New("invalid event")
 type EventStore struct {
 	service   *dynamodb.DynamoDB
 	config    *EventStoreConfig
-	factories map[eventhorizon.EventType]func() eventhorizon.Event
+	factories map[eh.EventType]func() eh.Event
 }
 
 // EventStoreConfig is a config for the DynamoDB event store.
@@ -89,7 +89,7 @@ func NewEventStore(config *EventStoreConfig) (*EventStore, error) {
 	s := &EventStore{
 		service:   service,
 		config:    config,
-		factories: make(map[eventhorizon.EventType]func() eventhorizon.Event),
+		factories: make(map[eh.EventType]func() eh.Event),
 	}
 
 	return s, nil
@@ -108,15 +108,15 @@ type eventRecord struct {
 	AggregateID string
 	Version     int
 	Timestamp   time.Time
-	EventType   eventhorizon.EventType
+	EventType   eh.EventType
 	Payload     map[string]*dynamodb.AttributeValue
-	// Event       eventhorizon.Event
+	// Event       eh.Event
 }
 
 // Save appends all events in the event stream to the database.
-func (s *EventStore) Save(events []eventhorizon.Event) error {
+func (s *EventStore) Save(events []eh.Event) error {
 	if len(events) == 0 {
-		return eventhorizon.ErrNoEventsToAppend
+		return eh.ErrNoEventsToAppend
 	}
 
 	for _, event := range events {
@@ -186,7 +186,7 @@ func (s *EventStore) Save(events []eventhorizon.Event) error {
 
 // Load loads all events for the aggregate id from the database.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
+func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
 	params := &dynamodb.QueryInput{
 		TableName:              aws.String(s.config.Table),
 		KeyConditionExpression: aws.String("AggregateID = :id"),
@@ -201,7 +201,7 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 	}
 
 	if len(resp.Items) == 0 {
-		return []eventhorizon.Event{}, nil
+		return []eh.Event{}, nil
 	}
 
 	eventRecords := make([]*eventRecord, len(resp.Items))
@@ -213,7 +213,7 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 		eventRecords[i] = record
 	}
 
-	events := make([]eventhorizon.Event, len(eventRecords))
+	events := make([]eh.Event, len(eventRecords))
 	for i, record := range eventRecords {
 		f, ok := s.factories[record.EventType]
 		if !ok {
@@ -235,9 +235,9 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 //
 // An example would be:
 //     eventStore.RegisterEventType(&MyEvent{}, func() Event { return &MyEvent{} })
-func (s *EventStore) RegisterEventType(eventType eventhorizon.EventType, factory func() eventhorizon.Event) error {
+func (s *EventStore) RegisterEventType(eventType eh.EventType, factory func() eh.Event) error {
 	if _, ok := s.factories[eventType]; ok {
-		return eventhorizon.ErrHandlerAlreadySet
+		return eh.ErrHandlerAlreadySet
 	}
 	s.factories[eventType] = factory
 	return nil

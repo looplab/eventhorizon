@@ -23,7 +23,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
 // ErrCouldNotMarshalEvent is when an event could not be marshaled into BSON.
@@ -35,8 +35,8 @@ var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
 // EventBus is an event bus that notifies registered EventHandlers of
 // published events.
 type EventBus struct {
-	handlers  map[eventhorizon.EventType]map[eventhorizon.EventHandler]bool
-	observers map[eventhorizon.EventObserver]bool
+	handlers  map[eh.EventType]map[eh.EventHandler]bool
+	observers map[eh.EventObserver]bool
 	prefix    string
 	pool      *redis.Pool
 	conn      *redis.PubSubConn
@@ -73,8 +73,8 @@ func NewEventBus(appID, server, password string) (*EventBus, error) {
 // NewEventBusWithPool creates a EventBus for remote events.
 func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
 	b := &EventBus{
-		handlers:  make(map[eventhorizon.EventType]map[eventhorizon.EventHandler]bool),
-		observers: make(map[eventhorizon.EventObserver]bool),
+		handlers:  make(map[eh.EventType]map[eh.EventHandler]bool),
+		observers: make(map[eh.EventObserver]bool),
 		prefix:    appID + ":events:",
 		pool:      pool,
 		exit:      make(chan struct{}),
@@ -95,7 +95,7 @@ func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
 }
 
 // PublishEvent publishes an event to all handlers capable of handling it.
-func (b *EventBus) PublishEvent(event eventhorizon.Event) {
+func (b *EventBus) PublishEvent(event eh.Event) {
 	// Handle the event if there is a handler registered.
 	if handlers, ok := b.handlers[event.EventType()]; ok {
 		for handler := range handlers {
@@ -108,10 +108,10 @@ func (b *EventBus) PublishEvent(event eventhorizon.Event) {
 }
 
 // AddHandler adds a handler for a specific local event.
-func (b *EventBus) AddHandler(handler eventhorizon.EventHandler, eventType eventhorizon.EventType) {
+func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
 	// Create handler list for new event types.
 	if _, ok := b.handlers[eventType]; !ok {
-		b.handlers[eventType] = make(map[eventhorizon.EventHandler]bool)
+		b.handlers[eventType] = make(map[eh.EventHandler]bool)
 	}
 
 	// Add handler to event type.
@@ -119,7 +119,7 @@ func (b *EventBus) AddHandler(handler eventhorizon.EventHandler, eventType event
 }
 
 // AddObserver implements the AddObserver method of the EventHandler interface.
-func (b *EventBus) AddObserver(observer eventhorizon.EventObserver) {
+func (b *EventBus) AddObserver(observer eh.EventObserver) {
 	b.observers[observer] = true
 }
 
@@ -136,7 +136,7 @@ func (b *EventBus) Close() {
 	}
 }
 
-func (b *EventBus) notify(event eventhorizon.Event) {
+func (b *EventBus) notify(event eh.Event) {
 	conn := b.pool.Get()
 	defer conn.Close()
 	if err := conn.Err(); err != nil {
@@ -161,10 +161,10 @@ func (b *EventBus) recv(ready chan struct{}) {
 		switch n := b.conn.Receive().(type) {
 		case redis.PMessage:
 			// Extract the event type from the channel name.
-			eventType := eventhorizon.EventType(strings.TrimPrefix(n.Channel, b.prefix))
+			eventType := eh.EventType(strings.TrimPrefix(n.Channel, b.prefix))
 
 			// Create an event of the correct type.
-			event, err := eventhorizon.CreateEvent(eventType)
+			event, err := eh.CreateEvent(eventType)
 			if err != nil {
 				log.Printf("error: event bus receive: %v\n", err)
 				continue

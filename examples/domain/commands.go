@@ -15,40 +15,40 @@
 package domain
 
 import (
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
 const (
-	CreateInviteCommand  eventhorizon.CommandType = "CreateInvite"
-	AcceptInviteCommand  eventhorizon.CommandType = "AcceptInvite"
-	DeclineInviteCommand eventhorizon.CommandType = "DeclineInvite"
+	CreateInviteCommand  eh.CommandType = "CreateInvite"
+	AcceptInviteCommand  eh.CommandType = "AcceptInvite"
+	DeclineInviteCommand eh.CommandType = "DeclineInvite"
 )
 
 // CreateInvite is a command for creating invites.
 type CreateInvite struct {
-	InvitationID eventhorizon.UUID
+	InvitationID eh.UUID
 	Name         string
 	Age          int `eh:"optional"`
 }
 
-func (c CreateInvite) AggregateID() eventhorizon.UUID            { return c.InvitationID }
-func (c CreateInvite) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
-func (c CreateInvite) CommandType() eventhorizon.CommandType     { return CreateInviteCommand }
+func (c CreateInvite) AggregateID() eh.UUID            { return c.InvitationID }
+func (c CreateInvite) AggregateType() eh.AggregateType { return InvitationAggregateType }
+func (c CreateInvite) CommandType() eh.CommandType     { return CreateInviteCommand }
 
 // AcceptInvite is a command for accepting invites.
 type AcceptInvite struct {
-	InvitationID eventhorizon.UUID
+	InvitationID eh.UUID
 }
 
-func (c AcceptInvite) AggregateID() eventhorizon.UUID            { return c.InvitationID }
-func (c AcceptInvite) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
-func (c AcceptInvite) CommandType() eventhorizon.CommandType     { return AcceptInviteCommand }
+func (c AcceptInvite) AggregateID() eh.UUID            { return c.InvitationID }
+func (c AcceptInvite) AggregateType() eh.AggregateType { return InvitationAggregateType }
+func (c AcceptInvite) CommandType() eh.CommandType     { return AcceptInviteCommand }
 
 // DeclineInvite is a command for declining invites.
 type DeclineInvite struct {
-	InvitationID eventhorizon.UUID
+	InvitationID eh.UUID
 }
 
-func (c DeclineInvite) AggregateID() eventhorizon.UUID            { return c.InvitationID }
-func (c DeclineInvite) AggregateType() eventhorizon.AggregateType { return InvitationAggregateType }
-func (c DeclineInvite) CommandType() eventhorizon.CommandType     { return DeclineInviteCommand }
+func (c DeclineInvite) AggregateID() eh.UUID            { return c.InvitationID }
+func (c DeclineInvite) AggregateType() eh.AggregateType { return InvitationAggregateType }
+func (c DeclineInvite) CommandType() eh.CommandType     { return DeclineInviteCommand }

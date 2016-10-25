@@ -18,7 +18,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventstore/memory"
 	"github.com/looplab/eventhorizon/testutil"
 )
@@ -49,7 +49,7 @@ func TestEventStore(t *testing.T) {
 	}
 
 	event1 := savedEvents[0]
-	aggregate1events := []eventhorizon.Event{}
+	aggregate1events := []eh.Event{}
 	for _, e := range savedEvents {
 		if e.AggregateID() == event1.AggregateID() {
 			aggregate1events = append(aggregate1events, e)
@@ -57,7 +57,7 @@ func TestEventStore(t *testing.T) {
 	}
 
 	t.Log("save event, version 4")
-	err := store.Save([]eventhorizon.Event{event1})
+	err := store.Save([]eh.Event{event1})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

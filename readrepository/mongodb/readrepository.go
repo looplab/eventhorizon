@@ -19,7 +19,7 @@ import (
 
 	"gopkg.in/mgo.v2"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
 // ErrCouldNotDialDB is when the database could not be dialed.
@@ -74,19 +74,19 @@ func NewReadRepositoryWithSession(session *mgo.Session, database, collection str
 }
 
 // Save saves a read model with id to the repository.
-func (r *ReadRepository) Save(id eventhorizon.UUID, model interface{}) error {
+func (r *ReadRepository) Save(id eh.UUID, model interface{}) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 
 	if _, err := sess.DB(r.db).C(r.collection).UpsertId(id, model); err != nil {
-		return eventhorizon.ErrCouldNotSaveModel
+		return eh.ErrCouldNotSaveModel
 	}
 	return nil
 }
 
 // Find returns one read model with using an id. Returns
 // ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Find(id eventhorizon.UUID) (interface{}, error) {
+func (r *ReadRepository) Find(id eh.UUID) (interface{}, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -97,7 +97,7 @@ func (r *ReadRepository) Find(id eventhorizon.UUID) (interface{}, error) {
 	model := r.factory()
 	err := sess.DB(r.db).C(r.collection).FindId(id).One(model)
 	if err != nil {
-		return nil, eventhorizon.ErrModelNotFound
+		return nil, eh.ErrModelNotFound
 	}
 
 	return model, nil
@@ -161,13 +161,13 @@ func (r *ReadRepository) FindAll() ([]interface{}, error) {
 
 // Remove removes a read model with id from the repository. Returns
 // ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Remove(id eventhorizon.UUID) error {
+func (r *ReadRepository) Remove(id eh.UUID) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 
 	err := sess.DB(r.db).C(r.collection).RemoveId(id)
 	if err != nil {
-		return eventhorizon.ErrModelNotFound
+		return eh.ErrModelNotFound
 	}
 
 	return nil
