@@ -20,8 +20,9 @@ import (
 
 // Invitation is a read model object for an invitation.
 type Invitation struct {
-	ID     eventhorizon.UUID
+	ID     eventhorizon.UUID  `json:"id"         bson:"_id"`
 	Name   string
+	Age    int
 	Status string
 }
 
@@ -50,6 +51,8 @@ func (p *InvitationProjector) HandleEvent(event eventhorizon.Event) {
 		i := &Invitation{
 			ID:   event.InvitationID,
 			Name: event.Name,
+			Age:  event.Age,
+			Status: "created",
 		}
 		p.repository.Save(i.ID, i)
 	case *InviteAccepted:
@@ -67,6 +70,7 @@ func (p *InvitationProjector) HandleEvent(event eventhorizon.Event) {
 
 // GuestList is a read model object for the guest list.
 type GuestList struct {
+	Id     	    eventhorizon.UUID  `json:"id"         bson:"_id"`
 	NumGuests   int
 	NumAccepted int
 	NumDeclined int
@@ -98,7 +102,9 @@ func (p *GuestListProjector) HandleEvent(event eventhorizon.Event) {
 	case *InviteCreated:
 		m, _ := p.repository.Find(p.eventID)
 		if m == nil {
-			m = &GuestList{}
+			m = &GuestList{
+				Id: p.eventID,
+			}
 		}
 		g := m.(*GuestList)
 		p.repository.Save(p.eventID, g)
