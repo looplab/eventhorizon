@@ -25,6 +25,9 @@ func init() {
 	RegisterAggregate(func(id UUID) Aggregate {
 		return &TestAggregate2{AggregateBase: NewAggregateBase(id)}
 	})
+
+	RegisterEvent(func() Event { return &TestEvent{} })
+	RegisterEvent(func() Event { return &TestEvent2{} })
 }
 
 const (

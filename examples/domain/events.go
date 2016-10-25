@@ -18,6 +18,12 @@ import (
 	"github.com/looplab/eventhorizon"
 )
 
+func init() {
+	eventhorizon.RegisterEvent(func() eventhorizon.Event { return &InviteCreated{} })
+	eventhorizon.RegisterEvent(func() eventhorizon.Event { return &InviteAccepted{} })
+	eventhorizon.RegisterEvent(func() eventhorizon.Event { return &InviteDeclined{} })
+}
+
 const (
 	InviteCreatedEvent  eventhorizon.EventType = "InviteCreated"
 	InviteAcceptedEvent                        = "InviteAccepted"

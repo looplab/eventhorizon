@@ -34,10 +34,6 @@ func Example() {
 		log.Fatalf("could not create event store: %s", err)
 	}
 
-	eventStore.RegisterEventType(domain.InviteCreatedEvent, func() eventhorizon.Event { return &domain.InviteCreated{} })
-	eventStore.RegisterEventType(domain.InviteAcceptedEvent, func() eventhorizon.Event { return &domain.InviteAccepted{} })
-	eventStore.RegisterEventType(domain.InviteDeclinedEvent, func() eventhorizon.Event { return &domain.InviteDeclined{} })
-
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
 	eventBus.AddObserver(&domain.Logger{})

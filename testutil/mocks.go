@@ -24,6 +24,9 @@ func init() {
 	eventhorizon.RegisterAggregate(func(id eventhorizon.UUID) eventhorizon.Aggregate {
 		return &TestAggregate{AggregateBase: eventhorizon.NewAggregateBase(id)}
 	})
+
+	eventhorizon.RegisterEvent(func() eventhorizon.Event { return &TestEvent{} })
+	eventhorizon.RegisterEvent(func() eventhorizon.Event { return &TestEventOther{} })
 }
 
 const (

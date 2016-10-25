@@ -41,16 +41,6 @@ func TestEventBus(t *testing.T) {
 		t.Fatal("there should be a bus")
 	}
 	defer bus.Close()
-	if err = bus.RegisterEventType(testutil.TestEventType, func() eventhorizon.Event {
-		return &testutil.TestEvent{}
-	}); err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if err = bus.RegisterEventType(testutil.TestEventOtherType, func() eventhorizon.Event {
-		return &testutil.TestEventOther{}
-	}); err != nil {
-		t.Error("there should be no error:", err)
-	}
 	observer := testutil.NewMockEventObserver()
 	bus.AddObserver(observer)
 
@@ -60,16 +50,6 @@ func TestEventBus(t *testing.T) {
 		t.Fatal("there should be no error:", err)
 	}
 	defer bus2.Close()
-	if err = bus2.RegisterEventType(testutil.TestEventType, func() eventhorizon.Event {
-		return &testutil.TestEvent{}
-	}); err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if err = bus2.RegisterEventType(testutil.TestEventOtherType, func() eventhorizon.Event {
-		return &testutil.TestEventOther{}
-	}); err != nil {
-		t.Error("there should be no error:", err)
-	}
 	observer2 := testutil.NewMockEventObserver()
 	bus2.AddObserver(observer2)
 

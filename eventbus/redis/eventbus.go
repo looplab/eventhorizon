@@ -26,9 +26,6 @@ import (
 	"github.com/looplab/eventhorizon"
 )
 
-// ErrEventNotRegistered is when an event is not registered.
-var ErrEventNotRegistered = errors.New("event not registered")
-
 // ErrCouldNotMarshalEvent is when an event could not be marshaled into BSON.
 var ErrCouldNotMarshalEvent = errors.New("could not marshal event")
 
@@ -43,7 +40,6 @@ type EventBus struct {
 	prefix    string
 	pool      *redis.Pool
 	conn      *redis.PubSubConn
-	factories map[eventhorizon.EventType]func() eventhorizon.Event
 	exit      chan struct{}
 }
 
@@ -81,7 +77,6 @@ func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
 		observers: make(map[eventhorizon.EventObserver]bool),
 		prefix:    appID + ":events:",
 		pool:      pool,
-		factories: make(map[eventhorizon.EventType]func() eventhorizon.Event),
 		exit:      make(chan struct{}),
 	}
 
@@ -128,21 +123,6 @@ func (b *EventBus) AddObserver(observer eventhorizon.EventObserver) {
 	b.observers[observer] = true
 }
 
-// RegisterEventType registers an event factory for a event type. The factory is
-// used to create concrete event types when receiving from subscriptions.
-//
-// An example would be:
-//     eventStore.RegisterEventType(&MyEvent{}, func() Event { return &MyEvent{} })
-func (b *EventBus) RegisterEventType(eventType eventhorizon.EventType, factory func() eventhorizon.Event) error {
-	if _, ok := b.factories[eventType]; ok {
-		return eventhorizon.ErrHandlerAlreadySet
-	}
-
-	b.factories[eventType] = factory
-
-	return nil
-}
-
 // Close exits the recive goroutine by unsubscribing to all channels.
 func (b *EventBus) Close() {
 	err := b.conn.PUnsubscribe()
@@ -183,16 +163,15 @@ func (b *EventBus) recv(ready chan struct{}) {
 			// Extract the event type from the channel name.
 			eventType := eventhorizon.EventType(strings.TrimPrefix(n.Channel, b.prefix))
 
-			// Get the registered factory function for creating events.
-			f, ok := b.factories[eventType]
-			if !ok {
-				log.Printf("error: event bus receive: %v\n", ErrEventNotRegistered)
+			// Create an event of the correct type.
+			event, err := eventhorizon.CreateEvent(eventType)
+			if err != nil {
+				log.Printf("error: event bus receive: %v\n", err)
 				continue
 			}
 
 			// Manually decode the raw BSON event.
 			data := bson.Raw{3, n.Data}
-			event := f()
 			if err := data.Unmarshal(event); err != nil {
 				log.Printf("error: event bus receive: %v\n", ErrCouldNotUnmarshalEvent)
 				continue

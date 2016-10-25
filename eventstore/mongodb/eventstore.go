@@ -53,9 +53,8 @@ var ErrInvalidEvent = errors.New("invalid event")
 
 // EventStore implements an EventStore for MongoDB.
 type EventStore struct {
-	session   *mgo.Session
-	db        string
-	factories map[eventhorizon.EventType]func() eventhorizon.Event
+	session *mgo.Session
+	db      string
 }
 
 // NewEventStore creates a new EventStore.
@@ -78,9 +77,8 @@ func NewEventStoreWithSession(session *mgo.Session, database string) (*EventStor
 	}
 
 	s := &EventStore{
-		factories: make(map[eventhorizon.EventType]func() eventhorizon.Event),
-		session:   session,
-		db:        database,
+		session: session,
+		db:      database,
 	}
 
 	return s, nil
@@ -187,17 +185,17 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 
 	events := make([]eventhorizon.Event, len(aggregate.Events))
 	for i, record := range aggregate.Events {
-		// Get the registered factory function for creating events.
-		f, ok := s.factories[record.EventType]
-		if !ok {
-			return nil, ErrEventNotRegistered
+		// Create an event of the correct type.
+		event, err := eventhorizon.CreateEvent(record.EventType)
+		if err != nil {
+			return nil, err
 		}
 
 		// Manually decode the raw BSON event.
-		event := f()
 		if err := record.Data.Unmarshal(event); err != nil {
 			return nil, ErrCouldNotUnmarshalEvent
 		}
+		var ok bool
 		if events[i], ok = event.(eventhorizon.Event); !ok {
 			return nil, ErrInvalidEvent
 		}
@@ -208,21 +206,6 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 	}
 
 	return events, nil
-}
-
-// RegisterEventType registers an event factory for a event type. The factory is
-// used to create concrete event types when loading from the database.
-//
-// An example would be:
-//     eventStore.RegisterEventType(&MyEvent{}, func() Event { return &MyEvent{} })
-func (s *EventStore) RegisterEventType(eventType eventhorizon.EventType, factory func() eventhorizon.Event) error {
-	if _, ok := s.factories[eventType]; ok {
-		return eventhorizon.ErrHandlerAlreadySet
-	}
-
-	s.factories[eventType] = factory
-
-	return nil
 }
 
 // SetDB sets the database session.
