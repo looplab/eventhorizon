@@ -14,6 +14,12 @@
 
 package eventhorizon
 
+import (
+	"errors"
+	"fmt"
+	"sync"
+)
+
 // Aggregate is an interface representing a versioned data entity created from
 // events. It receives commands and generates evens that are stored.
 //
@@ -110,4 +116,48 @@ func (a *AggregateBase) GetUncommittedEvents() []Event {
 // ClearUncommittedEvents clears all uncommitted events after storing.
 func (a *AggregateBase) ClearUncommittedEvents() {
 	a.uncommittedEvents = []Event{}
+}
+
+var aggregates = make(map[AggregateType]func(UUID) Aggregate)
+var registerAggregateLock sync.RWMutex
+
+// ErrAggregateNotRegistered is when no aggregate factory was registered.
+var ErrAggregateNotRegistered = errors.New("aggregate not registered")
+
+// RegisterAggregate registers an aggregate factory for a type. The factory is
+// used to create concrete aggregate types when loading from the database.
+//
+// An example would be:
+//     RegisterAggregate(func(id UUID) Aggregate { return &MyAggregate{id} })
+func RegisterAggregate(factory func(UUID) Aggregate) {
+	// TODO: Explore the use of reflect/gob for creating concrete types without
+	// a factory func.
+
+	// Check that the created aggregate matches the type registered.
+	aggregate := factory(NewUUID())
+	if aggregate == nil {
+		panic("eventhorizon: created aggregate is nil")
+	}
+	aggregateType := aggregate.AggregateType()
+	if aggregateType == AggregateType("") {
+		panic("eventhorizon: attempt to register empty aggregate type")
+	}
+
+	registerAggregateLock.Lock()
+	defer registerAggregateLock.Unlock()
+	if _, ok := aggregates[aggregateType]; ok {
+		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", aggregateType))
+	}
+	aggregates[aggregateType] = factory
+}
+
+// CreateAggregate creates an aggregate of a type with an ID using the factory
+// registered with RegisterAggregate.
+func CreateAggregate(aggregateType AggregateType, id UUID) (Aggregate, error) {
+	registerAggregateLock.RLock()
+	defer registerAggregateLock.RUnlock()
+	if factory, ok := aggregates[aggregateType]; ok {
+		return factory(id), nil
+	}
+	return nil, ErrAggregateNotRegistered
 }

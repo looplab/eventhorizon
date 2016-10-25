@@ -17,7 +17,7 @@ package trace
 import (
 	"errors"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
 // ErrNoEventStoreDefined is if no event store has been defined.
@@ -25,22 +25,22 @@ var ErrNoEventStoreDefined = errors.New("no event store defined")
 
 // EventStore wraps an EventStore and adds debug tracing.
 type EventStore struct {
-	eventStore eventhorizon.EventStore
+	eventStore eh.EventStore
 	tracing    bool
-	trace      []eventhorizon.Event
+	trace      []eh.Event
 }
 
 // NewEventStore creates a new EventStore.
-func NewEventStore(eventStore eventhorizon.EventStore) *EventStore {
+func NewEventStore(eventStore eh.EventStore) *EventStore {
 	s := &EventStore{
 		eventStore: eventStore,
-		trace:      make([]eventhorizon.Event, 0),
+		trace:      make([]eh.Event, 0),
 	}
 	return s
 }
 
 // Save appends all events to the base store and trace them if enabled.
-func (s *EventStore) Save(events []eventhorizon.Event) error {
+func (s *EventStore) Save(events []eh.Event) error {
 	if s.tracing {
 		s.trace = append(s.trace, events...)
 	}
@@ -54,7 +54,7 @@ func (s *EventStore) Save(events []eventhorizon.Event) error {
 
 // Load loads all events for the aggregate id from the base store.
 // Returns ErrNoEventStoreDefined if no event store could be found.
-func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
+func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
 	if s.eventStore != nil {
 		return s.eventStore.Load(id)
 	}
@@ -73,11 +73,11 @@ func (s *EventStore) StopTracing() {
 }
 
 // GetTrace returns the events that happened during the tracing.
-func (s *EventStore) GetTrace() []eventhorizon.Event {
+func (s *EventStore) GetTrace() []eh.Event {
 	return s.trace
 }
 
 // ResetTrace resets the trace.
 func (s *EventStore) ResetTrace() {
-	s.trace = make([]eventhorizon.Event, 0)
+	s.trace = make([]eh.Event, 0)
 }

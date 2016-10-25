@@ -19,29 +19,29 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
-func EventStoreCommonTests(t *testing.T, store eventhorizon.EventStore) []eventhorizon.Event {
-	savedEvents := []eventhorizon.Event{}
+func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
+	savedEvents := []eh.Event{}
 
 	t.Log("save no events")
-	err := store.Save([]eventhorizon.Event{})
-	if err != eventhorizon.ErrNoEventsToAppend {
+	err := store.Save([]eh.Event{})
+	if err != eh.ErrNoEventsToAppend {
 		t.Error("there shoud be a ErrNoEventsToAppend error:", err)
 	}
 
 	t.Log("save event, version 1")
-	id, _ := eventhorizon.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
+	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
 	event1 := &TestEvent{id, "event1"}
-	err = store.Save([]eventhorizon.Event{event1})
+	err = store.Save([]eh.Event{event1})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	savedEvents = append(savedEvents, event1)
 
 	t.Log("save event, version 2")
-	err = store.Save([]eventhorizon.Event{event1})
+	err = store.Save([]eh.Event{event1})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -49,23 +49,23 @@ func EventStoreCommonTests(t *testing.T, store eventhorizon.EventStore) []eventh
 
 	t.Log("save event, version 3")
 	event2 := &TestEvent{id, "event2"}
-	err = store.Save([]eventhorizon.Event{event2})
+	err = store.Save([]eh.Event{event2})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	savedEvents = append(savedEvents, event2)
 
 	t.Log("save event for another aggregate")
-	id2, _ := eventhorizon.ParseUUID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
+	id2, _ := eh.ParseUUID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
 	event3 := &TestEvent{id2, "event3"}
-	err = store.Save([]eventhorizon.Event{event3})
+	err = store.Save([]eh.Event{event3})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	savedEvents = append(savedEvents, event3)
 
 	t.Log("load events for non-existing aggregate")
-	events, err := store.Load(eventhorizon.NewUUID())
+	events, err := store.Load(eh.NewUUID())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -78,7 +78,7 @@ func EventStoreCommonTests(t *testing.T, store eventhorizon.EventStore) []eventh
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(events, []eventhorizon.Event{event1, event1, event2}) {
+	if !reflect.DeepEqual(events, []eh.Event{event1, event1, event2}) {
 		t.Error("the loaded events should be correct:", eventsToString(events))
 	}
 
@@ -87,14 +87,14 @@ func EventStoreCommonTests(t *testing.T, store eventhorizon.EventStore) []eventh
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(events, []eventhorizon.Event{event3}) {
+	if !reflect.DeepEqual(events, []eh.Event{event3}) {
 		t.Error("the loaded events should be correct:", eventsToString(events))
 	}
 
 	return savedEvents
 }
 
-func eventsToString(events []eventhorizon.Event) string {
+func eventsToString(events []eh.Event) string {
 	parts := make([]string, len(events))
 	for i, e := range events {
 		parts[i] = string(e.AggregateType()) +

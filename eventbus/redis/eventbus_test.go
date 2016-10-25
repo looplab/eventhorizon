@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/testutil"
 )
 
@@ -41,16 +41,6 @@ func TestEventBus(t *testing.T) {
 		t.Fatal("there should be a bus")
 	}
 	defer bus.Close()
-	if err = bus.RegisterEventType(testutil.TestEventType, func() eventhorizon.Event {
-		return &testutil.TestEvent{}
-	}); err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if err = bus.RegisterEventType(testutil.TestEventOtherType, func() eventhorizon.Event {
-		return &testutil.TestEventOther{}
-	}); err != nil {
-		t.Error("there should be no error:", err)
-	}
 	observer := testutil.NewMockEventObserver()
 	bus.AddObserver(observer)
 
@@ -60,28 +50,18 @@ func TestEventBus(t *testing.T) {
 		t.Fatal("there should be no error:", err)
 	}
 	defer bus2.Close()
-	if err = bus2.RegisterEventType(testutil.TestEventType, func() eventhorizon.Event {
-		return &testutil.TestEvent{}
-	}); err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if err = bus2.RegisterEventType(testutil.TestEventOtherType, func() eventhorizon.Event {
-		return &testutil.TestEventOther{}
-	}); err != nil {
-		t.Error("there should be no error:", err)
-	}
 	observer2 := testutil.NewMockEventObserver()
 	bus2.AddObserver(observer2)
 
 	t.Log("publish event without handler")
-	event1 := &testutil.TestEvent{eventhorizon.NewUUID(), "event1"}
+	event1 := &testutil.TestEvent{eh.NewUUID(), "event1"}
 	bus.PublishEvent(event1)
 	<-observer.Recv
-	if !reflect.DeepEqual(observer.Events, []eventhorizon.Event{event1}) {
+	if !reflect.DeepEqual(observer.Events, []eh.Event{event1}) {
 		t.Error("the observed events should be correct:", observer.Events)
 	}
 	<-observer2.Recv
-	if !reflect.DeepEqual(observer2.Events, []eventhorizon.Event{event1}) {
+	if !reflect.DeepEqual(observer2.Events, []eh.Event{event1}) {
 		t.Error("the second observed events should be correct:", observer2.Events)
 	}
 
@@ -89,31 +69,31 @@ func TestEventBus(t *testing.T) {
 	handler := testutil.NewMockEventHandler("testHandler")
 	bus.AddHandler(handler, testutil.TestEventType)
 	bus.PublishEvent(event1)
-	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1}) {
+	if !reflect.DeepEqual(handler.Events, []eh.Event{event1}) {
 		t.Error("the handler events should be correct:", handler.Events)
 	}
 	<-observer.Recv
-	if !reflect.DeepEqual(observer.Events, []eventhorizon.Event{event1, event1}) {
+	if !reflect.DeepEqual(observer.Events, []eh.Event{event1, event1}) {
 		t.Error("the observed events should be correct:", observer.Events)
 	}
 	<-observer2.Recv
-	if !reflect.DeepEqual(observer2.Events, []eventhorizon.Event{event1, event1}) {
+	if !reflect.DeepEqual(observer2.Events, []eh.Event{event1, event1}) {
 		t.Error("the second observed events should be correct:", observer2.Events)
 	}
 
 	t.Log("publish another event")
 	bus.AddHandler(handler, testutil.TestEventOtherType)
-	event2 := &testutil.TestEventOther{eventhorizon.NewUUID(), "event2"}
+	event2 := &testutil.TestEventOther{eh.NewUUID(), "event2"}
 	bus.PublishEvent(event2)
-	if !reflect.DeepEqual(handler.Events, []eventhorizon.Event{event1, event2}) {
+	if !reflect.DeepEqual(handler.Events, []eh.Event{event1, event2}) {
 		t.Error("the handler events should be correct:", handler.Events)
 	}
 	<-observer.Recv
-	if !reflect.DeepEqual(observer.Events, []eventhorizon.Event{event1, event1, event2}) {
+	if !reflect.DeepEqual(observer.Events, []eh.Event{event1, event1, event2}) {
 		t.Error("the observed events should be correct:", observer.Events)
 	}
 	<-observer2.Recv
-	if !reflect.DeepEqual(observer2.Events, []eventhorizon.Event{event1, event1, event2}) {
+	if !reflect.DeepEqual(observer2.Events, []eh.Event{event1, event1, event2}) {
 		t.Error("the second observed events should be correct:", observer2.Events)
 	}
 }

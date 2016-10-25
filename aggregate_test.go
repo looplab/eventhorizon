@@ -91,3 +91,87 @@ func TestAggregateClearUncommittedEvents(t *testing.T) {
 		t.Error("there should be no events stored:", len(events))
 	}
 }
+
+func TestCreateAggregate(t *testing.T) {
+	id := NewUUID()
+	aggregate, err := CreateAggregate(TestAggregateRegisterType, id)
+	if err != ErrAggregateNotRegistered {
+		t.Error("there should be a aggregate not registered error:", err)
+	}
+
+	RegisterAggregate(func(id UUID) Aggregate {
+		return &TestAggregateRegister{AggregateBase: NewAggregateBase(id)}
+	})
+
+	aggregate, err = CreateAggregate(TestAggregateRegisterType, id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	// NOTE: The aggregate type used to register with is another than the aggregate!
+	if aggregate.AggregateType() != TestAggregateRegisterType {
+		t.Error("the aggregate type should be correct:", aggregate.AggregateType())
+	}
+	if aggregate.AggregateID() != id {
+		t.Error("the ID should be correct:", aggregate.AggregateID())
+	}
+}
+
+func TestRegisterAggregateEmptyName(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil || r != "eventhorizon: attempt to register empty aggregate type" {
+			t.Error("there should have been a panic:", r)
+		}
+	}()
+	RegisterAggregate(func(id UUID) Aggregate { return &TestAggregateRegisterEmpty{AggregateBase: NewAggregateBase(id)} })
+}
+
+func TestRegisterAggregateNil(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil || r != "eventhorizon: created aggregate is nil" {
+			t.Error("there should have been a panic:", r)
+		}
+	}()
+	RegisterAggregate(func(id UUID) Aggregate { return nil })
+}
+
+func TestRegisterAggregateTwice(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil || r != "eventhorizon: registering duplicate types for \"TestAggregateRegisterTwice\"" {
+			t.Error("there should have been a panic:", r)
+		}
+	}()
+	RegisterAggregate(func(id UUID) Aggregate {
+		return &TestAggregateRegisterTwice{AggregateBase: NewAggregateBase(id)}
+	})
+	RegisterAggregate(func(id UUID) Aggregate {
+		return &TestAggregateRegisterTwice{AggregateBase: NewAggregateBase(id)}
+	})
+}
+
+const (
+	TestAggregateRegisterType      AggregateType = "TestAggregateRegister"
+	TestAggregateRegisterEmptyType AggregateType = ""
+	TestAggregateRegisterTwiceType AggregateType = "TestAggregateRegisterTwice"
+)
+
+type TestAggregateRegister struct{ *AggregateBase }
+
+func (a *TestAggregateRegister) AggregateType() AggregateType        { return TestAggregateRegisterType }
+func (a *TestAggregateRegister) HandleCommand(command Command) error { return nil }
+func (a *TestAggregateRegister) ApplyEvent(event Event)              {}
+
+type TestAggregateRegisterEmpty struct{ *AggregateBase }
+
+func (a *TestAggregateRegisterEmpty) AggregateType() AggregateType {
+	return TestAggregateRegisterEmptyType
+}
+func (a *TestAggregateRegisterEmpty) HandleCommand(command Command) error { return nil }
+func (a *TestAggregateRegisterEmpty) ApplyEvent(event Event)              {}
+
+type TestAggregateRegisterTwice struct{ *AggregateBase }
+
+func (a *TestAggregateRegisterTwice) AggregateType() AggregateType {
+	return TestAggregateRegisterTwiceType
+}
+func (a *TestAggregateRegisterTwice) HandleCommand(command Command) error { return nil }
+func (a *TestAggregateRegisterTwice) ApplyEvent(event Event)              {}

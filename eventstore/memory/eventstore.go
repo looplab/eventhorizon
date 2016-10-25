@@ -17,24 +17,24 @@ package memory
 import (
 	"time"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
 // EventStore implements EventStore as an in memory structure.
 type EventStore struct {
-	aggregateRecords map[eventhorizon.UUID]*memoryAggregateRecord
+	aggregateRecords map[eh.UUID]*memoryAggregateRecord
 }
 
 // NewEventStore creates a new EventStore.
 func NewEventStore() *EventStore {
 	s := &EventStore{
-		aggregateRecords: make(map[eventhorizon.UUID]*memoryAggregateRecord),
+		aggregateRecords: make(map[eh.UUID]*memoryAggregateRecord),
 	}
 	return s
 }
 
 type memoryAggregateRecord struct {
-	aggregateID eventhorizon.UUID
+	aggregateID eh.UUID
 	version     int
 	events      []*memoryEventRecord
 }
@@ -42,14 +42,14 @@ type memoryAggregateRecord struct {
 type memoryEventRecord struct {
 	version   int
 	timestamp time.Time
-	eventType eventhorizon.EventType
-	event     eventhorizon.Event
+	eventType eh.EventType
+	event     eh.Event
 }
 
 // Save appends all events in the event stream to the memory store.
-func (s *EventStore) Save(events []eventhorizon.Event) error {
+func (s *EventStore) Save(events []eh.Event) error {
 	if len(events) == 0 {
-		return eventhorizon.ErrNoEventsToAppend
+		return eh.ErrNoEventsToAppend
 	}
 
 	for _, event := range events {
@@ -77,14 +77,14 @@ func (s *EventStore) Save(events []eventhorizon.Event) error {
 
 // Load loads all events for the aggregate id from the memory store.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
+func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
 	if a, ok := s.aggregateRecords[id]; ok {
-		events := make([]eventhorizon.Event, len(a.events))
+		events := make([]eh.Event, len(a.events))
 		for i, r := range a.events {
 			events[i] = r.event
 		}
 		return events, nil
 	}
 
-	return []eventhorizon.Event{}, nil
+	return []eh.Event{}, nil
 }

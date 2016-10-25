@@ -17,13 +17,13 @@ package domain
 import (
 	"log"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
 // Logger is a simple event handler for logging all events.
 type Logger struct{}
 
 // Notify implements the HandleEvent method of the EventHandler interface.
-func (l *Logger) Notify(event eventhorizon.Event) {
+func (l *Logger) Notify(event eh.Event) {
 	log.Printf("event: %#v\n", event)
 }

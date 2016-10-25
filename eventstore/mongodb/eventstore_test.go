@@ -18,7 +18,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/testutil"
 )
 
@@ -38,12 +37,6 @@ func TestEventStore(t *testing.T) {
 	}
 	if store == nil {
 		t.Fatal("there should be a store")
-	}
-
-	if err = store.RegisterEventType(testutil.TestEventType, func() eventhorizon.Event {
-		return &testutil.TestEvent{}
-	}); err != nil {
-		t.Fatal("there should be no error:", err)
 	}
 
 	defer store.Close()

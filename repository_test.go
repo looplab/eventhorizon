@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func TestNewRepository(t *testing.T) {
+func TestNewEventSourcingRepository(t *testing.T) {
 	store := &MockEventStore{
 		Events: make([]Event, 0),
 	}
@@ -28,7 +28,7 @@ func TestNewRepository(t *testing.T) {
 		Events: make([]Event, 0),
 	}
 
-	repo, err := NewCallbackRepository(nil, bus)
+	repo, err := NewEventSourcingRepository(nil, bus)
 	if err != ErrInvalidEventStore {
 		t.Error("there should be a ErrInvalidEventStore error:", err)
 	}
@@ -36,7 +36,7 @@ func TestNewRepository(t *testing.T) {
 		t.Error("there should be no repository:", repo)
 	}
 
-	repo, err = NewCallbackRepository(store, nil)
+	repo, err = NewEventSourcingRepository(store, nil)
 	if err != ErrInvalidEventBus {
 		t.Error("there should be a ErrInvalidEventBus error:", err)
 	}
@@ -44,7 +44,7 @@ func TestNewRepository(t *testing.T) {
 		t.Error("there should be no repository:", repo)
 	}
 
-	repo, err = NewCallbackRepository(store, bus)
+	repo, err = NewEventSourcingRepository(store, bus)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -53,18 +53,8 @@ func TestNewRepository(t *testing.T) {
 	}
 }
 
-func TestRepositoryLoadNoEvents(t *testing.T) {
+func TestEventSourcingRepositoryLoadNoEvents(t *testing.T) {
 	repo, _, _ := createRepoAndStore(t)
-	err := repo.RegisterAggregate(TestAggregateType,
-		func(id UUID) Aggregate {
-			return &TestAggregate{
-				AggregateBase: NewAggregateBase(id),
-			}
-		},
-	)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
 
 	id := NewUUID()
 	agg, err := repo.Load("TestAggregate", id)
@@ -79,19 +69,8 @@ func TestRepositoryLoadNoEvents(t *testing.T) {
 	}
 }
 
-func TestRepositoryLoadEvents(t *testing.T) {
+func TestEventSourcingRepositoryLoadEvents(t *testing.T) {
 	repo, store, _ := createRepoAndStore(t)
-
-	err := repo.RegisterAggregate(TestAggregateType,
-		func(id UUID) Aggregate {
-			return &TestAggregate{
-				AggregateBase: NewAggregateBase(id),
-			}
-		},
-	)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
 
 	id := NewUUID()
 	event1 := &TestEvent{id, "event"}
@@ -116,29 +95,8 @@ func TestRepositoryLoadEvents(t *testing.T) {
 	}
 }
 
-func TestRepositoryLoadEventsMismatchedEventType(t *testing.T) {
+func TestEventSourcingRepositoryLoadEventsMismatchedEventType(t *testing.T) {
 	repo, store, _ := createRepoAndStore(t)
-
-	err := repo.RegisterAggregate(TestAggregateType,
-		func(id UUID) Aggregate {
-			return &TestAggregate{
-				AggregateBase: NewAggregateBase(id),
-			}
-		},
-	)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	err = repo.RegisterAggregate(TestAggregate2Type,
-		func(id UUID) Aggregate {
-			return &TestAggregate2{
-				AggregateBase: NewAggregateBase(id),
-			}
-		},
-	)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
 
 	id := NewUUID()
 	event1 := &TestEvent{id, "event"}
@@ -157,7 +115,7 @@ func TestRepositoryLoadEventsMismatchedEventType(t *testing.T) {
 	}
 }
 
-func TestRepositorySaveEvents(t *testing.T) {
+func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 	repo, store, bus := createRepoAndStore(t)
 
 	id := NewUUID()
@@ -200,11 +158,11 @@ func TestRepositorySaveEvents(t *testing.T) {
 	}
 }
 
-func TestRepositoryAggregateNotRegistered(t *testing.T) {
+func TestEventSourcingRepositoryAggregateNotRegistered(t *testing.T) {
 	repo, _, _ := createRepoAndStore(t)
 
 	id := NewUUID()
-	agg, err := repo.Load("TestAggregate", id)
+	agg, err := repo.Load("TestAggregate3", id)
 	if err != ErrAggregateNotRegistered {
 		t.Error("there should be a ErrAggregateNotRegistered error:", err)
 	}
@@ -213,40 +171,14 @@ func TestRepositoryAggregateNotRegistered(t *testing.T) {
 	}
 }
 
-func TestRepositoryRegisterAggregateTwice(t *testing.T) {
-	repo, _, _ := createRepoAndStore(t)
-
-	err := repo.RegisterAggregate(TestAggregateType,
-		func(id UUID) Aggregate {
-			return &TestAggregate{
-				AggregateBase: NewAggregateBase(id),
-			}
-		},
-	)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-
-	err = repo.RegisterAggregate(TestAggregateType,
-		func(id UUID) Aggregate {
-			return &TestAggregate{
-				AggregateBase: NewAggregateBase(id),
-			}
-		},
-	)
-	if err != ErrAggregateAlreadyRegistered {
-		t.Error("there should be a ErrAggregateAlreadyRegistered error:", err)
-	}
-}
-
-func createRepoAndStore(t *testing.T) (*CallbackRepository, *MockEventStore, *MockEventBus) {
+func createRepoAndStore(t *testing.T) (*EventSourcingRepository, *MockEventStore, *MockEventBus) {
 	store := &MockEventStore{
 		Events: make([]Event, 0),
 	}
 	bus := &MockEventBus{
 		Events: make([]Event, 0),
 	}
-	repo, err := NewCallbackRepository(store, bus)
+	repo, err := NewEventSourcingRepository(store, bus)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}

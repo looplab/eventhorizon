@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 	commandbus "github.com/looplab/eventhorizon/commandbus/local"
 	eventbus "github.com/looplab/eventhorizon/eventbus/local"
 	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
@@ -34,31 +34,18 @@ func Example() {
 		log.Fatalf("could not create event store: %s", err)
 	}
 
-	eventStore.RegisterEventType(domain.InviteCreatedEvent, func() eventhorizon.Event { return &domain.InviteCreated{} })
-	eventStore.RegisterEventType(domain.InviteAcceptedEvent, func() eventhorizon.Event { return &domain.InviteAccepted{} })
-	eventStore.RegisterEventType(domain.InviteDeclinedEvent, func() eventhorizon.Event { return &domain.InviteDeclined{} })
-
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
 	eventBus.AddObserver(&domain.Logger{})
 
 	// Create the aggregate repository.
-	repository, err := eventhorizon.NewCallbackRepository(eventStore, eventBus)
+	repository, err := eh.NewEventSourcingRepository(eventStore, eventBus)
 	if err != nil {
 		log.Fatalf("could not create repository: %s", err)
 	}
 
-	// Register an aggregate factory.
-	repository.RegisterAggregate(domain.InvitationAggregateType,
-		func(id eventhorizon.UUID) eventhorizon.Aggregate {
-			return &domain.InvitationAggregate{
-				AggregateBase: eventhorizon.NewAggregateBase(id),
-			}
-		},
-	)
-
 	// Create the aggregate command handler.
-	handler, err := eventhorizon.NewAggregateCommandHandler(repository)
+	handler, err := eh.NewAggregateCommandHandler(repository)
 	if err != nil {
 		log.Fatalf("could not create command handler: %s", err)
 	}
@@ -87,7 +74,7 @@ func Example() {
 	eventBus.AddHandler(invitationProjector, domain.InviteDeclinedEvent)
 
 	// Create and register a read model for a guest list.
-	eventID := eventhorizon.NewUUID()
+	eventID := eh.NewUUID()
 	guestListRepository, err := readrepository.NewReadRepository("localhost", "demo", "guest_lists")
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
@@ -107,7 +94,7 @@ func Example() {
 	// Note that Athena tries to decline the event, but that is not allowed
 	// by the domain logic in InvitationAggregate. The result is that she is
 	// still accepted.
-	athenaID := eventhorizon.NewUUID()
+	athenaID := eh.NewUUID()
 	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
 	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: athenaID})
 	err = commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: athenaID})
@@ -115,11 +102,11 @@ func Example() {
 		log.Printf("error: %s\n", err)
 	}
 
-	hadesID := eventhorizon.NewUUID()
+	hadesID := eh.NewUUID()
 	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: hadesID, Name: "Hades"})
 	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: hadesID})
 
-	zeusID := eventhorizon.NewUUID()
+	zeusID := eh.NewUUID()
 	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
 	commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: zeusID})
 

@@ -21,7 +21,7 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
 // ErrCouldNotDialDB is when the database could not be dialed.
@@ -53,9 +53,8 @@ var ErrInvalidEvent = errors.New("invalid event")
 
 // EventStore implements an EventStore for MongoDB.
 type EventStore struct {
-	session   *mgo.Session
-	db        string
-	factories map[eventhorizon.EventType]func() eventhorizon.Event
+	session *mgo.Session
+	db      string
 }
 
 // NewEventStore creates a new EventStore.
@@ -78,9 +77,8 @@ func NewEventStoreWithSession(session *mgo.Session, database string) (*EventStor
 	}
 
 	s := &EventStore{
-		factories: make(map[eventhorizon.EventType]func() eventhorizon.Event),
-		session:   session,
-		db:        database,
+		session: session,
+		db:      database,
 	}
 
 	return s, nil
@@ -95,17 +93,17 @@ type mongoAggregateRecord struct {
 }
 
 type mongoEventRecord struct {
-	EventType eventhorizon.EventType `bson:"type"`
-	Version   int                    `bson:"version"`
-	Timestamp time.Time              `bson:"timestamp"`
-	Event     eventhorizon.Event     `bson:"-"`
-	Data      bson.Raw               `bson:"data"`
+	EventType eh.EventType `bson:"type"`
+	Version   int          `bson:"version"`
+	Timestamp time.Time    `bson:"timestamp"`
+	Event     eh.Event     `bson:"-"`
+	Data      bson.Raw     `bson:"data"`
 }
 
 // Save appends all events in the event stream to the database.
-func (s *EventStore) Save(events []eventhorizon.Event) error {
+func (s *EventStore) Save(events []eh.Event) error {
 	if len(events) == 0 {
-		return eventhorizon.ErrNoEventsToAppend
+		return eh.ErrNoEventsToAppend
 	}
 
 	sess := s.session.Copy()
@@ -173,32 +171,32 @@ func (s *EventStore) Save(events []eventhorizon.Event) error {
 
 // Load loads all events for the aggregate id from the database.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
+func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
 	sess := s.session.Copy()
 	defer sess.Close()
 
 	var aggregate mongoAggregateRecord
 	err := sess.DB(s.db).C("events").FindId(id.String()).One(&aggregate)
 	if err == mgo.ErrNotFound {
-		return []eventhorizon.Event{}, nil
+		return []eh.Event{}, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	events := make([]eventhorizon.Event, len(aggregate.Events))
+	events := make([]eh.Event, len(aggregate.Events))
 	for i, record := range aggregate.Events {
-		// Get the registered factory function for creating events.
-		f, ok := s.factories[record.EventType]
-		if !ok {
-			return nil, ErrEventNotRegistered
+		// Create an event of the correct type.
+		event, err := eh.CreateEvent(record.EventType)
+		if err != nil {
+			return nil, err
 		}
 
 		// Manually decode the raw BSON event.
-		event := f()
 		if err := record.Data.Unmarshal(event); err != nil {
 			return nil, ErrCouldNotUnmarshalEvent
 		}
-		if events[i], ok = event.(eventhorizon.Event); !ok {
+		var ok bool
+		if events[i], ok = event.(eh.Event); !ok {
 			return nil, ErrInvalidEvent
 		}
 
@@ -208,21 +206,6 @@ func (s *EventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
 	}
 
 	return events, nil
-}
-
-// RegisterEventType registers an event factory for a event type. The factory is
-// used to create concrete event types when loading from the database.
-//
-// An example would be:
-//     eventStore.RegisterEventType(&MyEvent{}, func() Event { return &MyEvent{} })
-func (s *EventStore) RegisterEventType(eventType eventhorizon.EventType, factory func() eventhorizon.Event) error {
-	if _, ok := s.factories[eventType]; ok {
-		return eventhorizon.ErrHandlerAlreadySet
-	}
-
-	s.factories[eventType] = factory
-
-	return nil
 }
 
 // SetDB sets the database session.

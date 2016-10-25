@@ -17,13 +17,13 @@ package mongodb
 import (
 	"testing"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/testutil"
 )
 
 func TestEventStore(t *testing.T) {
 	config := &EventStoreConfig{
-		Table:  "eventhorizonTest-" + eventhorizon.NewUUID().String(),
+		Table:  "eventhorizonTest-" + eh.NewUUID().String(),
 		Region: "eu-west-1",
 	}
 	store, err := NewEventStore(config)
@@ -34,7 +34,7 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	if err = store.RegisterEventType(testutil.TestEventType, func() eventhorizon.Event {
+	if err = store.RegisterEventType(testutil.TestEventType, func() eh.Event {
 		return &testutil.TestEvent{}
 	}); err != nil {
 		t.Fatal("there should be no error:", err)

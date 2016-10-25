@@ -17,11 +17,17 @@ package domain
 import (
 	"fmt"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
+func init() {
+	eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
+		return NewInvitationAggregate(id)
+	})
+}
+
 // InvitationAggregateType is the type name of the aggregate.
-const InvitationAggregateType eventhorizon.AggregateType = "Invitation"
+const InvitationAggregateType eh.AggregateType = "Invitation"
 
 // InvitationAggregate is the root aggregate.
 //
@@ -29,7 +35,7 @@ const InvitationAggregateType eventhorizon.AggregateType = "Invitation"
 // declined, but not both.
 type InvitationAggregate struct {
 	// AggregateBase implements most of the eventhorizon.Aggregate interface.
-	*eventhorizon.AggregateBase
+	*eh.AggregateBase
 
 	name     string
 	age      int
@@ -37,13 +43,20 @@ type InvitationAggregate struct {
 	declined bool
 }
 
+// NewInvitationAggregate creates a new InvitationAggregate with an ID.
+func NewInvitationAggregate(id eh.UUID) *InvitationAggregate {
+	return &InvitationAggregate{
+		AggregateBase: eh.NewAggregateBase(id),
+	}
+}
+
 // AggregateType implements the AggregateType method of the Aggregate interface.
-func (i *InvitationAggregate) AggregateType() eventhorizon.AggregateType {
+func (i *InvitationAggregate) AggregateType() eh.AggregateType {
 	return InvitationAggregateType
 }
 
 // HandleCommand implements the HandleCommand method of the Aggregate interface.
-func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) error {
+func (i *InvitationAggregate) HandleCommand(command eh.Command) error {
 	switch command := command.(type) {
 	case *CreateInvite:
 		i.StoreEvent(&InviteCreated{command.InvitationID, command.Name, command.Age})
@@ -85,7 +98,7 @@ func (i *InvitationAggregate) HandleCommand(command eventhorizon.Command) error 
 }
 
 // ApplyEvent implements the ApplyEvent method of the Aggregate interface.
-func (i *InvitationAggregate) ApplyEvent(event eventhorizon.Event) {
+func (i *InvitationAggregate) ApplyEvent(event eh.Event) {
 	switch event := event.(type) {
 	case *InviteCreated:
 		i.name = event.Name

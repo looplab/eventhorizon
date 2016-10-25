@@ -15,21 +15,21 @@
 package local
 
 import (
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
 // EventBus is an event bus that notifies registered EventHandlers of
 // published events.
 type EventBus struct {
-	handlers  map[eventhorizon.EventType]map[eventhorizon.EventHandler]bool
-	observers map[eventhorizon.EventObserver]bool
+	handlers  map[eh.EventType]map[eh.EventHandler]bool
+	observers map[eh.EventObserver]bool
 }
 
 // NewEventBus creates a EventBus.
 func NewEventBus() *EventBus {
 	b := &EventBus{
-		handlers:  make(map[eventhorizon.EventType]map[eventhorizon.EventHandler]bool),
-		observers: make(map[eventhorizon.EventObserver]bool),
+		handlers:  make(map[eh.EventType]map[eh.EventHandler]bool),
+		observers: make(map[eh.EventObserver]bool),
 	}
 	return b
 }
@@ -37,7 +37,7 @@ func NewEventBus() *EventBus {
 // PublishEvent publishes an event to all handlers capable of handling it.
 // TODO: Put the event in a buffered channel consumed by another goroutine
 // to simulate a distributed bus.
-func (b *EventBus) PublishEvent(event eventhorizon.Event) {
+func (b *EventBus) PublishEvent(event eh.Event) {
 	// Handle the event if there is a handler registered.
 	if handlers, ok := b.handlers[event.EventType()]; ok {
 		for h := range handlers {
@@ -52,10 +52,10 @@ func (b *EventBus) PublishEvent(event eventhorizon.Event) {
 }
 
 // AddHandler implements the AddHandler method of the EventHandler interface.
-func (b *EventBus) AddHandler(handler eventhorizon.EventHandler, eventType eventhorizon.EventType) {
+func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
 	// Create list for new event types.
 	if _, ok := b.handlers[eventType]; !ok {
-		b.handlers[eventType] = make(map[eventhorizon.EventHandler]bool)
+		b.handlers[eventType] = make(map[eh.EventHandler]bool)
 	}
 
 	// Add the handler for the event type.
@@ -63,6 +63,6 @@ func (b *EventBus) AddHandler(handler eventhorizon.EventHandler, eventType event
 }
 
 // AddObserver implements the AddObserver method of the EventHandler interface.
-func (b *EventBus) AddObserver(observer eventhorizon.EventObserver) {
+func (b *EventBus) AddObserver(observer eh.EventObserver) {
 	b.observers[observer] = true
 }

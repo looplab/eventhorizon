@@ -18,15 +18,27 @@ import (
 	"errors"
 )
 
+func init() {
+	RegisterAggregate(func(id UUID) Aggregate {
+		return &TestAggregate{AggregateBase: NewAggregateBase(id)}
+	})
+	RegisterAggregate(func(id UUID) Aggregate {
+		return &TestAggregate2{AggregateBase: NewAggregateBase(id)}
+	})
+
+	RegisterEvent(func() Event { return &TestEvent{} })
+	RegisterEvent(func() Event { return &TestEvent2{} })
+}
+
 const (
 	TestAggregateType  AggregateType = "TestAggregate"
-	TestAggregate2Type               = "TestAggregate2"
+	TestAggregate2Type AggregateType = "TestAggregate2"
 
 	TestEventType  EventType = "TestEvent"
-	TestEvent2Type           = "TestEvent2"
+	TestEvent2Type EventType = "TestEvent2"
 
 	TestCommandType  CommandType = "TestCommand"
-	TestCommand2Type             = "TestCommand2"
+	TestCommand2Type CommandType = "TestCommand2"
 )
 
 type TestAggregate struct {
@@ -94,36 +106,36 @@ type TestCommand struct {
 	Content string
 }
 
-func (t *TestCommand) AggregateID() UUID            { return t.TestID }
-func (t *TestCommand) AggregateType() AggregateType { return TestAggregateType }
-func (t *TestCommand) CommandType() CommandType     { return TestCommandType }
+func (t TestCommand) AggregateID() UUID            { return t.TestID }
+func (t TestCommand) AggregateType() AggregateType { return TestAggregateType }
+func (t TestCommand) CommandType() CommandType     { return TestCommandType }
 
 type TestCommand2 struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestCommand2) AggregateID() UUID            { return t.TestID }
-func (t *TestCommand2) AggregateType() AggregateType { return TestAggregate2Type }
-func (t *TestCommand2) CommandType() CommandType     { return TestCommand2Type }
+func (t TestCommand2) AggregateID() UUID            { return t.TestID }
+func (t TestCommand2) AggregateType() AggregateType { return TestAggregate2Type }
+func (t TestCommand2) CommandType() CommandType     { return TestCommand2Type }
 
 type TestEvent struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestEvent) AggregateID() UUID            { return t.TestID }
-func (t *TestEvent) AggregateType() AggregateType { return TestAggregateType }
-func (t *TestEvent) EventType() EventType         { return TestEventType }
+func (t TestEvent) AggregateID() UUID            { return t.TestID }
+func (t TestEvent) AggregateType() AggregateType { return TestAggregateType }
+func (t TestEvent) EventType() EventType         { return TestEventType }
 
 type TestEvent2 struct {
 	TestID  UUID
 	Content string
 }
 
-func (t *TestEvent2) AggregateID() UUID            { return t.TestID }
-func (t *TestEvent2) AggregateType() AggregateType { return TestAggregate2Type }
-func (t *TestEvent2) EventType() EventType         { return TestEvent2Type }
+func (t TestEvent2) AggregateID() UUID            { return t.TestID }
+func (t TestEvent2) AggregateType() AggregateType { return TestAggregate2Type }
+func (t TestEvent2) EventType() EventType         { return TestEvent2Type }
 
 type MockRepository struct {
 	Aggregates map[UUID]Aggregate

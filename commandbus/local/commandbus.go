@@ -15,35 +15,35 @@
 package local
 
 import (
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
 // CommandBus is a command bus that handles commands with the
 // registered CommandHandlers
 type CommandBus struct {
-	handlers map[eventhorizon.CommandType]eventhorizon.CommandHandler
+	handlers map[eh.CommandType]eh.CommandHandler
 }
 
 // NewCommandBus creates a CommandBus.
 func NewCommandBus() *CommandBus {
 	b := &CommandBus{
-		handlers: make(map[eventhorizon.CommandType]eventhorizon.CommandHandler),
+		handlers: make(map[eh.CommandType]eh.CommandHandler),
 	}
 	return b
 }
 
 // HandleCommand handles a command with a handler capable of handling it.
-func (b *CommandBus) HandleCommand(command eventhorizon.Command) error {
+func (b *CommandBus) HandleCommand(command eh.Command) error {
 	if handler, ok := b.handlers[command.CommandType()]; ok {
 		return handler.HandleCommand(command)
 	}
-	return eventhorizon.ErrHandlerNotFound
+	return eh.ErrHandlerNotFound
 }
 
 // SetHandler adds a handler for a specific command.
-func (b *CommandBus) SetHandler(handler eventhorizon.CommandHandler, commandType eventhorizon.CommandType) error {
+func (b *CommandBus) SetHandler(handler eh.CommandHandler, commandType eh.CommandType) error {
 	if _, ok := b.handlers[commandType]; ok {
-		return eventhorizon.ErrHandlerAlreadySet
+		return eh.ErrHandlerAlreadySet
 	}
 	b.handlers[commandType] = handler
 	return nil

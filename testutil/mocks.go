@@ -17,162 +17,175 @@ package testutil
 import (
 	"time"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 )
 
+func init() {
+	eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
+		return &TestAggregate{AggregateBase: eh.NewAggregateBase(id)}
+	})
+
+	eh.RegisterEvent(func() eh.Event { return &TestEvent{} })
+	eh.RegisterEvent(func() eh.Event { return &TestEventOther{} })
+}
+
 const (
-	TestAggregateType eventhorizon.AggregateType = "TestAggregate"
+	TestAggregateType eh.AggregateType = "TestAggregate"
 
-	TestEventType      eventhorizon.EventType = "TestEvent"
-	TestEventOtherType                        = "TestEventOther"
+	TestEventType      eh.EventType = "TestEvent"
+	TestEventOtherType eh.EventType = "TestEventOther"
 
-	TestCommandType       eventhorizon.CommandType = "TestCommand"
-	TestCommandOtherType                           = "TestCommandOther"
-	TestCommandOther2Type                          = "TestCommandOther2"
+	TestCommandType       eh.CommandType = "TestCommand"
+	TestCommandOtherType  eh.CommandType = "TestCommandOther"
+	TestCommandOther2Type eh.CommandType = "TestCommandOther2"
 )
 
 type EmptyAggregate struct {
 }
 
 type TestAggregate struct {
-	*eventhorizon.AggregateBase
-	Events []eventhorizon.Event
+	*eh.AggregateBase
+	Events []eh.Event
 }
 
-func (t *TestAggregate) AggregateType() eventhorizon.AggregateType {
+func (t *TestAggregate) HandleCommand(command eh.Command) error {
+	return nil
+}
+
+func (t *TestAggregate) AggregateType() eh.AggregateType {
 	return TestAggregateType
 }
 
-func (t *TestAggregate) ApplyEvent(event eventhorizon.Event) {
+func (t *TestAggregate) ApplyEvent(event eh.Event) {
 	t.Events = append(t.Events, event)
 }
 
 type TestEvent struct {
-	TestID  eventhorizon.UUID
+	TestID  eh.UUID
 	Content string
 }
 
-func (t *TestEvent) AggregateID() eventhorizon.UUID            { return t.TestID }
-func (t *TestEvent) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
-func (t *TestEvent) EventType() eventhorizon.EventType         { return TestEventType }
+func (t TestEvent) AggregateID() eh.UUID            { return t.TestID }
+func (t TestEvent) AggregateType() eh.AggregateType { return TestAggregateType }
+func (t TestEvent) EventType() eh.EventType         { return TestEventType }
 
 type TestEventOther struct {
-	TestID  eventhorizon.UUID
+	TestID  eh.UUID
 	Content string
 }
 
-func (t *TestEventOther) AggregateID() eventhorizon.UUID            { return t.TestID }
-func (t *TestEventOther) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
-func (t *TestEventOther) EventType() eventhorizon.EventType         { return TestEventOtherType }
+func (t TestEventOther) AggregateID() eh.UUID            { return t.TestID }
+func (t TestEventOther) AggregateType() eh.AggregateType { return TestAggregateType }
+func (t TestEventOther) EventType() eh.EventType         { return TestEventOtherType }
 
 type TestCommand struct {
-	TestID  eventhorizon.UUID
+	TestID  eh.UUID
 	Content string
 }
 
-func (t *TestCommand) AggregateID() eventhorizon.UUID            { return t.TestID }
-func (t *TestCommand) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
-func (t *TestCommand) CommandType() eventhorizon.CommandType     { return TestCommandType }
+func (t TestCommand) AggregateID() eh.UUID            { return t.TestID }
+func (t TestCommand) AggregateType() eh.AggregateType { return TestAggregateType }
+func (t TestCommand) CommandType() eh.CommandType     { return TestCommandType }
 
 type TestCommandOther struct {
-	TestID  eventhorizon.UUID
+	TestID  eh.UUID
 	Content string
 }
 
-func (t *TestCommandOther) AggregateID() eventhorizon.UUID            { return t.TestID }
-func (t *TestCommandOther) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
-func (t *TestCommandOther) CommandType() eventhorizon.CommandType     { return TestCommandOtherType }
+func (t TestCommandOther) AggregateID() eh.UUID            { return t.TestID }
+func (t TestCommandOther) AggregateType() eh.AggregateType { return TestAggregateType }
+func (t TestCommandOther) CommandType() eh.CommandType     { return TestCommandOtherType }
 
 type TestCommandOther2 struct {
-	TestID  eventhorizon.UUID
+	TestID  eh.UUID
 	Content string
 }
 
-func (t *TestCommandOther2) AggregateID() eventhorizon.UUID            { return t.TestID }
-func (t *TestCommandOther2) AggregateType() eventhorizon.AggregateType { return TestAggregateType }
-func (t *TestCommandOther2) CommandType() eventhorizon.CommandType     { return TestCommandOther2Type }
+func (t TestCommandOther2) AggregateID() eh.UUID            { return t.TestID }
+func (t TestCommandOther2) AggregateType() eh.AggregateType { return TestAggregateType }
+func (t TestCommandOther2) CommandType() eh.CommandType     { return TestCommandOther2Type }
 
 type TestModel struct {
-	ID        eventhorizon.UUID `json:"id"         bson:"_id"`
-	Content   string            `json:"content"    bson:"content"`
-	CreatedAt time.Time         `json:"created_at" bson:"created_at"`
+	ID        eh.UUID   `json:"id"         bson:"_id"`
+	Content   string    `json:"content"    bson:"content"`
+	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 }
 
 type MockEventHandler struct {
-	Type   eventhorizon.EventHandlerType
-	Events []eventhorizon.Event
-	Recv   chan eventhorizon.Event
+	Type   eh.EventHandlerType
+	Events []eh.Event
+	Recv   chan eh.Event
 }
 
-func NewMockEventHandler(handlerType eventhorizon.EventHandlerType) *MockEventHandler {
+func NewMockEventHandler(handlerType eh.EventHandlerType) *MockEventHandler {
 	return &MockEventHandler{
 		handlerType,
-		make([]eventhorizon.Event, 0),
-		make(chan eventhorizon.Event, 10),
+		make([]eh.Event, 0),
+		make(chan eh.Event, 10),
 	}
 }
 
-func (m *MockEventHandler) HandlerType() eventhorizon.EventHandlerType {
+func (m *MockEventHandler) HandlerType() eh.EventHandlerType {
 	return m.Type
 }
 
-func (m *MockEventHandler) HandleEvent(event eventhorizon.Event) {
+func (m *MockEventHandler) HandleEvent(event eh.Event) {
 	m.Events = append(m.Events, event)
 	m.Recv <- event
 }
 
 type MockEventObserver struct {
-	Events []eventhorizon.Event
-	Recv   chan eventhorizon.Event
+	Events []eh.Event
+	Recv   chan eh.Event
 }
 
 func NewMockEventObserver() *MockEventObserver {
 	return &MockEventObserver{
-		make([]eventhorizon.Event, 0),
-		make(chan eventhorizon.Event, 10),
+		make([]eh.Event, 0),
+		make(chan eh.Event, 10),
 	}
 }
 
-func (m *MockEventObserver) Notify(event eventhorizon.Event) {
+func (m *MockEventObserver) Notify(event eh.Event) {
 	m.Events = append(m.Events, event)
 	m.Recv <- event
 }
 
 type MockRepository struct {
-	Aggregates map[eventhorizon.UUID]eventhorizon.Aggregate
+	Aggregates map[eh.UUID]eh.Aggregate
 }
 
-func (m *MockRepository) Load(aggregateType eventhorizon.AggregateType, id eventhorizon.UUID) (eventhorizon.Aggregate, error) {
+func (m *MockRepository) Load(aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
 	return m.Aggregates[id], nil
 }
 
-func (m *MockRepository) Save(aggregate eventhorizon.Aggregate) error {
+func (m *MockRepository) Save(aggregate eh.Aggregate) error {
 	m.Aggregates[aggregate.AggregateID()] = aggregate
 	return nil
 }
 
 type MockEventStore struct {
-	Events []eventhorizon.Event
-	Loaded eventhorizon.UUID
+	Events []eh.Event
+	Loaded eh.UUID
 }
 
-func (m *MockEventStore) Save(events []eventhorizon.Event) error {
+func (m *MockEventStore) Save(events []eh.Event) error {
 	m.Events = append(m.Events, events...)
 	return nil
 }
 
-func (m *MockEventStore) Load(id eventhorizon.UUID) ([]eventhorizon.Event, error) {
+func (m *MockEventStore) Load(id eh.UUID) ([]eh.Event, error) {
 	m.Loaded = id
 	return m.Events, nil
 }
 
 type MockEventBus struct {
-	Events []eventhorizon.Event
+	Events []eh.Event
 }
 
-func (m *MockEventBus) PublishEvent(event eventhorizon.Event) {
+func (m *MockEventBus) PublishEvent(event eh.Event) {
 	m.Events = append(m.Events, event)
 }
 
-func (m *MockEventBus) AddHandler(handler eventhorizon.EventHandler, event eventhorizon.Event) {}
-func (m *MockEventBus) AddObserver(observer eventhorizon.EventObserver)                        {}
+func (m *MockEventBus) AddHandler(handler eh.EventHandler, event eh.Event) {}
+func (m *MockEventBus) AddObserver(observer eh.EventObserver)              {}

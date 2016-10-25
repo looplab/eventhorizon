@@ -17,7 +17,7 @@ package local
 import (
 	"testing"
 
-	"github.com/looplab/eventhorizon"
+	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/testutil"
 )
 
@@ -28,9 +28,9 @@ func TestCommandBus(t *testing.T) {
 	}
 
 	t.Log("handle with no handler")
-	command1 := &testutil.TestCommand{eventhorizon.NewUUID(), "command1"}
+	command1 := &testutil.TestCommand{eh.NewUUID(), "command1"}
 	err := bus.HandleCommand(command1)
-	if err != eventhorizon.ErrHandlerNotFound {
+	if err != eh.ErrHandlerNotFound {
 		t.Error("there should be a ErrHandlerNotFound error:", err)
 	}
 
@@ -51,16 +51,16 @@ func TestCommandBus(t *testing.T) {
 	}
 
 	err = bus.SetHandler(handler, testutil.TestCommandType)
-	if err != eventhorizon.ErrHandlerAlreadySet {
+	if err != eh.ErrHandlerAlreadySet {
 		t.Error("there should be a ErrHandlerAlreadySet error:", err)
 	}
 }
 
 type TestCommandHandler struct {
-	command eventhorizon.Command
+	command eh.Command
 }
 
-func (t *TestCommandHandler) HandleCommand(command eventhorizon.Command) error {
+func (t *TestCommandHandler) HandleCommand(command eh.Command) error {
 	t.command = command
 	return nil
 }
