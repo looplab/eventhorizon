@@ -157,7 +157,7 @@ type MockEventStore struct {
 	err error
 }
 
-func (m *MockEventStore) Save(events []Event) error {
+func (m *MockEventStore) Save(events []Event, originalVersion int) error {
 	if m.err != nil {
 		return m.err
 	}

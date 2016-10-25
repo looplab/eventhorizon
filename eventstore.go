@@ -23,10 +23,8 @@ var ErrNoEventsToAppend = errors.New("no events to append")
 
 // EventStore is an interface for an event sourcing event store.
 type EventStore interface {
-	// Save appends all events in the event stream to the store. It must return
-	// an error if not all events could be saved, preferably with a rewind of
-	// any DB actions performed.
-	Save([]Event) error
+	// Save appends all events in the event stream to the store.
+	Save(events []Event, originalVersion int) error
 
 	// Load loads all events for the aggregate id from the store.
 	Load(UUID) ([]Event, error)

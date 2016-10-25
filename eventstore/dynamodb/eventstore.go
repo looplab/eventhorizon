@@ -28,17 +28,8 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// ErrCouldNotDialDB is when the database could not be dialed.
-var ErrCouldNotDialDB = errors.New("could not dial database")
-
-// ErrNoDBSession is when no database session is set.
-var ErrNoDBSession = errors.New("no database session")
-
 // ErrCouldNotClearDB is when the database could not be cleared.
 var ErrCouldNotClearDB = errors.New("could not clear database")
-
-// ErrEventNotRegistered is when an event is not registered.
-var ErrEventNotRegistered = errors.New("event not registered")
 
 // ErrCouldNotMarshalEvent is when an event could not be marshaled into BSON.
 var ErrCouldNotMarshalEvent = errors.New("could not marshal event")
@@ -57,9 +48,8 @@ var ErrInvalidEvent = errors.New("invalid event")
 
 // EventStore implements an EventStore for MongoDB.
 type EventStore struct {
-	service   *dynamodb.DynamoDB
-	config    *EventStoreConfig
-	factories map[eh.EventType]func() eh.Event
+	service *dynamodb.DynamoDB
+	config  *EventStoreConfig
 }
 
 // EventStoreConfig is a config for the DynamoDB event store.
@@ -87,15 +77,15 @@ func NewEventStore(config *EventStoreConfig) (*EventStore, error) {
 	service := dynamodb.New(session.New(), awsConfig)
 
 	s := &EventStore{
-		service:   service,
-		config:    config,
-		factories: make(map[eh.EventType]func() eh.Event),
+		service: service,
+		config:  config,
 	}
 
 	return s, nil
 }
 
 // TODO: Implement as atomic counter.
+// NOTE: Currently not used.
 type aggregateRecord struct {
 	AggregateID string
 	Version     int
@@ -106,45 +96,27 @@ type aggregateRecord struct {
 
 type eventRecord struct {
 	AggregateID string
+	EventType   eh.EventType
 	Version     int
 	Timestamp   time.Time
-	EventType   eh.EventType
 	Payload     map[string]*dynamodb.AttributeValue
 	// Event       eh.Event
 }
 
 // Save appends all events in the event stream to the database.
-func (s *EventStore) Save(events []eh.Event) error {
+func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return eh.ErrNoEventsToAppend
 	}
 
-	for _, event := range events {
-		// TODO: Implement as atomic counter.
-		// Get an existing aggregate, if any.
-		queryParams := &dynamodb.QueryInput{
-			TableName:              aws.String(s.config.Table),
-			ProjectionExpression:   aws.String("Version"),
-			KeyConditionExpression: aws.String("AggregateID = :id"),
-			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-				":id": {S: aws.String(event.AggregateID().String())},
-			},
-			Limit:            aws.Int64(1),
-			ScanIndexForward: aws.Bool(false),
-			ConsistentRead:   aws.Bool(true),
-		}
-		queryResp, err := s.service.Query(queryParams)
-		if err != nil {
-			return err
-		}
-
-		version := 1
-		if len(queryResp.Items) == 1 {
-			lastRecord := &eventRecord{}
-			if err := dynamodbattribute.UnmarshalMap(queryResp.Items[0], lastRecord); err != nil {
-				return err
-			}
-			version = lastRecord.Version + 1
+	// Build all event records, with incrementing versions starting from the
+	// original aggregate version.
+	eventRecords := make([]*eventRecord, len(events))
+	aggregateID := events[0].AggregateID()
+	for i, event := range events {
+		// Only accept events belonging to the same aggregate.
+		if event.AggregateID() != aggregateID {
+			return ErrInvalidEvent
 		}
 
 		// Marshal event payload.
@@ -155,14 +127,18 @@ func (s *EventStore) Save(events []eh.Event) error {
 		}
 
 		// Create the event record with current version and timestamp.
-		record := &eventRecord{
+		eventRecords[i] = &eventRecord{
 			AggregateID: event.AggregateID().String(),
-			Version:     version,
+			Version:     1 + originalVersion + i,
 			Timestamp:   time.Now(),
 			EventType:   event.EventType(),
 			Payload:     payload,
 		}
+	}
 
+	// TODO: Implement atomic version counter for the aggregate.
+	// TODO: Batch write all events.
+	for _, record := range eventRecords {
 		// Marshal and store the event record.
 		item, err := dynamodbattribute.MarshalMap(record)
 		if err != nil {
@@ -215,11 +191,12 @@ func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
 
 	events := make([]eh.Event, len(eventRecords))
 	for i, record := range eventRecords {
-		f, ok := s.factories[record.EventType]
-		if !ok {
-			return nil, ErrEventNotRegistered
+		// Create an event of the correct type.
+		event, err := eh.CreateEvent(record.EventType)
+		if err != nil {
+			return nil, err
 		}
-		event := f()
+
 		if err := dynamodbattribute.UnmarshalMap(record.Payload, event); err != nil {
 			// 	return nil, ErrCouldNotUnmarshalEvent
 			return nil, err
@@ -228,19 +205,6 @@ func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
 	}
 
 	return events, nil
-}
-
-// RegisterEventType registers an event factory for a event type. The factory is
-// used to create concrete event types when loading from the database.
-//
-// An example would be:
-//     eventStore.RegisterEventType(&MyEvent{}, func() Event { return &MyEvent{} })
-func (s *EventStore) RegisterEventType(eventType eh.EventType, factory func() eh.Event) error {
-	if _, ok := s.factories[eventType]; ok {
-		return eh.ErrHandlerAlreadySet
-	}
-	s.factories[eventType] = factory
-	return nil
 }
 
 // CreateTable creates the table if it is not allready existing and correct.

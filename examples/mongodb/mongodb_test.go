@@ -17,6 +17,7 @@ package mongodb
 import (
 	"fmt"
 	"log"
+	"os"
 
 	eh "github.com/looplab/eventhorizon"
 	commandbus "github.com/looplab/eventhorizon/commandbus/local"
@@ -28,8 +29,17 @@ import (
 )
 
 func Example() {
+	// Support Wercker testing with MongoDB.
+	host := os.Getenv("MONGO_PORT_27017_TCP_ADDR")
+	port := os.Getenv("MONGO_PORT_27017_TCP_PORT")
+
+	url := "localhost"
+	if host != "" && port != "" {
+		url = host + ":" + port
+	}
+
 	// Create the event store.
-	eventStore, err := eventstore.NewEventStore("localhost", "demo")
+	eventStore, err := eventstore.NewEventStore(url, "demo")
 	if err != nil {
 		log.Fatalf("could not create event store: %s", err)
 	}
@@ -63,7 +73,7 @@ func Example() {
 	commandBus.SetHandler(handler, domain.DeclineInviteCommand)
 
 	// Create and register a read model for individual invitations.
-	invitationRepository, err := readrepository.NewReadRepository("localhost", "demo", "invitations")
+	invitationRepository, err := readrepository.NewReadRepository(url, "demo", "invitations")
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
@@ -75,7 +85,7 @@ func Example() {
 
 	// Create and register a read model for a guest list.
 	eventID := eh.NewUUID()
-	guestListRepository, err := readrepository.NewReadRepository("localhost", "demo", "guest_lists")
+	guestListRepository, err := readrepository.NewReadRepository(url, "demo", "guest_lists")
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}
