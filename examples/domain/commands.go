@@ -20,8 +20,8 @@ import (
 
 const (
 	CreateInviteCommand  eventhorizon.CommandType = "CreateInvite"
-	AcceptInviteCommand                           = "AcceptInvite"
-	DeclineInviteCommand                          = "DeclineInvite"
+	AcceptInviteCommand  eventhorizon.CommandType = "AcceptInvite"
+	DeclineInviteCommand eventhorizon.CommandType = "DeclineInvite"
 )
 
 // CreateInvite is a command for creating invites.

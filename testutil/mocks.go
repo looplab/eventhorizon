@@ -33,11 +33,11 @@ const (
 	TestAggregateType eventhorizon.AggregateType = "TestAggregate"
 
 	TestEventType      eventhorizon.EventType = "TestEvent"
-	TestEventOtherType                        = "TestEventOther"
+	TestEventOtherType eventhorizon.EventType = "TestEventOther"
 
 	TestCommandType       eventhorizon.CommandType = "TestCommand"
-	TestCommandOtherType                           = "TestCommandOther"
-	TestCommandOther2Type                          = "TestCommandOther2"
+	TestCommandOtherType  eventhorizon.CommandType = "TestCommandOther"
+	TestCommandOther2Type eventhorizon.CommandType = "TestCommandOther2"
 )
 
 type EmptyAggregate struct {

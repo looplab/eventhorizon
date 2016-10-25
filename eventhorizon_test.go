@@ -32,13 +32,13 @@ func init() {
 
 const (
 	TestAggregateType  AggregateType = "TestAggregate"
-	TestAggregate2Type               = "TestAggregate2"
+	TestAggregate2Type AggregateType = "TestAggregate2"
 
 	TestEventType  EventType = "TestEvent"
-	TestEvent2Type           = "TestEvent2"
+	TestEvent2Type EventType = "TestEvent2"
 
 	TestCommandType  CommandType = "TestCommand"
-	TestCommand2Type             = "TestCommand2"
+	TestCommand2Type CommandType = "TestCommand2"
 )
 
 type TestAggregate struct {

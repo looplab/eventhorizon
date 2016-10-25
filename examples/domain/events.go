@@ -26,8 +26,8 @@ func init() {
 
 const (
 	InviteCreatedEvent  eventhorizon.EventType = "InviteCreated"
-	InviteAcceptedEvent                        = "InviteAccepted"
-	InviteDeclinedEvent                        = "InviteDeclined"
+	InviteAcceptedEvent eventhorizon.EventType = "InviteAccepted"
+	InviteDeclinedEvent eventhorizon.EventType = "InviteDeclined"
 )
 
 // InviteCreated is an event for when an invite has been created.
