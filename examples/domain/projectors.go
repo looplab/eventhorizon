@@ -52,7 +52,7 @@ func (p *InvitationProjector) HandleEvent(event eventhorizon.Event) {
 			ID:   event.InvitationID,
 			Name: event.Name,
 			Age:  event.Age,
-			Status: "pending",
+			Status: "created",
 		}
 		p.repository.Save(i.ID, i)
 	case *InviteAccepted:
@@ -104,9 +104,6 @@ func (p *GuestListProjector) HandleEvent(event eventhorizon.Event) {
 		if m == nil {
 			m = &GuestList{
 				Id: p.eventID,
-				NumGuests: 0,
-				NumAccepted: 0,
-				NumDeclined: 0,
 			}
 		}
 		g := m.(*GuestList)
