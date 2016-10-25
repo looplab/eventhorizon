@@ -16,7 +16,6 @@ package domain
 
 import (
 	"github.com/looplab/eventhorizon"
-	"log"
 )
 
 // Invitation is a read model object for an invitation.
