@@ -47,7 +47,6 @@ func TestEventStore(t *testing.T) {
 	}()
 
 	// Run the actual test suite.
-	_ = testutil.EventStoreCommonTests
-	//testutil.EventStoreCommonTests(t, store)
+	testutil.EventStoreCommonTests(t, store)
 
 }
