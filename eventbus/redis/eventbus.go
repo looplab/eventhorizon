@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/jpillora/backoff"
 	"gopkg.in/mgo.v2/bson"
 
 	eh "github.com/looplab/eventhorizon"
@@ -86,17 +87,20 @@ func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
 		log.Println("eventbus: start receiving")
 		defer log.Println("eventbus: stop receiving")
 
+		// Used for exponential fallback on reconnects.
+		delay := &backoff.Backoff{
+			Max: 5 * time.Minute,
+		}
+
 		for {
-			err := b.recv()
-			if err == nil ||
-				err.Error() == "redigo: get on closed pool" ||
-				err.Error() == "redigo: connection closed" {
-				// Connection was closed by user.
-				return
+			if err := b.recv(delay); err != nil {
+				d := delay.Duration()
+				log.Printf("eventbus: receive failed, retrying in %s: %s", d, err)
+				time.Sleep(d)
+				continue
 			}
 
-			log.Println("eventbus: receive failed, retrying:", err)
-			time.Sleep(1 * time.Second)
+			return
 		}
 	}()
 
@@ -168,7 +172,7 @@ func (b *EventBus) notify(event eh.Event) error {
 	return nil
 }
 
-func (b *EventBus) recv() error {
+func (b *EventBus) recv(delay *backoff.Backoff) error {
 	conn := b.pool.Get()
 	defer conn.Close()
 
@@ -216,6 +220,9 @@ func (b *EventBus) recv() error {
 			}
 		case redis.Subscription:
 			if v.Kind == "psubscribe" {
+				log.Println("eventbus: subscribed to:", v.Channel)
+				delay.Reset()
+
 				// Don't block if no one is receiving and buffer is full.
 				select {
 				case b.ready <- true:
@@ -223,6 +230,12 @@ func (b *EventBus) recv() error {
 				}
 			}
 		case error:
+			// Don' treat connections closed by the user as errors.
+			if v.Error() == "redigo: get on closed pool" ||
+				v.Error() == "redigo: connection closed" {
+				return nil
+			}
+
 			return v
 		}
 	}
