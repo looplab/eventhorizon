@@ -13,7 +13,7 @@ cover:
 docker:
 	-docker run -d --name mongo -p 27017:27017 mongo
 	-docker run -d --name redis -p 6379:6379 redis
-	-docker run -d --name dynamodb -p 8000:8000 deangiberson/aws-dynamodb-local
+	-docker run -d --name dynamodb -p 8000:8000 peopleperhour/dynamodb
 
 clean:
 	-find . -name \.coverprofile -type f -delete
