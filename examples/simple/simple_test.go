@@ -24,19 +24,38 @@ import (
 	eventstore "github.com/looplab/eventhorizon/eventstore/memory"
 	readrepository "github.com/looplab/eventhorizon/readrepository/memory"
 
+	"testing"
+
 	"github.com/looplab/eventhorizon/examples/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func Example() {
-	// Create the event store.
-	eventStore := eventstore.NewEventStore()
+type MongoStoreSuite struct {
+	suite.Suite
+	eventStore *eventstore.EventStore
+}
+
+func (s *MongoStoreSuite) SetupTest() {
+	s.eventStore = eventstore.NewEventStore()
+}
+
+func TestTheSuite(t *testing.T) {
+	suite.Run(t, new(MongoStoreSuite))
+}
+
+func (s *MongoStoreSuite) TestEventStoreNotNil() {
+	assert.NotNil(s.T(), s.eventStore)
+}
+
+func (s *MongoStoreSuite) Test3commands() {
 
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
 	eventBus.AddObserver(&domain.Logger{})
 
 	// Create the aggregate repository.
-	repository, err := eh.NewEventSourcingRepository(eventStore, eventBus)
+	repository, err := eh.NewEventSourcingRepository(s.eventStore, eventBus)
 	if err != nil {
 		log.Fatalf("could not create repository: %s", err)
 	}
@@ -96,6 +115,7 @@ func Example() {
 
 	// Read all invites.
 	invitations, _ := invitationRepository.FindAll()
+	assert.Equal(s.T(), 3, len(invitations))
 	for _, i := range invitations {
 		if i, ok := i.(*domain.Invitation); ok {
 			log.Printf("invitation: %s - %s\n", i.Name, i.Status)
@@ -110,7 +130,12 @@ func Example() {
 			l.NumGuests, l.NumAccepted, l.NumDeclined)
 		fmt.Printf("guest list: %d guests (%d accepted, %d declined)\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined)
+
+		assert.Equal(s.T(), 3, l.NumGuests)
+		assert.Equal(s.T(), 2, l.NumAccepted)
+		assert.Equal(s.T(), 1, l.NumDeclined)
 	}
+
 
 	// Output:
 	// invitation: Athena - accepted
