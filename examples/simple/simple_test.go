@@ -1,3 +1,4 @@
+// +build ignore
 // Copyright (c) 2014 - Max Ekman <max@looplab.se>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");

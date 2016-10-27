@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mongodb
+package dynamodb
 
 import (
 	"errors"
@@ -21,6 +21,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -56,6 +57,9 @@ type EventStore struct {
 type EventStoreConfig struct {
 	Table  string
 	Region string
+	Endpoint string
+	Username string
+	Password string
 }
 
 func (c *EventStoreConfig) provideDefaults() {
@@ -65,14 +69,26 @@ func (c *EventStoreConfig) provideDefaults() {
 	if c.Region == "" {
 		c.Region = "us-east-1"
 	}
+	if c.Endpoint == "" {
+		c.Endpoint = "http://localhost:8000"
+	}
+	if c.Username == "" {
+		c.Username = "doesnotmatter"
+	}
+	if c.Password == "" {
+		c.Password = "doesnotmatter"
+	}
 }
 
 // NewEventStore creates a new EventStore.
 func NewEventStore(config *EventStoreConfig) (*EventStore, error) {
 	config.provideDefaults()
 
+	creds := credentials.NewStaticCredentials(config.Username, config.Password, "")
 	awsConfig := &aws.Config{
+		Credentials: creds,
 		Region: aws.String(config.Region),
+		Endpoint: aws.String(config.Endpoint),
 	}
 	service := dynamodb.New(session.New(), awsConfig)
 

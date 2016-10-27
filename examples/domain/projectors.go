@@ -20,7 +20,7 @@ import (
 
 // Invitation is a read model object for an invitation.
 type Invitation struct {
-	ID     eh.UUID
+	ID     eh.UUID  `json:"id"         bson:"_id"`
 	Name   string
 	Age    int
 	Status string
