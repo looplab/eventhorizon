@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/jpillora/backoff"
 	"gopkg.in/mgo.v2/bson"
 
 	eh "github.com/looplab/eventhorizon"
@@ -40,7 +41,8 @@ type EventBus struct {
 	prefix    string
 	pool      *redis.Pool
 	conn      *redis.PubSubConn
-	exit      chan struct{}
+	ready     chan bool // NOTE: Used for testing only
+	exit      chan bool
 }
 
 // NewEventBus creates a EventBus for remote events.
@@ -77,19 +79,30 @@ func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
 		observers: make(map[eh.EventObserver]bool),
 		prefix:    appID + ":events:",
 		pool:      pool,
-		exit:      make(chan struct{}),
+		ready:     make(chan bool, 1), // Buffered to not block receive loop.
+		exit:      make(chan bool),
 	}
 
-	// Add a patten matching subscription.
-	b.conn = &redis.PubSubConn{Conn: b.pool.Get()}
-	ready := make(chan struct{})
-	go b.recv(ready)
-	err := b.conn.PSubscribe(b.prefix + "*")
-	if err != nil {
-		b.Close()
-		return nil, err
-	}
-	<-ready
+	go func() {
+		log.Println("eventbus: start receiving")
+		defer log.Println("eventbus: stop receiving")
+
+		// Used for exponential fallback on reconnects.
+		delay := &backoff.Backoff{
+			Max: 5 * time.Minute,
+		}
+
+		for {
+			if err := b.recv(delay); err != nil {
+				d := delay.Duration()
+				log.Printf("eventbus: receive failed, retrying in %s: %s", d, err)
+				time.Sleep(d)
+				continue
+			}
+
+			return
+		}
+	}()
 
 	return b, nil
 }
@@ -104,7 +117,9 @@ func (b *EventBus) PublishEvent(event eh.Event) {
 	}
 
 	// Notify all observers about the event.
-	b.notify(event)
+	if err := b.notify(event); err != nil {
+		log.Println("error: event bus publish:", err)
+	}
 }
 
 // AddHandler adds a handler for a specific local event.
@@ -124,56 +139,79 @@ func (b *EventBus) AddObserver(observer eh.EventObserver) {
 }
 
 // Close exits the recive goroutine by unsubscribing to all channels.
-func (b *EventBus) Close() {
-	err := b.conn.PUnsubscribe()
-	if err != nil {
-		log.Printf("error: event bus close: %v\n", err)
+func (b *EventBus) Close() error {
+	select {
+	case b.exit <- true:
+	default:
+		log.Println("eventbus: already closed")
 	}
-	<-b.exit
-	err = b.conn.Close()
-	if err != nil {
-		log.Printf("error: event bus close: %v\n", err)
-	}
+
+	return b.pool.Close()
 }
 
-func (b *EventBus) notify(event eh.Event) {
+func (b *EventBus) notify(event eh.Event) error {
 	conn := b.pool.Get()
 	defer conn.Close()
+
 	if err := conn.Err(); err != nil {
-		log.Printf("error: event bus publish: %v\n", err)
+		return err
 	}
 
-	// Marshal event data.
+	// Marshal event data (using BSON for now).
 	var data []byte
 	var err error
 	if data, err = bson.Marshal(event); err != nil {
-		log.Printf("error: event bus publish: %v\n", ErrCouldNotMarshalEvent)
+		return ErrCouldNotMarshalEvent
 	}
 
 	// Publish all events on their own channel.
 	if _, err = conn.Do("PUBLISH", b.prefix+string(event.EventType()), data); err != nil {
-		log.Printf("error: event bus publish: %v\n", err)
+		return err
 	}
+
+	return nil
 }
 
-func (b *EventBus) recv(ready chan struct{}) {
+func (b *EventBus) recv(delay *backoff.Backoff) error {
+	conn := b.pool.Get()
+	defer conn.Close()
+
+	pubSubConn := &redis.PubSubConn{Conn: conn}
+	go func() {
+		<-b.exit
+		if err := pubSubConn.PUnsubscribe(); err != nil {
+			log.Println("eventbus: could not unsubscribe:", err)
+		}
+		if err := pubSubConn.Close(); err != nil {
+			log.Println("eventbus: could not close connection:", err)
+		}
+	}()
+
+	err := pubSubConn.PSubscribe(b.prefix + "*")
+	if err != nil {
+		return err
+	}
+
 	for {
-		switch n := b.conn.Receive().(type) {
+		switch v := pubSubConn.Receive().(type) {
 		case redis.PMessage:
 			// Extract the event type from the channel name.
-			eventType := eh.EventType(strings.TrimPrefix(n.Channel, b.prefix))
+			eventType := eh.EventType(strings.TrimPrefix(v.Channel, b.prefix))
 
 			// Create an event of the correct type.
 			event, err := eh.CreateEvent(eventType)
 			if err != nil {
-				log.Printf("error: event bus receive: %v\n", err)
+				log.Println("error: event bus receive:", err)
 				continue
 			}
 
 			// Manually decode the raw BSON event.
-			data := bson.Raw{3, n.Data}
+			data := bson.Raw{
+				Kind: 3,
+				Data: v.Data,
+			}
 			if err := data.Unmarshal(event); err != nil {
-				log.Printf("error: event bus receive: %v\n", ErrCouldNotUnmarshalEvent)
+				log.Println("error: event bus receive:", ErrCouldNotUnmarshalEvent)
 				continue
 			}
 
@@ -181,19 +219,24 @@ func (b *EventBus) recv(ready chan struct{}) {
 				o.Notify(event)
 			}
 		case redis.Subscription:
-			switch n.Kind {
-			case "psubscribe":
-				close(ready)
-			case "punsubscribe":
-				if n.Count == 0 {
-					close(b.exit)
-					return
+			if v.Kind == "psubscribe" {
+				log.Println("eventbus: subscribed to:", v.Channel)
+				delay.Reset()
+
+				// Don't block if no one is receiving and buffer is full.
+				select {
+				case b.ready <- true:
+				default:
 				}
 			}
 		case error:
-			log.Printf("error: event bus receive: %v\n", n)
-			close(b.exit)
-			return
+			// Don' treat connections closed by the user as errors.
+			if v.Error() == "redigo: get on closed pool" ||
+				v.Error() == "redigo: connection closed" {
+				return nil
+			}
+
+			return v
 		}
 	}
 }

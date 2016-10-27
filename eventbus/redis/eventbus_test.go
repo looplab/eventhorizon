@@ -18,6 +18,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/testutil"
@@ -53,14 +54,18 @@ func TestEventBus(t *testing.T) {
 	observer2 := testutil.NewMockEventObserver()
 	bus2.AddObserver(observer2)
 
+	// Wait for subscriptions to be ready.
+	<-bus.ready
+	<-bus2.ready
+
 	t.Log("publish event without handler")
 	event1 := &testutil.TestEvent{eh.NewUUID(), "event1"}
 	bus.PublishEvent(event1)
-	<-observer.Recv
+	waitForEvent(t, observer)
 	if !reflect.DeepEqual(observer.Events, []eh.Event{event1}) {
 		t.Error("the observed events should be correct:", observer.Events)
 	}
-	<-observer2.Recv
+	waitForEvent(t, observer2)
 	if !reflect.DeepEqual(observer2.Events, []eh.Event{event1}) {
 		t.Error("the second observed events should be correct:", observer2.Events)
 	}
@@ -72,11 +77,11 @@ func TestEventBus(t *testing.T) {
 	if !reflect.DeepEqual(handler.Events, []eh.Event{event1}) {
 		t.Error("the handler events should be correct:", handler.Events)
 	}
-	<-observer.Recv
+	waitForEvent(t, observer)
 	if !reflect.DeepEqual(observer.Events, []eh.Event{event1, event1}) {
 		t.Error("the observed events should be correct:", observer.Events)
 	}
-	<-observer2.Recv
+	waitForEvent(t, observer2)
 	if !reflect.DeepEqual(observer2.Events, []eh.Event{event1, event1}) {
 		t.Error("the second observed events should be correct:", observer2.Events)
 	}
@@ -88,12 +93,21 @@ func TestEventBus(t *testing.T) {
 	if !reflect.DeepEqual(handler.Events, []eh.Event{event1, event2}) {
 		t.Error("the handler events should be correct:", handler.Events)
 	}
-	<-observer.Recv
+	waitForEvent(t, observer)
 	if !reflect.DeepEqual(observer.Events, []eh.Event{event1, event1, event2}) {
 		t.Error("the observed events should be correct:", observer.Events)
 	}
-	<-observer2.Recv
+	waitForEvent(t, observer2)
 	if !reflect.DeepEqual(observer2.Events, []eh.Event{event1, event1, event2}) {
 		t.Error("the second observed events should be correct:", observer2.Events)
+	}
+}
+
+func waitForEvent(t *testing.T, observer *testutil.MockEventObserver) {
+	select {
+	case <-observer.Recv:
+		return
+	case <-time.After(time.Second):
+		t.Error("did not receive event in time")
 	}
 }
