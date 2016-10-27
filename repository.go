@@ -71,19 +71,19 @@ func (r *EventSourcingRepository) Load(aggregateType AggregateType, id UUID) (Ag
 		return nil, err
 	}
 
-	// Load aggregate events.
-	events, err := r.eventStore.Load(aggregate.AggregateID())
+	// Load aggregate eventRecords.
+	eventRecords, err := r.eventStore.Load(aggregate.AggregateID())
 	if err != nil {
 		return nil, err
 	}
 
 	// Apply the events.
-	for _, event := range events {
-		if event.AggregateType() != aggregateType {
+	for _, eventRecord := range eventRecords {
+		if eventRecord.Event().AggregateType() != aggregateType {
 			return nil, ErrMismatchedEventType
 		}
 
-		aggregate.ApplyEvent(event)
+		aggregate.ApplyEvent(eventRecord.Event())
 		aggregate.IncrementVersion()
 	}
 

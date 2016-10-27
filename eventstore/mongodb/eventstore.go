@@ -16,6 +16,7 @@ package mongodb
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"gopkg.in/mgo.v2"
@@ -82,19 +83,47 @@ func NewEventStoreWithSession(session *mgo.Session, database string) (*EventStor
 }
 
 type aggregateRecord struct {
-	AggregateID string         `bson:"_id"`
-	Version     int            `bson:"version"`
-	Events      []*eventRecord `bson:"events"`
+	AggregateID string          `bson:"_id"`
+	Version     int             `bson:"version"`
+	Events      []dbEventRecord `bson:"events"`
 	// Type        string        `bson:"type"`
 	// Snapshot    bson.Raw      `bson:"snapshot"`
 }
 
-type eventRecord struct {
+// dbEventRecord is the internal event record for the MongoDB event store used
+// to save and load events from the DB.
+type dbEventRecord struct {
 	EventType eh.EventType `bson:"type"`
 	Version   int          `bson:"version"`
 	Timestamp time.Time    `bson:"timestamp"`
 	Event     eh.Event     `bson:"-"`
 	Data      bson.Raw     `bson:"data"`
+}
+
+// eventRecord is the private implementation of the eventhorizon.EventRecord
+// interface for a MongoDB event store.
+type eventRecord struct {
+	dbEventRecord
+}
+
+// Version implements the Version method of the eventhorizon.EventRecord interface.
+func (e eventRecord) Version() int {
+	return e.dbEventRecord.Version
+}
+
+// Timestamp implements the Timestamp method of the eventhorizon.EventRecord interface.
+func (e eventRecord) Timestamp() time.Time {
+	return e.dbEventRecord.Timestamp
+}
+
+// Event implements the Event method of the eventhorizon.EventRecord interface.
+func (e eventRecord) Event() eh.Event {
+	return e.dbEventRecord.Event
+}
+
+// String implements the String method of the eventhorizon.EventRecord interface.
+func (e eventRecord) String() string {
+	return fmt.Sprintf("%s@%d", e.dbEventRecord.EventType, e.dbEventRecord.Version)
 }
 
 // Save appends all events in the event stream to the database.
@@ -108,7 +137,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 	// Build all event records, with incrementing versions starting from the
 	// original aggregate version.
-	eventRecords := make([]*eventRecord, len(events))
+	eventRecords := make([]dbEventRecord, len(events))
 	aggregateID := events[0].AggregateID()
 	for i, event := range events {
 		// Only accept events belonging to the same aggregate.
@@ -123,7 +152,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 		}
 
 		// Create the event record with timestamp.
-		eventRecords[i] = &eventRecord{
+		eventRecords[i] = dbEventRecord{
 			EventType: event.EventType(),
 			Version:   1 + originalVersion + i,
 			Timestamp: time.Now(),
@@ -165,19 +194,19 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the database.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
+func (s *EventStore) Load(id eh.UUID) ([]eh.EventRecord, error) {
 	sess := s.session.Copy()
 	defer sess.Close()
 
 	var aggregate aggregateRecord
 	err := sess.DB(s.db).C("events").FindId(id.String()).One(&aggregate)
 	if err == mgo.ErrNotFound {
-		return []eh.Event{}, nil
+		return []eh.EventRecord{}, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	events := make([]eh.Event, len(aggregate.Events))
+	eventRecords := make([]eh.EventRecord, len(aggregate.Events))
 	for i, record := range aggregate.Events {
 		// Create an event of the correct type.
 		event, err := eh.CreateEvent(record.EventType)
@@ -189,17 +218,15 @@ func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
 		if err := record.Data.Unmarshal(event); err != nil {
 			return nil, ErrCouldNotUnmarshalEvent
 		}
-		var ok bool
-		if events[i], ok = event.(eh.Event); !ok {
-			return nil, ErrInvalidEvent
-		}
 
 		// Set conrcete event and zero out the decoded event.
-		record.Event = events[i]
+		record.Event = event
 		record.Data = bson.Raw{}
+
+		eventRecords[i] = eventRecord{dbEventRecord: record}
 	}
 
-	return events, nil
+	return eventRecords, nil
 }
 
 // SetDB sets the database session.

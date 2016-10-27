@@ -22,7 +22,7 @@ import (
 
 func TestNewEventSourcingRepository(t *testing.T) {
 	store := &MockEventStore{
-		Events: make([]Event, 0),
+		Events: make([]EventRecord, 0),
 	}
 	bus := &MockEventBus{
 		Events: make([]Event, 0),
@@ -137,7 +137,7 @@ func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatal("there should be one event stored:", len(events))
 	}
-	if events[0] != event1 {
+	if events[0].Event() != event1 {
 		t.Error("the stored event should be correct:", events[0])
 	}
 	if len(agg.GetUncommittedEvents()) != 0 {
@@ -173,7 +173,7 @@ func TestEventSourcingRepositoryAggregateNotRegistered(t *testing.T) {
 
 func createRepoAndStore(t *testing.T) (*EventSourcingRepository, *MockEventStore, *MockEventBus) {
 	store := &MockEventStore{
-		Events: make([]Event, 0),
+		Events: make([]EventRecord, 0),
 	}
 	bus := &MockEventBus{
 		Events: make([]Event, 0),

@@ -72,19 +72,20 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	savedEvents = append(savedEvents, event3)
 
 	t.Log("load events for non-existing aggregate")
-	events, err := store.Load(eh.NewUUID())
+	eventRecords, err := store.Load(eh.NewUUID())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if len(events) != 0 {
-		t.Error("there should be no loaded events:", eventsToString(events))
+	if len(eventRecords) != 0 {
+		t.Error("there should be no loaded events:", eventsToString(EventsFromRecord(eventRecords)))
 	}
 
 	t.Log("load events")
-	events, err = store.Load(id)
+	eventRecords, err = store.Load(id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+	events := EventsFromRecord(eventRecords)
 	if !reflect.DeepEqual(events, []eh.Event{
 		event1,                 // Version 1
 		event1,                 // Version 2
@@ -93,17 +94,32 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	}) {
 		t.Error("the loaded events should be correct:", eventsToString(events))
 	}
+	for i, record := range eventRecords {
+		if record.Version() != i+1 {
+			t.Error("the event version should be correct:", record.Event(), record.Version())
+		}
+	}
+	t.Log(eventRecords)
 
 	t.Log("load events for another aggregate")
-	events, err = store.Load(id2)
+	eventRecords, err = store.Load(id2)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+	events = EventsFromRecord(eventRecords)
 	if !reflect.DeepEqual(events, []eh.Event{event3}) {
 		t.Error("the loaded events should be correct:", eventsToString(events))
 	}
 
 	return savedEvents
+}
+
+func EventsFromRecord(eventRecords []eh.EventRecord) []eh.Event {
+	events := make([]eh.Event, len(eventRecords))
+	for i, r := range eventRecords {
+		events[i] = r.Event()
+	}
+	return events
 }
 
 func eventsToString(events []eh.Event) string {
