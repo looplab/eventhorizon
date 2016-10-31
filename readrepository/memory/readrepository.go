@@ -20,27 +20,42 @@ import (
 
 // ReadRepository implements an in memory repository of read models.
 type ReadRepository struct {
-	data map[eh.UUID]interface{}
+	allData  []interface{}
+	dataByID map[eh.UUID]interface{}
 }
 
 // NewReadRepository creates a new ReadRepository.
 func NewReadRepository() *ReadRepository {
 	r := &ReadRepository{
-		data: make(map[eh.UUID]interface{}),
+		allData:  make([]interface{}, 0),
+		dataByID: make(map[eh.UUID]interface{}),
 	}
 	return r
 }
 
 // Save saves a read model with id to the repository.
 func (r *ReadRepository) Save(id eh.UUID, model interface{}) error {
-	r.data[id] = model
+	if oldModel, ok := r.dataByID[id]; ok {
+		// Find index and overwrite in allData.
+		index := r.indexOfModel(oldModel)
+		if index == -1 {
+			return eh.ErrModelNotFound
+		}
+		r.allData[index] = model
+	} else {
+		// Append a new item.
+		r.allData = append(r.allData, model)
+	}
+
+	r.dataByID[id] = model
+
 	return nil
 }
 
 // Find returns one read model with using an id. Returns
 // ErrModelNotFound if no model could be found.
 func (r *ReadRepository) Find(id eh.UUID) (interface{}, error) {
-	if model, ok := r.data[id]; ok {
+	if model, ok := r.dataByID[id]; ok {
 		return model, nil
 	}
 
@@ -49,20 +64,33 @@ func (r *ReadRepository) Find(id eh.UUID) (interface{}, error) {
 
 // FindAll returns all read models in the repository.
 func (r *ReadRepository) FindAll() ([]interface{}, error) {
-	models := []interface{}{}
-	for _, model := range r.data {
-		models = append(models, model)
-	}
-	return models, nil
+	return r.allData, nil
 }
 
 // Remove removes a read model with id from the repository. Returns
 // ErrModelNotFound if no model could be found.
 func (r *ReadRepository) Remove(id eh.UUID) error {
-	if _, ok := r.data[id]; ok {
-		delete(r.data, id)
+	if model, ok := r.dataByID[id]; ok {
+		delete(r.dataByID, id)
+
+		// Find index and remove from allData.
+		index := r.indexOfModel(model)
+		if index == -1 {
+			return eh.ErrModelNotFound
+		}
+		r.allData = append(r.allData[:index], r.allData[index+1:]...)
+
 		return nil
 	}
 
 	return eh.ErrModelNotFound
+}
+
+func (r *ReadRepository) indexOfModel(model interface{}) int {
+	for i, m := range r.allData {
+		if m == model {
+			return i
+		}
+	}
+	return -1
 }
