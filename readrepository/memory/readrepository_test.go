@@ -99,8 +99,7 @@ func TestReadRepository(t *testing.T) {
 	if len(result) != 2 {
 		t.Error("there should be two items:", len(result))
 	}
-	if (!reflect.DeepEqual(result[0], model1Alt) || !reflect.DeepEqual(result[1], model2)) &&
-		(!reflect.DeepEqual(result[0], model2) || !reflect.DeepEqual(result[1], model1Alt)) {
+	if !reflect.DeepEqual(result[0], model1Alt) || !reflect.DeepEqual(result[1], model2) {
 		t.Error("the items should be correct:", result)
 	}
 
