@@ -54,8 +54,9 @@ type EventStore struct {
 
 // EventStoreConfig is a config for the DynamoDB event store.
 type EventStoreConfig struct {
-	Table  string
-	Region string
+	Table    string
+	Region   string
+	Endpoint string
 }
 
 func (c *EventStoreConfig) provideDefaults() {
@@ -72,7 +73,8 @@ func NewEventStore(config *EventStoreConfig) (*EventStore, error) {
 	config.provideDefaults()
 
 	awsConfig := &aws.Config{
-		Region: aws.String(config.Region),
+		Region:   aws.String(config.Region),
+		Endpoint: aws.String(config.Endpoint),
 	}
 	service := dynamodb.New(session.New(), awsConfig)
 
