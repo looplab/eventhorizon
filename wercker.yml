@@ -3,6 +3,7 @@ box: golang
 services:
     - mongo
     - redis
+    # - peopleperhour/dynamodb
 
 dev:
   steps:
@@ -29,7 +30,7 @@ build:
           go build ./...
 
     - script:
-        name: go test
+        name: go test -v -integration ./...
         code: |
           go get -d golang.org/x/tools/cmd/cover
           go get github.com/modocache/gover
