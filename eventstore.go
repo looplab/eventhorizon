@@ -16,6 +16,7 @@ package eventhorizon
 
 import (
 	"errors"
+	"time"
 )
 
 // ErrNoEventsToAppend is when no events are available to append.
@@ -27,7 +28,7 @@ type EventStore interface {
 	Save(events []Event, originalVersion int) error
 
 	// Load loads all events for the aggregate id from the store.
-	Load(UUID) ([]Event, error)
+	Load(UUID) ([]EventRecord, error)
 }
 
 // AggregateRecord is a stored record of an aggregate in form of its events.
@@ -38,10 +39,14 @@ type AggregateRecord interface {
 	EventRecords() []EventRecord
 }
 
-// EventRecord is a single event record with timestamp
-// NOTE: Not currently used.
+// EventRecord is a single event with metadata such as the type and timestamp.
 type EventRecord interface {
-	Type() string
+	// Version of the aggregate for this event (after it has been applied).
 	Version() int
-	Events() []Event
+	// Timestamp of when the event was created.
+	Timestamp() time.Time
+	// The specific event and its data.
+	Event() Event
+	// A string representation of the event.
+	String() string
 }

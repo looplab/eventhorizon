@@ -68,10 +68,11 @@ func TestEventStore(t *testing.T) {
 	aggregate1events = append(aggregate1events, event1)
 
 	t.Log("load events without tracing")
-	events, err := store.Load(event1.AggregateID())
+	eventRecords, err := store.Load(event1.AggregateID())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+	events := testutil.EventsFromRecord(eventRecords)
 	if !reflect.DeepEqual(events, aggregate1events) {
 		t.Error("the loaded events should be correct:", events)
 	}

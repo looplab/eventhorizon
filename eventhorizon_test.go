@@ -16,6 +16,7 @@ package eventhorizon
 
 import (
 	"errors"
+	"time"
 )
 
 func init() {
@@ -150,8 +151,28 @@ func (m *MockRepository) Save(aggregate Aggregate) error {
 	return nil
 }
 
+type MockEventRecord struct {
+	event Event
+}
+
+func (e MockEventRecord) Version() int {
+	return 0
+}
+
+func (e MockEventRecord) Timestamp() time.Time {
+	return time.Time{}
+}
+
+func (e MockEventRecord) Event() Event {
+	return e.event
+}
+
+func (e MockEventRecord) String() string {
+	return string(e.event.EventType())
+}
+
 type MockEventStore struct {
-	Events []Event
+	Events []EventRecord
 	Loaded UUID
 	// Used to simulate errors in the store.
 	err error
@@ -161,11 +182,13 @@ func (m *MockEventStore) Save(events []Event, originalVersion int) error {
 	if m.err != nil {
 		return m.err
 	}
-	m.Events = append(m.Events, events...)
+	for _, event := range events {
+		m.Events = append(m.Events, MockEventRecord{event: event})
+	}
 	return nil
 }
 
-func (m *MockEventStore) Load(id UUID) ([]Event, error) {
+func (m *MockEventStore) Load(id UUID) ([]EventRecord, error) {
 	if m.err != nil {
 		return nil, m.err
 	}

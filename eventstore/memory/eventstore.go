@@ -16,6 +16,7 @@ package memory
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
@@ -43,16 +44,42 @@ func NewEventStore() *EventStore {
 type aggregateRecord struct {
 	AggregateID eh.UUID
 	Version     int
-	Events      []eventRecord
-	// Type        string        `bson:"type"`
-	// Snapshot    bson.Raw      `bson:"snapshot"`
+	Events      []dbEventRecord
+	// Snapshot    eh.Aggregate
 }
 
-type eventRecord struct {
+// dbEventRecord is the internal event record for the memory event store.
+type dbEventRecord struct {
 	EventType eh.EventType
 	Version   int
 	Timestamp time.Time
 	Event     eh.Event
+}
+
+// eventRecord is the private implementation of the eventhorizon.EventRecord
+// interface for a memory event store.
+type eventRecord struct {
+	dbEventRecord
+}
+
+// Version implements the Version method of the eventhorizon.EventRecord interface.
+func (e eventRecord) Version() int {
+	return e.dbEventRecord.Version
+}
+
+// Timestamp implements the Timestamp method of the eventhorizon.EventRecord interface.
+func (e eventRecord) Timestamp() time.Time {
+	return e.dbEventRecord.Timestamp
+}
+
+// Event implements the Event method of the eventhorizon.EventRecord interface.
+func (e eventRecord) Event() eh.Event {
+	return e.dbEventRecord.Event
+}
+
+// String implements the String method of the eventhorizon.EventRecord interface.
+func (e eventRecord) String() string {
+	return fmt.Sprintf("%s@%d", e.dbEventRecord.EventType, e.dbEventRecord.Version)
 }
 
 // Save appends all events in the event stream to the memory store.
@@ -63,7 +90,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 	// Build all event records, with incrementing versions starting from the
 	// original aggregate version.
-	eventRecords := make([]eventRecord, len(events))
+	eventRecords := make([]dbEventRecord, len(events))
 	aggregateID := events[0].AggregateID()
 	for i, event := range events {
 		// Only accept events belonging to the same aggregate.
@@ -72,8 +99,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 		}
 
 		// Create the event record with timestamp.
-		eventRecords[i] = eventRecord{
-			EventType: event.EventType(),
+		eventRecords[i] = dbEventRecord{
 			Version:   1 + originalVersion + i,
 			Timestamp: time.Now(),
 			Event:     event,
@@ -107,14 +133,16 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the memory store.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
-	if aggregate, ok := s.aggregateRecords[id]; ok {
-		events := make([]eh.Event, len(aggregate.Events))
-		for i, r := range aggregate.Events {
-			events[i] = r.Event
-		}
-		return events, nil
+func (s *EventStore) Load(id eh.UUID) ([]eh.EventRecord, error) {
+	aggregate, ok := s.aggregateRecords[id]
+	if !ok {
+		return []eh.EventRecord{}, nil
 	}
 
-	return []eh.Event{}, nil
+	eventRecords := make([]eh.EventRecord, len(aggregate.Events))
+	for i, record := range aggregate.Events {
+		eventRecords[i] = eventRecord{dbEventRecord: record}
+	}
+
+	return eventRecords, nil
 }

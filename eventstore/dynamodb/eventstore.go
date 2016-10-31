@@ -16,6 +16,7 @@ package mongodb
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -89,18 +90,46 @@ func NewEventStore(config *EventStoreConfig) (*EventStore, error) {
 type aggregateRecord struct {
 	AggregateID string
 	Version     int
-	Events      []*eventRecord
+	Events      []dbEventRecord
 	// AggregateType        string
 	// Snapshot    bson.Raw
 }
 
-type eventRecord struct {
+// dbEventRecord is the internal event record for the DynamoDB event store used
+// to save and load events from the DB.
+type dbEventRecord struct {
 	AggregateID string
 	EventType   eh.EventType
 	Version     int
 	Timestamp   time.Time
 	Payload     map[string]*dynamodb.AttributeValue
-	// Event       eh.Event
+	Event       eh.Event
+}
+
+// eventRecord is the private implementation of the eventhorizon.EventRecord
+// interface for a DynamoDB event store.
+type eventRecord struct {
+	dbEventRecord
+}
+
+// Version implements the Version method of the eventhorizon.EventRecord interface.
+func (e eventRecord) Version() int {
+	return e.dbEventRecord.Version
+}
+
+// Timestamp implements the Timestamp method of the eventhorizon.EventRecord interface.
+func (e eventRecord) Timestamp() time.Time {
+	return e.dbEventRecord.Timestamp
+}
+
+// Event implements the Event method of the eventhorizon.EventRecord interface.
+func (e eventRecord) Event() eh.Event {
+	return e.dbEventRecord.Event
+}
+
+// String implements the String method of the eventhorizon.EventRecord interface.
+func (e eventRecord) String() string {
+	return fmt.Sprintf("%s@%d", e.dbEventRecord.EventType, e.dbEventRecord.Version)
 }
 
 // Save appends all events in the event stream to the database.
@@ -111,7 +140,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 	// Build all event records, with incrementing versions starting from the
 	// original aggregate version.
-	eventRecords := make([]*eventRecord, len(events))
+	eventRecords := make([]dbEventRecord, len(events))
 	aggregateID := events[0].AggregateID()
 	for i, event := range events {
 		// Only accept events belonging to the same aggregate.
@@ -127,7 +156,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 		}
 
 		// Create the event record with current version and timestamp.
-		eventRecords[i] = &eventRecord{
+		eventRecords[i] = dbEventRecord{
 			AggregateID: event.AggregateID().String(),
 			Version:     1 + originalVersion + i,
 			Timestamp:   time.Now(),
@@ -162,7 +191,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the database.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
+func (s *EventStore) Load(id eh.UUID) ([]eh.EventRecord, error) {
 	params := &dynamodb.QueryInput{
 		TableName:              aws.String(s.config.Table),
 		KeyConditionExpression: aws.String("AggregateID = :id"),
@@ -177,20 +206,20 @@ func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
 	}
 
 	if len(resp.Items) == 0 {
-		return []eh.Event{}, nil
+		return []eh.EventRecord{}, nil
 	}
 
-	eventRecords := make([]*eventRecord, len(resp.Items))
+	dbEventRecords := make([]dbEventRecord, len(resp.Items))
 	for i, item := range resp.Items {
-		record := &eventRecord{}
-		if err := dynamodbattribute.UnmarshalMap(item, record); err != nil {
+		record := dbEventRecord{}
+		if err := dynamodbattribute.UnmarshalMap(item, &record); err != nil {
 			return nil, err
 		}
-		eventRecords[i] = record
+		dbEventRecords[i] = record
 	}
 
-	events := make([]eh.Event, len(eventRecords))
-	for i, record := range eventRecords {
+	eventRecords := make([]eh.EventRecord, len(dbEventRecords))
+	for i, record := range dbEventRecords {
 		// Create an event of the correct type.
 		event, err := eh.CreateEvent(record.EventType)
 		if err != nil {
@@ -201,10 +230,17 @@ func (s *EventStore) Load(id eh.UUID) ([]eh.Event, error) {
 			// 	return nil, ErrCouldNotUnmarshalEvent
 			return nil, err
 		}
-		events[i] = event
+
+		// events[i] = event
+
+		// Set conrcete event and zero out the decoded event.
+		record.Event = event
+		record.Payload = nil
+
+		eventRecords[i] = eventRecord{dbEventRecord: record}
 	}
 
-	return events, nil
+	return eventRecords, nil
 }
 
 // CreateTable creates the table if it is not allready existing and correct.
