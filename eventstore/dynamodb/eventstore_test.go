@@ -33,8 +33,8 @@ func TestEventStore(t *testing.T) {
 	if !*integration {
 		// Support Wercker testing with local DynamoDB.
 		// NOTE: Not yet working.
-		// host := os.Getenv("DYNAMODB_PORT_8000_TCP_ADDR")
-		// port := os.Getenv("DYNAMODB_PORT_8000_TCP_PORT")
+		host := os.Getenv("DYNAMODB_PORT_8000_TCP_ADDR")
+		port := os.Getenv("DYNAMODB_PORT_8000_TCP_PORT")
 
 		// Local DynamoDB testing using Docker.
 		url = "http://localhost:8000"
