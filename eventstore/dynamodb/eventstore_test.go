@@ -15,34 +15,13 @@
 package dynamodb
 
 import (
-	"flag"
-	"os"
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/testutil"
 )
 
-var (
-	integration = flag.Bool("integration", false, "run integration tests")
-)
-
-func TestEventStore(t *testing.T) {
-	// Run non-integration tests towards a local DynamoDB in Docker.
-	url := ""
-	if !*integration {
-		// Support Wercker testing with local DynamoDB.
-		// NOTE: Not yet working.
-		host := os.Getenv("DYNAMODB_PORT_8000_TCP_ADDR")
-		port := os.Getenv("DYNAMODB_PORT_8000_TCP_PORT")
-
-		// Local DynamoDB testing using Docker.
-		url = "http://localhost:8000"
-		if host != "" && port != "" {
-			url = host + ":" + port
-		}
-	}
-
+func DoTestEventStore(t *testing.T, url string) {
 	config := &EventStoreConfig{
 		Table:    "eventhorizonTest-" + eh.NewUUID().String(),
 		Region:   "eu-west-1",
@@ -70,5 +49,4 @@ func TestEventStore(t *testing.T) {
 
 	// Run the actual test suite.
 	testutil.EventStoreCommonTests(t, store)
-
 }
