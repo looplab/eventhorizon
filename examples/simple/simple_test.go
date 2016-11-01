@@ -52,12 +52,16 @@ func Example() {
 	handler.SetAggregate(domain.InvitationAggregateType, domain.CreateInviteCommand)
 	handler.SetAggregate(domain.InvitationAggregateType, domain.AcceptInviteCommand)
 	handler.SetAggregate(domain.InvitationAggregateType, domain.DeclineInviteCommand)
+	handler.SetAggregate(domain.InvitationAggregateType, domain.ConfirmInviteCommand)
+	handler.SetAggregate(domain.InvitationAggregateType, domain.DenyInviteCommand)
 
 	// Create the command bus and register the handler for the commands.
 	commandBus := commandbus.NewCommandBus()
 	commandBus.SetHandler(handler, domain.CreateInviteCommand)
 	commandBus.SetHandler(handler, domain.AcceptInviteCommand)
 	commandBus.SetHandler(handler, domain.DeclineInviteCommand)
+	commandBus.SetHandler(handler, domain.ConfirmInviteCommand)
+	commandBus.SetHandler(handler, domain.DenyInviteCommand)
 
 	// Create and register a read model for individual invitations.
 	invitationRepository := readrepository.NewReadRepository()
@@ -65,6 +69,8 @@ func Example() {
 	eventBus.AddHandler(invitationProjector, domain.InviteCreatedEvent)
 	eventBus.AddHandler(invitationProjector, domain.InviteAcceptedEvent)
 	eventBus.AddHandler(invitationProjector, domain.InviteDeclinedEvent)
+	eventBus.AddHandler(invitationProjector, domain.InviteConfirmedEvent)
+	eventBus.AddHandler(invitationProjector, domain.InviteDeniedEvent)
 
 	// Create and register a read model for a guest list.
 	eventID := eh.NewUUID()
@@ -73,6 +79,13 @@ func Example() {
 	eventBus.AddHandler(guestListProjector, domain.InviteCreatedEvent)
 	eventBus.AddHandler(guestListProjector, domain.InviteAcceptedEvent)
 	eventBus.AddHandler(guestListProjector, domain.InviteDeclinedEvent)
+	eventBus.AddHandler(guestListProjector, domain.InviteConfirmedEvent)
+	eventBus.AddHandler(guestListProjector, domain.InviteDeniedEvent)
+
+	// Setup the saga that responds to the accepted guests and limits the total
+	// amount of guests, responding with a confirmation or denial.
+	responseSaga := domain.NewResponseSaga(commandBus, 2)
+	eventBus.AddHandler(responseSaga, domain.InviteAcceptedEvent)
 
 	// Issue some invitations and responses.
 	// Note that Athena tries to decline the event, but that is not allowed
@@ -94,6 +107,10 @@ func Example() {
 	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
 	commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: zeusID})
 
+	poseidonID := eh.NewUUID()
+	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: poseidonID, Name: "Poseidon"})
+	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: poseidonID})
+
 	// Read all invites.
 	invitations, _ := invitationRepository.FindAll()
 	for _, i := range invitations {
@@ -106,15 +123,16 @@ func Example() {
 	// Read the guest list.
 	l, _ := guestListRepository.Find(eventID)
 	if l, ok := l.(*domain.GuestList); ok {
-		log.Printf("guest list: %d guests (%d accepted, %d declined)\n",
-			l.NumGuests, l.NumAccepted, l.NumDeclined)
-		fmt.Printf("guest list: %d guests (%d accepted, %d declined)\n",
-			l.NumGuests, l.NumAccepted, l.NumDeclined)
+		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
+			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
+		fmt.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
+			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 	}
 
 	// Output:
-	// invitation: Athena - accepted
-	// invitation: Hades - accepted
+	// invitation: Athena - confirmed
+	// invitation: Hades - confirmed
 	// invitation: Zeus - declined
-	// guest list: 3 guests (2 accepted, 1 declined)
+	// invitation: Poseidon - denied
+	// guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied
 }
