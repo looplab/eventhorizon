@@ -58,13 +58,19 @@ func (p *InvitationProjector) HandleEvent(event eh.Event) {
 	case *InviteAccepted:
 		m, _ := p.repository.Find(event.InvitationID)
 		i := m.(*Invitation)
-		i.Status = "accepted"
-		p.repository.Save(i.ID, i)
+		// NOTE: Temp fix for events that arrive out of order.
+		if i.Status != "confirmed" && i.Status != "denied" {
+			i.Status = "accepted"
+			p.repository.Save(i.ID, i)
+		}
 	case *InviteDeclined:
 		m, _ := p.repository.Find(event.InvitationID)
 		i := m.(*Invitation)
-		i.Status = "declined"
-		p.repository.Save(i.ID, i)
+		// NOTE: Temp fix for events that arrive out of order.
+		if i.Status != "confirmed" && i.Status != "denied" {
+			i.Status = "declined"
+			p.repository.Save(i.ID, i)
+		}
 	case *InviteConfirmed:
 		m, _ := p.repository.Find(event.InvitationID)
 		i := m.(*Invitation)
