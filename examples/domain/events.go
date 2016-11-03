@@ -22,6 +22,8 @@ func init() {
 	eh.RegisterEvent(func() eh.Event { return &InviteCreated{} })
 	eh.RegisterEvent(func() eh.Event { return &InviteAccepted{} })
 	eh.RegisterEvent(func() eh.Event { return &InviteDeclined{} })
+	eh.RegisterEvent(func() eh.Event { return &InviteConfirmedEvent{} })
+	eh.RegisterEvent(func() eh.Event { return &InviteDeniedEvent{} })
 }
 
 const (
