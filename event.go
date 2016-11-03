@@ -35,11 +35,9 @@ type Event interface {
 
 	// AggregateType returns the type of the aggregate that the event can be
 	// applied to.
-	// AggregateType() string
 	AggregateType() AggregateType
 
 	// EventType returns the type of the event.
-	// EventType() string
 	EventType() EventType
 }
 
