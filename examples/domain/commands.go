@@ -18,6 +18,14 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
+func init() {
+	eh.RegisterCommand(func() eh.Command { return &CreateInviteCommand{} })
+	eh.RegisterCommand(func() eh.Command { return &AcceptInviteCommand{} })
+	eh.RegisterCommand(func() eh.Command { return &DeclineInviteCommand{} })
+	eh.RegisterCommand(func() eh.Command { return &ConfirmInviteCommand{} })
+	eh.RegisterCommand(func() eh.Command { return &DenyInviteCommand{} })
+}
+
 const (
 	CreateInviteCommand eh.CommandType = "CreateInvite"
 
