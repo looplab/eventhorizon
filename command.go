@@ -14,6 +14,12 @@
 
 package eventhorizon
 
+import (
+	"errors"
+	"fmt"
+	"sync"
+)
+
 // Command is a domain command that is sent to a Dispatcher.
 //
 // A command name should 1) be in present tense and 2) contain the intent
@@ -23,10 +29,61 @@ package eventhorizon
 // These fields can take an optional "eh" tag, which adds properties. For now
 // only "optional" is a valid tag: `eh:"optional"`.
 type Command interface {
+	// AggregateID returns the ID of the aggregate that the command should be
+	// handled by.
 	AggregateID() UUID
+
+	// AggregateType returns the type of the aggregate that the command can be
+	// handled by.
 	AggregateType() AggregateType
+
+	// CommandType returns the type of the command.
 	CommandType() CommandType
 }
 
 // CommandType is the type of a command, used as its unique identifier.
 type CommandType string
+
+var commands = make(map[CommandType]func() Command)
+var registerCommandLock sync.RWMutex
+
+// ErrCommandNotRegistered is when no command factory was registered.
+var ErrCommandNotRegistered = errors.New("command not registered")
+
+// RegisterCommand registers an command factory for a type. The factory is
+// used to create concrete command types.
+//
+// An example would be:
+//     RegisterCommand(func() Command { return &MyCommand{} })
+func RegisterCommand(factory func() Command) {
+	// TODO: Explore the use of reflect/gob for creating concrete types without
+	// a factory func.
+
+	// Check that the created command matches the type registered.
+	command := factory()
+	if command == nil {
+		panic("eventhorizon: created command is nil")
+	}
+	commandType := command.CommandType()
+	if commandType == CommandType("") {
+		panic("eventhorizon: attempt to register empty command type")
+	}
+
+	registerCommandLock.Lock()
+	defer registerCommandLock.Unlock()
+	if _, ok := commands[commandType]; ok {
+		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", commandType))
+	}
+	commands[commandType] = factory
+}
+
+// CreateCommand creates an command of a type with an ID using the factory
+// registered with RegisterCommand.
+func CreateCommand(commandType CommandType) (Command, error) {
+	registerCommandLock.RLock()
+	defer registerCommandLock.RUnlock()
+	if factory, ok := commands[commandType]; ok {
+		return factory(), nil
+	}
+	return nil, ErrCommandNotRegistered
+}
