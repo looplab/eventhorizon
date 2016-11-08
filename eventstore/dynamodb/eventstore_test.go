@@ -23,7 +23,7 @@ import (
 
 func DoTestEventStore(t *testing.T, url string) {
 	config := &EventStoreConfig{
-		Table:    "eventhorizonTest-" + eh.NewUUID().String(),
+		Table:    "eventhorizonTest-" + eh.NewID().String(),
 		Region:   "eu-west-1",
 		Endpoint: url,
 	}

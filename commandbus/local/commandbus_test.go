@@ -28,7 +28,7 @@ func TestCommandBus(t *testing.T) {
 	}
 
 	t.Log("handle with no handler")
-	command1 := &testutil.TestCommand{eh.NewUUID(), "command1"}
+	command1 := &testutil.TestCommand{eh.NewID(), "command1"}
 	err := bus.HandleCommand(command1)
 	if err != eh.ErrHandlerNotFound {
 		t.Error("there should be a ErrHandlerNotFound error:", err)

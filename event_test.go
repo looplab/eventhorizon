@@ -71,18 +71,18 @@ const (
 
 type TestEventRegister struct{}
 
-func (a TestEventRegister) AggregateID() UUID            { return UUID("") }
+func (a TestEventRegister) AggregateID() ID              { return CreateID() }
 func (a TestEventRegister) AggregateType() AggregateType { return TestAggregateType }
 func (a TestEventRegister) EventType() EventType         { return TestEventRegisterType }
 
 type TestEventRegisterEmpty struct{}
 
-func (a TestEventRegisterEmpty) AggregateID() UUID            { return UUID("") }
+func (a TestEventRegisterEmpty) AggregateID() ID              { return CreateID() }
 func (a TestEventRegisterEmpty) AggregateType() AggregateType { return TestAggregateType }
 func (a TestEventRegisterEmpty) EventType() EventType         { return TestEventRegisterEmptyType }
 
 type TestEventRegisterTwice struct{}
 
-func (a TestEventRegisterTwice) AggregateID() UUID            { return UUID("") }
+func (a TestEventRegisterTwice) AggregateID() ID              { return CreateID() }
 func (a TestEventRegisterTwice) AggregateType() AggregateType { return TestAggregateType }
 func (a TestEventRegisterTwice) EventType() EventType         { return TestEventRegisterTwiceType }

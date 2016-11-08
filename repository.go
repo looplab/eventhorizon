@@ -30,7 +30,7 @@ var ErrMismatchedEventType = errors.New("mismatched event type and aggregate typ
 // Repository is a repository responsible for loading and saving aggregates.
 type Repository interface {
 	// Load loads the most recent version of an aggregate with a type and id.
-	Load(AggregateType, UUID) (Aggregate, error)
+	Load(AggregateType, ID) (Aggregate, error)
 
 	// Save saves the uncommittend events for an aggregate.
 	Save(Aggregate) error
@@ -64,7 +64,7 @@ func NewEventSourcingRepository(eventStore EventStore, eventBus EventBus) (*Even
 // Load loads an aggregate from the event store. It does so by creating a new
 // aggregate of the type with the ID and then applies all events to it, thus
 // making it the most current version of the aggregate.
-func (r *EventSourcingRepository) Load(aggregateType AggregateType, id UUID) (Aggregate, error) {
+func (r *EventSourcingRepository) Load(aggregateType AggregateType, id ID) (Aggregate, error) {
 	// Create the aggregate.
 	aggregate, err := CreateAggregate(aggregateType, id)
 	if err != nil {

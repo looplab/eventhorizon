@@ -147,6 +147,8 @@ func isZero(v reflect.Value) bool {
 		switch obj := v.Interface().(type) {
 		case time.Time:
 			return obj.IsZero()
+		case ID:
+			return obj.IsZero()
 		}
 
 		// Check public fields for zero values.

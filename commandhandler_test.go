@@ -21,7 +21,7 @@ import (
 
 func TestNewCommandHandler(t *testing.T) {
 	repo := &MockRepository{
-		Aggregates: make(map[UUID]Aggregate),
+		Aggregates: make(map[ID]Aggregate),
 	}
 	handler, err := NewAggregateCommandHandler(repo)
 	if err != nil {
@@ -69,7 +69,7 @@ func TestCommandHandlerErrorInHandler(t *testing.T) {
 func TestCommandHandlerNoHandlers(t *testing.T) {
 	_, handler := createAggregateAndHandler(t)
 
-	command1 := &TestCommand{NewUUID(), "command1"}
+	command1 := &TestCommand{NewID(), "command1"}
 	err := handler.HandleCommand(command1)
 	if err != ErrAggregateNotFound {
 		t.Error("there should be a ErrAggregateNotFound error:", nil)
@@ -89,67 +89,67 @@ func TestCommandHandlerCheckCommand(t *testing.T) {
 	_, handler := createAggregateAndHandler(t)
 
 	// Check all fields.
-	err := handler.checkCommand(&TestCommand{NewUUID(), "command1"})
+	err := handler.checkCommand(&TestCommand{NewID(), "command1"})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 
 	// Missing required string value.
-	err = handler.checkCommand(&TestCommandStringValue{TestID: NewUUID()})
+	err = handler.checkCommand(&TestCommandStringValue{TestID: NewID()})
 	if err == nil || err.Error() != "missing field: Content" {
 		t.Error("there should be a missing field error:", err)
 	}
 
 	// Missing required int value.
-	err = handler.checkCommand(&TestCommandIntValue{TestID: NewUUID()})
+	err = handler.checkCommand(&TestCommandIntValue{TestID: NewID()})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 
 	// Missing required float value.
-	err = handler.checkCommand(&TestCommandFloatValue{TestID: NewUUID()})
+	err = handler.checkCommand(&TestCommandFloatValue{TestID: NewID()})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 
 	// Missing required bool value.
-	err = handler.checkCommand(&TestCommandBoolValue{TestID: NewUUID()})
+	err = handler.checkCommand(&TestCommandBoolValue{TestID: NewID()})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 
 	// Missing required slice.
-	err = handler.checkCommand(&TestCommandSlice{TestID: NewUUID()})
+	err = handler.checkCommand(&TestCommandSlice{TestID: NewID()})
 	if err == nil || err.Error() != "missing field: Slice" {
 		t.Error("there should be a missing field error:", err)
 	}
 
 	// Missing required map.
-	err = handler.checkCommand(&TestCommandMap{TestID: NewUUID()})
+	err = handler.checkCommand(&TestCommandMap{TestID: NewID()})
 	if err == nil || err.Error() != "missing field: Map" {
 		t.Error("there should be a missing field error:", err)
 	}
 
 	// Missing required struct.
-	err = handler.checkCommand(&TestCommandStruct{TestID: NewUUID()})
+	err = handler.checkCommand(&TestCommandStruct{TestID: NewID()})
 	if err == nil || err.Error() != "missing field: Struct" {
 		t.Error("there should be a missing field error:", err)
 	}
 
 	// Missing required time.
-	err = handler.checkCommand(&TestCommandTime{TestID: NewUUID()})
+	err = handler.checkCommand(&TestCommandTime{TestID: NewID()})
 	if err == nil || err.Error() != "missing field: Time" {
 		t.Error("there should be a missing field error:", err)
 	}
 
 	// Missing optional field.
-	err = handler.checkCommand(&TestCommandOptional{TestID: NewUUID()})
+	err = handler.checkCommand(&TestCommandOptional{TestID: NewID()})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 
 	// Missing private field.
-	err = handler.checkCommand(&TestCommandPrivate{TestID: NewUUID()})
+	err = handler.checkCommand(&TestCommandPrivate{TestID: NewID()})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -157,10 +157,10 @@ func TestCommandHandlerCheckCommand(t *testing.T) {
 
 func BenchmarkCommandHandler(b *testing.B) {
 	aggregate := &TestAggregate{
-		AggregateBase: NewAggregateBase(NewUUID()),
+		AggregateBase: NewAggregateBase(NewID()),
 	}
 	repo := &MockRepository{
-		Aggregates: map[UUID]Aggregate{
+		Aggregates: map[ID]Aggregate{
 			aggregate.AggregateID(): aggregate,
 		},
 	}
@@ -184,10 +184,10 @@ func BenchmarkCommandHandler(b *testing.B) {
 
 func createAggregateAndHandler(t *testing.T) (*TestAggregate, *AggregateCommandHandler) {
 	aggregate := &TestAggregate{
-		AggregateBase: NewAggregateBase(NewUUID()),
+		AggregateBase: NewAggregateBase(NewID()),
 	}
 	repo := &MockRepository{
-		Aggregates: map[UUID]Aggregate{
+		Aggregates: map[ID]Aggregate{
 			aggregate.AggregateID(): aggregate,
 		},
 	}
@@ -206,95 +206,95 @@ func createAggregateAndHandler(t *testing.T) (*TestAggregate, *AggregateCommandH
 }
 
 type TestCommandStringValue struct {
-	TestID  UUID
+	TestID  ID
 	Content string
 }
 
-func (t TestCommandStringValue) AggregateID() UUID            { return t.TestID }
+func (t TestCommandStringValue) AggregateID() ID              { return t.TestID }
 func (t TestCommandStringValue) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandStringValue) CommandType() CommandType {
 	return CommandType("TestCommandStringValue")
 }
 
 type TestCommandIntValue struct {
-	TestID  UUID
+	TestID  ID
 	Content int
 }
 
-func (t TestCommandIntValue) AggregateID() UUID            { return t.TestID }
+func (t TestCommandIntValue) AggregateID() ID              { return t.TestID }
 func (t TestCommandIntValue) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandIntValue) CommandType() CommandType     { return CommandType("TestCommandIntValue") }
 
 type TestCommandFloatValue struct {
-	TestID  UUID
+	TestID  ID
 	Content float32
 }
 
-func (t TestCommandFloatValue) AggregateID() UUID            { return t.TestID }
+func (t TestCommandFloatValue) AggregateID() ID              { return t.TestID }
 func (t TestCommandFloatValue) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandFloatValue) CommandType() CommandType     { return CommandType("TestCommandFloatValue") }
 
 type TestCommandBoolValue struct {
-	TestID  UUID
+	TestID  ID
 	Content bool
 }
 
-func (t TestCommandBoolValue) AggregateID() UUID            { return t.TestID }
+func (t TestCommandBoolValue) AggregateID() ID              { return t.TestID }
 func (t TestCommandBoolValue) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandBoolValue) CommandType() CommandType     { return CommandType("TestCommandBoolValue") }
 
 type TestCommandSlice struct {
-	TestID UUID
+	TestID ID
 	Slice  []string
 }
 
-func (t TestCommandSlice) AggregateID() UUID            { return t.TestID }
+func (t TestCommandSlice) AggregateID() ID              { return t.TestID }
 func (t TestCommandSlice) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandSlice) CommandType() CommandType     { return CommandType("TestCommandSlice") }
 
 type TestCommandMap struct {
-	TestID UUID
+	TestID ID
 	Map    map[string]string
 }
 
-func (t TestCommandMap) AggregateID() UUID            { return t.TestID }
+func (t TestCommandMap) AggregateID() ID              { return t.TestID }
 func (t TestCommandMap) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandMap) CommandType() CommandType     { return CommandType("TestCommandMap") }
 
 type TestCommandStruct struct {
-	TestID UUID
+	TestID ID
 	Struct struct {
 		Test string
 	}
 }
 
-func (t TestCommandStruct) AggregateID() UUID            { return t.TestID }
+func (t TestCommandStruct) AggregateID() ID              { return t.TestID }
 func (t TestCommandStruct) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandStruct) CommandType() CommandType     { return CommandType("TestCommandStruct") }
 
 type TestCommandTime struct {
-	TestID UUID
+	TestID ID
 	Time   time.Time
 }
 
-func (t TestCommandTime) AggregateID() UUID            { return t.TestID }
+func (t TestCommandTime) AggregateID() ID              { return t.TestID }
 func (t TestCommandTime) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandTime) CommandType() CommandType     { return CommandType("TestCommandTime") }
 
 type TestCommandOptional struct {
-	TestID  UUID
+	TestID  ID
 	Content string `eh:"optional"`
 }
 
-func (t TestCommandOptional) AggregateID() UUID            { return t.TestID }
+func (t TestCommandOptional) AggregateID() ID              { return t.TestID }
 func (t TestCommandOptional) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandOptional) CommandType() CommandType     { return CommandType("TestCommandOptional") }
 
 type TestCommandPrivate struct {
-	TestID  UUID
+	TestID  ID
 	private string
 }
 
-func (t TestCommandPrivate) AggregateID() UUID            { return t.TestID }
+func (t TestCommandPrivate) AggregateID() ID              { return t.TestID }
 func (t TestCommandPrivate) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandPrivate) CommandType() CommandType     { return CommandType("TestCommandPrivate") }

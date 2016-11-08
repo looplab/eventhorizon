@@ -56,7 +56,7 @@ func TestNewEventSourcingRepository(t *testing.T) {
 func TestEventSourcingRepositoryLoadNoEvents(t *testing.T) {
 	repo, _, _ := createRepoAndStore(t)
 
-	id := NewUUID()
+	id := NewID()
 	agg, err := repo.Load("TestAggregate", id)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -72,7 +72,7 @@ func TestEventSourcingRepositoryLoadNoEvents(t *testing.T) {
 func TestEventSourcingRepositoryLoadEvents(t *testing.T) {
 	repo, store, _ := createRepoAndStore(t)
 
-	id := NewUUID()
+	id := NewID()
 	event1 := &TestEvent{id, "event"}
 	store.Save([]Event{event1}, 0)
 	agg, err := repo.Load("TestAggregate", id)
@@ -98,11 +98,11 @@ func TestEventSourcingRepositoryLoadEvents(t *testing.T) {
 func TestEventSourcingRepositoryLoadEventsMismatchedEventType(t *testing.T) {
 	repo, store, _ := createRepoAndStore(t)
 
-	id := NewUUID()
+	id := NewID()
 	event1 := &TestEvent{id, "event"}
 	store.Save([]Event{event1}, 0)
 
-	otherAggregateID := NewUUID()
+	otherAggregateID := NewID()
 	event2 := &TestEvent2{otherAggregateID, "event2"}
 	store.Save([]Event{event2}, 0)
 
@@ -118,7 +118,7 @@ func TestEventSourcingRepositoryLoadEventsMismatchedEventType(t *testing.T) {
 func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 	repo, store, bus := createRepoAndStore(t)
 
-	id := NewUUID()
+	id := NewID()
 	agg := &TestAggregate{
 		AggregateBase: NewAggregateBase(id),
 	}
@@ -161,7 +161,7 @@ func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 func TestEventSourcingRepositoryAggregateNotRegistered(t *testing.T) {
 	repo, _, _ := createRepoAndStore(t)
 
-	id := NewUUID()
+	id := NewID()
 	agg, err := repo.Load("TestAggregate3", id)
 	if err != ErrAggregateNotRegistered {
 		t.Error("there should be a ErrAggregateNotRegistered error:", err)

@@ -31,7 +31,7 @@ import (
 type Command interface {
 	// AggregateID returns the ID of the aggregate that the command should be
 	// handled by.
-	AggregateID() UUID
+	AggregateID() ID
 
 	// AggregateType returns the type of the aggregate that the command can be
 	// handled by.

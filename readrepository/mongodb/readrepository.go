@@ -74,7 +74,7 @@ func NewReadRepositoryWithSession(session *mgo.Session, database, collection str
 }
 
 // Save saves a read model with id to the repository.
-func (r *ReadRepository) Save(id eh.UUID, model interface{}) error {
+func (r *ReadRepository) Save(id eh.ID, model interface{}) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -86,7 +86,7 @@ func (r *ReadRepository) Save(id eh.UUID, model interface{}) error {
 
 // Find returns one read model with using an id. Returns
 // ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Find(id eh.UUID) (interface{}, error) {
+func (r *ReadRepository) Find(id eh.ID) (interface{}, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -161,7 +161,7 @@ func (r *ReadRepository) FindAll() ([]interface{}, error) {
 
 // Remove removes a read model with id from the repository. Returns
 // ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Remove(id eh.UUID) error {
+func (r *ReadRepository) Remove(id eh.ID) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 

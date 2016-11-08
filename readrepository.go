@@ -27,14 +27,14 @@ var ErrModelNotFound = errors.New("could not find model")
 // ReadRepository is a storage for read models.
 type ReadRepository interface {
 	// Save saves a read model with id to the repository.
-	Save(UUID, interface{}) error
+	Save(ID, interface{}) error
 
 	// Find returns one read model with using an id.
-	Find(UUID) (interface{}, error)
+	Find(ID) (interface{}, error)
 
 	// FindAll returns all read models in the repository.
 	FindAll() ([]interface{}, error)
 
 	// Remove removes a read model with id from the repository.
-	Remove(UUID) error
+	Remove(ID) error
 }

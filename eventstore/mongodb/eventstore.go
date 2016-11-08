@@ -83,7 +83,7 @@ func NewEventStoreWithSession(session *mgo.Session, database string) (*EventStor
 }
 
 type aggregateRecord struct {
-	AggregateID string          `bson:"_id"`
+	AggregateID eh.ID           `bson:"_id"`
 	Version     int             `bson:"version"`
 	Events      []dbEventRecord `bson:"events"`
 	// Type        string        `bson:"type"`
@@ -163,7 +163,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 	// Either insert a new aggregate or append to an existing.
 	if originalVersion == 0 {
 		aggregate := aggregateRecord{
-			AggregateID: aggregateID.String(),
+			AggregateID: aggregateID,
 			Version:     len(eventRecords),
 			Events:      eventRecords,
 		}
@@ -177,7 +177,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 		// since loading the aggregate).
 		if err := sess.DB(s.db).C("events").Update(
 			bson.M{
-				"_id":     aggregateID.String(),
+				"_id":     aggregateID,
 				"version": originalVersion,
 			},
 			bson.M{
@@ -194,12 +194,12 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the database.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.EventRecord, error) {
+func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.ID) ([]eh.EventRecord, error) {
 	sess := s.session.Copy()
 	defer sess.Close()
 
 	var aggregate aggregateRecord
-	err := sess.DB(s.db).C("events").FindId(id.String()).One(&aggregate)
+	err := sess.DB(s.db).C("events").FindId(id).One(&aggregate)
 	if err == mgo.ErrNotFound {
 		return []eh.EventRecord{}, nil
 	} else if err != nil {

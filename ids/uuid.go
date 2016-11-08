@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package eventhorizon
+package ids
 
 import (
 	"crypto/rand"
@@ -97,4 +97,32 @@ func (id *UUID) UnmarshalJSON(data []byte) error {
 	// Dereference pointer value and store parsed
 	*id = parsed
 	return nil
+}
+
+func (id UUID) GetID() (interface{}, error) {
+	return string(id), nil
+}
+
+type UUIDFactory struct{}
+
+func NewUUIDFactory() *UUIDFactory {
+	return &UUIDFactory{}
+}
+
+func (f *UUIDFactory) NewID() interface{} {
+	return NewUUID()
+}
+
+func (f *UUIDFactory) CreateID() interface{} {
+	return UUID("")
+}
+
+func (f *UUIDFactory) ParseID(v interface{}) (interface{}, error) {
+	switch obj := v.(type) {
+	case string:
+		return ParseUUID(obj)
+	case UUID:
+		return obj, nil
+	}
+	return nil, fmt.Errorf("Impossible to parse in UUID %v", v)
 }

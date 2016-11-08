@@ -59,7 +59,7 @@ func TestEventBus(t *testing.T) {
 	<-bus2.ready
 
 	t.Log("publish event without handler")
-	event1 := &testutil.TestEvent{eh.NewUUID(), "event1"}
+	event1 := &testutil.TestEvent{eh.NewID(), "event1"}
 	bus.PublishEvent(event1)
 	waitForEvent(t, observer)
 	if !reflect.DeepEqual(observer.Events, []eh.Event{event1}) {
@@ -88,7 +88,7 @@ func TestEventBus(t *testing.T) {
 
 	t.Log("publish another event")
 	bus.AddHandler(handler, testutil.TestEventOtherType)
-	event2 := &testutil.TestEventOther{eh.NewUUID(), "event2"}
+	event2 := &testutil.TestEventOther{eh.NewID(), "event2"}
 	bus.PublishEvent(event2)
 	if !reflect.DeepEqual(handler.Events, []eh.Event{event1, event2}) {
 		t.Error("the handler events should be correct:", handler.Events)
