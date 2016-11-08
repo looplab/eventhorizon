@@ -133,7 +133,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the memory store.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(id eh.UUID) ([]eh.EventRecord, error) {
+func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.EventRecord, error) {
 	aggregate, ok := s.aggregateRecords[id]
 	if !ok {
 		return []eh.EventRecord{}, nil

@@ -72,7 +72,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	savedEvents = append(savedEvents, event3)
 
 	t.Log("load events for non-existing aggregate")
-	eventRecords, err := store.Load(eh.NewUUID())
+	eventRecords, err := store.Load(TestAggregateType, eh.NewUUID())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -81,7 +81,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	}
 
 	t.Log("load events")
-	eventRecords, err = store.Load(id)
+	eventRecords, err = store.Load(TestAggregateType, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -102,7 +102,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	t.Log(eventRecords)
 
 	t.Log("load events for another aggregate")
-	eventRecords, err = store.Load(id2)
+	eventRecords, err = store.Load(TestAggregateType, id2)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

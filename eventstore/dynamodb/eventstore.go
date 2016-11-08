@@ -193,7 +193,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the database.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(id eh.UUID) ([]eh.EventRecord, error) {
+func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.EventRecord, error) {
 	params := &dynamodb.QueryInput{
 		TableName:              aws.String(s.config.Table),
 		KeyConditionExpression: aws.String("AggregateID = :id"),

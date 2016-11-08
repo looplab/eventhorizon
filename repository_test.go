@@ -130,7 +130,7 @@ func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	events, err := store.Load(id)
+	events, err := store.Load(TestAggregateType, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
