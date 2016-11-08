@@ -15,6 +15,7 @@
 package testutil
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -32,7 +33,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	}
 
 	t.Log("save event, version 1")
-	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
+	id, _ := eh.ParseID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
 	event1 := &TestEvent{id, "event1"}
 	err = store.Save([]eh.Event{event1}, 0)
 	if err != nil {
@@ -63,7 +64,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	savedEvents = append(savedEvents, event1, event2, event1)
 
 	t.Log("save event for another aggregate")
-	id2, _ := eh.ParseUUID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
+	id2, _ := eh.ParseID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
 	event3 := &TestEvent{id2, "event3"}
 	err = store.Save([]eh.Event{event3}, 0)
 	if err != nil {
@@ -72,7 +73,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	savedEvents = append(savedEvents, event3)
 
 	t.Log("load events for non-existing aggregate")
-	eventRecords, err := store.Load(TestAggregateType, eh.NewUUID())
+	eventRecords, err := store.Load(TestAggregateType, eh.NewID())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -125,9 +126,7 @@ func EventsFromRecord(eventRecords []eh.EventRecord) []eh.Event {
 func eventsToString(events []eh.Event) string {
 	parts := make([]string, len(events))
 	for i, e := range events {
-		parts[i] = string(e.AggregateType()) +
-			":" + string(e.EventType()) +
-			" (" + e.AggregateID().String() + ")"
+		parts[i] = fmt.Sprintf("%s:%s (%v)", e.AggregateType(), e.EventType(), e.AggregateID())
 	}
 	return strings.Join(parts, ", ")
 }

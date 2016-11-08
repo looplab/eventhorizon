@@ -71,18 +71,18 @@ const (
 
 type TestCommandRegister struct{}
 
-func (a TestCommandRegister) AggregateID() UUID            { return UUID("") }
+func (a TestCommandRegister) AggregateID() ID              { return CreateID() }
 func (a TestCommandRegister) AggregateType() AggregateType { return TestAggregateType }
 func (a TestCommandRegister) CommandType() CommandType     { return TestCommandRegisterType }
 
 type TestCommandRegisterEmpty struct{}
 
-func (a TestCommandRegisterEmpty) AggregateID() UUID            { return UUID("") }
+func (a TestCommandRegisterEmpty) AggregateID() ID              { return CreateID() }
 func (a TestCommandRegisterEmpty) AggregateType() AggregateType { return TestAggregateType }
 func (a TestCommandRegisterEmpty) CommandType() CommandType     { return TestCommandRegisterEmptyType }
 
 type TestCommandRegisterTwice struct{}
 
-func (a TestCommandRegisterTwice) AggregateID() UUID            { return UUID("") }
+func (a TestCommandRegisterTwice) AggregateID() ID              { return CreateID() }
 func (a TestCommandRegisterTwice) AggregateType() AggregateType { return TestAggregateType }
 func (a TestCommandRegisterTwice) CommandType() CommandType     { return TestCommandRegisterTwiceType }

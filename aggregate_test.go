@@ -19,7 +19,7 @@ import (
 )
 
 func TestNewAggregateBase(t *testing.T) {
-	id := NewUUID()
+	id := NewID()
 	agg := NewAggregateBase(id)
 	if agg == nil {
 		t.Fatal("there should be an aggregate")
@@ -33,7 +33,7 @@ func TestNewAggregateBase(t *testing.T) {
 }
 
 func TestAggregateIncrementVersion(t *testing.T) {
-	agg := NewAggregateBase(NewUUID())
+	agg := NewAggregateBase(NewID())
 	if agg.Version() != 0 {
 		t.Error("the version should be 0:", agg.Version())
 	}
@@ -45,8 +45,8 @@ func TestAggregateIncrementVersion(t *testing.T) {
 }
 
 func TestAggregateStoreEvent(t *testing.T) {
-	agg := NewAggregateBase(NewUUID())
-	event1 := &TestEvent{NewUUID(), "event1"}
+	agg := NewAggregateBase(NewID())
+	event1 := &TestEvent{NewID(), "event1"}
 	agg.StoreEvent(event1)
 	events := agg.GetUncommittedEvents()
 	if len(events) != 1 {
@@ -56,9 +56,9 @@ func TestAggregateStoreEvent(t *testing.T) {
 		t.Error("the stored event should be correct:", events[0])
 	}
 
-	agg = NewAggregateBase(NewUUID())
-	event1 = &TestEvent{NewUUID(), "event1"}
-	event2 := &TestEvent{NewUUID(), "event2"}
+	agg = NewAggregateBase(NewID())
+	event1 = &TestEvent{NewID(), "event1"}
+	event2 := &TestEvent{NewID(), "event2"}
 	agg.StoreEvent(event1)
 	agg.StoreEvent(event2)
 	events = agg.GetUncommittedEvents()
@@ -74,8 +74,8 @@ func TestAggregateStoreEvent(t *testing.T) {
 }
 
 func TestAggregateClearUncommittedEvents(t *testing.T) {
-	agg := NewAggregateBase(NewUUID())
-	event1 := &TestEvent{NewUUID(), "event1"}
+	agg := NewAggregateBase(NewID())
+	event1 := &TestEvent{NewID(), "event1"}
 	agg.StoreEvent(event1)
 	events := agg.GetUncommittedEvents()
 	if len(events) != 1 {
@@ -93,13 +93,13 @@ func TestAggregateClearUncommittedEvents(t *testing.T) {
 }
 
 func TestCreateAggregate(t *testing.T) {
-	id := NewUUID()
+	id := NewID()
 	aggregate, err := CreateAggregate(TestAggregateRegisterType, id)
 	if err != ErrAggregateNotRegistered {
 		t.Error("there should be a aggregate not registered error:", err)
 	}
 
-	RegisterAggregate(func(id UUID) Aggregate {
+	RegisterAggregate(func(id ID) Aggregate {
 		return &TestAggregateRegister{AggregateBase: NewAggregateBase(id)}
 	})
 
@@ -122,7 +122,7 @@ func TestRegisterAggregateEmptyName(t *testing.T) {
 			t.Error("there should have been a panic:", r)
 		}
 	}()
-	RegisterAggregate(func(id UUID) Aggregate { return &TestAggregateRegisterEmpty{AggregateBase: NewAggregateBase(id)} })
+	RegisterAggregate(func(id ID) Aggregate { return &TestAggregateRegisterEmpty{AggregateBase: NewAggregateBase(id)} })
 }
 
 func TestRegisterAggregateNil(t *testing.T) {
@@ -131,7 +131,7 @@ func TestRegisterAggregateNil(t *testing.T) {
 			t.Error("there should have been a panic:", r)
 		}
 	}()
-	RegisterAggregate(func(id UUID) Aggregate { return nil })
+	RegisterAggregate(func(id ID) Aggregate { return nil })
 }
 
 func TestRegisterAggregateTwice(t *testing.T) {
@@ -140,10 +140,10 @@ func TestRegisterAggregateTwice(t *testing.T) {
 			t.Error("there should have been a panic:", r)
 		}
 	}()
-	RegisterAggregate(func(id UUID) Aggregate {
+	RegisterAggregate(func(id ID) Aggregate {
 		return &TestAggregateRegisterTwice{AggregateBase: NewAggregateBase(id)}
 	})
-	RegisterAggregate(func(id UUID) Aggregate {
+	RegisterAggregate(func(id ID) Aggregate {
 		return &TestAggregateRegisterTwice{AggregateBase: NewAggregateBase(id)}
 	})
 }

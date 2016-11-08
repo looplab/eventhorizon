@@ -30,19 +30,19 @@ var ErrInvalidEvent = errors.New("invalid event")
 
 // EventStore implements EventStore as an in memory structure.
 type EventStore struct {
-	aggregateRecords map[eh.UUID]aggregateRecord
+	aggregateRecords map[eh.ID]aggregateRecord
 }
 
 // NewEventStore creates a new EventStore.
 func NewEventStore() *EventStore {
 	s := &EventStore{
-		aggregateRecords: make(map[eh.UUID]aggregateRecord),
+		aggregateRecords: make(map[eh.ID]aggregateRecord),
 	}
 	return s
 }
 
 type aggregateRecord struct {
-	AggregateID eh.UUID
+	AggregateID eh.ID
 	Version     int
 	Events      []dbEventRecord
 	// Snapshot    eh.Aggregate
@@ -133,7 +133,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the memory store.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.EventRecord, error) {
+func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.ID) ([]eh.EventRecord, error) {
 	aggregate, ok := s.aggregateRecords[id]
 	if !ok {
 		return []eh.EventRecord{}, nil

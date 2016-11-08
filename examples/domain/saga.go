@@ -26,14 +26,14 @@ const ResponseSagaType eh.SagaType = "ResponseSaga"
 type ResponseSaga struct {
 	*eh.SagaBase
 
-	acceptedGuests map[eh.UUID]bool
+	acceptedGuests map[eh.ID]bool
 	guestLimit     int
 }
 
 // NewResponseSaga returns a new ResponseSage with a guest limit.
 func NewResponseSaga(commandBus eh.CommandBus, guestLimit int) *ResponseSaga {
 	s := &ResponseSaga{
-		acceptedGuests: map[eh.UUID]bool{},
+		acceptedGuests: map[eh.ID]bool{},
 		guestLimit:     guestLimit,
 	}
 	s.SagaBase = eh.NewSagaBase(commandBus, s)

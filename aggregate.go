@@ -28,7 +28,7 @@ import (
 // or more commonly embed *AggregateBase to take care of the common methods.
 type Aggregate interface {
 	// AggregateID returns the id of the aggregate.
-	AggregateID() UUID
+	AggregateID() ID
 
 	// AggregateType returns the type name of the aggregate.
 	// AggregateType() string
@@ -75,13 +75,13 @@ type AggregateType string
 // The embedded aggregate is then initialized by the factory function in the
 // callback repository.
 type AggregateBase struct {
-	id                UUID
+	id                ID
 	version           int
 	uncommittedEvents []Event
 }
 
 // NewAggregateBase creates an aggregate.
-func NewAggregateBase(id UUID) *AggregateBase {
+func NewAggregateBase(id ID) *AggregateBase {
 	return &AggregateBase{
 		id:                id,
 		uncommittedEvents: []Event{},
@@ -89,7 +89,7 @@ func NewAggregateBase(id UUID) *AggregateBase {
 }
 
 // AggregateID returns the ID of the aggregate.
-func (a *AggregateBase) AggregateID() UUID {
+func (a *AggregateBase) AggregateID() ID {
 	return a.id
 }
 
@@ -118,7 +118,7 @@ func (a *AggregateBase) ClearUncommittedEvents() {
 	a.uncommittedEvents = []Event{}
 }
 
-var aggregates = make(map[AggregateType]func(UUID) Aggregate)
+var aggregates = make(map[AggregateType]func(ID) Aggregate)
 var registerAggregateLock sync.RWMutex
 
 // ErrAggregateNotRegistered is when no aggregate factory was registered.
@@ -128,13 +128,13 @@ var ErrAggregateNotRegistered = errors.New("aggregate not registered")
 // used to create concrete aggregate types when loading from the database.
 //
 // An example would be:
-//     RegisterAggregate(func(id UUID) Aggregate { return &MyAggregate{id} })
-func RegisterAggregate(factory func(UUID) Aggregate) {
+//     RegisterAggregate(func(id ID) Aggregate { return &MyAggregate{id} })
+func RegisterAggregate(factory func(ID) Aggregate) {
 	// TODO: Explore the use of reflect/gob for creating concrete types without
 	// a factory func.
 
 	// Check that the created aggregate matches the type registered.
-	aggregate := factory(NewUUID())
+	aggregate := factory(NewID())
 	if aggregate == nil {
 		panic("eventhorizon: created aggregate is nil")
 	}
@@ -153,7 +153,7 @@ func RegisterAggregate(factory func(UUID) Aggregate) {
 
 // CreateAggregate creates an aggregate of a type with an ID using the factory
 // registered with RegisterAggregate.
-func CreateAggregate(aggregateType AggregateType, id UUID) (Aggregate, error) {
+func CreateAggregate(aggregateType AggregateType, id ID) (Aggregate, error) {
 	registerAggregateLock.RLock()
 	defer registerAggregateLock.RUnlock()
 	if factory, ok := aggregates[aggregateType]; ok {

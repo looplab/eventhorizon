@@ -31,7 +31,7 @@ import (
 type Event interface {
 	// AggregateID returns the ID of the aggregate that the event should be
 	// applied to.
-	AggregateID() UUID
+	AggregateID() ID
 
 	// AggregateType returns the type of the aggregate that the event can be
 	// applied to.

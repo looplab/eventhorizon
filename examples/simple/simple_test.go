@@ -22,10 +22,19 @@ import (
 	commandbus "github.com/looplab/eventhorizon/commandbus/local"
 	eventbus "github.com/looplab/eventhorizon/eventbus/local"
 	eventstore "github.com/looplab/eventhorizon/eventstore/memory"
+	"github.com/looplab/eventhorizon/ids"
 	readrepository "github.com/looplab/eventhorizon/readrepository/memory"
 
 	"github.com/looplab/eventhorizon/examples/domain"
 )
+
+func init() {
+	eh.SetIDType(ids.NewUUIDFactory())
+
+	eh.RegisterAggregate(func(id eh.ID) eh.Aggregate {
+		return domain.NewInvitationAggregate(id)
+	})
+}
 
 func Example() {
 	// Create the event store.
@@ -73,7 +82,7 @@ func Example() {
 	eventBus.AddHandler(invitationProjector, domain.InviteDeniedEvent)
 
 	// Create and register a read model for a guest list.
-	eventID := eh.NewUUID()
+	eventID := eh.NewID()
 	guestListRepository := readrepository.NewReadRepository()
 	guestListProjector := domain.NewGuestListProjector(guestListRepository, eventID)
 	eventBus.AddHandler(guestListProjector, domain.InviteCreatedEvent)
@@ -91,7 +100,7 @@ func Example() {
 	// Note that Athena tries to decline the event, but that is not allowed
 	// by the domain logic in InvitationAggregate. The result is that she is
 	// still accepted.
-	athenaID := eh.NewUUID()
+	athenaID := eh.NewID()
 	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
 	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: athenaID})
 	err = commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: athenaID})
@@ -99,15 +108,15 @@ func Example() {
 		log.Printf("error: %s\n", err)
 	}
 
-	hadesID := eh.NewUUID()
+	hadesID := eh.NewID()
 	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: hadesID, Name: "Hades"})
 	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: hadesID})
 
-	zeusID := eh.NewUUID()
+	zeusID := eh.NewID()
 	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
 	commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: zeusID})
 
-	poseidonID := eh.NewUUID()
+	poseidonID := eh.NewID()
 	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: poseidonID, Name: "Poseidon"})
 	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: poseidonID})
 

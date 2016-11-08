@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mongodb
+package customid
 
 import (
 	"fmt"
@@ -30,7 +30,7 @@ import (
 )
 
 func init() {
-	eh.SetIDType(ids.NewUUIDFactory())
+	eh.SetIDType(ids.NewID64Factory())
 
 	eh.RegisterAggregate(func(id eh.ID) eh.Aggregate {
 		return domain.NewInvitationAggregate(id)

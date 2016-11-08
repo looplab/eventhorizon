@@ -18,10 +18,13 @@ import (
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/ids"
 )
 
 func init() {
-	eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
+	eh.SetIDType(ids.NewUUIDFactory())
+
+	eh.RegisterAggregate(func(id eh.ID) eh.Aggregate {
 		return &TestAggregate{AggregateBase: eh.NewAggregateBase(id)}
 	})
 
@@ -61,52 +64,52 @@ func (t *TestAggregate) ApplyEvent(event eh.Event) {
 }
 
 type TestEvent struct {
-	TestID  eh.UUID
+	TestID  eh.ID
 	Content string
 }
 
-func (t TestEvent) AggregateID() eh.UUID            { return t.TestID }
+func (t TestEvent) AggregateID() eh.ID              { return t.TestID }
 func (t TestEvent) AggregateType() eh.AggregateType { return TestAggregateType }
 func (t TestEvent) EventType() eh.EventType         { return TestEventType }
 
 type TestEventOther struct {
-	TestID  eh.UUID
+	TestID  eh.ID
 	Content string
 }
 
-func (t TestEventOther) AggregateID() eh.UUID            { return t.TestID }
+func (t TestEventOther) AggregateID() eh.ID              { return t.TestID }
 func (t TestEventOther) AggregateType() eh.AggregateType { return TestAggregateType }
 func (t TestEventOther) EventType() eh.EventType         { return TestEventOtherType }
 
 type TestCommand struct {
-	TestID  eh.UUID
+	TestID  eh.ID
 	Content string
 }
 
-func (t TestCommand) AggregateID() eh.UUID            { return t.TestID }
+func (t TestCommand) AggregateID() eh.ID              { return t.TestID }
 func (t TestCommand) AggregateType() eh.AggregateType { return TestAggregateType }
 func (t TestCommand) CommandType() eh.CommandType     { return TestCommandType }
 
 type TestCommandOther struct {
-	TestID  eh.UUID
+	TestID  eh.ID
 	Content string
 }
 
-func (t TestCommandOther) AggregateID() eh.UUID            { return t.TestID }
+func (t TestCommandOther) AggregateID() eh.ID              { return t.TestID }
 func (t TestCommandOther) AggregateType() eh.AggregateType { return TestAggregateType }
 func (t TestCommandOther) CommandType() eh.CommandType     { return TestCommandOtherType }
 
 type TestCommandOther2 struct {
-	TestID  eh.UUID
+	TestID  eh.ID
 	Content string
 }
 
-func (t TestCommandOther2) AggregateID() eh.UUID            { return t.TestID }
+func (t TestCommandOther2) AggregateID() eh.ID              { return t.TestID }
 func (t TestCommandOther2) AggregateType() eh.AggregateType { return TestAggregateType }
 func (t TestCommandOther2) CommandType() eh.CommandType     { return TestCommandOther2Type }
 
 type TestModel struct {
-	ID        eh.UUID   `json:"id"         bson:"_id"`
+	ID        eh.ID     `json:"id"         bson:"_id"`
 	Content   string    `json:"content"    bson:"content"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 }
@@ -152,10 +155,10 @@ func (m *MockEventObserver) Notify(event eh.Event) {
 }
 
 type MockRepository struct {
-	Aggregates map[eh.UUID]eh.Aggregate
+	Aggregates map[eh.ID]eh.Aggregate
 }
 
-func (m *MockRepository) Load(aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
+func (m *MockRepository) Load(aggregateType eh.AggregateType, id eh.ID) (eh.Aggregate, error) {
 	return m.Aggregates[id], nil
 }
 
@@ -166,7 +169,7 @@ func (m *MockRepository) Save(aggregate eh.Aggregate) error {
 
 type MockEventStore struct {
 	Events []eh.Event
-	Loaded eh.UUID
+	Loaded eh.ID
 }
 
 func (m *MockEventStore) Save(events []eh.Event) error {
@@ -174,7 +177,7 @@ func (m *MockEventStore) Save(events []eh.Event) error {
 	return nil
 }
 
-func (m *MockEventStore) Load(id eh.UUID) ([]eh.Event, error) {
+func (m *MockEventStore) Load(id eh.ID) ([]eh.Event, error) {
 	m.Loaded = id
 	return m.Events, nil
 }
