@@ -19,11 +19,11 @@ import (
 )
 
 func init() {
-	eh.RegisterCommand(func() eh.Command { return &CreateInviteCommand{} })
-	eh.RegisterCommand(func() eh.Command { return &AcceptInviteCommand{} })
-	eh.RegisterCommand(func() eh.Command { return &DeclineInviteCommand{} })
-	eh.RegisterCommand(func() eh.Command { return &ConfirmInviteCommand{} })
-	eh.RegisterCommand(func() eh.Command { return &DenyInviteCommand{} })
+	eh.RegisterCommand(func() eh.Command { return &CreateInvite{} })
+	eh.RegisterCommand(func() eh.Command { return &AcceptInvite{} })
+	eh.RegisterCommand(func() eh.Command { return &DeclineInvite{} })
+	eh.RegisterCommand(func() eh.Command { return &ConfirmInvite{} })
+	eh.RegisterCommand(func() eh.Command { return &DenyInvite{} })
 }
 
 const (
