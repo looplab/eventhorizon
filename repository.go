@@ -72,7 +72,7 @@ func (r *EventSourcingRepository) Load(aggregateType AggregateType, id UUID) (Ag
 	}
 
 	// Load aggregate eventRecords.
-	eventRecords, err := r.eventStore.Load(aggregate.AggregateID())
+	eventRecords, err := r.eventStore.Load(aggregate.AggregateType(), aggregate.AggregateID())
 	if err != nil {
 		return nil, err
 	}

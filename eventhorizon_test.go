@@ -188,7 +188,7 @@ func (m *MockEventStore) Save(events []Event, originalVersion int) error {
 	return nil
 }
 
-func (m *MockEventStore) Load(id UUID) ([]EventRecord, error) {
+func (m *MockEventStore) Load(aggregateType AggregateType, id UUID) ([]EventRecord, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
