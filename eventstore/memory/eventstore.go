@@ -17,6 +17,7 @@ package memory
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
@@ -30,7 +31,8 @@ var ErrInvalidEvent = errors.New("invalid event")
 
 // EventStore implements EventStore as an in memory structure.
 type EventStore struct {
-	aggregateRecords map[eh.UUID]aggregateRecord
+	aggregateRecords   map[eh.UUID]aggregateRecord
+	aggregateRecordsMu sync.RWMutex
 }
 
 // NewEventStore creates a new EventStore.
@@ -106,6 +108,9 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 		}
 	}
 
+	s.aggregateRecordsMu.Lock()
+	defer s.aggregateRecordsMu.Unlock()
+
 	// Either insert a new aggregate or append to an existing.
 	if originalVersion == 0 {
 		aggregate := aggregateRecord{
@@ -113,6 +118,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 			Version:     len(eventRecords),
 			Events:      eventRecords,
 		}
+
 		s.aggregateRecords[aggregateID] = aggregate
 	} else {
 		// Increment aggregate version on insert of new event record, and
@@ -122,8 +128,10 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 			if aggregate.Version != originalVersion {
 				return ErrCouldNotSaveAggregate
 			}
+
 			aggregate.Version += len(eventRecords)
 			aggregate.Events = append(aggregate.Events, eventRecords...)
+
 			s.aggregateRecords[aggregateID] = aggregate
 		}
 	}
@@ -134,6 +142,9 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 // Load loads all events for the aggregate id from the memory store.
 // Returns ErrNoEventsFound if no events can be found.
 func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.EventRecord, error) {
+	s.aggregateRecordsMu.RLock()
+	defer s.aggregateRecordsMu.RUnlock()
+
 	aggregate, ok := s.aggregateRecords[id]
 	if !ok {
 		return []eh.EventRecord{}, nil
