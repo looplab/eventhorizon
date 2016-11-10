@@ -15,6 +15,8 @@
 package local
 
 import (
+	"sync"
+
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -23,6 +25,11 @@ import (
 type EventBus struct {
 	handlers  map[eh.EventType]map[eh.EventHandler]bool
 	observers map[eh.EventObserver]bool
+
+	// handlerMu guards all maps at once for concurrent writes. No need for
+	// separate mutexes per map for this as AddHandler/AddObserven is often
+	// called at program init and not at run time.
+	handlerMu sync.RWMutex
 }
 
 // NewEventBus creates a EventBus.
@@ -38,6 +45,9 @@ func NewEventBus() *EventBus {
 // TODO: Put the event in a buffered channel consumed by another goroutine
 // to simulate a distributed bus.
 func (b *EventBus) PublishEvent(event eh.Event) {
+	b.handlerMu.RLock()
+	defer b.handlerMu.RUnlock()
+
 	// Handle the event if there is a handler registered.
 	if handlers, ok := b.handlers[event.EventType()]; ok {
 		for h := range handlers {
@@ -53,6 +63,9 @@ func (b *EventBus) PublishEvent(event eh.Event) {
 
 // AddHandler implements the AddHandler method of the EventHandler interface.
 func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
+	b.handlerMu.Lock()
+	defer b.handlerMu.Unlock()
+
 	// Create list for new event types.
 	if _, ok := b.handlers[eventType]; !ok {
 		b.handlers[eventType] = make(map[eh.EventHandler]bool)
@@ -64,5 +77,8 @@ func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
 
 // AddObserver implements the AddObserver method of the EventHandler interface.
 func (b *EventBus) AddObserver(observer eh.EventObserver) {
+	b.handlerMu.Lock()
+	defer b.handlerMu.Unlock()
+
 	b.observers[observer] = true
 }
