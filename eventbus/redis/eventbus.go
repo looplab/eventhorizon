@@ -18,6 +18,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -38,11 +39,17 @@ var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
 type EventBus struct {
 	handlers  map[eh.EventType]map[eh.EventHandler]bool
 	observers map[eh.EventObserver]bool
-	prefix    string
-	pool      *redis.Pool
-	conn      *redis.PubSubConn
-	ready     chan bool // NOTE: Used for testing only
-	exit      chan bool
+
+	// handlerMu guards all maps at once for concurrent writes. No need for
+	// separate mutexes per map for this as AddHandler/AddObserven is often
+	// called at program init and not at run time.
+	handlerMu sync.RWMutex
+
+	prefix string
+	pool   *redis.Pool
+	conn   *redis.PubSubConn
+	ready  chan bool // NOTE: Used for testing only
+	exit   chan bool
 }
 
 // NewEventBus creates a EventBus for remote events.
@@ -109,6 +116,9 @@ func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
 
 // PublishEvent publishes an event to all handlers capable of handling it.
 func (b *EventBus) PublishEvent(event eh.Event) {
+	b.handlerMu.RLock()
+	defer b.handlerMu.RUnlock()
+
 	// Handle the event if there is a handler registered.
 	if handlers, ok := b.handlers[event.EventType()]; ok {
 		for handler := range handlers {
@@ -124,6 +134,9 @@ func (b *EventBus) PublishEvent(event eh.Event) {
 
 // AddHandler adds a handler for a specific local event.
 func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
+	b.handlerMu.Lock()
+	defer b.handlerMu.Unlock()
+
 	// Create handler list for new event types.
 	if _, ok := b.handlers[eventType]; !ok {
 		b.handlers[eventType] = make(map[eh.EventHandler]bool)
@@ -135,6 +148,9 @@ func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
 
 // AddObserver implements the AddObserver method of the EventHandler interface.
 func (b *EventBus) AddObserver(observer eh.EventObserver) {
+	b.handlerMu.Lock()
+	defer b.handlerMu.Unlock()
+
 	b.observers[observer] = true
 }
 
@@ -215,9 +231,12 @@ func (b *EventBus) recv(delay *backoff.Backoff) error {
 				continue
 			}
 
+			b.handlerMu.RLock()
 			for o := range b.observers {
 				o.Notify(event)
 			}
+			b.handlerMu.RUnlock()
+
 		case redis.Subscription:
 			if v.Kind == "psubscribe" {
 				log.Println("eventbus: subscribed to:", v.Channel)

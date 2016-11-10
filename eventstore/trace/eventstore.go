@@ -16,6 +16,7 @@ package trace
 
 import (
 	"errors"
+	"sync"
 
 	eh "github.com/looplab/eventhorizon"
 )
@@ -28,6 +29,7 @@ type EventStore struct {
 	eventStore eh.EventStore
 	tracing    bool
 	trace      []eh.Event
+	traceMu    sync.RWMutex
 }
 
 // NewEventStore creates a new EventStore.
@@ -41,6 +43,9 @@ func NewEventStore(eventStore eh.EventStore) *EventStore {
 
 // Save appends all events to the base store and trace them if enabled.
 func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
+	s.traceMu.Lock()
+	defer s.traceMu.Unlock()
+
 	if s.tracing {
 		s.trace = append(s.trace, events...)
 	}
@@ -64,20 +69,32 @@ func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Even
 
 // StartTracing starts the tracing of events.
 func (s *EventStore) StartTracing() {
+	s.traceMu.Lock()
+	defer s.traceMu.Unlock()
+
 	s.tracing = true
 }
 
 // StopTracing stops the tracing of events.
 func (s *EventStore) StopTracing() {
+	s.traceMu.Lock()
+	defer s.traceMu.Unlock()
+
 	s.tracing = false
 }
 
 // GetTrace returns the events that happened during the tracing.
 func (s *EventStore) GetTrace() []eh.Event {
+	s.traceMu.RLock()
+	defer s.traceMu.RUnlock()
+
 	return s.trace
 }
 
 // ResetTrace resets the trace.
 func (s *EventStore) ResetTrace() {
+	s.traceMu.Lock()
+	defer s.traceMu.Unlock()
+
 	s.trace = make([]eh.Event, 0)
 }

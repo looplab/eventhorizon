@@ -15,13 +15,16 @@
 package local
 
 import (
+	"sync"
+
 	eh "github.com/looplab/eventhorizon"
 )
 
 // CommandBus is a command bus that handles commands with the
 // registered CommandHandlers
 type CommandBus struct {
-	handlers map[eh.CommandType]eh.CommandHandler
+	handlers   map[eh.CommandType]eh.CommandHandler
+	handlersMu sync.RWMutex
 }
 
 // NewCommandBus creates a CommandBus.
@@ -34,17 +37,25 @@ func NewCommandBus() *CommandBus {
 
 // HandleCommand handles a command with a handler capable of handling it.
 func (b *CommandBus) HandleCommand(command eh.Command) error {
+	b.handlersMu.RLock()
+	defer b.handlersMu.RUnlock()
+
 	if handler, ok := b.handlers[command.CommandType()]; ok {
 		return handler.HandleCommand(command)
 	}
+
 	return eh.ErrHandlerNotFound
 }
 
 // SetHandler adds a handler for a specific command.
 func (b *CommandBus) SetHandler(handler eh.CommandHandler, commandType eh.CommandType) error {
+	b.handlersMu.Lock()
+	defer b.handlersMu.Unlock()
+
 	if _, ok := b.handlers[commandType]; ok {
 		return eh.ErrHandlerAlreadySet
 	}
+
 	b.handlers[commandType] = handler
 	return nil
 }
