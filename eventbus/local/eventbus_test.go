@@ -34,6 +34,7 @@ func TestEventBus(t *testing.T) {
 	t.Log("publish event without handler")
 	event1 := &testutil.TestEvent{eh.NewUUID(), "event1"}
 	bus.PublishEvent(event1)
+	observer.WaitForEvent(t)
 	if !reflect.DeepEqual(observer.Events, []eh.Event{event1}) {
 		t.Error("the observed events should be correct:", observer.Events)
 	}
@@ -42,9 +43,11 @@ func TestEventBus(t *testing.T) {
 	handler := testutil.NewMockEventHandler("testHandler")
 	bus.AddHandler(handler, testutil.TestEventType)
 	bus.PublishEvent(event1)
+	handler.WaitForEvent(t)
 	if !reflect.DeepEqual(handler.Events, []eh.Event{event1}) {
 		t.Error("the handler events should be correct:", handler.Events)
 	}
+	observer.WaitForEvent(t)
 	if !reflect.DeepEqual(observer.Events, []eh.Event{event1, event1}) {
 		t.Error("the observed events should be correct:", observer.Events)
 	}
@@ -53,9 +56,11 @@ func TestEventBus(t *testing.T) {
 	bus.AddHandler(handler, testutil.TestEventOtherType)
 	event2 := &testutil.TestEventOther{eh.NewUUID(), "event2"}
 	bus.PublishEvent(event2)
+	handler.WaitForEvent(t)
 	if !reflect.DeepEqual(handler.Events, []eh.Event{event1, event2}) {
 		t.Error("the handler events should be correct:", handler.Events)
 	}
+	observer.WaitForEvent(t)
 	if !reflect.DeepEqual(observer.Events, []eh.Event{event1, event1, event2}) {
 		t.Error("the observed events should be correct:", observer.Events)
 	}

@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
+	"time"
 
 	eh "github.com/looplab/eventhorizon"
 	commandbus "github.com/looplab/eventhorizon/commandbus/local"
@@ -113,37 +115,51 @@ func Example() {
 	invitationRepository.Clear()
 	guestListRepository.Clear()
 
-	// Issue some invitations and responses.
-	// Note that Athena tries to decline the event, but that is not allowed
-	// by the domain logic in InvitationAggregate. The result is that she is
-	// still accepted.
+	// IDs for all the guests.
 	athenaID := eh.NewUUID()
+	hadesID := eh.NewUUID()
+	zeusID := eh.NewUUID()
+	poseidonID := eh.NewUUID()
+
+	// Issue some invitations and responses. Error checking omitted here.
 	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
+	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: hadesID, Name: "Hades"})
+	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
+	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: poseidonID, Name: "Poseidon"})
+
+	// The invited guests accept and decline the event.
+	// Note that Athena tries to decline the event after first accepting, but
+	// that is not allowed by the domain logic in InvitationAggregate. The
+	// result is that she is still accepted.
 	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: athenaID})
 	err = commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: athenaID})
 	if err != nil {
 		log.Printf("error: %s\n", err)
 	}
-
-	hadesID := eh.NewUUID()
-	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: hadesID, Name: "Hades"})
 	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: hadesID})
-
-	zeusID := eh.NewUUID()
-	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
 	commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: zeusID})
 
-	poseidonID := eh.NewUUID()
-	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: poseidonID, Name: "Poseidon"})
+	// Poseidon is a bit late to the party...
+	time.Sleep(10 * time.Millisecond)
 	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: poseidonID})
 
+	// Wait for simulated eventual consistency before reading.
+	time.Sleep(10 * time.Millisecond)
+
 	// Read all invites.
+	invitationStrs := []string{}
 	invitations, _ := invitationRepository.FindAll()
 	for _, i := range invitations {
 		if i, ok := i.(*domain.Invitation); ok {
-			log.Printf("invitation: %s - %s\n", i.Name, i.Status)
-			fmt.Printf("invitation: %s - %s\n", i.Name, i.Status)
+			invitationStrs = append(invitationStrs, fmt.Sprintf("%s - %s", i.Name, i.Status))
 		}
+	}
+
+	// Sort the output to be able to compare test results.
+	sort.Strings(invitationStrs)
+	for _, s := range invitationStrs {
+		log.Printf("invitation: %s\n", s)
+		fmt.Printf("invitation: %s\n", s)
 	}
 
 	// Read the guest list.
@@ -164,7 +180,7 @@ func Example() {
 	// Output:
 	// invitation: Athena - confirmed
 	// invitation: Hades - confirmed
-	// invitation: Zeus - declined
 	// invitation: Poseidon - denied
+	// invitation: Zeus - declined
 	// guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied
 }

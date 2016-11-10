@@ -15,6 +15,7 @@
 package testutil
 
 import (
+	"testing"
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
@@ -134,6 +135,15 @@ func (m *MockEventHandler) HandleEvent(event eh.Event) {
 	m.Recv <- event
 }
 
+func (m *MockEventHandler) WaitForEvent(t *testing.T) {
+	select {
+	case <-m.Recv:
+		return
+	case <-time.After(time.Second):
+		t.Error("did not receive event in time")
+	}
+}
+
 type MockEventObserver struct {
 	Events []eh.Event
 	Recv   chan eh.Event
@@ -149,6 +159,15 @@ func NewMockEventObserver() *MockEventObserver {
 func (m *MockEventObserver) Notify(event eh.Event) {
 	m.Events = append(m.Events, event)
 	m.Recv <- event
+}
+
+func (m *MockEventObserver) WaitForEvent(t *testing.T) {
+	select {
+	case <-m.Recv:
+		return
+	case <-time.After(time.Second):
+		t.Error("did not receive event in time")
+	}
 }
 
 type MockRepository struct {

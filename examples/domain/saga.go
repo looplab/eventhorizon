@@ -15,6 +15,8 @@
 package domain
 
 import (
+	"sync"
+
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -26,8 +28,9 @@ const ResponseSagaType eh.SagaType = "ResponseSaga"
 type ResponseSaga struct {
 	*eh.SagaBase
 
-	acceptedGuests map[eh.UUID]bool
-	guestLimit     int
+	acceptedGuests   map[eh.UUID]bool
+	acceptedGuestsMu sync.RWMutex
+	guestLimit       int
 }
 
 // NewResponseSaga returns a new ResponseSage with a guest limit.
@@ -51,7 +54,10 @@ func (s *ResponseSaga) RunSaga(event eh.Event) []eh.Command {
 	switch event := event.(type) {
 	case *InviteAccepted:
 		// Do nothing for already accepted guests.
-		if ok, _ := s.acceptedGuests[event.InvitationID]; ok {
+		s.acceptedGuestsMu.RLock()
+		ok, _ := s.acceptedGuests[event.AggregateID()]
+		s.acceptedGuestsMu.RUnlock()
+		if ok {
 			return nil
 		}
 
@@ -63,7 +69,10 @@ func (s *ResponseSaga) RunSaga(event eh.Event) []eh.Command {
 		}
 
 		// Confirm the invite when there is space left.
-		s.acceptedGuests[event.InvitationID] = true
+		s.acceptedGuestsMu.Lock()
+		s.acceptedGuests[event.AggregateID()] = true
+		s.acceptedGuestsMu.Unlock()
+
 		return []eh.Command{
 			&ConfirmInvite{InvitationID: event.AggregateID()},
 		}

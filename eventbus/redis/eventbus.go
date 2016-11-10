@@ -122,7 +122,7 @@ func (b *EventBus) PublishEvent(event eh.Event) {
 	// Handle the event if there is a handler registered.
 	if handlers, ok := b.handlers[event.EventType()]; ok {
 		for handler := range handlers {
-			handler.HandleEvent(event)
+			go handler.HandleEvent(event)
 		}
 	}
 
@@ -233,7 +233,7 @@ func (b *EventBus) recv(delay *backoff.Backoff) error {
 
 			b.handlerMu.RLock()
 			for o := range b.observers {
-				o.Notify(event)
+				go o.Notify(event)
 			}
 			b.handlerMu.RUnlock()
 

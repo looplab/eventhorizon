@@ -51,13 +51,13 @@ func (b *EventBus) PublishEvent(event eh.Event) {
 	// Handle the event if there is a handler registered.
 	if handlers, ok := b.handlers[event.EventType()]; ok {
 		for h := range handlers {
-			h.HandleEvent(event)
+			go h.HandleEvent(event)
 		}
 	}
 
 	// Notify all observers about the event.
 	for o := range b.observers {
-		o.Notify(event)
+		go o.Notify(event)
 	}
 }
 
