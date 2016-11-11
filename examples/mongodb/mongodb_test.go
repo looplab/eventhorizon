@@ -48,6 +48,7 @@ func Example() {
 
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
+	eventBus.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
 	eventBus.AddObserver(&domain.Logger{})
 
 	// Create the aggregate repository.

@@ -206,3 +206,4 @@ func (m *MockEventBus) PublishEvent(event Event) {
 
 func (m *MockEventBus) AddHandler(handler EventHandler, eventType EventType) {}
 func (m *MockEventBus) AddObserver(observer EventObserver)                   {}
+func (m *MockEventBus) SetHandlingStrategy(strategy EventHandlingStrategy)   {}
