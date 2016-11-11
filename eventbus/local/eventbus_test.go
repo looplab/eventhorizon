@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/testutil"
+	"github.com/looplab/eventhorizon/mocks"
 )
 
 func TestEventBus(t *testing.T) {
@@ -28,19 +28,19 @@ func TestEventBus(t *testing.T) {
 		t.Fatal("there should be a bus")
 	}
 
-	observer := testutil.NewMockEventObserver()
+	observer := mocks.NewEventObserver()
 	bus.AddObserver(observer)
 
 	t.Log("publish event without handler")
-	event1 := &testutil.TestEvent{eh.NewUUID(), "event1"}
+	event1 := &mocks.Event{eh.NewUUID(), "event1"}
 	bus.PublishEvent(event1)
 	if !reflect.DeepEqual(observer.Events, []eh.Event{event1}) {
 		t.Error("the observed events should be correct:", observer.Events)
 	}
 
 	t.Log("publish event")
-	handler := testutil.NewMockEventHandler("testHandler")
-	bus.AddHandler(handler, testutil.TestEventType)
+	handler := mocks.NewEventHandler("testHandler")
+	bus.AddHandler(handler, mocks.EventType)
 	bus.PublishEvent(event1)
 	if !reflect.DeepEqual(handler.Events, []eh.Event{event1}) {
 		t.Error("the handler events should be correct:", handler.Events)
@@ -50,8 +50,8 @@ func TestEventBus(t *testing.T) {
 	}
 
 	t.Log("publish another event")
-	bus.AddHandler(handler, testutil.TestEventOtherType)
-	event2 := &testutil.TestEventOther{eh.NewUUID(), "event2"}
+	bus.AddHandler(handler, mocks.EventOtherType)
+	event2 := &mocks.EventOther{eh.NewUUID(), "event2"}
 	bus.PublishEvent(event2)
 	if !reflect.DeepEqual(handler.Events, []eh.Event{event1, event2}) {
 		t.Error("the handler events should be correct:", handler.Events)
@@ -68,11 +68,11 @@ func TestEventBusAsync(t *testing.T) {
 	}
 	bus.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
 
-	observer := testutil.NewMockEventObserver()
+	observer := mocks.NewEventObserver()
 	bus.AddObserver(observer)
 
 	t.Log("publish event without handler")
-	event1 := &testutil.TestEvent{eh.NewUUID(), "event1"}
+	event1 := &mocks.Event{eh.NewUUID(), "event1"}
 	bus.PublishEvent(event1)
 	observer.WaitForEvent(t)
 	if !reflect.DeepEqual(observer.Events, []eh.Event{event1}) {
@@ -80,8 +80,8 @@ func TestEventBusAsync(t *testing.T) {
 	}
 
 	t.Log("publish event")
-	handler := testutil.NewMockEventHandler("testHandler")
-	bus.AddHandler(handler, testutil.TestEventType)
+	handler := mocks.NewEventHandler("testHandler")
+	bus.AddHandler(handler, mocks.EventType)
 	bus.PublishEvent(event1)
 	handler.WaitForEvent(t)
 	if !reflect.DeepEqual(handler.Events, []eh.Event{event1}) {
@@ -93,8 +93,8 @@ func TestEventBusAsync(t *testing.T) {
 	}
 
 	t.Log("publish another event")
-	bus.AddHandler(handler, testutil.TestEventOtherType)
-	event2 := &testutil.TestEventOther{eh.NewUUID(), "event2"}
+	bus.AddHandler(handler, mocks.EventOtherType)
+	event2 := &mocks.EventOther{eh.NewUUID(), "event2"}
 	bus.PublishEvent(event2)
 	handler.WaitForEvent(t)
 	if !reflect.DeepEqual(handler.Events, []eh.Event{event1, event2}) {

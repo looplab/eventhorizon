@@ -18,7 +18,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/looplab/eventhorizon/testutil"
+	"github.com/looplab/eventhorizon/eventstore/testutil"
 )
 
 func TestEventStore(t *testing.T) {

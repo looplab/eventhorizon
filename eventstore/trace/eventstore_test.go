@@ -20,7 +20,7 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventstore/memory"
-	"github.com/looplab/eventhorizon/testutil"
+	"github.com/looplab/eventhorizon/eventstore/testutil"
 )
 
 func TestEventStore(t *testing.T) {

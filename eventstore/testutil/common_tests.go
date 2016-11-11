@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/mocks"
 )
 
 func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
@@ -33,7 +34,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 
 	t.Log("save event, version 1")
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
-	event1 := &TestEvent{id, "event1"}
+	event1 := &mocks.Event{id, "event1"}
 	err = store.Save([]eh.Event{event1}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -48,7 +49,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	savedEvents = append(savedEvents, event1)
 
 	t.Log("save event, version 3")
-	event2 := &TestEvent{id, "event2"}
+	event2 := &mocks.Event{id, "event2"}
 	err = store.Save([]eh.Event{event2}, 2)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -64,7 +65,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 
 	t.Log("save event for another aggregate")
 	id2, _ := eh.ParseUUID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
-	event3 := &TestEvent{id2, "event3"}
+	event3 := &mocks.Event{id2, "event3"}
 	err = store.Save([]eh.Event{event3}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -72,7 +73,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	savedEvents = append(savedEvents, event3)
 
 	t.Log("load events for non-existing aggregate")
-	eventRecords, err := store.Load(TestAggregateType, eh.NewUUID())
+	eventRecords, err := store.Load(mocks.AggregateType, eh.NewUUID())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -81,7 +82,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	}
 
 	t.Log("load events")
-	eventRecords, err = store.Load(TestAggregateType, id)
+	eventRecords, err = store.Load(mocks.AggregateType, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -102,7 +103,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	t.Log(eventRecords)
 
 	t.Log("load events for another aggregate")
-	eventRecords, err = store.Load(TestAggregateType, id2)
+	eventRecords, err = store.Load(mocks.AggregateType, id2)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
