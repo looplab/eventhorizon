@@ -28,6 +28,9 @@ type EventBus interface {
 	// AddObserver adds an observer.
 	// TODO: Add pattern for what to observe.
 	AddObserver(EventObserver)
+
+	// SetHandlingStrategy will set the strategy to use for handling events.
+	SetHandlingStrategy(EventHandlingStrategy)
 }
 
 // EventHandler is a handler of events.
@@ -50,3 +53,15 @@ type EventObserver interface {
 	// Notify is notifed about an event.
 	Notify(Event)
 }
+
+// EventHandlingStrategy is the strategy to use when handling events.
+type EventHandlingStrategy int
+
+const (
+	// SimpleEventHandlingStrategy will handle events in the same goroutine and
+	// wait for them to complete before handling the next.
+	SimpleEventHandlingStrategy EventHandlingStrategy = iota
+	// AsyncEventHandlingStrategy will handle events concurrently in their own
+	// goroutines and not wait for them to finish.
+	AsyncEventHandlingStrategy
+)
