@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/testutil"
+	"github.com/looplab/eventhorizon/eventstore/testutil"
 )
 
 func DoTestEventStore(t *testing.T, url string) {

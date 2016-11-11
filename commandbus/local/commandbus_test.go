@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/testutil"
+	"github.com/looplab/eventhorizon/mocks"
 )
 
 func TestCommandBus(t *testing.T) {
@@ -28,15 +28,15 @@ func TestCommandBus(t *testing.T) {
 	}
 
 	t.Log("handle with no handler")
-	command1 := &testutil.TestCommand{eh.NewUUID(), "command1"}
+	command1 := &mocks.Command{eh.NewUUID(), "command1"}
 	err := bus.HandleCommand(command1)
 	if err != eh.ErrHandlerNotFound {
 		t.Error("there should be a ErrHandlerNotFound error:", err)
 	}
 
 	t.Log("set handler")
-	handler := &TestCommandHandler{}
-	err = bus.SetHandler(handler, testutil.TestCommandType)
+	handler := &mocks.CommandHandler{}
+	err = bus.SetHandler(handler, mocks.CommandType)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -46,21 +46,12 @@ func TestCommandBus(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if handler.command != command1 {
-		t.Error("the handled command should be correct:", handler.command)
+	if handler.Command != command1 {
+		t.Error("the handled command should be correct:", handler.Command)
 	}
 
-	err = bus.SetHandler(handler, testutil.TestCommandType)
+	err = bus.SetHandler(handler, mocks.CommandType)
 	if err != eh.ErrHandlerAlreadySet {
 		t.Error("there should be a ErrHandlerAlreadySet error:", err)
 	}
-}
-
-type TestCommandHandler struct {
-	command eh.Command
-}
-
-func (t *TestCommandHandler) HandleCommand(command eh.Command) error {
-	t.command = command
-	return nil
 }

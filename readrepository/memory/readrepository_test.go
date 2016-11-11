@@ -20,7 +20,7 @@ import (
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/testutil"
+	"github.com/looplab/eventhorizon/mocks"
 )
 
 func TestReadRepository(t *testing.T) {
@@ -41,7 +41,7 @@ func TestReadRepository(t *testing.T) {
 	}
 
 	t.Log("Save one item")
-	model1 := &testutil.TestModel{eh.NewUUID(), "model1", time.Now().Round(time.Millisecond)}
+	model1 := &mocks.Model{eh.NewUUID(), "model1", time.Now().Round(time.Millisecond)}
 	if err = repo.Save(model1.ID, model1); err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -54,7 +54,7 @@ func TestReadRepository(t *testing.T) {
 	}
 
 	t.Log("Save and overwrite with same ID")
-	model1Alt := &testutil.TestModel{model1.ID, "model1Alt", time.Now().Round(time.Millisecond)}
+	model1Alt := &mocks.Model{model1.ID, "model1Alt", time.Now().Round(time.Millisecond)}
 	if err = repo.Save(model1Alt.ID, model1Alt); err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -79,7 +79,7 @@ func TestReadRepository(t *testing.T) {
 	}
 
 	t.Log("Save with another ID")
-	model2 := &testutil.TestModel{eh.NewUUID(), "model2", time.Now().Round(time.Millisecond)}
+	model2 := &mocks.Model{eh.NewUUID(), "model2", time.Now().Round(time.Millisecond)}
 	if err = repo.Save(model2.ID, model2); err != nil {
 		t.Error("there should be no error:", err)
 	}
