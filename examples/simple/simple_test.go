@@ -27,7 +27,20 @@ import (
 	readrepository "github.com/looplab/eventhorizon/readrepository/memory"
 
 	"github.com/looplab/eventhorizon/examples/domain"
+	"sync"
+	"strings"
 )
+
+type exampleObserver struct {
+	events []eh.Event
+	lock sync.Mutex
+}
+
+func (o *exampleObserver) Notify(event eh.Event) {
+	o.lock.Lock()
+	o.events = append(o.events, event)
+	o.lock.Unlock()
+}
 
 func Example() {
 	// Create the event store.
@@ -37,7 +50,9 @@ func Example() {
 	eventBus := eventbus.NewEventBus()
 	eventBus.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
 	eventBus.AddObserver(&domain.Logger{})
-
+	observer := exampleObserver{}
+	eventBus.AddObserver(&observer)
+	
 	// Create the aggregate repository.
 	repository, err := eh.NewEventSourcingRepository(eventStore, eventBus)
 	if err != nil {
@@ -152,4 +167,24 @@ func Example() {
 	// invitation: Poseidon - denied
 	// invitation: Zeus - declined
 	// guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied
+
+	athenasActualEvents := []string{}
+	for _, e := range observer.events {
+		if e.AggregateID() == athenaID {
+			athenasActualEvents = append(athenasActualEvents, string(e.EventType()))
+		}
+	}
+	if n := len(athenasActualEvents); n != 3  {
+		log.Fatalf("Not all of Athena's events were observed, got %d, expected 3", n)
+	}
+	
+	for i, expected := range []string{
+		string(domain.InviteCreatedEvent),
+		string(domain.InviteAcceptedEvent),
+		string(domain.InviteConfirmedEvent),
+	} {
+		if actual := athenasActualEvents[i]; actual != expected {
+			log.Fatalf("Expected event no %d for Athena to be %s, got %s.\n  order:%s", i+1, expected, actual, strings.Join(athenasActualEvents, ","))
+		}
+	}
 }
