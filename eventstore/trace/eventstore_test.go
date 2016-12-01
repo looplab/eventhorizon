@@ -21,6 +21,7 @@ import (
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventstore/memory"
 	"github.com/looplab/eventhorizon/eventstore/testutil"
+	"github.com/looplab/eventhorizon/mocks"
 )
 
 func TestEventStore(t *testing.T) {
@@ -68,12 +69,16 @@ func TestEventStore(t *testing.T) {
 	aggregate1events = append(aggregate1events, event1)
 
 	t.Log("load events without tracing")
-	eventRecords, err := store.Load(event1.AggregateType(), event1.AggregateID())
+	events, err := store.Load(event1.AggregateType(), event1.AggregateID())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	events := testutil.EventsFromRecord(eventRecords)
-	if !reflect.DeepEqual(events, aggregate1events) {
-		t.Error("the loaded events should be correct:", events)
+	for i, event := range events {
+		if err := mocks.CompareEvents(event, aggregate1events[i]); err != nil {
+			t.Error("the event was incorrect:", err)
+		}
+		if event.Version() != i+1 {
+			t.Error("the event version should be correct:", event, event.Version())
+		}
 	}
 }

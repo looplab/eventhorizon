@@ -25,5 +25,5 @@ type Logger struct{}
 
 // Notify implements the HandleEvent method of the EventHandler interface.
 func (l *Logger) Notify(event eh.Event) {
-	log.Printf("event: %#v\n", event)
+	log.Println("event:", event)
 }

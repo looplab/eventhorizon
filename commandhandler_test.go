@@ -156,9 +156,7 @@ func TestCommandHandlerCheckCommand(t *testing.T) {
 }
 
 func BenchmarkCommandHandler(b *testing.B) {
-	aggregate := &TestAggregate{
-		AggregateBase: NewAggregateBase(NewUUID()),
-	}
+	aggregate := NewTestAggregate(NewUUID())
 	repo := &MockRepository{
 		Aggregates: map[UUID]Aggregate{
 			aggregate.AggregateID(): aggregate,
@@ -183,9 +181,7 @@ func BenchmarkCommandHandler(b *testing.B) {
 }
 
 func createAggregateAndHandler(t *testing.T) (*TestAggregate, *AggregateCommandHandler) {
-	aggregate := &TestAggregate{
-		AggregateBase: NewAggregateBase(NewUUID()),
-	}
+	aggregate := NewTestAggregate(NewUUID())
 	repo := &MockRepository{
 		Aggregates: map[UUID]Aggregate{
 			aggregate.AggregateID(): aggregate,

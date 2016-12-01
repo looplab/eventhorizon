@@ -51,8 +51,8 @@ func (s *ResponseSaga) SagaType() eh.SagaType {
 
 // RunSaga implements the Run saga method of the Saga interface.
 func (s *ResponseSaga) RunSaga(event eh.Event) []eh.Command {
-	switch event := event.(type) {
-	case *InviteAccepted:
+	switch event.EventType() {
+	case InviteAcceptedEvent:
 		// Do nothing for already accepted guests.
 		s.acceptedGuestsMu.RLock()
 		ok, _ := s.acceptedGuests[event.AggregateID()]

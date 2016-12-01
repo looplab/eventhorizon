@@ -65,23 +65,27 @@ func (p *InvitationProjector) HandleEvent(event eh.Event) {
 	}
 
 	// Apply the changes for the event.
-	switch e := event.(type) {
-	case *InviteCreated:
-		i.Name = e.Name
-		i.Age = e.Age
-	case *InviteAccepted:
+	switch event.EventType() {
+	case InviteCreatedEvent:
+		if data, ok := event.Data().(*InviteCreatedData); ok {
+			i.Name = data.Name
+			i.Age = data.Age
+		} else {
+			log.Println("invalid event data type:", event.Data())
+		}
+	case InviteAcceptedEvent:
 		// NOTE: Temp fix for events that arrive out of order.
 		if i.Status != "confirmed" && i.Status != "denied" {
 			i.Status = "accepted"
 		}
-	case *InviteDeclined:
+	case InviteDeclinedEvent:
 		// NOTE: Temp fix for events that arrive out of order.
 		if i.Status != "confirmed" && i.Status != "denied" {
 			i.Status = "declined"
 		}
-	case *InviteConfirmed:
+	case InviteConfirmedEvent:
 		i.Status = "confirmed"
-	case *InviteDenied:
+	case InviteDeniedEvent:
 		i.Status = "denied"
 	}
 
@@ -139,16 +143,16 @@ func (p *GuestListProjector) HandleEvent(event eh.Event) {
 	}
 
 	// Apply the count of the guests.
-	switch event.(type) {
-	case *InviteAccepted:
+	switch event.EventType() {
+	case InviteAcceptedEvent:
 		g.NumAccepted++
 		g.NumGuests++
-	case *InviteDeclined:
+	case InviteDeclinedEvent:
 		g.NumDeclined++
 		g.NumGuests++
-	case *InviteConfirmed:
+	case InviteConfirmedEvent:
 		g.NumConfirmed++
-	case *InviteDenied:
+	case InviteDeniedEvent:
 		g.NumDenied++
 	}
 

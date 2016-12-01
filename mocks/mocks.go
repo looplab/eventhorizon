@@ -23,11 +23,10 @@ import (
 
 func init() {
 	eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
-		return &Aggregate{AggregateBase: eh.NewAggregateBase(id)}
+		return NewAggregate(id)
 	})
 
-	eh.RegisterEvent(func() eh.Event { return &Event{} })
-	eh.RegisterEvent(func() eh.Event { return &EventOther{} })
+	eh.RegisterEventData(EventType, func() eh.EventData { return &EventData{} })
 }
 
 const (
@@ -60,6 +59,15 @@ type Aggregate struct {
 	Err error
 }
 
+// NewAggregate returns a new Aggregate.
+func NewAggregate(id eh.UUID) *Aggregate {
+	return &Aggregate{
+		AggregateBase: eh.NewAggregateBase(AggregateType, id),
+		Commands:      []eh.Command{},
+		Events:        []eh.Event{},
+	}
+}
+
 // HandleCommand implements the HandleCommand method of the eventhorizon.Aggregate interface.
 func (t *Aggregate) HandleCommand(command eh.Command) error {
 	if t.Err != nil {
@@ -69,35 +77,15 @@ func (t *Aggregate) HandleCommand(command eh.Command) error {
 	return nil
 }
 
-// AggregateType implements the AggregateType method of the eventhorizon.Aggregate interface.
-func (t *Aggregate) AggregateType() eh.AggregateType {
-	return AggregateType
-}
-
 // ApplyEvent implements the ApplyEvent method of the eventhorizon.Aggregate interface.
 func (t *Aggregate) ApplyEvent(event eh.Event) {
 	t.Events = append(t.Events, event)
 }
 
-// Event is a mocked eventhorizon.Event, useful in testing.
-type Event struct {
-	ID      eh.UUID
+// EventData is a mocked event data, useful in testing.
+type EventData struct {
 	Content string
 }
-
-func (t Event) AggregateID() eh.UUID            { return t.ID }
-func (t Event) AggregateType() eh.AggregateType { return AggregateType }
-func (t Event) EventType() eh.EventType         { return EventType }
-
-// EventOther is a mocked eventhorizon.Event, useful in testing.
-type EventOther struct {
-	ID      eh.UUID
-	Content string
-}
-
-func (t EventOther) AggregateID() eh.UUID            { return t.ID }
-func (t EventOther) AggregateType() eh.AggregateType { return AggregateType }
-func (t EventOther) EventType() eh.EventType         { return EventOtherType }
 
 // Command is a mocked eventhorizon.Command, useful in testing.
 type Command struct {
@@ -234,7 +222,7 @@ func (m *Repository) Save(aggregate eh.Aggregate) error {
 
 // EventStore is a mocked eventhorizon.EventStore, useful in testing.
 type EventStore struct {
-	Events []eh.EventRecord
+	Events []eh.Event
 	Loaded eh.UUID
 	// Used to simulate errors in the store.
 	Err error
@@ -246,43 +234,18 @@ func (m *EventStore) Save(events []eh.Event, originalVersion int) error {
 		return m.Err
 	}
 	for _, event := range events {
-		m.Events = append(m.Events, EventRecord{event: event})
+		m.Events = append(m.Events, event)
 	}
 	return nil
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (m *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.EventRecord, error) {
+func (m *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
 	m.Loaded = id
 	return m.Events, nil
-}
-
-// EventRecord is an eventhorizon.EventRecord used by the EventStore.
-type EventRecord struct {
-	event eh.Event
-}
-
-// Version implements the Version method of the eventhorizon.EventRecord interface.
-func (e EventRecord) Version() int {
-	return 0
-}
-
-// Timestamp implements the Timestamp method of the eventhorizon.EventRecord interface.
-func (e EventRecord) Timestamp() time.Time {
-	return time.Time{}
-}
-
-// Event implements the Event method of the eventhorizon.EventRecord interface.
-func (e EventRecord) Event() eh.Event {
-	return e.event
-}
-
-// String implements the String method of the eventhorizon.EventRecord interface.
-func (e EventRecord) String() string {
-	return string(e.event.EventType())
 }
 
 // CommandBus is a mocked eventhorizon.CommandBus, useful in testing.

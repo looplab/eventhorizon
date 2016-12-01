@@ -82,50 +82,6 @@ func NewEventStoreWithSession(session *mgo.Session, database string) (*EventStor
 	return s, nil
 }
 
-type aggregateRecord struct {
-	AggregateID string          `bson:"_id"`
-	Version     int             `bson:"version"`
-	Events      []dbEventRecord `bson:"events"`
-	// Type        string        `bson:"type"`
-	// Snapshot    bson.Raw      `bson:"snapshot"`
-}
-
-// dbEventRecord is the internal event record for the MongoDB event store used
-// to save and load events from the DB.
-type dbEventRecord struct {
-	EventType eh.EventType `bson:"type"`
-	Version   int          `bson:"version"`
-	Timestamp time.Time    `bson:"timestamp"`
-	Event     eh.Event     `bson:"-"`
-	Data      bson.Raw     `bson:"data"`
-}
-
-// eventRecord is the private implementation of the eventhorizon.EventRecord
-// interface for a MongoDB event store.
-type eventRecord struct {
-	dbEventRecord
-}
-
-// Version implements the Version method of the eventhorizon.EventRecord interface.
-func (e eventRecord) Version() int {
-	return e.dbEventRecord.Version
-}
-
-// Timestamp implements the Timestamp method of the eventhorizon.EventRecord interface.
-func (e eventRecord) Timestamp() time.Time {
-	return e.dbEventRecord.Timestamp
-}
-
-// Event implements the Event method of the eventhorizon.EventRecord interface.
-func (e eventRecord) Event() eh.Event {
-	return e.dbEventRecord.Event
-}
-
-// String implements the String method of the eventhorizon.EventRecord interface.
-func (e eventRecord) String() string {
-	return fmt.Sprintf("%s@%d", e.dbEventRecord.EventType, e.dbEventRecord.Version)
-}
-
 // Save appends all events in the event stream to the database.
 func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
@@ -137,7 +93,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 	// Build all event records, with incrementing versions starting from the
 	// original aggregate version.
-	eventRecords := make([]dbEventRecord, len(events))
+	dbEvents := make([]dbEvent, len(events))
 	aggregateID := events[0].AggregateID()
 	for i, event := range events {
 		// Only accept events belonging to the same aggregate.
@@ -145,18 +101,22 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 			return ErrInvalidEvent
 		}
 
-		// Marshal event data.
-		data, err := bson.Marshal(event)
-		if err != nil {
-			return ErrCouldNotMarshalEvent
+		// Create the event record with timestamp.
+		dbEvents[i] = dbEvent{
+			EventType:     event.EventType(),
+			Timestamp:     event.Timestamp(),
+			AggregateType: event.AggregateType(),
+			AggregateID:   event.AggregateID(),
+			Version:       1 + originalVersion + i,
 		}
 
-		// Create the event record with timestamp.
-		eventRecords[i] = dbEventRecord{
-			EventType: event.EventType(),
-			Version:   1 + originalVersion + i,
-			Timestamp: time.Now(),
-			Data:      bson.Raw{3, data},
+		// Marshal event data if there is any.
+		if event.Data() != nil {
+			rawData, err := bson.Marshal(event.Data())
+			if err != nil {
+				return ErrCouldNotMarshalEvent
+			}
+			dbEvents[i].RawData = bson.Raw{Kind: 3, Data: rawData}
 		}
 	}
 
@@ -164,8 +124,8 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 	if originalVersion == 0 {
 		aggregate := aggregateRecord{
 			AggregateID: aggregateID.String(),
-			Version:     len(eventRecords),
-			Events:      eventRecords,
+			Version:     len(dbEvents),
+			Events:      dbEvents,
 		}
 
 		if err := sess.DB(s.db).C("events").Insert(aggregate); err != nil {
@@ -181,8 +141,8 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 				"version": originalVersion,
 			},
 			bson.M{
-				"$push": bson.M{"events": bson.M{"$each": eventRecords}},
-				"$inc":  bson.M{"version": len(eventRecords)},
+				"$push": bson.M{"events": bson.M{"$each": dbEvents}},
+				"$inc":  bson.M{"version": len(dbEvents)},
 			},
 		); err != nil {
 			return ErrCouldNotSaveAggregate
@@ -194,39 +154,36 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the database.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.EventRecord, error) {
+func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	sess := s.session.Copy()
 	defer sess.Close()
 
 	var aggregate aggregateRecord
 	err := sess.DB(s.db).C("events").FindId(id.String()).One(&aggregate)
 	if err == mgo.ErrNotFound {
-		return []eh.EventRecord{}, nil
+		return []eh.Event{}, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	eventRecords := make([]eh.EventRecord, len(aggregate.Events))
-	for i, record := range aggregate.Events {
+	events := make([]eh.Event, len(aggregate.Events))
+	for i, dbEvent := range aggregate.Events {
 		// Create an event of the correct type.
-		event, err := eh.CreateEvent(record.EventType)
-		if err != nil {
-			return nil, err
+		if data, err := eh.CreateEventData(dbEvent.EventType); err == nil {
+			// Manually decode the raw BSON event.
+			if err := dbEvent.RawData.Unmarshal(data); err != nil {
+				return nil, ErrCouldNotUnmarshalEvent
+			}
+
+			// Set conrcete event and zero out the decoded event.
+			dbEvent.data = data
+			dbEvent.RawData = bson.Raw{}
 		}
 
-		// Manually decode the raw BSON event.
-		if err := record.Data.Unmarshal(event); err != nil {
-			return nil, ErrCouldNotUnmarshalEvent
-		}
-
-		// Set conrcete event and zero out the decoded event.
-		record.Event = event
-		record.Data = bson.Raw{}
-
-		eventRecords[i] = eventRecord{dbEventRecord: record}
+		events[i] = event{dbEvent: dbEvent}
 	}
 
-	return eventRecords, nil
+	return events, nil
 }
 
 // SetDB sets the database session.
@@ -245,4 +202,66 @@ func (s *EventStore) Clear() error {
 // Close closes the database session.
 func (s *EventStore) Close() {
 	s.session.Close()
+}
+
+// aggregateRecord is the DB representation of an aggregate.
+type aggregateRecord struct {
+	AggregateID string    `bson:"_id"`
+	Version     int       `bson:"version"`
+	Events      []dbEvent `bson:"events"`
+	// Type        string        `bson:"type"`
+	// Snapshot    bson.Raw      `bson:"snapshot"`
+}
+
+// dbEvent is the internal event record for the MongoDB event store used
+// to save and load events from the DB.
+type dbEvent struct {
+	EventType     eh.EventType     `bson:"event_type"`
+	RawData       bson.Raw         `bson:"data,omitempty"`
+	data          eh.EventData     `bson:"-"`
+	Timestamp     time.Time        `bson:"timestamp"`
+	AggregateType eh.AggregateType `bson:"aggregate_type"`
+	AggregateID   eh.UUID          `bson:"_id"`
+	Version       int              `bson:"version"`
+}
+
+// event is the private implementation of the eventhorizon.Event interface
+// for a MongoDB event store.
+type event struct {
+	dbEvent
+}
+
+// AggrgateID implements the AggrgateID method of the eventhorizon.Event interface.
+func (e event) AggregateID() eh.UUID {
+	return e.dbEvent.AggregateID
+}
+
+// AggregateType implements the AggregateType method of the eventhorizon.Event interface.
+func (e event) AggregateType() eh.AggregateType {
+	return e.dbEvent.AggregateType
+}
+
+// EventType implements the EventType method of the eventhorizon.Event interface.
+func (e event) EventType() eh.EventType {
+	return e.dbEvent.EventType
+}
+
+// Data implements the Data method of the eventhorizon.Event interface.
+func (e event) Data() eh.EventData {
+	return e.dbEvent.data
+}
+
+// Version implements the Version method of the eventhorizon.Event interface.
+func (e event) Version() int {
+	return e.dbEvent.Version
+}
+
+// Timestamp implements the Timestamp method of the eventhorizon.Event interface.
+func (e event) Timestamp() time.Time {
+	return e.dbEvent.Timestamp
+}
+
+// String implements the String method of the eventhorizon.Event interface.
+func (e event) String() string {
+	return fmt.Sprintf("%s@%d", e.dbEvent.EventType, e.dbEvent.Version)
 }

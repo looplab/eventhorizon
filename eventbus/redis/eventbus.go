@@ -16,6 +16,7 @@ package redis
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -98,7 +99,7 @@ func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
 		log.Println("eventbus: start receiving")
 		defer log.Println("eventbus: stop receiving")
 
-		// Used for exponential fallback on reconnects.
+		// Used for exponential fall back on reconnects.
 		delay := &backoff.Backoff{
 			Max: 5 * time.Minute,
 		}
@@ -168,7 +169,7 @@ func (b *EventBus) AddObserver(observer eh.EventObserver) {
 	b.observers[observer] = true
 }
 
-// Close exits the recive goroutine by unsubscribing to all channels.
+// Close exits the receive goroutine by unsubscribing to all channels.
 func (b *EventBus) Close() error {
 	select {
 	case b.exit <- true:
@@ -187,10 +188,28 @@ func (b *EventBus) notify(event eh.Event) error {
 		return err
 	}
 
-	// Marshal event data (using BSON for now).
+	// Create the Redis event.
+	redisEvent := redisEvent{
+		AggregateID:   event.AggregateID(),
+		AggregateType: event.AggregateType(),
+		EventType:     event.EventType(),
+		Version:       event.Version(),
+		Timestamp:     event.Timestamp(),
+	}
+
+	// Marshal event data if there is any.
+	if event.Data() != nil {
+		rawData, err := bson.Marshal(event.Data())
+		if err != nil {
+			return ErrCouldNotMarshalEvent
+		}
+		redisEvent.RawData = bson.Raw{Kind: 3, Data: rawData}
+	}
+
+	// Marshal the Redis event (using BSON for now).
 	var data []byte
 	var err error
-	if data, err = bson.Marshal(event); err != nil {
+	if data, err = bson.Marshal(redisEvent); err != nil {
 		return ErrCouldNotMarshalEvent
 	}
 
@@ -225,25 +244,38 @@ func (b *EventBus) recv(delay *backoff.Backoff) error {
 	for {
 		switch v := pubSubConn.Receive().(type) {
 		case redis.PMessage:
-			// Extract the event type from the channel name.
-			eventType := eh.EventType(strings.TrimPrefix(v.Channel, b.prefix))
-
-			// Create an event of the correct type.
-			event, err := eh.CreateEvent(eventType)
-			if err != nil {
-				log.Println("error: event bus receive:", err)
-				continue
-			}
-
 			// Manually decode the raw BSON event.
 			data := bson.Raw{
 				Kind: 3,
 				Data: v.Data,
 			}
-			if err := data.Unmarshal(event); err != nil {
+			var redisEvent redisEvent
+			if err := data.Unmarshal(&redisEvent); err != nil {
 				log.Println("error: event bus receive:", ErrCouldNotUnmarshalEvent)
 				continue
 			}
+
+			// Extract the event type from the channel name.
+			eventType := eh.EventType(strings.TrimPrefix(v.Channel, b.prefix))
+			if redisEvent.EventType != eventType {
+				log.Println("error: event bus receive: event type mismatch")
+				continue
+			}
+
+			// Create an event of the correct type.
+			if data, err := eh.CreateEventData(redisEvent.EventType); err == nil {
+				// Manually decode the raw BSON event.
+				if err := redisEvent.RawData.Unmarshal(data); err != nil {
+					log.Println("error: event bus receive:", ErrCouldNotUnmarshalEvent)
+					continue
+				}
+
+				// Set concrete event and zero out the decoded event.
+				redisEvent.data = data
+				redisEvent.RawData = bson.Raw{}
+			}
+
+			event := event{redisEvent: redisEvent}
 
 			b.handlerMu.RLock()
 			for o := range b.observers {
@@ -276,4 +308,56 @@ func (b *EventBus) recv(delay *backoff.Backoff) error {
 			return v
 		}
 	}
+}
+
+// redisEvent is the internal event used with the Redis event bus.
+type redisEvent struct {
+	EventType     eh.EventType     `bson:"event_type"`
+	RawData       bson.Raw         `bson:"data,omitempty"`
+	data          eh.EventData     `bson:"-"`
+	Timestamp     time.Time        `bson:"timestamp"`
+	AggregateType eh.AggregateType `bson:"aggregate_type"`
+	AggregateID   eh.UUID          `bson:"_id"`
+	Version       int              `bson:"version"`
+}
+
+// event is the private implementation of the eventhorizon.Event interface
+// for a MongoDB event store.
+type event struct {
+	redisEvent
+}
+
+// EventType implements the EventType method of the eventhorizon.Event interface.
+func (e event) EventType() eh.EventType {
+	return e.redisEvent.EventType
+}
+
+// Data implements the Data method of the eventhorizon.Event interface.
+func (e event) Data() eh.EventData {
+	return e.redisEvent.data
+}
+
+// Timestamp implements the Timestamp method of the eventhorizon.Event interface.
+func (e event) Timestamp() time.Time {
+	return e.redisEvent.Timestamp
+}
+
+// AggregateType implements the AggregateType method of the eventhorizon.Event interface.
+func (e event) AggregateType() eh.AggregateType {
+	return e.redisEvent.AggregateType
+}
+
+// AggrgateID implements the AggrgateID method of the eventhorizon.Event interface.
+func (e event) AggregateID() eh.UUID {
+	return e.redisEvent.AggregateID
+}
+
+// Version implements the Version method of the eventhorizon.Event interface.
+func (e event) Version() int {
+	return e.redisEvent.Version
+}
+
+// String implements the String method of the eventhorizon.Event interface.
+func (e event) String() string {
+	return fmt.Sprintf("%s@%d", e.redisEvent.EventType, e.redisEvent.Version)
 }

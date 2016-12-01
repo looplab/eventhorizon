@@ -15,23 +15,46 @@
 package eventhorizon
 
 import (
+	"reflect"
 	"testing"
 )
 
-func TestCreateEvent(t *testing.T) {
-	event, err := CreateEvent(TestEventRegisterType)
-	if err != ErrEventNotRegistered {
+func TestNewEvent(t *testing.T) {
+	event := NewEvent(TestEventType, &TestEventData{"event1"})
+
+	if event.EventType() != TestEventType {
+		t.Error("the event type should be correct:", event.EventType())
+	}
+	if !reflect.DeepEqual(event.Data(), &TestEventData{"event1"}) {
+		t.Error("the data should be correct:", event.Data())
+	}
+	if event.Version() != 0 {
+		t.Error("the version should be zero:", event.Version())
+	}
+	if event.Timestamp().IsZero() {
+		t.Error("the timestamp should not be zero:", event.Timestamp())
+	}
+	if event.String() != "TestEvent@0" {
+		t.Error("the string representation should be correct:", event.String())
+	}
+}
+
+func TestCreateEventData(t *testing.T) {
+	data, err := CreateEventData(TestEventRegisterType)
+	if err != ErrEventDataNotRegistered {
 		t.Error("there should be a event not registered error:", err)
 	}
 
-	RegisterEvent(func() Event { return &TestEventRegister{} })
+	RegisterEventData(TestEventRegisterType, func() EventData {
+		return &TestEventRegister{}
+	})
 
-	event, err = CreateEvent(TestEventRegisterType)
+	data, err = CreateEventData(TestEventRegisterType)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if event.EventType() != TestEventRegisterType {
-		t.Error("the event type should be correct:", event.EventType())
+	if _, ok := data.(*TestEventRegister); !ok {
+		t.Errorf("the event type should be correct: %T", data)
 	}
 }
 
@@ -41,16 +64,9 @@ func TestRegisterEventEmptyName(t *testing.T) {
 			t.Error("there should have been a panic:", r)
 		}
 	}()
-	RegisterEvent(func() Event { return &TestEventRegisterEmpty{} })
-}
-
-func TestRegisterEventNil(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil || r != "eventhorizon: created event is nil" {
-			t.Error("there should have been a panic:", r)
-		}
-	}()
-	RegisterEvent(func() Event { return nil })
+	RegisterEventData(TestEventRegisterEmptyType, func() EventData {
+		return &TestEventRegisterEmpty{}
+	})
 }
 
 func TestRegisterEventTwice(t *testing.T) {
@@ -59,8 +75,12 @@ func TestRegisterEventTwice(t *testing.T) {
 			t.Error("there should have been a panic:", r)
 		}
 	}()
-	RegisterEvent(func() Event { return &TestEventRegisterTwice{} })
-	RegisterEvent(func() Event { return &TestEventRegisterTwice{} })
+	RegisterEventData(TestEventRegisterTwiceType, func() EventData {
+		return &TestEventRegisterTwice{}
+	})
+	RegisterEventData(TestEventRegisterTwiceType, func() EventData {
+		return &TestEventRegisterTwice{}
+	})
 }
 
 const (
@@ -71,18 +91,6 @@ const (
 
 type TestEventRegister struct{}
 
-func (a TestEventRegister) AggregateID() UUID            { return UUID("") }
-func (a TestEventRegister) AggregateType() AggregateType { return TestAggregateType }
-func (a TestEventRegister) EventType() EventType         { return TestEventRegisterType }
-
 type TestEventRegisterEmpty struct{}
 
-func (a TestEventRegisterEmpty) AggregateID() UUID            { return UUID("") }
-func (a TestEventRegisterEmpty) AggregateType() AggregateType { return TestAggregateType }
-func (a TestEventRegisterEmpty) EventType() EventType         { return TestEventRegisterEmptyType }
-
 type TestEventRegisterTwice struct{}
-
-func (a TestEventRegisterTwice) AggregateID() UUID            { return UUID("") }
-func (a TestEventRegisterTwice) AggregateType() AggregateType { return TestAggregateType }
-func (a TestEventRegisterTwice) EventType() EventType         { return TestEventRegisterTwiceType }
