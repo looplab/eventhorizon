@@ -59,7 +59,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the base store.
 // Returns ErrNoEventStoreDefined if no event store could be found.
-func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.EventRecord, error) {
+func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	if s.eventStore != nil {
 		return s.eventStore.Load(aggregateType, id)
 	}

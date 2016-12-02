@@ -15,7 +15,6 @@
 package testutil
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 
@@ -23,6 +22,8 @@ import (
 	"github.com/looplab/eventhorizon/mocks"
 )
 
+// EventStoreCommonTests are test cases that are common to all implementations
+// of event stores.
 func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	savedEvents := []eh.Event{}
 
@@ -34,7 +35,8 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 
 	t.Log("save event, version 1")
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
-	event1 := &mocks.Event{id, "event1"}
+	agg := mocks.NewAggregate(id)
+	event1 := agg.NewEvent(mocks.EventType, &mocks.EventData{"event1"})
 	err = store.Save([]eh.Event{event1}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -48,8 +50,8 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	}
 	savedEvents = append(savedEvents, event1)
 
-	t.Log("save event, version 3")
-	event2 := &mocks.Event{id, "event2"}
+	t.Log("save event without data, version 3")
+	event2 := agg.NewEvent(mocks.EventOtherType, nil)
 	err = store.Save([]eh.Event{event2}, 2)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -65,7 +67,8 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 
 	t.Log("save event for another aggregate")
 	id2, _ := eh.ParseUUID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
-	event3 := &mocks.Event{id2, "event3"}
+	agg2 := mocks.NewAggregate(id2)
+	event3 := agg2.NewEvent(mocks.EventType, &mocks.EventData{"event3"})
 	err = store.Save([]eh.Event{event3}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -73,54 +76,51 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	savedEvents = append(savedEvents, event3)
 
 	t.Log("load events for non-existing aggregate")
-	eventRecords, err := store.Load(mocks.AggregateType, eh.NewUUID())
+	events, err := store.Load(mocks.AggregateType, eh.NewUUID())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if len(eventRecords) != 0 {
-		t.Error("there should be no loaded events:", eventsToString(EventsFromRecord(eventRecords)))
+	if len(events) != 0 {
+		t.Error("there should be no loaded events:", eventsToString(events))
 	}
 
 	t.Log("load events")
-	eventRecords, err = store.Load(mocks.AggregateType, id)
+	events, err = store.Load(mocks.AggregateType, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	events := EventsFromRecord(eventRecords)
-	if !reflect.DeepEqual(events, []eh.Event{
+	expectedEvents := []eh.Event{
 		event1,                 // Version 1
 		event1,                 // Version 2
 		event2,                 // Version 3
 		event1, event2, event1, // Version 4, 5 and 6
-	}) {
-		t.Error("the loaded events should be correct:", eventsToString(events))
 	}
-	for i, record := range eventRecords {
-		if record.Version() != i+1 {
-			t.Error("the event version should be correct:", record.Event(), record.Version())
+	for i, event := range events {
+		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
+			t.Error("the event was incorrect:", err)
+		}
+		if event.Version() != i+1 {
+			t.Error("the event version should be correct:", event, event.Version())
 		}
 	}
-	t.Log(eventRecords)
+	t.Log(events)
 
 	t.Log("load events for another aggregate")
-	eventRecords, err = store.Load(mocks.AggregateType, id2)
+	events, err = store.Load(mocks.AggregateType, id2)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	events = EventsFromRecord(eventRecords)
-	if !reflect.DeepEqual(events, []eh.Event{event3}) {
-		t.Error("the loaded events should be correct:", eventsToString(events))
+	expectedEvents = []eh.Event{event3}
+	for i, event := range events {
+		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
+			t.Error("the event was incorrect:", err)
+		}
+		if event.Version() != i+1 {
+			t.Error("the event version should be correct:", event, event.Version())
+		}
 	}
 
 	return savedEvents
-}
-
-func EventsFromRecord(eventRecords []eh.EventRecord) []eh.Event {
-	events := make([]eh.Event, len(eventRecords))
-	for i, r := range eventRecords {
-		events[i] = r.Event()
-	}
-	return events
 }
 
 func eventsToString(events []eh.Event) string {

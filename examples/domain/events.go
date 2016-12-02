@@ -18,67 +18,30 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-func init() {
-	eh.RegisterEvent(func() eh.Event { return &InviteCreated{} })
-	eh.RegisterEvent(func() eh.Event { return &InviteAccepted{} })
-	eh.RegisterEvent(func() eh.Event { return &InviteDeclined{} })
-	eh.RegisterEvent(func() eh.Event { return &InviteConfirmed{} })
-	eh.RegisterEvent(func() eh.Event { return &InviteDenied{} })
-}
-
 const (
+	// InviteCreatedEvent is when an invite is created.
 	InviteCreatedEvent eh.EventType = "InviteCreated"
 
+	// InviteAcceptedEvent is when an invite has been accepted by the guest.
 	InviteAcceptedEvent eh.EventType = "InviteAccepted"
+	// InviteDeclinedEvent is when an invite has been declined by the guest.
 	InviteDeclinedEvent eh.EventType = "InviteDeclined"
 
+	// InviteConfirmedEvent is when an invite has been cornfirmed as booked.
 	InviteConfirmedEvent eh.EventType = "InviteConfirmed"
-	InviteDeniedEvent    eh.EventType = "InviteDenied"
+	// InviteDeniedEvent is when an invite has been declined to be booked.
+	InviteDeniedEvent eh.EventType = "InviteDenied"
 )
 
-// InviteCreated is an event for when an invite has been created.
-type InviteCreated struct {
-	InvitationID eh.UUID `bson:"invitation_id"`
-	Name         string  `bson:"name"`
-	Age          int     `bson:"age"`
+func init() {
+	// Only the event for creating an invite has custom data.
+	eh.RegisterEventData(InviteCreatedEvent, func() eh.EventData {
+		return &InviteCreatedData{}
+	})
 }
 
-func (c InviteCreated) AggregateID() eh.UUID            { return c.InvitationID }
-func (c InviteCreated) AggregateType() eh.AggregateType { return InvitationAggregateType }
-func (c InviteCreated) EventType() eh.EventType         { return InviteCreatedEvent }
-
-// InviteAccepted is an event for when an invite has been accepted.
-type InviteAccepted struct {
-	InvitationID eh.UUID `bson:"invitation_id"`
+// InviteCreatedData is the event data for when an invite has been created.
+type InviteCreatedData struct {
+	Name string `bson:"name"`
+	Age  int    `bson:"age"`
 }
-
-func (c InviteAccepted) AggregateID() eh.UUID            { return c.InvitationID }
-func (c InviteAccepted) AggregateType() eh.AggregateType { return InvitationAggregateType }
-func (c InviteAccepted) EventType() eh.EventType         { return InviteAcceptedEvent }
-
-// InviteDeclined is an event for when an invite has been declined.
-type InviteDeclined struct {
-	InvitationID eh.UUID `bson:"invitation_id"`
-}
-
-func (c InviteDeclined) AggregateID() eh.UUID            { return c.InvitationID }
-func (c InviteDeclined) AggregateType() eh.AggregateType { return InvitationAggregateType }
-func (c InviteDeclined) EventType() eh.EventType         { return InviteDeclinedEvent }
-
-// InviteConfirmed is an event for when an invite has been confirmed as booked.
-type InviteConfirmed struct {
-	InvitationID eh.UUID `bson:"invitation_id"`
-}
-
-func (c InviteConfirmed) AggregateID() eh.UUID            { return c.InvitationID }
-func (c InviteConfirmed) AggregateType() eh.AggregateType { return InvitationAggregateType }
-func (c InviteConfirmed) EventType() eh.EventType         { return InviteConfirmedEvent }
-
-// InviteDenied is an event for when an invite has been denied to book.
-type InviteDenied struct {
-	InvitationID eh.UUID `bson:"invitation_id"`
-}
-
-func (c InviteDenied) AggregateID() eh.UUID            { return c.InvitationID }
-func (c InviteDenied) AggregateType() eh.AggregateType { return InvitationAggregateType }
-func (c InviteDenied) EventType() eh.EventType         { return InviteDeniedEvent }

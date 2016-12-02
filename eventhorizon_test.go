@@ -14,21 +14,18 @@
 
 package eventhorizon
 
-import (
-	"errors"
-	"time"
-)
+import "errors"
 
 func init() {
 	RegisterAggregate(func(id UUID) Aggregate {
-		return &TestAggregate{AggregateBase: NewAggregateBase(id)}
+		return NewTestAggregate(id)
 	})
 	RegisterAggregate(func(id UUID) Aggregate {
-		return &TestAggregate2{AggregateBase: NewAggregateBase(id)}
+		return NewTestAggregate2(id)
 	})
 
-	RegisterEvent(func() Event { return &TestEvent{} })
-	RegisterEvent(func() Event { return &TestEvent2{} })
+	RegisterEventData(TestEventType, func() EventData { return &TestEventData{} })
+	RegisterEventData(TestEvent2Type, func() EventData { return &TestEvent2Data{} })
 }
 
 const (
@@ -50,8 +47,10 @@ type TestAggregate struct {
 	numHandled        int
 }
 
-func (a *TestAggregate) AggregateType() AggregateType {
-	return TestAggregateType
+func NewTestAggregate(id UUID) *TestAggregate {
+	return &TestAggregate{
+		AggregateBase: NewAggregateBase(TestAggregateType, id),
+	}
 }
 
 func (a *TestAggregate) HandleCommand(command Command) error {
@@ -62,7 +61,8 @@ func (a *TestAggregate) HandleCommand(command Command) error {
 		if command.Content == "error" {
 			return errors.New("command error")
 		}
-		a.StoreEvent(&TestEvent{command.TestID, command.Content})
+		a.StoreEvent(a.NewEvent(TestEventType,
+			&TestEventData{command.Content}))
 		return nil
 	}
 	return errors.New("couldn't handle command")
@@ -80,8 +80,10 @@ type TestAggregate2 struct {
 	numHandled        int
 }
 
-func (a *TestAggregate2) AggregateType() AggregateType {
-	return TestAggregate2Type
+func NewTestAggregate2(id UUID) *TestAggregate2 {
+	return &TestAggregate2{
+		AggregateBase: NewAggregateBase(TestAggregate2Type, id),
+	}
 }
 
 func (a *TestAggregate2) HandleCommand(command Command) error {
@@ -92,7 +94,8 @@ func (a *TestAggregate2) HandleCommand(command Command) error {
 		if command.Content == "error" {
 			return errors.New("command error")
 		}
-		a.StoreEvent(&TestEvent2{command.TestID, command.Content})
+		a.StoreEvent(a.NewEvent(TestEventType,
+			&TestEvent2Data{command.Content}))
 		return nil
 	}
 	return errors.New("couldn't handle command")
@@ -120,23 +123,13 @@ func (t TestCommand2) AggregateID() UUID            { return t.TestID }
 func (t TestCommand2) AggregateType() AggregateType { return TestAggregate2Type }
 func (t TestCommand2) CommandType() CommandType     { return TestCommand2Type }
 
-type TestEvent struct {
-	TestID  UUID
+type TestEventData struct {
 	Content string
 }
 
-func (t TestEvent) AggregateID() UUID            { return t.TestID }
-func (t TestEvent) AggregateType() AggregateType { return TestAggregateType }
-func (t TestEvent) EventType() EventType         { return TestEventType }
-
-type TestEvent2 struct {
-	TestID  UUID
+type TestEvent2Data struct {
 	Content string
 }
-
-func (t TestEvent2) AggregateID() UUID            { return t.TestID }
-func (t TestEvent2) AggregateType() AggregateType { return TestAggregate2Type }
-func (t TestEvent2) EventType() EventType         { return TestEvent2Type }
 
 type MockRepository struct {
 	Aggregates map[UUID]Aggregate
@@ -151,28 +144,8 @@ func (m *MockRepository) Save(aggregate Aggregate) error {
 	return nil
 }
 
-type MockEventRecord struct {
-	event Event
-}
-
-func (e MockEventRecord) Version() int {
-	return 0
-}
-
-func (e MockEventRecord) Timestamp() time.Time {
-	return time.Time{}
-}
-
-func (e MockEventRecord) Event() Event {
-	return e.event
-}
-
-func (e MockEventRecord) String() string {
-	return string(e.event.EventType())
-}
-
 type MockEventStore struct {
-	Events []EventRecord
+	Events []Event
 	Loaded UUID
 	// Used to simulate errors in the store.
 	err error
@@ -183,12 +156,12 @@ func (m *MockEventStore) Save(events []Event, originalVersion int) error {
 		return m.err
 	}
 	for _, event := range events {
-		m.Events = append(m.Events, MockEventRecord{event: event})
+		m.Events = append(m.Events, event)
 	}
 	return nil
 }
 
-func (m *MockEventStore) Load(aggregateType AggregateType, id UUID) ([]EventRecord, error) {
+func (m *MockEventStore) Load(aggregateType AggregateType, id UUID) ([]Event, error) {
 	if m.err != nil {
 		return nil, m.err
 	}

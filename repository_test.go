@@ -22,7 +22,7 @@ import (
 
 func TestNewEventSourcingRepository(t *testing.T) {
 	store := &MockEventStore{
-		Events: make([]EventRecord, 0),
+		Events: make([]Event, 0),
 	}
 	bus := &MockEventBus{
 		Events: make([]Event, 0),
@@ -57,9 +57,9 @@ func TestEventSourcingRepositoryLoadNoEvents(t *testing.T) {
 	repo, _, _ := createRepoAndStore(t)
 
 	id := NewUUID()
-	agg, err := repo.Load("TestAggregate", id)
+	agg, err := repo.Load(TestAggregateType, id)
 	if err != nil {
-		t.Error("there should be no error:", err)
+		t.Fatal("there should be no error:", err)
 	}
 	if agg.AggregateID() != id {
 		t.Error("the aggregate ID should be correct: ", agg.AggregateID(), id)
@@ -73,24 +73,26 @@ func TestEventSourcingRepositoryLoadEvents(t *testing.T) {
 	repo, store, _ := createRepoAndStore(t)
 
 	id := NewUUID()
-	event1 := &TestEvent{id, "event"}
+	agg := NewTestAggregate(id)
+	event1 := agg.NewEvent(TestEventType, &TestEventData{"event1"})
 	store.Save([]Event{event1}, 0)
-	agg, err := repo.Load("TestAggregate", id)
+	t.Log(store.Events)
+	loadedAgg, err := repo.Load(TestAggregateType, id)
 	if err != nil {
-		t.Error("there should be no error:", err)
+		t.Fatal("there should be no error:", err)
 	}
-	if agg.AggregateID() != id {
-		t.Error("the aggregate ID should be correct: ", agg.AggregateID(), id)
+	if loadedAgg.AggregateID() != id {
+		t.Error("the aggregate ID should be correct: ", loadedAgg.AggregateID(), id)
 	}
-	if agg.Version() != 1 {
-		t.Error("the version should be 1:", agg.Version())
+	if loadedAgg.Version() != 1 {
+		t.Error("the version should be 1:", loadedAgg.Version())
 	}
-	if agg.(*TestAggregate).appliedEvent != event1 {
-		t.Error("the event should be correct:", agg.(*TestAggregate).appliedEvent)
+	if loadedAgg.(*TestAggregate).appliedEvent != event1 {
+		t.Error("the event should be correct:", loadedAgg.(*TestAggregate).appliedEvent)
 	}
 
 	store.err = errors.New("error")
-	if _, err = repo.Load("TestAggregate", id); err == nil || err.Error() != "error" {
+	if _, err = repo.Load(TestAggregateType, id); err == nil || err.Error() != "error" {
 		t.Error("there should be an error named 'error':", err)
 	}
 }
@@ -99,18 +101,20 @@ func TestEventSourcingRepositoryLoadEventsMismatchedEventType(t *testing.T) {
 	repo, store, _ := createRepoAndStore(t)
 
 	id := NewUUID()
-	event1 := &TestEvent{id, "event"}
+	agg := NewTestAggregate(id)
+	event1 := agg.NewEvent(TestEventType, &TestEventData{"event"})
 	store.Save([]Event{event1}, 0)
 
 	otherAggregateID := NewUUID()
-	event2 := &TestEvent2{otherAggregateID, "event2"}
+	otherAgg := NewTestAggregate2(otherAggregateID)
+	event2 := otherAgg.NewEvent(TestEvent2Type, &TestEvent2Data{"event2"})
 	store.Save([]Event{event2}, 0)
 
-	agg, err := repo.Load("TestAggregate", otherAggregateID)
+	loadedAgg, err := repo.Load(TestAggregateType, otherAggregateID)
 	if err != ErrMismatchedEventType {
-		t.Error("there should be a ErrMismatchedEventType error:", err)
+		t.Fatal("there should be a ErrMismatchedEventType error:", err)
 	}
-	if agg != nil {
+	if loadedAgg != nil {
 		t.Error("the aggregate should be nil")
 	}
 }
@@ -119,11 +123,8 @@ func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 	repo, store, bus := createRepoAndStore(t)
 
 	id := NewUUID()
-	agg := &TestAggregate{
-		AggregateBase: NewAggregateBase(id),
-	}
-
-	event1 := &TestEvent{id, "event"}
+	agg := NewTestAggregate(id)
+	event1 := agg.NewEvent(TestEventType, &TestEventData{"event"})
 	agg.StoreEvent(event1)
 	err := repo.Save(agg)
 	if err != nil {
@@ -137,7 +138,7 @@ func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatal("there should be one event stored:", len(events))
 	}
-	if events[0].Event() != event1 {
+	if events[0] != event1 {
 		t.Error("the stored event should be correct:", events[0])
 	}
 	if len(agg.GetUncommittedEvents()) != 0 {
@@ -173,7 +174,7 @@ func TestEventSourcingRepositoryAggregateNotRegistered(t *testing.T) {
 
 func createRepoAndStore(t *testing.T) (*EventSourcingRepository, *MockEventStore, *MockEventBus) {
 	store := &MockEventStore{
-		Events: make([]EventRecord, 0),
+		Events: make([]Event, 0),
 	}
 	bus := &MockEventBus{
 		Events: make([]Event, 0),

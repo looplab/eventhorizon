@@ -87,53 +87,6 @@ func NewEventStore(config *EventStoreConfig) (*EventStore, error) {
 	return s, nil
 }
 
-// TODO: Implement as atomic counter.
-// NOTE: Currently not used.
-type aggregateRecord struct {
-	AggregateID string
-	Version     int
-	Events      []dbEventRecord
-	// AggregateType        string
-	// Snapshot    bson.Raw
-}
-
-// dbEventRecord is the internal event record for the DynamoDB event store used
-// to save and load events from the DB.
-type dbEventRecord struct {
-	AggregateID string
-	EventType   eh.EventType
-	Version     int
-	Timestamp   time.Time
-	Payload     map[string]*dynamodb.AttributeValue
-	Event       eh.Event
-}
-
-// eventRecord is the private implementation of the eventhorizon.EventRecord
-// interface for a DynamoDB event store.
-type eventRecord struct {
-	dbEventRecord
-}
-
-// Version implements the Version method of the eventhorizon.EventRecord interface.
-func (e eventRecord) Version() int {
-	return e.dbEventRecord.Version
-}
-
-// Timestamp implements the Timestamp method of the eventhorizon.EventRecord interface.
-func (e eventRecord) Timestamp() time.Time {
-	return e.dbEventRecord.Timestamp
-}
-
-// Event implements the Event method of the eventhorizon.EventRecord interface.
-func (e eventRecord) Event() eh.Event {
-	return e.dbEventRecord.Event
-}
-
-// String implements the String method of the eventhorizon.EventRecord interface.
-func (e eventRecord) String() string {
-	return fmt.Sprintf("%s@%d", e.dbEventRecord.EventType, e.dbEventRecord.Version)
-}
-
 // Save appends all events in the event stream to the database.
 func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
@@ -142,7 +95,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 	// Build all event records, with incrementing versions starting from the
 	// original aggregate version.
-	eventRecords := make([]dbEventRecord, len(events))
+	dbEvents := make([]dbEvent, len(events))
 	aggregateID := events[0].AggregateID()
 	for i, event := range events {
 		// Only accept events belonging to the same aggregate.
@@ -150,28 +103,30 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 			return ErrInvalidEvent
 		}
 
-		// Marshal event payload.
-		payload, err := dynamodbattribute.MarshalMap(event)
-		if err != nil {
-			// return ErrCouldNotMarshalEvent
-			return err
+		// Create the event record with current version and timestamp.
+		dbEvents[i] = dbEvent{
+			EventType:     event.EventType(),
+			Timestamp:     event.Timestamp(),
+			AggregateType: event.AggregateType(),
+			AggregateID:   event.AggregateID().String(),
+			Version:       1 + originalVersion + i,
 		}
 
-		// Create the event record with current version and timestamp.
-		eventRecords[i] = dbEventRecord{
-			AggregateID: event.AggregateID().String(),
-			Version:     1 + originalVersion + i,
-			Timestamp:   time.Now(),
-			EventType:   event.EventType(),
-			Payload:     payload,
+		// Marshal event data if there is any.
+		if event.Data() != nil {
+			rawData, err := dynamodbattribute.MarshalMap(event.Data())
+			if err != nil {
+				return ErrCouldNotMarshalEvent
+			}
+			dbEvents[i].RawData = rawData
 		}
 	}
 
 	// TODO: Implement atomic version counter for the aggregate.
 	// TODO: Batch write all events.
-	for _, record := range eventRecords {
+	for _, dbEvent := range dbEvents {
 		// Marshal and store the event record.
-		item, err := dynamodbattribute.MarshalMap(record)
+		item, err := dynamodbattribute.MarshalMap(dbEvent)
 		if err != nil {
 			return err
 		}
@@ -193,7 +148,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the database.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.EventRecord, error) {
+func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	params := &dynamodb.QueryInput{
 		TableName:              aws.String(s.config.Table),
 		KeyConditionExpression: aws.String("AggregateID = :id"),
@@ -208,41 +163,42 @@ func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Even
 	}
 
 	if len(resp.Items) == 0 {
-		return []eh.EventRecord{}, nil
+		return []eh.Event{}, nil
 	}
 
-	dbEventRecords := make([]dbEventRecord, len(resp.Items))
+	dbEvents := make([]dbEvent, len(resp.Items))
 	for i, item := range resp.Items {
-		record := dbEventRecord{}
-		if err := dynamodbattribute.UnmarshalMap(item, &record); err != nil {
+		dbEvent := dbEvent{}
+		if err := dynamodbattribute.UnmarshalMap(item, &dbEvent); err != nil {
 			return nil, err
 		}
-		dbEventRecords[i] = record
+		dbEvents[i] = dbEvent
 	}
 
-	eventRecords := make([]eh.EventRecord, len(dbEventRecords))
-	for i, record := range dbEventRecords {
-		// Create an event of the correct type.
-		event, err := eh.CreateEvent(record.EventType)
+	events := make([]eh.Event, len(dbEvents))
+	for i, dbEvent := range dbEvents {
+		// The UUID is currently stored as a full text representation in the DB.
+		id, err := eh.ParseUUID(dbEvent.AggregateID)
 		if err != nil {
 			return nil, err
 		}
+		dbEvent.AggregateID = string(id)
 
-		if err := dynamodbattribute.UnmarshalMap(record.Payload, event); err != nil {
-			// 	return nil, ErrCouldNotUnmarshalEvent
-			return nil, err
+		// Create an event of the correct type.
+		if data, err := eh.CreateEventData(dbEvent.EventType); err == nil {
+			if err := dynamodbattribute.UnmarshalMap(dbEvent.RawData, data); err != nil {
+				return nil, ErrCouldNotUnmarshalEvent
+			}
+
+			// Set conrcete event and zero out the decoded event.
+			dbEvent.data = data
+			dbEvent.RawData = nil
 		}
 
-		// events[i] = event
-
-		// Set conrcete event and zero out the decoded event.
-		record.Event = event
-		record.Payload = nil
-
-		eventRecords[i] = eventRecord{dbEventRecord: record}
+		events[i] = event{dbEvent: dbEvent}
 	}
 
-	return eventRecords, nil
+	return events, nil
 }
 
 // CreateTable creates the table if it is not allready existing and correct.
@@ -327,4 +283,68 @@ func (s *EventStore) DeleteTable() error {
 	}
 
 	return nil
+}
+
+// aggregateRecord is the DB representation of an aggregate.
+// TODO: Implement as atomic counter.
+// NOTE: Currently not used.
+type aggregateRecord struct {
+	AggregateID string
+	Version     int
+	Events      []dbEvent
+	// AggregateType        string
+	// Snapshot    bson.Raw
+}
+
+// dbEvent is the internal event record for the DynamoDB event store used
+// to save and load events from the DB.
+type dbEvent struct {
+	EventType     eh.EventType
+	RawData       map[string]*dynamodb.AttributeValue
+	data          eh.EventData
+	Timestamp     time.Time
+	AggregateType eh.AggregateType
+	AggregateID   string
+	Version       int
+}
+
+// event is the private implementation of the eventhorizon.Event
+// interface for a DynamoDB event store.
+type event struct {
+	dbEvent
+}
+
+// EventType implements the EventType method of the eventhorizon.Event interface.
+func (e event) EventType() eh.EventType {
+	return e.dbEvent.EventType
+}
+
+// Data implements the Data method of the eventhorizon.Event interface.
+func (e event) Data() eh.EventData {
+	return e.dbEvent.data
+}
+
+// Timestamp implements the Timestamp method of the eventhorizon.Event interface.
+func (e event) Timestamp() time.Time {
+	return e.dbEvent.Timestamp
+}
+
+// AggregateType implements the AggregateType method of the eventhorizon.Event interface.
+func (e event) AggregateType() eh.AggregateType {
+	return e.dbEvent.AggregateType
+}
+
+// AggrgateID implements the AggrgateID method of the eventhorizon.Event interface.
+func (e event) AggregateID() eh.UUID {
+	return eh.UUID(e.dbEvent.AggregateID)
+}
+
+// Version implements the Version method of the eventhorizon.Event interface.
+func (e event) Version() int {
+	return e.dbEvent.Version
+}
+
+// String implements the String method of the eventhorizon.Event interface.
+func (e event) String() string {
+	return fmt.Sprintf("%s@%d", e.dbEvent.EventType, e.dbEvent.Version)
 }

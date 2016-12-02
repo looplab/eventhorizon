@@ -16,6 +16,7 @@ package domain
 
 import (
 	"fmt"
+	"log"
 
 	eh "github.com/looplab/eventhorizon"
 )
@@ -50,20 +51,20 @@ type InvitationAggregate struct {
 // NewInvitationAggregate creates a new InvitationAggregate with an ID.
 func NewInvitationAggregate(id eh.UUID) *InvitationAggregate {
 	return &InvitationAggregate{
-		AggregateBase: eh.NewAggregateBase(id),
+		AggregateBase: eh.NewAggregateBase(InvitationAggregateType, id),
 	}
-}
-
-// AggregateType implements the AggregateType method of the Aggregate interface.
-func (i *InvitationAggregate) AggregateType() eh.AggregateType {
-	return InvitationAggregateType
 }
 
 // HandleCommand implements the HandleCommand method of the Aggregate interface.
 func (i *InvitationAggregate) HandleCommand(command eh.Command) error {
 	switch command := command.(type) {
 	case *CreateInvite:
-		i.StoreEvent(&InviteCreated{command.InvitationID, command.Name, command.Age})
+		i.StoreEvent(i.NewEvent(InviteCreatedEvent,
+			&InviteCreatedData{
+				command.Name,
+				command.Age,
+			},
+		))
 		return nil
 
 	case *AcceptInvite:
@@ -79,7 +80,7 @@ func (i *InvitationAggregate) HandleCommand(command eh.Command) error {
 			return nil
 		}
 
-		i.StoreEvent(&InviteAccepted{i.AggregateID()})
+		i.StoreEvent(i.NewEvent(InviteAcceptedEvent, nil))
 		return nil
 
 	case *DeclineInvite:
@@ -95,7 +96,7 @@ func (i *InvitationAggregate) HandleCommand(command eh.Command) error {
 			return nil
 		}
 
-		i.StoreEvent(&InviteDeclined{i.AggregateID()})
+		i.StoreEvent(i.NewEvent(InviteDeclinedEvent, nil))
 		return nil
 
 	case *ConfirmInvite:
@@ -107,7 +108,7 @@ func (i *InvitationAggregate) HandleCommand(command eh.Command) error {
 			return fmt.Errorf("only accepted invites can be confirmed")
 		}
 
-		i.StoreEvent(&InviteConfirmed{i.AggregateID()})
+		i.StoreEvent(i.NewEvent(InviteConfirmedEvent, nil))
 		return nil
 
 	case *DenyInvite:
@@ -119,7 +120,7 @@ func (i *InvitationAggregate) HandleCommand(command eh.Command) error {
 			return fmt.Errorf("only accepted invites can be denied")
 		}
 
-		i.StoreEvent(&InviteDenied{i.AggregateID()})
+		i.StoreEvent(i.NewEvent(InviteDeniedEvent, nil))
 		return nil
 	}
 	return fmt.Errorf("couldn't handle command")
@@ -127,17 +128,21 @@ func (i *InvitationAggregate) HandleCommand(command eh.Command) error {
 
 // ApplyEvent implements the ApplyEvent method of the Aggregate interface.
 func (i *InvitationAggregate) ApplyEvent(event eh.Event) {
-	switch event := event.(type) {
-	case *InviteCreated:
-		i.name = event.Name
-		i.age = event.Age
-	case *InviteAccepted:
+	switch event.EventType() {
+	case InviteCreatedEvent:
+		if data, ok := event.Data().(*InviteCreatedData); ok {
+			i.name = data.Name
+			i.age = data.Age
+		} else {
+			log.Println("invalid event data type:", event.Data())
+		}
+	case InviteAcceptedEvent:
 		i.accepted = true
-	case *InviteDeclined:
+	case InviteDeclinedEvent:
 		i.declined = true
-	case *InviteConfirmed:
+	case InviteConfirmedEvent:
 		i.confirmed = true
-	case *InviteDenied:
+	case InviteDeniedEvent:
 		i.denied = true
 	}
 }
