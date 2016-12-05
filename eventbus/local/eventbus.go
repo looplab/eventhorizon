@@ -58,6 +58,15 @@ func (b *EventBus) PublishEvent(event eh.Event) {
 	b.handlerMu.RLock()
 	defer b.handlerMu.RUnlock()
 
+	// Notify all observers about the event.
+	for o := range b.observers {
+		if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
+			go o.Notify(event)
+		} else {
+			o.Notify(event)
+		}
+	}
+
 	// Handle the event if there is a handler registered.
 	if handlers, ok := b.handlers[event.EventType()]; ok {
 		for h := range handlers {
@@ -66,15 +75,6 @@ func (b *EventBus) PublishEvent(event eh.Event) {
 			} else {
 				h.HandleEvent(event)
 			}
-		}
-	}
-
-	// Notify all observers about the event.
-	for o := range b.observers {
-		if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-			go o.Notify(event)
-		} else {
-			o.Notify(event)
 		}
 	}
 }
