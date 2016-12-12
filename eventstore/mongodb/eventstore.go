@@ -46,9 +46,6 @@ var ErrCouldNotLoadAggregate = errors.New("could not load aggregate")
 // ErrCouldNotSaveAggregate is when an aggregate could not be saved.
 var ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
 
-// ErrInvalidEvent is when an event does not implement the Event interface.
-var ErrInvalidEvent = errors.New("invalid event")
-
 // EventStore implements an EventStore for MongoDB.
 type EventStore struct {
 	session *mgo.Session
@@ -95,10 +92,16 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 	// original aggregate version.
 	dbEvents := make([]dbEvent, len(events))
 	aggregateID := events[0].AggregateID()
+	version := originalVersion
 	for i, event := range events {
 		// Only accept events belonging to the same aggregate.
 		if event.AggregateID() != aggregateID {
-			return ErrInvalidEvent
+			return eh.ErrInvalidEvent
+		}
+
+		// Only accept events that apply to the correct aggregate version.
+		if event.Version() != version+1 {
+			return eh.ErrIncorrectEventVersion
 		}
 
 		// Create the event record with timestamp.
@@ -107,7 +110,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 			Timestamp:     event.Timestamp(),
 			AggregateType: event.AggregateType(),
 			AggregateID:   event.AggregateID(),
-			Version:       1 + originalVersion + i,
+			Version:       event.Version(),
 		}
 
 		// Marshal event data if there is any.
@@ -118,6 +121,8 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 			}
 			dbEvents[i].RawData = bson.Raw{Kind: 3, Data: rawData}
 		}
+
+		version++
 	}
 
 	// Either insert a new aggregate or append to an existing.

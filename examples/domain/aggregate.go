@@ -128,7 +128,7 @@ func (a *InvitationAggregate) HandleCommand(command eh.Command) error {
 
 // ApplyEvent implements the ApplyEvent method of the Aggregate interface.
 func (a *InvitationAggregate) ApplyEvent(event eh.Event) {
-	defer a.AggregateBase.ApplyEvent(event)
+	defer a.IncrementVersion()
 
 	switch event.EventType() {
 	case InviteCreatedEvent:

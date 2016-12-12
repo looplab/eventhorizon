@@ -19,6 +19,12 @@ import "errors"
 // ErrNoEventsToAppend is when no events are available to append.
 var ErrNoEventsToAppend = errors.New("no events to append")
 
+// ErrInvalidEvent is when an event does not implement the Event interface.
+var ErrInvalidEvent = errors.New("invalid event")
+
+// ErrIncorrectEventVersion is when an event is for an other version of the aggregate.
+var ErrIncorrectEventVersion = errors.New("mismatching event version")
+
 // EventStore is an interface for an event sourcing event store.
 type EventStore interface {
 	// Save appends all events in the event stream to the store.

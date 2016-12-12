@@ -79,7 +79,7 @@ func (a *Aggregate) HandleCommand(command eh.Command) error {
 
 // ApplyEvent implements the ApplyEvent method of the eventhorizon.Aggregate interface.
 func (a *Aggregate) ApplyEvent(event eh.Event) {
-	defer a.AggregateBase.ApplyEvent(event)
+	defer a.IncrementVersion()
 
 	a.Events = append(a.Events, event)
 }

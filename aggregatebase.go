@@ -38,10 +38,10 @@ package eventhorizon
 //       })
 //   }
 //
-// The aggregate must call ApplyEvent on the base to update the version.
+// The aggregate must call IncrementVersion on the base to update the version.
 //   func (a *Aggregate) ApplyEvent(event Event) {
 //       // Call the base to make sure the version is incremented.
-//       defer a.AggregateBase.ApplyEvent(event)
+//       defer a.IncrementVersion(event)
 //
 //       switch event.EventType() {
 //       case AddUserEvent:
@@ -82,12 +82,23 @@ func (a *AggregateBase) Version() int {
 	return a.version
 }
 
+// IncrementVersion increments the version of the aggregate and should be called
+// after an event has been applied successfully in ApplyEvent.
+func (a *AggregateBase) IncrementVersion() {
+	a.version++
+}
+
 // NewEvent implements the NewEvent method of the Aggregate interface.
+// The created event is only valid for the current version of the aggregate.
+// If there are uncommitted events it will mean that all the uncommitted events
+// could possibly have the same versions as they haven't been applied yet!
+// The result is that the aggregate base only supports one uncommitted event in.
 func (a *AggregateBase) NewEvent(eventType EventType, data EventData) Event {
 	e := NewEvent(eventType, data)
 	if e, ok := e.(event); ok {
 		e.aggregateType = a.aggregateType
 		e.aggregateID = a.id
+		e.version = a.Version() + 1
 		return e
 	}
 	return e
@@ -96,14 +107,6 @@ func (a *AggregateBase) NewEvent(eventType EventType, data EventData) Event {
 // StoreEvent implements the StoreEvent method of the Aggregate interface.
 func (a *AggregateBase) StoreEvent(event Event) {
 	a.uncommittedEvents = append(a.uncommittedEvents, event)
-}
-
-// ApplyEvent implements the ApplyEvent method of the Aggregate interface.
-// Aggregates that composes the AggregateBase should implement their own version
-// of ApplyEvent that uses the event.
-// Aggregates must call AggregateBase.ApplyEvent to increment the version!
-func (a *AggregateBase) ApplyEvent(event Event) {
-	a.version++
 }
 
 // UncommittedEvents implements the UncommittedEvents method of the Aggregate interface.

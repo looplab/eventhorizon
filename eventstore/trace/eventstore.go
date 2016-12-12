@@ -43,15 +43,19 @@ func NewEventStore(eventStore eh.EventStore) *EventStore {
 
 // Save appends all events to the base store and trace them if enabled.
 func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
-	s.traceMu.Lock()
-	defer s.traceMu.Unlock()
-
-	if s.tracing {
-		s.trace = append(s.trace, events...)
+	if s.eventStore == nil {
+		return ErrNoEventStoreDefined
 	}
 
-	if s.eventStore != nil {
-		return s.eventStore.Save(events, originalVersion)
+	if err := s.eventStore.Save(events, originalVersion); err != nil {
+		return err
+	}
+
+	// Only trace events that are successfully saved.
+	s.traceMu.Lock()
+	defer s.traceMu.Unlock()
+	if s.tracing {
+		s.trace = append(s.trace, events...)
 	}
 
 	return nil

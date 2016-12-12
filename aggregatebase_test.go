@@ -49,8 +49,8 @@ func TestAggregateNewEvent(t *testing.T) {
 	if event.Timestamp().IsZero() {
 		t.Error("the timestamp should not be zero:", event.Timestamp())
 	}
-	if event.Version() != 0 {
-		t.Error("the version should be zero:", event.Version())
+	if event.Version() != 1 {
+		t.Error("the version should be 1:", event.Version())
 	}
 	if event.AggregateType() != TestAggregateType {
 		t.Error("the aggregate type should be correct:", event.AggregateType())
@@ -58,19 +58,18 @@ func TestAggregateNewEvent(t *testing.T) {
 	if event.AggregateID() != id {
 		t.Error("the aggregate id should be correct:", event.AggregateID())
 	}
-	if event.String() != "TestEvent@0" {
+	if event.String() != "TestEvent@1" {
 		t.Error("the string representation should be correct:", event.String())
 	}
 }
 
-func TestAggregateApplyEvent(t *testing.T) {
+func TestAggregateIncrementVersion(t *testing.T) {
 	agg := NewAggregateBase(TestAggregateType, NewUUID())
 	if agg.Version() != 0 {
 		t.Error("the version should be 0:", agg.Version())
 	}
 
-	event := agg.NewEvent(TestEventType, &TestEventData{"event1"})
-	agg.ApplyEvent(event)
+	agg.IncrementVersion()
 	if agg.Version() != 1 {
 		t.Error("the version should be 1:", agg.Version())
 	}
