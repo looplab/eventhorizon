@@ -36,18 +36,6 @@ func TestNewAggregateBase(t *testing.T) {
 	}
 }
 
-func TestAggregateIncrementVersion(t *testing.T) {
-	agg := NewAggregateBase(TestAggregateType, NewUUID())
-	if agg.Version() != 0 {
-		t.Error("the version should be 0:", agg.Version())
-	}
-
-	agg.IncrementVersion()
-	if agg.Version() != 1 {
-		t.Error("the version should be 1:", agg.Version())
-	}
-}
-
 func TestAggregateNewEvent(t *testing.T) {
 	id := NewUUID()
 	agg := NewTestAggregate(id)
@@ -72,6 +60,19 @@ func TestAggregateNewEvent(t *testing.T) {
 	}
 	if event.String() != "TestEvent@0" {
 		t.Error("the string representation should be correct:", event.String())
+	}
+}
+
+func TestAggregateApplyEvent(t *testing.T) {
+	agg := NewAggregateBase(TestAggregateType, NewUUID())
+	if agg.Version() != 0 {
+		t.Error("the version should be 0:", agg.Version())
+	}
+
+	event := agg.NewEvent(TestEventType, &TestEventData{"event1"})
+	agg.ApplyEvent(event)
+	if agg.Version() != 1 {
+		t.Error("the version should be 1:", agg.Version())
 	}
 }
 

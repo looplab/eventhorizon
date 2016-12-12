@@ -56,10 +56,10 @@ func NewInvitationAggregate(id eh.UUID) *InvitationAggregate {
 }
 
 // HandleCommand implements the HandleCommand method of the Aggregate interface.
-func (i *InvitationAggregate) HandleCommand(command eh.Command) error {
+func (a *InvitationAggregate) HandleCommand(command eh.Command) error {
 	switch command := command.(type) {
 	case *CreateInvite:
-		i.StoreEvent(i.NewEvent(InviteCreatedEvent,
+		a.StoreEvent(a.NewEvent(InviteCreatedEvent,
 			&InviteCreatedData{
 				command.Name,
 				command.Age,
@@ -68,81 +68,83 @@ func (i *InvitationAggregate) HandleCommand(command eh.Command) error {
 		return nil
 
 	case *AcceptInvite:
-		if i.name == "" {
+		if a.name == "" {
 			return fmt.Errorf("invitee does not exist")
 		}
 
-		if i.declined {
-			return fmt.Errorf("%s already declined", i.name)
+		if a.declined {
+			return fmt.Errorf("%s already declined", a.name)
 		}
 
-		if i.accepted {
+		if a.accepted {
 			return nil
 		}
 
-		i.StoreEvent(i.NewEvent(InviteAcceptedEvent, nil))
+		a.StoreEvent(a.NewEvent(InviteAcceptedEvent, nil))
 		return nil
 
 	case *DeclineInvite:
-		if i.name == "" {
+		if a.name == "" {
 			return fmt.Errorf("invitee does not exist")
 		}
 
-		if i.accepted {
-			return fmt.Errorf("%s already accepted", i.name)
+		if a.accepted {
+			return fmt.Errorf("%s already accepted", a.name)
 		}
 
-		if i.declined {
+		if a.declined {
 			return nil
 		}
 
-		i.StoreEvent(i.NewEvent(InviteDeclinedEvent, nil))
+		a.StoreEvent(a.NewEvent(InviteDeclinedEvent, nil))
 		return nil
 
 	case *ConfirmInvite:
-		if i.name == "" {
+		if a.name == "" {
 			return fmt.Errorf("invitee does not exist")
 		}
 
-		if !i.accepted || i.declined {
+		if !a.accepted || a.declined {
 			return fmt.Errorf("only accepted invites can be confirmed")
 		}
 
-		i.StoreEvent(i.NewEvent(InviteConfirmedEvent, nil))
+		a.StoreEvent(a.NewEvent(InviteConfirmedEvent, nil))
 		return nil
 
 	case *DenyInvite:
-		if i.name == "" {
+		if a.name == "" {
 			return fmt.Errorf("invitee does not exist")
 		}
 
-		if !i.accepted || i.declined {
+		if !a.accepted || a.declined {
 			return fmt.Errorf("only accepted invites can be denied")
 		}
 
-		i.StoreEvent(i.NewEvent(InviteDeniedEvent, nil))
+		a.StoreEvent(a.NewEvent(InviteDeniedEvent, nil))
 		return nil
 	}
 	return fmt.Errorf("couldn't handle command")
 }
 
 // ApplyEvent implements the ApplyEvent method of the Aggregate interface.
-func (i *InvitationAggregate) ApplyEvent(event eh.Event) {
+func (a *InvitationAggregate) ApplyEvent(event eh.Event) {
+	defer a.AggregateBase.ApplyEvent(event)
+
 	switch event.EventType() {
 	case InviteCreatedEvent:
 		if data, ok := event.Data().(*InviteCreatedData); ok {
-			i.name = data.Name
-			i.age = data.Age
+			a.name = data.Name
+			a.age = data.Age
 		} else {
 			log.Println("invalid event data type:", event.Data())
 		}
 	case InviteAcceptedEvent:
-		i.accepted = true
+		a.accepted = true
 	case InviteDeclinedEvent:
-		i.declined = true
+		a.declined = true
 	case InviteConfirmedEvent:
-		i.confirmed = true
+		a.confirmed = true
 	case InviteDeniedEvent:
-		i.denied = true
+		a.denied = true
 	}
 }

@@ -35,8 +35,6 @@ type Aggregate interface {
 
 	// Version returns the version of the aggregate.
 	Version() int
-	// IncrementVersion increments the aggregate version.
-	IncrementVersion()
 
 	// HandleCommand handles a command and stores events.
 	// TODO: Rename to Handle()
@@ -44,7 +42,8 @@ type Aggregate interface {
 
 	// NewEvent creates a new event with the aggregate set as type and ID.
 	NewEvent(EventType, EventData) Event
-	// ApplyEvent applies an event to the aggregate by setting its values.
+	// ApplyEvent applies an event to the aggregate by setting its values and
+	// increments the aggregate version.
 	ApplyEvent(Event)
 	// StoreEvent stores an event as uncommitted.
 	StoreEvent(Event)
@@ -66,8 +65,35 @@ type AggregateType string
 //
 //       name string
 //   }
-// The embedded aggregate is then initialized by the factory function in the
-// callback repository.
+//
+// Using a new function to create aggregates and setting up the
+// aggregate base is recommended:
+//   func NewUserAggregate(id eh.UUID) *InvitationAggregate {
+//       return &UserAggregate{
+//           AggregateBase: eh.NewAggregateBase(UserAggregateType, id),
+//       }
+//   }
+//
+// The aggregate must also be registered, in this case:
+//   func init() {
+//       eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
+//           return NewUserAggregate(id)
+//       })
+//   }
+//
+// The aggregate must call ApplyEvent on the base to update the version.
+//   func (a *Aggregate) ApplyEvent(event Event) {
+//       // Call the base to make sure the version is incremented.
+//       defer a.AggregateBase.ApplyEvent(event)
+//
+//       switch event.EventType() {
+//       case AddUserEvent:
+//           // Apply the event data to the aggregate.
+//       }
+//   }
+//
+// See the examples folder for a complete use case.
+//
 type AggregateBase struct {
 	aggregateType     AggregateType
 	id                UUID
@@ -99,11 +125,6 @@ func (a *AggregateBase) Version() int {
 	return a.version
 }
 
-// IncrementVersion implements the IncrementVersion method of the Aggregate interface.
-func (a *AggregateBase) IncrementVersion() {
-	a.version++
-}
-
 // NewEvent implements the NewEvent method of the Aggregate interface.
 func (a *AggregateBase) NewEvent(eventType EventType, data EventData) Event {
 	e := NewEvent(eventType, data)
@@ -118,6 +139,14 @@ func (a *AggregateBase) NewEvent(eventType EventType, data EventData) Event {
 // StoreEvent implements the StoreEvent method of the Aggregate interface.
 func (a *AggregateBase) StoreEvent(event Event) {
 	a.uncommittedEvents = append(a.uncommittedEvents, event)
+}
+
+// ApplyEvent implements the ApplyEvent method of the Aggregate interface.
+// Aggregates that composes the AggregateBase should implement their own version
+// of ApplyEvent that uses the event.
+// Aggregates must call AggregateBase.ApplyEvent to increment the version!
+func (a *AggregateBase) ApplyEvent(event Event) {
+	a.version++
 }
 
 // GetUncommittedEvents implements the GetUncommittedEvents method of the Aggregate interface.

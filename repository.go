@@ -84,7 +84,6 @@ func (r *EventSourcingRepository) Load(aggregateType AggregateType, id UUID) (Ag
 		}
 
 		aggregate.ApplyEvent(event)
-		aggregate.IncrementVersion()
 	}
 
 	return aggregate, nil
