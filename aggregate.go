@@ -48,8 +48,7 @@ type Aggregate interface {
 	// StoreEvent stores an event as uncommitted.
 	StoreEvent(Event)
 	// GetUncommittedEvents gets all uncommitted events for storing.
-	// TODO: Rename to UncommitedEvents()
-	GetUncommittedEvents() []Event
+	UncommittedEvents() []Event
 	// ClearUncommittedEvents clears all uncommitted events after storing.
 	ClearUncommittedEvents()
 }
@@ -149,8 +148,8 @@ func (a *AggregateBase) ApplyEvent(event Event) {
 	a.version++
 }
 
-// GetUncommittedEvents implements the GetUncommittedEvents method of the Aggregate interface.
-func (a *AggregateBase) GetUncommittedEvents() []Event {
+// UncommittedEvents implements the UncommittedEvents method of the Aggregate interface.
+func (a *AggregateBase) UncommittedEvents() []Event {
 	return a.uncommittedEvents
 }
 

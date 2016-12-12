@@ -80,7 +80,7 @@ func TestAggregateStoreEvent(t *testing.T) {
 	agg := NewTestAggregate(NewUUID())
 	event1 := agg.NewEvent(TestEventType, &TestEventData{"event1"})
 	agg.StoreEvent(event1)
-	events := agg.GetUncommittedEvents()
+	events := agg.UncommittedEvents()
 	if len(events) != 1 {
 		t.Fatal("there should be one event stored:", len(events))
 	}
@@ -93,7 +93,7 @@ func TestAggregateStoreEvent(t *testing.T) {
 	event2 := agg.NewEvent(TestEventType, &TestEventData{"event2"})
 	agg.StoreEvent(event1)
 	agg.StoreEvent(event2)
-	events = agg.GetUncommittedEvents()
+	events = agg.UncommittedEvents()
 	if len(events) != 2 {
 		t.Fatal("there should be 2 events stored:", len(events))
 	}
@@ -109,7 +109,7 @@ func TestAggregateClearUncommittedEvents(t *testing.T) {
 	agg := NewTestAggregate(NewUUID())
 	event1 := agg.NewEvent(TestEventType, &TestEventData{"event1"})
 	agg.StoreEvent(event1)
-	events := agg.GetUncommittedEvents()
+	events := agg.UncommittedEvents()
 	if len(events) != 1 {
 		t.Fatal("there should be one event stored:", len(events))
 	}
@@ -118,7 +118,7 @@ func TestAggregateClearUncommittedEvents(t *testing.T) {
 	}
 
 	agg.ClearUncommittedEvents()
-	events = agg.GetUncommittedEvents()
+	events = agg.UncommittedEvents()
 	if len(events) != 0 {
 		t.Error("there should be no events stored:", len(events))
 	}

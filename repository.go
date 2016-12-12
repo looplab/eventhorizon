@@ -91,7 +91,7 @@ func (r *EventSourcingRepository) Load(aggregateType AggregateType, id UUID) (Ag
 
 // Save saves all uncommitted events from an aggregate to the event store.
 func (r *EventSourcingRepository) Save(aggregate Aggregate) error {
-	uncommittedEvents := aggregate.GetUncommittedEvents()
+	uncommittedEvents := aggregate.UncommittedEvents()
 	if len(uncommittedEvents) < 1 {
 		return nil
 	}
