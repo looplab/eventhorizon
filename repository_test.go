@@ -141,11 +141,11 @@ func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 	if events[0] != event1 {
 		t.Error("the stored event should be correct:", events[0])
 	}
-	if len(agg.GetUncommittedEvents()) != 0 {
-		t.Error("there should be no uncommitted events:", agg.GetUncommittedEvents())
+	if len(agg.UncommittedEvents()) != 0 {
+		t.Error("there should be no uncommitted events:", agg.UncommittedEvents())
 	}
-	if agg.Version() != 0 {
-		t.Error("the version should be 0:", agg.Version())
+	if agg.Version() != 1 {
+		t.Error("the version should be 1:", agg.Version())
 	}
 
 	if !reflect.DeepEqual(bus.Events, []Event{event1}) {

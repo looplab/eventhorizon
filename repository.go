@@ -84,7 +84,6 @@ func (r *EventSourcingRepository) Load(aggregateType AggregateType, id UUID) (Ag
 		}
 
 		aggregate.ApplyEvent(event)
-		aggregate.IncrementVersion()
 	}
 
 	return aggregate, nil
@@ -92,7 +91,7 @@ func (r *EventSourcingRepository) Load(aggregateType AggregateType, id UUID) (Ag
 
 // Save saves all uncommitted events from an aggregate to the event store.
 func (r *EventSourcingRepository) Save(aggregate Aggregate) error {
-	uncommittedEvents := aggregate.GetUncommittedEvents()
+	uncommittedEvents := aggregate.UncommittedEvents()
 	if len(uncommittedEvents) < 1 {
 		return nil
 	}
@@ -102,9 +101,15 @@ func (r *EventSourcingRepository) Save(aggregate Aggregate) error {
 		return err
 	}
 
-	// TODO: Possibly apply the events and increment the aggregate version here
-	// to have a up to date aggregate. Currently it is discarded by the
-	// command handler after saving.
+	// Apply the events in case the aggregate needs to be further used
+	// after this save. Currently it is not reused.
+	for _, event := range uncommittedEvents {
+		if event.AggregateType() != aggregate.AggregateType() {
+			return ErrMismatchedEventType
+		}
+
+		aggregate.ApplyEvent(event)
+	}
 
 	// Publish all events on the bus.
 	for _, event := range uncommittedEvents {

@@ -69,6 +69,8 @@ func (a *TestAggregate) HandleCommand(command Command) error {
 }
 
 func (a *TestAggregate) ApplyEvent(event Event) {
+	defer a.IncrementVersion()
+
 	a.appliedEvent = event
 }
 

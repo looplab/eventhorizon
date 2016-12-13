@@ -58,7 +58,13 @@ func TestEventStore(t *testing.T) {
 	}
 
 	t.Log("save event, version 7")
-	err := store.Save([]eh.Event{event1}, 6)
+	agg := mocks.NewAggregate(event1.AggregateID())
+	for _, e := range aggregate1events {
+		agg.ApplyEvent(e)
+	}
+	event7 := agg.NewEvent(mocks.EventType, &mocks.EventData{"event1"})
+	agg.ApplyEvent(event7) // Apply event to increment the aggregate version.
+	err := store.Save([]eh.Event{event7}, 6)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

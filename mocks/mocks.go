@@ -69,17 +69,19 @@ func NewAggregate(id eh.UUID) *Aggregate {
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.Aggregate interface.
-func (t *Aggregate) HandleCommand(command eh.Command) error {
-	if t.Err != nil {
-		return t.Err
+func (a *Aggregate) HandleCommand(command eh.Command) error {
+	if a.Err != nil {
+		return a.Err
 	}
-	t.Commands = append(t.Commands, command)
+	a.Commands = append(a.Commands, command)
 	return nil
 }
 
 // ApplyEvent implements the ApplyEvent method of the eventhorizon.Aggregate interface.
-func (t *Aggregate) ApplyEvent(event eh.Event) {
-	t.Events = append(t.Events, event)
+func (a *Aggregate) ApplyEvent(event eh.Event) {
+	defer a.IncrementVersion()
+
+	a.Events = append(a.Events, event)
 }
 
 // EventData is a mocked event data, useful in testing.
