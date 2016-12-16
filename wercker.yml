@@ -3,7 +3,6 @@ box: golang
 services:
     - mongo
     - redis
-    # - peopleperhour/dynamodb
 
 dev:
   steps:
@@ -30,6 +29,13 @@ build:
           go build ./...
 
     - script:
+        name: gcloud app credentials
+        code: |
+          cd $WERCKER_SOURCE_DIR
+          export GOOGLE_APPLICATION_CREDENTIALS=$(mktemp)
+          echo "$GCP_SERVICE_ACCOUNT_JSON" > "$GOOGLE_APPLICATION_CREDENTIALS"
+
+    - script:
         name: go test
         code: |
           go get -d golang.org/x/tools/cmd/cover
@@ -38,3 +44,4 @@ build:
           go list -f '{{if len .TestGoFiles}}"go test -tags integration -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
           gover
           goveralls -coverprofile=gover.coverprofile -service=wercker.com -repotoken=$COVERALLS_TOKEN
+          rm $GOOGLE_APPLICATION_CREDENTIALS
