@@ -15,6 +15,7 @@
 package mongodb
 
 import (
+	"context"
 	"os"
 	"reflect"
 	"testing"
@@ -59,16 +60,18 @@ func TestReadRepository(t *testing.T) {
 
 	testutil.ReadRepositoryCommonTests(t, repo)
 
+	ctx := context.Background()
+
 	t.Log("Save one item")
 	modelCustom := &mocks.Model{
 		ID:        eh.NewUUID(),
 		Content:   "modelCustom",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	if err = repo.Save(modelCustom.ID, modelCustom); err != nil {
+	if err = repo.Save(ctx, modelCustom.ID, modelCustom); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	model, err := repo.Find(modelCustom.ID)
+	model, err := repo.Find(ctx, modelCustom.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -77,7 +80,7 @@ func TestReadRepository(t *testing.T) {
 	}
 
 	t.Log("FindCustom by content")
-	result, err := repo.FindCustom(func(c *mgo.Collection) *mgo.Query {
+	result, err := repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		return c.Find(bson.M{"content": "modelCustom"})
 	})
 	if len(result) != 1 {
@@ -88,7 +91,7 @@ func TestReadRepository(t *testing.T) {
 	}
 
 	t.Log("FindCustom with no query")
-	result, err = repo.FindCustom(func(c *mgo.Collection) *mgo.Query {
+	result, err = repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		return nil
 	})
 	if err == nil || err != ErrInvalidQuery {
@@ -97,7 +100,7 @@ func TestReadRepository(t *testing.T) {
 
 	count := 0
 	t.Log("FindCustom with query execution in the callback")
-	_, err = repo.FindCustom(func(c *mgo.Collection) *mgo.Query {
+	_, err = repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		if count, err = c.Count(); err != nil {
 			t.Error("there should be no error:", err)
 		}

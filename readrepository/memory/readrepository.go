@@ -15,6 +15,7 @@
 package memory
 
 import (
+	"context"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -37,7 +38,7 @@ func NewReadRepository() *ReadRepository {
 }
 
 // Save saves a read model with id to the repository.
-func (r *ReadRepository) Save(id eh.UUID, model interface{}) error {
+func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}) error {
 	r.dataMu.Lock()
 	defer r.dataMu.Unlock()
 
@@ -60,19 +61,20 @@ func (r *ReadRepository) Save(id eh.UUID, model interface{}) error {
 
 // Find returns one read model with using an id. Returns
 // ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Find(id eh.UUID) (interface{}, error) {
+func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	r.dataMu.RLock()
 	defer r.dataMu.RUnlock()
 
-	if model, ok := r.dataByID[id]; ok {
-		return model, nil
+	model, ok := r.dataByID[id]
+	if !ok {
+		return nil, eh.ErrModelNotFound
 	}
 
-	return nil, eh.ErrModelNotFound
+	return model, nil
 }
 
 // FindAll returns all read models in the repository.
-func (r *ReadRepository) FindAll() ([]interface{}, error) {
+func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 	r.dataMu.RLock()
 	defer r.dataMu.RUnlock()
 
@@ -81,7 +83,7 @@ func (r *ReadRepository) FindAll() ([]interface{}, error) {
 
 // Remove removes a read model with id from the repository. Returns
 // ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Remove(id eh.UUID) error {
+func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
 	r.dataMu.Lock()
 	defer r.dataMu.Unlock()
 

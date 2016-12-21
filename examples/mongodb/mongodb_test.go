@@ -15,6 +15,7 @@
 package mongodb
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -149,7 +150,7 @@ func Example() {
 
 	// Read all invites.
 	invitationStrs := []string{}
-	invitations, _ := invitationRepository.FindAll()
+	invitations, _ := invitationRepository.FindAll(context.Background())
 	for _, i := range invitations {
 		if i, ok := i.(*domain.Invitation); ok {
 			invitationStrs = append(invitationStrs, fmt.Sprintf("%s - %s", i.Name, i.Status))
@@ -164,7 +165,7 @@ func Example() {
 	}
 
 	// Read the guest list.
-	l, _ := guestListRepository.Find(eventID)
+	l, _ := guestListRepository.Find(context.Background(), eventID)
 	if l, ok := l.(*domain.GuestList); ok {
 		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)

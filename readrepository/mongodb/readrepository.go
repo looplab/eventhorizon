@@ -15,6 +15,7 @@
 package mongodb
 
 import (
+	"context"
 	"errors"
 
 	"gopkg.in/mgo.v2"
@@ -74,7 +75,7 @@ func NewReadRepositoryWithSession(session *mgo.Session, database, collection str
 }
 
 // Save saves a read model with id to the repository.
-func (r *ReadRepository) Save(id eh.UUID, model interface{}) error {
+func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -86,7 +87,7 @@ func (r *ReadRepository) Save(id eh.UUID, model interface{}) error {
 
 // Find returns one read model with using an id. Returns
 // ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Find(id eh.UUID) (interface{}, error) {
+func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -108,7 +109,7 @@ func (r *ReadRepository) Find(id eh.UUID) (interface{}, error) {
 // the query in the callback and returning nil to block a second execution of
 // the same query in FindCustom. Expect a ErrInvalidQuery if returning a nil
 // query from the callback.
-func (r *ReadRepository) FindCustom(callback func(*mgo.Collection) *mgo.Query) ([]interface{}, error) {
+func (r *ReadRepository) FindCustom(ctx context.Context, callback func(*mgo.Collection) *mgo.Query) ([]interface{}, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -137,7 +138,7 @@ func (r *ReadRepository) FindCustom(callback func(*mgo.Collection) *mgo.Query) (
 }
 
 // FindAll returns all read models in the repository.
-func (r *ReadRepository) FindAll() ([]interface{}, error) {
+func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
 
@@ -161,7 +162,7 @@ func (r *ReadRepository) FindAll() ([]interface{}, error) {
 
 // Remove removes a read model with id from the repository. Returns
 // ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Remove(id eh.UUID) error {
+func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 

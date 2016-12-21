@@ -15,6 +15,7 @@
 package testutil
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
@@ -26,8 +27,10 @@ import (
 // ReadRepositoryCommonTests are test cases that are common to all
 // implementations of read repositories.
 func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
+	ctx := context.Background()
+
 	t.Log("FindAll with no items")
-	result, err := repo.FindAll()
+	result, err := repo.FindAll(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -41,10 +44,10 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 		Content:   "model1",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	if err = repo.Save(model1.ID, model1); err != nil {
+	if err = repo.Save(ctx, model1.ID, model1); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	model, err := repo.Find(model1.ID)
+	model, err := repo.Find(ctx, model1.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -58,10 +61,10 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 		Content:   "model1Alt",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	if err = repo.Save(model1Alt.ID, model1Alt); err != nil {
+	if err = repo.Save(ctx, model1Alt.ID, model1Alt); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	model, err = repo.Find(model1Alt.ID)
+	model, err = repo.Find(ctx, model1Alt.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -70,7 +73,7 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 	}
 
 	t.Log("FindAll with one item")
-	result, err = repo.FindAll()
+	result, err = repo.FindAll(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -87,10 +90,10 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 		Content:   "model2",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	if err = repo.Save(model2.ID, model2); err != nil {
+	if err = repo.Save(ctx, model2.ID, model2); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	model, err = repo.Find(model2.ID)
+	model, err = repo.Find(ctx, model2.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -99,7 +102,7 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 	}
 
 	t.Log("FindAll with two items")
-	result, err = repo.FindAll()
+	result, err = repo.FindAll(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -111,11 +114,11 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 	}
 
 	t.Log("Remove one item")
-	err = repo.Remove(model1Alt.ID)
+	err = repo.Remove(ctx, model1Alt.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	result, err = repo.FindAll()
+	result, err = repo.FindAll(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -127,7 +130,7 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 	}
 
 	t.Log("Remove non-existing item")
-	err = repo.Remove(model1Alt.ID)
+	err = repo.Remove(ctx, model1Alt.ID)
 	if err != eh.ErrModelNotFound {
 		t.Error("there should be a ErrModelNotFound error:", err)
 	}
