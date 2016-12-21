@@ -122,8 +122,20 @@ func (t CommandOther2) CommandType() eh.CommandType     { return CommandOther2Ty
 // Model is a mocked read model, useful in testing.
 type Model struct {
 	ID        eh.UUID   `json:"id"         bson:"_id"`
+	Version   int       `json:"version"    bson:"version"`
 	Content   string    `json:"content"    bson:"content"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+}
+
+// AggregateVersion implements the AggregateVersion method of the eventhorizon.Versionable interface.
+func (m *Model) AggregateVersion() int {
+	return m.Version
+}
+
+// SimpleModel is a mocked read model, useful in testing, without a version.
+type SimpleModel struct {
+	ID      eh.UUID `json:"id"         bson:"_id"`
+	Content string  `json:"content"    bson:"content"`
 }
 
 // CommandHandler is a mocked eventhorizon.CommandHandler, useful in testing.
