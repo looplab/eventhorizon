@@ -27,6 +27,10 @@ var ErrModelNotFound = errors.New("could not find model")
 
 // ReadRepository is a storage for read models.
 type ReadRepository interface {
+	// Parent returns the parent read repository, if there is one.
+	// Useful for iterating a wrapped set of repositories to get a specific one.
+	Parent() ReadRepository
+
 	// Save saves a read model with id to the repository.
 	Save(context.Context, UUID, interface{}) error
 

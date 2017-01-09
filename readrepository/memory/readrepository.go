@@ -37,6 +37,11 @@ func NewReadRepository() *ReadRepository {
 	return r
 }
 
+// Parent implements the Parent method of the eventhorizon.ReadRepository interface.
+func (r *ReadRepository) Parent() eh.ReadRepository {
+	return nil
+}
+
 // Save saves a read model with id to the repository.
 func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}) error {
 	r.dataMu.Lock()
@@ -110,4 +115,16 @@ func (r *ReadRepository) indexOfModel(model interface{}) int {
 		}
 	}
 	return -1
+}
+
+// Repository returns a parent ReadRepository if there is one.
+func Repository(repo eh.ReadRepository) *ReadRepository {
+	if r, ok := repo.(*ReadRepository); ok {
+		return r
+	}
+	parent := repo.Parent()
+	if parent == nil {
+		return nil
+	}
+	return Repository(parent)
 }

@@ -39,6 +39,10 @@ func TestReadRepository(t *testing.T) {
 
 	testutil.ReadRepositoryCommonTests(t, repo)
 
+	if parent := repo.Parent(); parent != memoryRepo {
+		t.Error("the parent repo should be correct:", parent)
+	}
+
 	simpleMemoryRepo := memory.NewReadRepository()
 	if simpleMemoryRepo == nil {
 		t.Error("there should be a repository")
@@ -185,5 +189,18 @@ func TestContextMinVersion(t *testing.T) {
 	ctx = WithMinVersion(ctx, 8)
 	if v := MinVersion(ctx); v != 8 {
 		t.Error("the min version should be correct:", v)
+	}
+}
+
+func TestRepository(t *testing.T) {
+	inner := &mocks.ReadRepository{}
+	if r := Repository(inner); r != nil {
+		t.Error("the parent repository should be nil:", r)
+	}
+
+	repo := NewReadRepository(inner)
+	outer := &mocks.ReadRepository{ParentRepo: repo}
+	if r := Repository(outer); r != repo {
+		t.Error("the parent repository should be correct:", r)
 	}
 }

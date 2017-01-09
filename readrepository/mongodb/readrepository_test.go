@@ -60,6 +60,10 @@ func TestReadRepository(t *testing.T) {
 
 	testutil.ReadRepositoryCommonTests(t, repo)
 
+	if repo.Parent() != nil {
+		t.Error("the parent repo should be nil")
+	}
+
 	ctx := context.Background()
 
 	t.Log("Save one item")
@@ -113,5 +117,21 @@ func TestReadRepository(t *testing.T) {
 	}
 	if count != 2 {
 		t.Error("the count should be correct:", count)
+	}
+}
+
+func TestRepository(t *testing.T) {
+	inner := &mocks.ReadRepository{}
+	if r := Repository(inner); r != nil {
+		t.Error("the parent repository should be nil:", r)
+	}
+
+	repo, err := NewReadRepository("", "", "")
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	outer := &mocks.ReadRepository{ParentRepo: repo}
+	if r := Repository(outer); r != repo {
+		t.Error("the parent repository should be correct:", r)
 	}
 }

@@ -41,6 +41,11 @@ func NewReadRepository(repo eh.ReadRepository) *ReadRepository {
 	}
 }
 
+// Parent implements the Parent method of the eventhorizon.ReadRepository interface.
+func (r *ReadRepository) Parent() eh.ReadRepository {
+	return r.ReadRepository
+}
+
 // Find implements the Find method of the eventhorizon.ReadModel interface.
 // If the context contains a min version set by WithMinVersion it will only
 // return an item if its version is at least min version. If a timeout or
@@ -137,4 +142,16 @@ func MinVersion(ctx context.Context) int {
 // WithMinVersion returns the context with min value set.
 func WithMinVersion(ctx context.Context, minVersion int) context.Context {
 	return context.WithValue(ctx, minVersionKey, minVersion)
+}
+
+// Repository returns a parent ReadRepository if there is one.
+func Repository(repo eh.ReadRepository) *ReadRepository {
+	if r, ok := repo.(*ReadRepository); ok {
+		return r
+	}
+	parent := repo.Parent()
+	if parent == nil {
+		return nil
+	}
+	return Repository(parent)
 }

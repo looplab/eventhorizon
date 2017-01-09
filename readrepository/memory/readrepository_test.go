@@ -17,6 +17,7 @@ package memory
 import (
 	"testing"
 
+	"github.com/looplab/eventhorizon/mocks"
 	"github.com/looplab/eventhorizon/readrepository/testutil"
 )
 
@@ -27,4 +28,21 @@ func TestReadRepository(t *testing.T) {
 	}
 
 	testutil.ReadRepositoryCommonTests(t, repo)
+
+	if repo.Parent() != nil {
+		t.Error("the parent repo should be nil")
+	}
+}
+
+func TestRepository(t *testing.T) {
+	inner := &mocks.ReadRepository{}
+	if r := Repository(inner); r != nil {
+		t.Error("the parent repository should be nil:", r)
+	}
+
+	repo := NewReadRepository()
+	outer := &mocks.ReadRepository{ParentRepo: repo}
+	if r := Repository(outer); r != repo {
+		t.Error("the parent repository should be correct:", r)
+	}
 }
