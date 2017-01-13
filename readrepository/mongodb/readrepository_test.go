@@ -15,6 +15,7 @@
 package mongodb
 
 import (
+	"context"
 	"os"
 	"reflect"
 	"testing"
@@ -25,6 +26,7 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
+	"github.com/looplab/eventhorizon/readrepository/testutil"
 )
 
 func TestReadRepository(t *testing.T) {
@@ -37,19 +39,18 @@ func TestReadRepository(t *testing.T) {
 		url = host + ":" + port
 	}
 
-	repo, err := NewReadRepository(url, "test", "mocks.TestModel")
+	repo, err := NewReadRepository(url, "test", "mocks.Model")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	if repo == nil {
 		t.Error("there should be a repository")
 	}
-
+	defer repo.Close()
 	repo.SetModel(func() interface{} {
 		return &mocks.Model{}
 	})
 
-	defer repo.Close()
 	defer func() {
 		t.Log("clearing collection")
 		if err = repo.Clear(); err != nil {
@@ -57,94 +58,44 @@ func TestReadRepository(t *testing.T) {
 		}
 	}()
 
-	// TODO: Share these tests between implementations.
+	testutil.ReadRepositoryCommonTests(t, repo)
 
-	t.Log("FindAll with no items")
-	result, err := repo.FindAll()
-	if err != nil {
-		t.Error("there should be no error:", err)
+	if repo.Parent() != nil {
+		t.Error("the parent repo should be nil")
 	}
-	if len(result) != 0 {
-		t.Error("there should be no items:", len(result))
-	}
+
+	ctx := context.Background()
 
 	t.Log("Save one item")
-	model1 := &mocks.Model{eh.NewUUID(), "model1", time.Now().Round(time.Millisecond)}
-	if err = repo.Save(model1.ID, model1); err != nil {
+	modelCustom := &mocks.Model{
+		ID:        eh.NewUUID(),
+		Content:   "modelCustom",
+		CreatedAt: time.Now().Round(time.Millisecond),
+	}
+	if err = repo.Save(ctx, modelCustom.ID, modelCustom); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	model, err := repo.Find(model1.ID)
+	model, err := repo.Find(ctx, modelCustom.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(model, model1) {
+	if !reflect.DeepEqual(model, modelCustom) {
 		t.Error("the item should be correct:", model)
-	}
-
-	t.Log("Save and overwrite with same ID")
-	model1Alt := &mocks.Model{model1.ID, "model1Alt", time.Now().Round(time.Millisecond)}
-	if err = repo.Save(model1Alt.ID, model1Alt); err != nil {
-		t.Error("there should be no error:", err)
-	}
-	model, err = repo.Find(model1Alt.ID)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if !reflect.DeepEqual(model, model1Alt) {
-		t.Error("the item should be correct:", model)
-	}
-
-	t.Log("FindAll with one item")
-	result, err = repo.FindAll()
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if len(result) != 1 {
-		t.Error("there should be one item:", len(result))
-	}
-	if !reflect.DeepEqual(result[0], model1Alt) {
-		t.Error("the item should be correct:", model)
-	}
-
-	t.Log("Save with another ID")
-	model2 := &mocks.Model{eh.NewUUID(), "model2", time.Now().Round(time.Millisecond)}
-	if err = repo.Save(model2.ID, model2); err != nil {
-		t.Error("there should be no error:", err)
-	}
-	model, err = repo.Find(model2.ID)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if !reflect.DeepEqual(model, model2) {
-		t.Error("the item should be correct:", model)
-	}
-
-	t.Log("FindAll with two items")
-	result, err = repo.FindAll()
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if len(result) != 2 {
-		t.Error("there should be two items:", len(result))
-	}
-	if (!reflect.DeepEqual(result[0], model1Alt) || !reflect.DeepEqual(result[1], model2)) &&
-		(!reflect.DeepEqual(result[0], model2) || !reflect.DeepEqual(result[1], model1Alt)) {
-		t.Error("the items should be correct:", result)
 	}
 
 	t.Log("FindCustom by content")
-	result, err = repo.FindCustom(func(c *mgo.Collection) *mgo.Query {
-		return c.Find(bson.M{"content": "model1Alt"})
+	result, err := repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
+		return c.Find(bson.M{"content": "modelCustom"})
 	})
 	if len(result) != 1 {
 		t.Error("there should be one item:", len(result))
 	}
-	if !reflect.DeepEqual(result[0], model1Alt) {
+	if !reflect.DeepEqual(result[0], modelCustom) {
 		t.Error("the item should be correct:", model)
 	}
 
 	t.Log("FindCustom with no query")
-	result, err = repo.FindCustom(func(c *mgo.Collection) *mgo.Query {
+	result, err = repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		return nil
 	})
 	if err == nil || err != ErrInvalidQuery {
@@ -153,7 +104,7 @@ func TestReadRepository(t *testing.T) {
 
 	count := 0
 	t.Log("FindCustom with query execution in the callback")
-	_, err = repo.FindCustom(func(c *mgo.Collection) *mgo.Query {
+	_, err = repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		if count, err = c.Count(); err != nil {
 			t.Error("there should be no error:", err)
 		}
@@ -167,26 +118,20 @@ func TestReadRepository(t *testing.T) {
 	if count != 2 {
 		t.Error("the count should be correct:", count)
 	}
+}
 
-	t.Log("Remove one item")
-	err = repo.Remove(model1Alt.ID)
+func TestRepository(t *testing.T) {
+	inner := &mocks.ReadRepository{}
+	if r := Repository(inner); r != nil {
+		t.Error("the parent repository should be nil:", r)
+	}
+
+	repo, err := NewReadRepository("", "", "")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	result, err = repo.FindAll()
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if len(result) != 1 {
-		t.Error("there should be one item:", len(result))
-	}
-	if !reflect.DeepEqual(result[0], model2) {
-		t.Error("the item should be correct:", result[0])
-	}
-
-	t.Log("Remove non-existing item")
-	err = repo.Remove(model1Alt.ID)
-	if err != eh.ErrModelNotFound {
-		t.Error("there should be a ErrModelNotFound error:", err)
+	outer := &mocks.ReadRepository{ParentRepo: repo}
+	if r := Repository(outer); r != repo {
+		t.Error("the parent repository should be correct:", r)
 	}
 }

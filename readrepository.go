@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"context"
 	"errors"
 )
 
@@ -26,15 +27,19 @@ var ErrModelNotFound = errors.New("could not find model")
 
 // ReadRepository is a storage for read models.
 type ReadRepository interface {
-	// Save saves a read model with id to the repository.
-	Save(UUID, interface{}) error
+	// Parent returns the parent read repository, if there is one.
+	// Useful for iterating a wrapped set of repositories to get a specific one.
+	Parent() ReadRepository
 
-	// Find returns one read model with using an id.
-	Find(UUID) (interface{}, error)
+	// Save saves a read model with id to the repository.
+	Save(context.Context, UUID, interface{}) error
+
+	// Find returns a read model with an id.
+	Find(context.Context, UUID) (interface{}, error)
 
 	// FindAll returns all read models in the repository.
-	FindAll() ([]interface{}, error)
+	FindAll(context.Context) ([]interface{}, error)
 
 	// Remove removes a read model with id from the repository.
-	Remove(UUID) error
+	Remove(context.Context, UUID) error
 }

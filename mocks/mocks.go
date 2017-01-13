@@ -15,6 +15,7 @@
 package mocks
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -122,8 +123,20 @@ func (t CommandOther2) CommandType() eh.CommandType     { return CommandOther2Ty
 // Model is a mocked read model, useful in testing.
 type Model struct {
 	ID        eh.UUID   `json:"id"         bson:"_id"`
+	Version   int       `json:"version"    bson:"version"`
 	Content   string    `json:"content"    bson:"content"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+}
+
+// AggregateVersion implements the AggregateVersion method of the eventhorizon.Versionable interface.
+func (m *Model) AggregateVersion() int {
+	return m.Version
+}
+
+// SimpleModel is a mocked read model, useful in testing, without a version.
+type SimpleModel struct {
+	ID      eh.UUID `json:"id"         bson:"_id"`
+	Content string  `json:"content"    bson:"content"`
 }
 
 // CommandHandler is a mocked eventhorizon.CommandHandler, useful in testing.
@@ -282,3 +295,37 @@ func (m *EventBus) AddObserver(observer eh.EventObserver) {}
 // SetHandlingStrategy implements the SetHandlingStrategy method of the
 // eventhorizon.EventBus interface.
 func (m *EventBus) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {}
+
+// ReadRepository is a mocked eventhorizon.ReadRepository, useful in testing.
+type ReadRepository struct {
+	ParentRepo eh.ReadRepository
+	Item       interface{}
+	Items      []interface{}
+}
+
+// Parent implements the Parent method of the eventhorizon.ReadRepository interface.
+func (r *ReadRepository) Parent() eh.ReadRepository {
+	return r.ParentRepo
+}
+
+// Save implements the Save method of the eventhorizon.ReadRepository interface.
+func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, item interface{}) error {
+	r.Item = item
+	r.Items = []interface{}{item}
+	return nil
+}
+
+// Find implements the Find method of the eventhorizon.ReadRepository interface.
+func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
+	return r.Item, nil
+}
+
+// FindAll implements the FindAll method of the eventhorizon.ReadRepository interface.
+func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
+	return r.Items, nil
+}
+
+// Remove implements the Remove method of the eventhorizon.ReadRepository interface.
+func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
+	return nil
+}
