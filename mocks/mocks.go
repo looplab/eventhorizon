@@ -56,6 +56,7 @@ type Aggregate struct {
 	*eh.AggregateBase
 	Commands []eh.Command
 	Events   []eh.Event
+	Context  context.Context
 	// Used to simulate errors in HandleCommand.
 	Err error
 }
@@ -70,11 +71,12 @@ func NewAggregate(id eh.UUID) *Aggregate {
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.Aggregate interface.
-func (a *Aggregate) HandleCommand(command eh.Command) error {
+func (a *Aggregate) HandleCommand(ctx context.Context, command eh.Command) error {
 	if a.Err != nil {
 		return a.Err
 	}
 	a.Commands = append(a.Commands, command)
+	a.Context = ctx
 	return nil
 }
 
@@ -142,11 +144,13 @@ type SimpleModel struct {
 // CommandHandler is a mocked eventhorizon.CommandHandler, useful in testing.
 type CommandHandler struct {
 	Command eh.Command
+	Context context.Context
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.CommandHandler interface.
-func (t *CommandHandler) HandleCommand(command eh.Command) error {
+func (t *CommandHandler) HandleCommand(ctx context.Context, command eh.Command) error {
 	t.Command = command
+	t.Context = ctx
 	return nil
 }
 
@@ -266,11 +270,13 @@ func (m *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Even
 // CommandBus is a mocked eventhorizon.CommandBus, useful in testing.
 type CommandBus struct {
 	Commands []eh.Command
+	Context  context.Context
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.CommandBus interface.
-func (m *CommandBus) HandleCommand(event eh.Command) {
-	m.Commands = append(m.Commands, event)
+func (m *CommandBus) HandleCommand(ctx context.Context, command eh.Command) {
+	m.Commands = append(m.Commands, command)
+	m.Context = ctx
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.CommandBus interface.

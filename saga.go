@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"context"
 	"log"
 )
 
@@ -57,12 +58,15 @@ func NewSagaBase(commandBus CommandBus, saga Saga) *SagaBase {
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (s *SagaBase) HandleEvent(event Event) {
+	// TODO: Use contexct from the event.
+	ctx := context.Background()
+
 	// Run the saga and collect commands.
 	commands := s.saga.RunSaga(event)
 
 	// Dispatch commands back on the command bus.
 	for _, command := range commands {
-		if err := s.commandBus.HandleCommand(command); err != nil {
+		if err := s.commandBus.HandleCommand(ctx, command); err != nil {
 			// TODO: Better error handling.
 			log.Println("could not handle command in saga:", err)
 		}

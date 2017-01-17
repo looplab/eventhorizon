@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -43,13 +44,18 @@ func TestNewCommandHandler(t *testing.T) {
 func TestCommandHandlerSimple(t *testing.T) {
 	aggregate, handler := createAggregateAndHandler(t)
 
+	ctx := context.WithValue(context.Background(), "testkey", "testval")
+
 	command1 := &TestCommand{aggregate.AggregateID(), "command1"}
-	err := handler.HandleCommand(command1)
+	err := handler.HandleCommand(ctx, command1)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	if aggregate.dispatchedCommand != command1 {
 		t.Error("the dispatched command should be correct:", aggregate.dispatchedCommand)
+	}
+	if val, ok := aggregate.context.Value("testkey").(string); !ok || val != "testval" {
+		t.Error("the context should be correct:", aggregate.context)
 	}
 }
 
@@ -57,7 +63,7 @@ func TestCommandHandlerErrorInHandler(t *testing.T) {
 	aggregate, handler := createAggregateAndHandler(t)
 
 	commandError := &TestCommand{aggregate.AggregateID(), "error"}
-	err := handler.HandleCommand(commandError)
+	err := handler.HandleCommand(context.Background(), commandError)
 	if err == nil || err.Error() != "command error" {
 		t.Error("there should be a command error:", err)
 	}
@@ -70,7 +76,7 @@ func TestCommandHandlerNoHandlers(t *testing.T) {
 	_, handler := createAggregateAndHandler(t)
 
 	command1 := &TestCommand{NewUUID(), "command1"}
-	err := handler.HandleCommand(command1)
+	err := handler.HandleCommand(context.Background(), command1)
 	if err != ErrAggregateNotFound {
 		t.Error("there should be a ErrAggregateNotFound error:", nil)
 	}
@@ -171,9 +177,11 @@ func BenchmarkCommandHandler(b *testing.B) {
 		b.Fatal("there should be no error:", err)
 	}
 
+	ctx := context.WithValue(context.Background(), "testkey", "testval")
+
 	command1 := &TestCommand{aggregate.AggregateID(), "command1"}
 	for i := 0; i < b.N; i++ {
-		handler.HandleCommand(command1)
+		handler.HandleCommand(ctx, command1)
 	}
 	if aggregate.numHandled != b.N {
 		b.Error("the num handled commands should be correct:", aggregate.numHandled, b.N)

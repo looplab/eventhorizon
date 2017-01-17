@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"time"
@@ -80,7 +81,7 @@ func (h *AggregateCommandHandler) SetAggregate(aggregateType AggregateType, comm
 
 // HandleCommand handles a command with the registered aggregate.
 // Returns ErrAggregateNotFound if no aggregate could be found.
-func (h *AggregateCommandHandler) HandleCommand(command Command) error {
+func (h *AggregateCommandHandler) HandleCommand(ctx context.Context, command Command) error {
 	err := h.checkCommand(command)
 	if err != nil {
 		return err
@@ -98,7 +99,7 @@ func (h *AggregateCommandHandler) HandleCommand(command Command) error {
 		return ErrAggregateNotFound
 	}
 
-	if err = aggregate.HandleCommand(command); err != nil {
+	if err = aggregate.HandleCommand(ctx, command); err != nil {
 		return err
 	}
 

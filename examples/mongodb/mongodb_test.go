@@ -123,34 +123,36 @@ func Example() {
 	zeusID := eh.NewUUID()
 	poseidonID := eh.NewUUID()
 
+	ctx := context.Background()
+
 	// Issue some invitations and responses. Error checking omitted here.
-	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
-	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: hadesID, Name: "Hades"})
-	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
-	commandBus.HandleCommand(&domain.CreateInvite{InvitationID: poseidonID, Name: "Poseidon"})
+	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
+	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: hadesID, Name: "Hades"})
+	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
+	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: poseidonID, Name: "Poseidon"})
 
 	// The invited guests accept and decline the event.
 	// Note that Athena tries to decline the event after first accepting, but
 	// that is not allowed by the domain logic in InvitationAggregate. The
 	// result is that she is still accepted.
-	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: athenaID})
-	err = commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: athenaID})
+	commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: athenaID})
+	err = commandBus.HandleCommand(ctx, &domain.DeclineInvite{InvitationID: athenaID})
 	if err != nil {
 		log.Printf("error: %s\n", err)
 	}
-	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: hadesID})
-	commandBus.HandleCommand(&domain.DeclineInvite{InvitationID: zeusID})
+	commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: hadesID})
+	commandBus.HandleCommand(ctx, &domain.DeclineInvite{InvitationID: zeusID})
 
 	// Poseidon is a bit late to the party...
 	time.Sleep(10 * time.Millisecond)
-	commandBus.HandleCommand(&domain.AcceptInvite{InvitationID: poseidonID})
+	commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: poseidonID})
 
 	// Wait for simulated eventual consistency before reading.
 	time.Sleep(10 * time.Millisecond)
 
 	// Read all invites.
 	invitationStrs := []string{}
-	invitations, _ := invitationRepository.FindAll(context.Background())
+	invitations, _ := invitationRepository.FindAll(ctx)
 	for _, i := range invitations {
 		if i, ok := i.(*domain.Invitation); ok {
 			invitationStrs = append(invitationStrs, fmt.Sprintf("%s - %s", i.Name, i.Status))
@@ -165,7 +167,7 @@ func Example() {
 	}
 
 	// Read the guest list.
-	l, _ := guestListRepository.Find(context.Background(), eventID)
+	l, _ := guestListRepository.Find(ctx, eventID)
 	if l, ok := l.(*domain.GuestList); ok {
 		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)

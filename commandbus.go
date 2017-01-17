@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"context"
 	"errors"
 )
 
@@ -26,13 +27,13 @@ var ErrHandlerNotFound = errors.New("no handlers for command")
 
 // CommandHandler is an interface that all handlers of commands should implement.
 type CommandHandler interface {
-	HandleCommand(Command) error
+	HandleCommand(context.Context, Command) error
 }
 
 // CommandBus is an interface defining an event bus for distributing events.
 type CommandBus interface {
 	// HandleCommand handles a command on the event bus.
-	HandleCommand(Command) error
+	HandleCommand(context.Context, Command) error
 	// SetHandler registers a handler with a command.
 	SetHandler(CommandHandler, CommandType) error
 }

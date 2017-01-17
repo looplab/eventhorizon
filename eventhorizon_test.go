@@ -14,7 +14,10 @@
 
 package eventhorizon
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 func init() {
 	RegisterAggregate(func(id UUID) Aggregate {
@@ -43,6 +46,7 @@ type TestAggregate struct {
 	*AggregateBase
 
 	dispatchedCommand Command
+	context           context.Context
 	appliedEvent      Event
 	numHandled        int
 }
@@ -53,8 +57,9 @@ func NewTestAggregate(id UUID) *TestAggregate {
 	}
 }
 
-func (a *TestAggregate) HandleCommand(command Command) error {
+func (a *TestAggregate) HandleCommand(ctx context.Context, command Command) error {
 	a.dispatchedCommand = command
+	a.context = ctx
 	a.numHandled++
 	switch command := command.(type) {
 	case *TestCommand:
@@ -78,6 +83,7 @@ type TestAggregate2 struct {
 	*AggregateBase
 
 	dispatchedCommand Command
+	context           context.Context
 	appliedEvent      Event
 	numHandled        int
 }
@@ -88,8 +94,9 @@ func NewTestAggregate2(id UUID) *TestAggregate2 {
 	}
 }
 
-func (a *TestAggregate2) HandleCommand(command Command) error {
+func (a *TestAggregate2) HandleCommand(ctx context.Context, command Command) error {
 	a.dispatchedCommand = command
+	a.context = ctx
 	a.numHandled++
 	switch command := command.(type) {
 	case *TestCommand2:

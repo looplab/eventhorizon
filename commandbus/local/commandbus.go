@@ -15,6 +15,7 @@
 package local
 
 import (
+	"context"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -36,12 +37,12 @@ func NewCommandBus() *CommandBus {
 }
 
 // HandleCommand handles a command with a handler capable of handling it.
-func (b *CommandBus) HandleCommand(command eh.Command) error {
+func (b *CommandBus) HandleCommand(ctx context.Context, command eh.Command) error {
 	b.handlersMu.RLock()
 	defer b.handlersMu.RUnlock()
 
 	if handler, ok := b.handlers[command.CommandType()]; ok {
-		return handler.HandleCommand(command)
+		return handler.HandleCommand(ctx, command)
 	}
 
 	return eh.ErrHandlerNotFound
