@@ -15,6 +15,7 @@
 package trace
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -57,6 +58,8 @@ func TestEventStore(t *testing.T) {
 		}
 	}
 
+	ctx := context.Background()
+
 	t.Log("save event, version 7")
 	agg := mocks.NewAggregate(event1.AggregateID())
 	for _, e := range aggregate1events {
@@ -64,7 +67,7 @@ func TestEventStore(t *testing.T) {
 	}
 	event7 := agg.NewEvent(mocks.EventType, &mocks.EventData{"event1"})
 	agg.ApplyEvent(event7) // Apply event to increment the aggregate version.
-	err := store.Save([]eh.Event{event7}, 6)
+	err := store.Save(ctx, []eh.Event{event7}, 6)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -75,7 +78,7 @@ func TestEventStore(t *testing.T) {
 	aggregate1events = append(aggregate1events, event1)
 
 	t.Log("load events without tracing")
-	events, err := store.Load(event1.AggregateType(), event1.AggregateID())
+	events, err := store.Load(ctx, event1.AggregateType(), event1.AggregateID())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

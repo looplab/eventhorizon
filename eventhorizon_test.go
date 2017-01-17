@@ -157,27 +157,30 @@ func (m *MockRepository) Save(ctx context.Context, aggregate Aggregate) error {
 }
 
 type MockEventStore struct {
-	Events []Event
-	Loaded UUID
+	Events  []Event
+	Loaded  UUID
+	Context context.Context
 	// Used to simulate errors in the store.
 	err error
 }
 
-func (m *MockEventStore) Save(events []Event, originalVersion int) error {
+func (m *MockEventStore) Save(ctx context.Context, events []Event, originalVersion int) error {
 	if m.err != nil {
 		return m.err
 	}
 	for _, event := range events {
 		m.Events = append(m.Events, event)
 	}
+	m.Context = ctx
 	return nil
 }
 
-func (m *MockEventStore) Load(aggregateType AggregateType, id UUID) ([]Event, error) {
+func (m *MockEventStore) Load(ctx context.Context, aggregateType AggregateType, id UUID) ([]Event, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	m.Loaded = id
+	m.Context = ctx
 	return m.Events, nil
 }
 

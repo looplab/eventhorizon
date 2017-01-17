@@ -14,7 +14,10 @@
 
 package eventhorizon
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 // ErrNoEventsToAppend is when no events are available to append.
 var ErrNoEventsToAppend = errors.New("no events to append")
@@ -28,8 +31,8 @@ var ErrIncorrectEventVersion = errors.New("mismatching event version")
 // EventStore is an interface for an event sourcing event store.
 type EventStore interface {
 	// Save appends all events in the event stream to the store.
-	Save(events []Event, originalVersion int) error
+	Save(ctx context.Context, events []Event, originalVersion int) error
 
 	// Load loads all events for the aggregate id from the store.
-	Load(AggregateType, UUID) ([]Event, error)
+	Load(context.Context, AggregateType, UUID) ([]Event, error)
 }

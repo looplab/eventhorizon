@@ -73,7 +73,7 @@ func (r *EventSourcingRepository) Load(ctx context.Context, aggregateType Aggreg
 	}
 
 	// Load aggregate events.
-	events, err := r.eventStore.Load(aggregate.AggregateType(), aggregate.AggregateID())
+	events, err := r.eventStore.Load(ctx, aggregate.AggregateType(), aggregate.AggregateID())
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (r *EventSourcingRepository) Save(ctx context.Context, aggregate Aggregate)
 	}
 
 	// Store events, check for error after publishing on the bus.
-	if err := r.eventStore.Save(uncommittedEvents, aggregate.Version()); err != nil {
+	if err := r.eventStore.Save(ctx, uncommittedEvents, aggregate.Version()); err != nil {
 		return err
 	}
 

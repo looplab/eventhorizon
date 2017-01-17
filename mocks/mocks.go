@@ -244,29 +244,32 @@ func (m *Repository) Save(ctx context.Context, aggregate eh.Aggregate) error {
 
 // EventStore is a mocked eventhorizon.EventStore, useful in testing.
 type EventStore struct {
-	Events []eh.Event
-	Loaded eh.UUID
+	Events  []eh.Event
+	Loaded  eh.UUID
+	Context context.Context
 	// Used to simulate errors in the store.
 	Err error
 }
 
 // Save implements the Save method of the eventhorizon.EventStore interface.
-func (m *EventStore) Save(events []eh.Event, originalVersion int) error {
+func (m *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if m.Err != nil {
 		return m.Err
 	}
 	for _, event := range events {
 		m.Events = append(m.Events, event)
 	}
+	m.Context = ctx
 	return nil
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (m *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
+func (m *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
 	m.Loaded = id
+	m.Context = ctx
 	return m.Events, nil
 }
 

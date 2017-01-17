@@ -15,6 +15,7 @@
 package trace
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -42,12 +43,12 @@ func NewEventStore(eventStore eh.EventStore) *EventStore {
 }
 
 // Save appends all events to the base store and trace them if enabled.
-func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
+func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if s.eventStore == nil {
 		return ErrNoEventStoreDefined
 	}
 
-	if err := s.eventStore.Save(events, originalVersion); err != nil {
+	if err := s.eventStore.Save(ctx, events, originalVersion); err != nil {
 		return err
 	}
 
@@ -63,9 +64,9 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the base store.
 // Returns ErrNoEventStoreDefined if no event store could be found.
-func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
+func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	if s.eventStore != nil {
-		return s.eventStore.Load(aggregateType, id)
+		return s.eventStore.Load(ctx, aggregateType, id)
 	}
 
 	return nil, ErrNoEventStoreDefined

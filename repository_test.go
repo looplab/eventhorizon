@@ -80,7 +80,7 @@ func TestEventSourcingRepositoryLoadEvents(t *testing.T) {
 	id := NewUUID()
 	agg := NewTestAggregate(id)
 	event1 := agg.NewEvent(TestEventType, &TestEventData{"event1"})
-	store.Save([]Event{event1}, 0)
+	store.Save(ctx, []Event{event1}, 0)
 	t.Log(store.Events)
 	loadedAgg, err := repo.Load(ctx, TestAggregateType, id)
 	if err != nil {
@@ -110,12 +110,12 @@ func TestEventSourcingRepositoryLoadEventsMismatchedEventType(t *testing.T) {
 	id := NewUUID()
 	agg := NewTestAggregate(id)
 	event1 := agg.NewEvent(TestEventType, &TestEventData{"event"})
-	store.Save([]Event{event1}, 0)
+	store.Save(ctx, []Event{event1}, 0)
 
 	otherAggregateID := NewUUID()
 	otherAgg := NewTestAggregate2(otherAggregateID)
 	event2 := otherAgg.NewEvent(TestEvent2Type, &TestEvent2Data{"event2"})
-	store.Save([]Event{event2}, 0)
+	store.Save(ctx, []Event{event2}, 0)
 
 	loadedAgg, err := repo.Load(ctx, TestAggregateType, otherAggregateID)
 	if err != ErrMismatchedEventType {
@@ -140,7 +140,7 @@ func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	events, err := store.Load(TestAggregateType, id)
+	events, err := store.Load(ctx, TestAggregateType, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

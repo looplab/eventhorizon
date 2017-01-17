@@ -15,6 +15,7 @@
 package mongodb
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -80,7 +81,7 @@ func NewEventStoreWithSession(session *mgo.Session, database string) (*EventStor
 }
 
 // Save appends all events in the event stream to the database.
-func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
+func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return eh.ErrNoEventsToAppend
 	}
@@ -159,7 +160,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the database.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
+func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	sess := s.session.Copy()
 	defer sess.Close()
 
