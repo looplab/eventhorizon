@@ -142,14 +142,17 @@ type TestEvent2Data struct {
 
 type MockRepository struct {
 	Aggregates map[UUID]Aggregate
+	Context    context.Context
 }
 
-func (m *MockRepository) Load(aggregateType AggregateType, id UUID) (Aggregate, error) {
+func (m *MockRepository) Load(ctx context.Context, aggregateType AggregateType, id UUID) (Aggregate, error) {
+	m.Context = ctx
 	return m.Aggregates[id], nil
 }
 
-func (m *MockRepository) Save(aggregate Aggregate) error {
+func (m *MockRepository) Save(ctx context.Context, aggregate Aggregate) error {
 	m.Aggregates[aggregate.AggregateID()] = aggregate
+	m.Context = ctx
 	return nil
 }
 

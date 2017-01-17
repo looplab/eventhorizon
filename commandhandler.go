@@ -92,7 +92,7 @@ func (h *AggregateCommandHandler) HandleCommand(ctx context.Context, command Com
 		return ErrAggregateNotFound
 	}
 
-	aggregate, err := h.repository.Load(aggregateType, command.AggregateID())
+	aggregate, err := h.repository.Load(ctx, aggregateType, command.AggregateID())
 	if err != nil {
 		return err
 	} else if aggregate == nil {
@@ -103,7 +103,7 @@ func (h *AggregateCommandHandler) HandleCommand(ctx context.Context, command Com
 		return err
 	}
 
-	if err = h.repository.Save(aggregate); err != nil {
+	if err = h.repository.Save(ctx, aggregate); err != nil {
 		return err
 	}
 

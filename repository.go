@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"context"
 	"errors"
 )
 
@@ -30,10 +31,10 @@ var ErrMismatchedEventType = errors.New("mismatched event type and aggregate typ
 // Repository is a repository responsible for loading and saving aggregates.
 type Repository interface {
 	// Load loads the most recent version of an aggregate with a type and id.
-	Load(AggregateType, UUID) (Aggregate, error)
+	Load(context.Context, AggregateType, UUID) (Aggregate, error)
 
 	// Save saves the uncommittend events for an aggregate.
-	Save(Aggregate) error
+	Save(context.Context, Aggregate) error
 }
 
 // EventSourcingRepository is an aggregate repository using event sourcing. It
@@ -64,7 +65,7 @@ func NewEventSourcingRepository(eventStore EventStore, eventBus EventBus) (*Even
 // Load loads an aggregate from the event store. It does so by creating a new
 // aggregate of the type with the ID and then applies all events to it, thus
 // making it the most current version of the aggregate.
-func (r *EventSourcingRepository) Load(aggregateType AggregateType, id UUID) (Aggregate, error) {
+func (r *EventSourcingRepository) Load(ctx context.Context, aggregateType AggregateType, id UUID) (Aggregate, error) {
 	// Create the aggregate.
 	aggregate, err := CreateAggregate(aggregateType, id)
 	if err != nil {
@@ -90,7 +91,7 @@ func (r *EventSourcingRepository) Load(aggregateType AggregateType, id UUID) (Ag
 }
 
 // Save saves all uncommitted events from an aggregate to the event store.
-func (r *EventSourcingRepository) Save(aggregate Aggregate) error {
+func (r *EventSourcingRepository) Save(ctx context.Context, aggregate Aggregate) error {
 	uncommittedEvents := aggregate.UncommittedEvents()
 	if len(uncommittedEvents) < 1 {
 		return nil

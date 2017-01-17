@@ -226,15 +226,18 @@ func (m *EventObserver) WaitForEvent(t *testing.T) {
 // Repository is a mocked Repository, useful in testing.
 type Repository struct {
 	Aggregates map[eh.UUID]eh.Aggregate
+	Context    context.Context
 }
 
 // Load implements the Load method of the eventhorizon.Repository interface.
-func (m *Repository) Load(aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
+func (m *Repository) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
+	m.Context = ctx
 	return m.Aggregates[id], nil
 }
 
 // Save implements the Save method of the eventhorizon.Repository interface.
-func (m *Repository) Save(aggregate eh.Aggregate) error {
+func (m *Repository) Save(ctx context.Context, aggregate eh.Aggregate) error {
+	m.Context = ctx
 	m.Aggregates[aggregate.AggregateID()] = aggregate
 	return nil
 }
