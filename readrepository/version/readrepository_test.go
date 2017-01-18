@@ -193,6 +193,10 @@ func TestContextMinVersion(t *testing.T) {
 }
 
 func TestRepository(t *testing.T) {
+	if r := Repository(nil); r != nil {
+		t.Error("the parent repository should be nil:", r)
+	}
+
 	inner := &mocks.ReadRepository{}
 	if r := Repository(inner); r != nil {
 		t.Error("the parent repository should be nil:", r)

@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -56,8 +57,10 @@ func TestNewEventSourcingRepository(t *testing.T) {
 func TestEventSourcingRepositoryLoadNoEvents(t *testing.T) {
 	repo, _, _ := createRepoAndStore(t)
 
+	ctx := context.Background()
+
 	id := NewUUID()
-	agg, err := repo.Load(TestAggregateType, id)
+	agg, err := repo.Load(ctx, TestAggregateType, id)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -72,12 +75,14 @@ func TestEventSourcingRepositoryLoadNoEvents(t *testing.T) {
 func TestEventSourcingRepositoryLoadEvents(t *testing.T) {
 	repo, store, _ := createRepoAndStore(t)
 
+	ctx := context.Background()
+
 	id := NewUUID()
 	agg := NewTestAggregate(id)
 	event1 := agg.NewEvent(TestEventType, &TestEventData{"event1"})
-	store.Save([]Event{event1}, 0)
+	store.Save(ctx, []Event{event1}, 0)
 	t.Log(store.Events)
-	loadedAgg, err := repo.Load(TestAggregateType, id)
+	loadedAgg, err := repo.Load(ctx, TestAggregateType, id)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -92,7 +97,7 @@ func TestEventSourcingRepositoryLoadEvents(t *testing.T) {
 	}
 
 	store.err = errors.New("error")
-	if _, err = repo.Load(TestAggregateType, id); err == nil || err.Error() != "error" {
+	if _, err = repo.Load(ctx, TestAggregateType, id); err == nil || err.Error() != "error" {
 		t.Error("there should be an error named 'error':", err)
 	}
 }
@@ -100,17 +105,19 @@ func TestEventSourcingRepositoryLoadEvents(t *testing.T) {
 func TestEventSourcingRepositoryLoadEventsMismatchedEventType(t *testing.T) {
 	repo, store, _ := createRepoAndStore(t)
 
+	ctx := context.Background()
+
 	id := NewUUID()
 	agg := NewTestAggregate(id)
 	event1 := agg.NewEvent(TestEventType, &TestEventData{"event"})
-	store.Save([]Event{event1}, 0)
+	store.Save(ctx, []Event{event1}, 0)
 
 	otherAggregateID := NewUUID()
 	otherAgg := NewTestAggregate2(otherAggregateID)
 	event2 := otherAgg.NewEvent(TestEvent2Type, &TestEvent2Data{"event2"})
-	store.Save([]Event{event2}, 0)
+	store.Save(ctx, []Event{event2}, 0)
 
-	loadedAgg, err := repo.Load(TestAggregateType, otherAggregateID)
+	loadedAgg, err := repo.Load(ctx, TestAggregateType, otherAggregateID)
 	if err != ErrMismatchedEventType {
 		t.Fatal("there should be a ErrMismatchedEventType error:", err)
 	}
@@ -122,16 +129,18 @@ func TestEventSourcingRepositoryLoadEventsMismatchedEventType(t *testing.T) {
 func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 	repo, store, bus := createRepoAndStore(t)
 
+	ctx := context.Background()
+
 	id := NewUUID()
 	agg := NewTestAggregate(id)
 	event1 := agg.NewEvent(TestEventType, &TestEventData{"event"})
 	agg.StoreEvent(event1)
-	err := repo.Save(agg)
+	err := repo.Save(ctx, agg)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 
-	events, err := store.Load(TestAggregateType, id)
+	events, err := store.Load(ctx, TestAggregateType, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -154,7 +163,7 @@ func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 
 	agg.StoreEvent(event1)
 	store.err = errors.New("error")
-	if err = repo.Save(agg); err == nil || err.Error() != "error" {
+	if err = repo.Save(ctx, agg); err == nil || err.Error() != "error" {
 		t.Error("there should be an error named 'error':", err)
 	}
 }
@@ -162,8 +171,10 @@ func TestEventSourcingRepositorySaveEvents(t *testing.T) {
 func TestEventSourcingRepositoryAggregateNotRegistered(t *testing.T) {
 	repo, _, _ := createRepoAndStore(t)
 
+	ctx := context.Background()
+
 	id := NewUUID()
-	agg, err := repo.Load("TestAggregate3", id)
+	agg, err := repo.Load(ctx, "TestAggregate3", id)
 	if err != ErrAggregateNotRegistered {
 		t.Error("there should be a ErrAggregateNotRegistered error:", err)
 	}

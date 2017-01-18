@@ -15,6 +15,7 @@
 package domain
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -56,7 +57,7 @@ func NewInvitationAggregate(id eh.UUID) *InvitationAggregate {
 }
 
 // HandleCommand implements the HandleCommand method of the Aggregate interface.
-func (a *InvitationAggregate) HandleCommand(command eh.Command) error {
+func (a *InvitationAggregate) HandleCommand(ctx context.Context, command eh.Command) error {
 	switch command := command.(type) {
 	case *CreateInvite:
 		a.StoreEvent(a.NewEvent(InviteCreatedEvent,
@@ -127,7 +128,7 @@ func (a *InvitationAggregate) HandleCommand(command eh.Command) error {
 }
 
 // ApplyEvent implements the ApplyEvent method of the Aggregate interface.
-func (a *InvitationAggregate) ApplyEvent(event eh.Event) {
+func (a *InvitationAggregate) ApplyEvent(ctx context.Context, event eh.Event) {
 	defer a.IncrementVersion()
 
 	switch event.EventType() {

@@ -15,6 +15,7 @@
 package memory
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -41,7 +42,7 @@ func NewEventStore() *EventStore {
 }
 
 // Save appends all events in the event stream to the memory store.
-func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
+func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return eh.ErrNoEventsToAppend
 	}
@@ -108,7 +109,7 @@ func (s *EventStore) Save(events []eh.Event, originalVersion int) error {
 
 // Load loads all events for the aggregate id from the memory store.
 // Returns ErrNoEventsFound if no events can be found.
-func (s *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
+func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	s.aggregateRecordsMu.RLock()
 	defer s.aggregateRecordsMu.RUnlock()
 

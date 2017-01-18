@@ -15,6 +15,7 @@
 package testutil
 
 import (
+	"context"
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
@@ -30,11 +31,13 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 	observer2 := mocks.NewEventObserver()
 	bus2.AddObserver(observer2)
 
+	ctx := mocks.WithContextOne(context.Background(), "testval")
+
 	t.Log("publish event without handler")
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
 	agg := mocks.NewAggregate(id)
 	event1 := agg.NewEvent(mocks.EventType, &mocks.EventData{"event1"})
-	bus1.PublishEvent(event1)
+	bus1.PublishEvent(ctx, event1)
 	expectedEvents := []eh.Event{event1}
 	observer1.WaitForEvent(t)
 	for i, event := range observer1.Events {
@@ -42,22 +45,32 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 			t.Error("the event was incorrect:", err)
 		}
 	}
+	if val, ok := mocks.ContextOne(observer1.Context); !ok || val != "testval" {
+		t.Error("the context should be correct:", observer1.Context)
+	}
 	observer2.WaitForEvent(t)
 	for i, event := range observer2.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
 	}
+	if val, ok := mocks.ContextOne(observer2.Context); !ok || val != "testval" {
+		t.Error("the context should be correct:", observer2.Context)
+	}
 
 	t.Log("publish event")
 	handler := mocks.NewEventHandler("testHandler")
 	bus1.AddHandler(handler, mocks.EventType)
-	bus1.PublishEvent(event1)
+	bus1.PublishEvent(ctx, event1)
+	handler.WaitForEvent(t)
 	expectedEvents = []eh.Event{event1}
 	for i, event := range handler.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
+	}
+	if val, ok := mocks.ContextOne(handler.Context); !ok || val != "testval" {
+		t.Error("the context should be correct:", handler.Context)
 	}
 	expectedEvents = []eh.Event{event1, event1}
 	observer1.WaitForEvent(t)
@@ -66,22 +79,32 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 			t.Error("the event was incorrect:", err)
 		}
 	}
+	if val, ok := mocks.ContextOne(observer1.Context); !ok || val != "testval" {
+		t.Error("the context should be correct:", observer1.Context)
+	}
 	observer2.WaitForEvent(t)
 	for i, event := range observer2.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
 	}
+	if val, ok := mocks.ContextOne(observer2.Context); !ok || val != "testval" {
+		t.Error("the context should be correct:", observer2.Context)
+	}
 
 	t.Log("publish another event")
 	bus1.AddHandler(handler, mocks.EventOtherType)
 	event2 := agg.NewEvent(mocks.EventOtherType, nil)
-	bus1.PublishEvent(event2)
+	bus1.PublishEvent(ctx, event2)
+	handler.WaitForEvent(t)
 	expectedEvents = []eh.Event{event1, event2}
 	for i, event := range handler.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
+	}
+	if val, ok := mocks.ContextOne(handler.Context); !ok || val != "testval" {
+		t.Error("the context should be correct:", handler.Context)
 	}
 	expectedEvents = []eh.Event{event1, event1, event2}
 	observer1.WaitForEvent(t)
@@ -90,10 +113,16 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 			t.Error("the event was incorrect:", err)
 		}
 	}
+	if val, ok := mocks.ContextOne(observer1.Context); !ok || val != "testval" {
+		t.Error("the context should be correct:", observer1.Context)
+	}
 	observer2.WaitForEvent(t)
 	for i, event := range observer2.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
+	}
+	if val, ok := mocks.ContextOne(observer2.Context); !ok || val != "testval" {
+		t.Error("the context should be correct:", observer2.Context)
 	}
 }

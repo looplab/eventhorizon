@@ -56,6 +56,7 @@ type Aggregate struct {
 	*eh.AggregateBase
 	Commands []eh.Command
 	Events   []eh.Event
+	Context  context.Context
 	// Used to simulate errors in HandleCommand.
 	Err error
 }
@@ -70,19 +71,21 @@ func NewAggregate(id eh.UUID) *Aggregate {
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.Aggregate interface.
-func (a *Aggregate) HandleCommand(command eh.Command) error {
+func (a *Aggregate) HandleCommand(ctx context.Context, command eh.Command) error {
 	if a.Err != nil {
 		return a.Err
 	}
 	a.Commands = append(a.Commands, command)
+	a.Context = ctx
 	return nil
 }
 
 // ApplyEvent implements the ApplyEvent method of the eventhorizon.Aggregate interface.
-func (a *Aggregate) ApplyEvent(event eh.Event) {
+func (a *Aggregate) ApplyEvent(ctx context.Context, event eh.Event) {
 	defer a.IncrementVersion()
 
 	a.Events = append(a.Events, event)
+	a.Context = ctx
 }
 
 // EventData is a mocked event data, useful in testing.
@@ -142,27 +145,31 @@ type SimpleModel struct {
 // CommandHandler is a mocked eventhorizon.CommandHandler, useful in testing.
 type CommandHandler struct {
 	Command eh.Command
+	Context context.Context
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.CommandHandler interface.
-func (t *CommandHandler) HandleCommand(command eh.Command) error {
+func (t *CommandHandler) HandleCommand(ctx context.Context, command eh.Command) error {
 	t.Command = command
+	t.Context = ctx
 	return nil
 }
 
 // EventHandler is a mocked eventhorizon.EventHandler, useful in testing.
 type EventHandler struct {
-	Type   eh.EventHandlerType
-	Events []eh.Event
-	Recv   chan eh.Event
+	Type    eh.EventHandlerType
+	Events  []eh.Event
+	Context context.Context
+	Recv    chan eh.Event
 }
 
 // NewEventHandler creates a new EventHandler.
 func NewEventHandler(handlerType eh.EventHandlerType) *EventHandler {
 	return &EventHandler{
-		handlerType,
-		make([]eh.Event, 0),
-		make(chan eh.Event, 10),
+		Type:    handlerType,
+		Events:  make([]eh.Event, 0),
+		Context: context.Background(),
+		Recv:    make(chan eh.Event, 10),
 	}
 }
 
@@ -172,8 +179,9 @@ func (m *EventHandler) HandlerType() eh.EventHandlerType {
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
-func (m *EventHandler) HandleEvent(event eh.Event) {
+func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) {
 	m.Events = append(m.Events, event)
+	m.Context = ctx
 	m.Recv <- event
 }
 
@@ -190,21 +198,24 @@ func (m *EventHandler) WaitForEvent(t *testing.T) {
 
 // EventObserver is a mocked eventhorizon.EventObserver, useful in testing.
 type EventObserver struct {
-	Events []eh.Event
-	Recv   chan eh.Event
+	Events  []eh.Event
+	Context context.Context
+	Recv    chan eh.Event
 }
 
 // NewEventObserver creates a new EventObserver.
 func NewEventObserver() *EventObserver {
 	return &EventObserver{
-		make([]eh.Event, 0),
-		make(chan eh.Event, 10),
+		Events:  make([]eh.Event, 0),
+		Context: context.Background(),
+		Recv:    make(chan eh.Event, 10),
 	}
 }
 
 // Notify implements the Notify method of the eventhorizon.EventHandler interface.
-func (m *EventObserver) Notify(event eh.Event) {
+func (m *EventObserver) Notify(ctx context.Context, event eh.Event) {
 	m.Events = append(m.Events, event)
+	m.Context = ctx
 	m.Recv <- event
 }
 
@@ -222,68 +233,80 @@ func (m *EventObserver) WaitForEvent(t *testing.T) {
 // Repository is a mocked Repository, useful in testing.
 type Repository struct {
 	Aggregates map[eh.UUID]eh.Aggregate
+	Context    context.Context
 }
 
 // Load implements the Load method of the eventhorizon.Repository interface.
-func (m *Repository) Load(aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
+func (m *Repository) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
+	m.Context = ctx
 	return m.Aggregates[id], nil
 }
 
 // Save implements the Save method of the eventhorizon.Repository interface.
-func (m *Repository) Save(aggregate eh.Aggregate) error {
+func (m *Repository) Save(ctx context.Context, aggregate eh.Aggregate) error {
+	m.Context = ctx
 	m.Aggregates[aggregate.AggregateID()] = aggregate
 	return nil
 }
 
 // EventStore is a mocked eventhorizon.EventStore, useful in testing.
 type EventStore struct {
-	Events []eh.Event
-	Loaded eh.UUID
+	Events  []eh.Event
+	Loaded  eh.UUID
+	Context context.Context
 	// Used to simulate errors in the store.
 	Err error
 }
 
 // Save implements the Save method of the eventhorizon.EventStore interface.
-func (m *EventStore) Save(events []eh.Event, originalVersion int) error {
+func (m *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if m.Err != nil {
 		return m.Err
 	}
 	for _, event := range events {
 		m.Events = append(m.Events, event)
 	}
+	m.Context = ctx
 	return nil
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (m *EventStore) Load(aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
+func (m *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
 	m.Loaded = id
+	m.Context = ctx
 	return m.Events, nil
 }
 
 // CommandBus is a mocked eventhorizon.CommandBus, useful in testing.
 type CommandBus struct {
 	Commands []eh.Command
+	Context  context.Context
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.CommandBus interface.
-func (m *CommandBus) HandleCommand(event eh.Command) {
-	m.Commands = append(m.Commands, event)
+func (m *CommandBus) HandleCommand(ctx context.Context, command eh.Command) {
+	m.Commands = append(m.Commands, command)
+	m.Context = ctx
 }
 
-// AddHandler implements the AddHandler method of the eventhorizon.CommandBus interface.
-func (m *CommandBus) AddHandler(handler eh.CommandHandler, event eh.Command) {}
+// SetHandler implements the SetHandler method of the eventhorizon.CommandBus interface.
+func (m *CommandBus) SetHandler(handler eh.CommandHandler, commandType eh.CommandType) error {
+	return nil
+}
 
 // EventBus is a mocked eventhorizon.EventBus, useful in testing.
 type EventBus struct {
-	Events []eh.Event
+	Events  []eh.Event
+	Context context.Context
 }
 
 // PublishEvent implements the PublishEvent method of the eventhorizon.EventBus interface.
-func (m *EventBus) PublishEvent(event eh.Event) {
+func (m *EventBus) PublishEvent(ctx context.Context, event eh.Event) {
 	m.Events = append(m.Events, event)
+	m.Context = ctx
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
@@ -328,4 +351,41 @@ func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 // Remove implements the Remove method of the eventhorizon.ReadRepository interface.
 func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
 	return nil
+}
+
+type contextKey int
+
+const (
+	contextKeyOne contextKey = iota
+)
+
+const (
+	// The string key used to marshal contextKeyOne.
+	contextKeyOneStr = "context_one"
+)
+
+// Register the marshalers and unmarshalers for ContextOne.
+func init() {
+	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+		if val, ok := ContextOne(ctx); ok {
+			vals[contextKeyOneStr] = val
+		}
+	})
+	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+		if val, ok := vals[contextKeyOneStr].(string); ok {
+			return WithContextOne(ctx, val)
+		}
+		return ctx
+	})
+}
+
+// WithContextOne sets a value for One one the context.
+func WithContextOne(ctx context.Context, val string) context.Context {
+	return context.WithValue(ctx, contextKeyOne, val)
+}
+
+// ContextOne returns a value for One from the context.
+func ContextOne(ctx context.Context) (string, bool) {
+	val, ok := ctx.Value(contextKeyOne).(string)
+	return val, ok
 }

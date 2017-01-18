@@ -15,6 +15,7 @@
 package domain
 
 import (
+	"context"
 	"log"
 
 	eh "github.com/looplab/eventhorizon"
@@ -24,6 +25,6 @@ import (
 type Logger struct{}
 
 // Notify implements the HandleEvent method of the EventHandler interface.
-func (l *Logger) Notify(event eh.Event) {
+func (l *Logger) Notify(ctx context.Context, event eh.Event) {
 	log.Println("event:", event)
 }

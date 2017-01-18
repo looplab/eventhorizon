@@ -15,6 +15,7 @@
 package redis
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -126,7 +127,7 @@ func (b *EventBus) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
 }
 
 // PublishEvent publishes an event to all handlers capable of handling it.
-func (b *EventBus) PublishEvent(event eh.Event) {
+func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) {
 	b.handlerMu.RLock()
 	defer b.handlerMu.RUnlock()
 
@@ -134,15 +135,15 @@ func (b *EventBus) PublishEvent(event eh.Event) {
 	if handlers, ok := b.handlers[event.EventType()]; ok {
 		for h := range handlers {
 			if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-				go h.HandleEvent(event)
+				go h.HandleEvent(ctx, event)
 			} else {
-				h.HandleEvent(event)
+				h.HandleEvent(ctx, event)
 			}
 		}
 	}
 
 	// Notify all observers about the event.
-	if err := b.notify(event); err != nil {
+	if err := b.notify(ctx, event); err != nil {
 		log.Println("error: event bus publish:", err)
 	}
 }
@@ -180,7 +181,7 @@ func (b *EventBus) Close() error {
 	return b.pool.Close()
 }
 
-func (b *EventBus) notify(event eh.Event) error {
+func (b *EventBus) notify(ctx context.Context, event eh.Event) error {
 	conn := b.pool.Get()
 	defer conn.Close()
 
@@ -195,6 +196,7 @@ func (b *EventBus) notify(event eh.Event) error {
 		EventType:     event.EventType(),
 		Version:       event.Version(),
 		Timestamp:     event.Timestamp(),
+		Context:       eh.MarshalContext(ctx),
 	}
 
 	// Marshal event data if there is any.
@@ -276,13 +278,14 @@ func (b *EventBus) recv(delay *backoff.Backoff) error {
 			}
 
 			event := event{redisEvent: redisEvent}
+			ctx := eh.UnmarshalContext(redisEvent.Context)
 
 			b.handlerMu.RLock()
 			for o := range b.observers {
 				if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-					go o.Notify(event)
+					go o.Notify(ctx, event)
 				} else {
-					o.Notify(event)
+					o.Notify(ctx, event)
 				}
 			}
 			b.handlerMu.RUnlock()
@@ -312,13 +315,14 @@ func (b *EventBus) recv(delay *backoff.Backoff) error {
 
 // redisEvent is the internal event used with the Redis event bus.
 type redisEvent struct {
-	EventType     eh.EventType     `bson:"event_type"`
-	RawData       bson.Raw         `bson:"data,omitempty"`
-	data          eh.EventData     `bson:"-"`
-	Timestamp     time.Time        `bson:"timestamp"`
-	AggregateType eh.AggregateType `bson:"aggregate_type"`
-	AggregateID   eh.UUID          `bson:"_id"`
-	Version       int              `bson:"version"`
+	EventType     eh.EventType           `bson:"event_type"`
+	RawData       bson.Raw               `bson:"data,omitempty"`
+	data          eh.EventData           `bson:"-"`
+	Timestamp     time.Time              `bson:"timestamp"`
+	AggregateType eh.AggregateType       `bson:"aggregate_type"`
+	AggregateID   eh.UUID                `bson:"_id"`
+	Version       int                    `bson:"version"`
+	Context       map[string]interface{} `bson:"context"`
 }
 
 // event is the private implementation of the eventhorizon.Event interface

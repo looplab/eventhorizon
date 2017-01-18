@@ -14,7 +14,10 @@
 
 package eventhorizon
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 func init() {
 	RegisterAggregate(func(id UUID) Aggregate {
@@ -43,6 +46,7 @@ type TestAggregate struct {
 	*AggregateBase
 
 	dispatchedCommand Command
+	context           context.Context
 	appliedEvent      Event
 	numHandled        int
 }
@@ -53,8 +57,9 @@ func NewTestAggregate(id UUID) *TestAggregate {
 	}
 }
 
-func (a *TestAggregate) HandleCommand(command Command) error {
+func (a *TestAggregate) HandleCommand(ctx context.Context, command Command) error {
 	a.dispatchedCommand = command
+	a.context = ctx
 	a.numHandled++
 	switch command := command.(type) {
 	case *TestCommand:
@@ -68,16 +73,18 @@ func (a *TestAggregate) HandleCommand(command Command) error {
 	return errors.New("couldn't handle command")
 }
 
-func (a *TestAggregate) ApplyEvent(event Event) {
+func (a *TestAggregate) ApplyEvent(ctx context.Context, event Event) {
 	defer a.IncrementVersion()
 
 	a.appliedEvent = event
+	a.context = ctx
 }
 
 type TestAggregate2 struct {
 	*AggregateBase
 
 	dispatchedCommand Command
+	context           context.Context
 	appliedEvent      Event
 	numHandled        int
 }
@@ -88,8 +95,9 @@ func NewTestAggregate2(id UUID) *TestAggregate2 {
 	}
 }
 
-func (a *TestAggregate2) HandleCommand(command Command) error {
+func (a *TestAggregate2) HandleCommand(ctx context.Context, command Command) error {
 	a.dispatchedCommand = command
+	a.context = ctx
 	a.numHandled++
 	switch command := command.(type) {
 	case *TestCommand2:
@@ -103,8 +111,9 @@ func (a *TestAggregate2) HandleCommand(command Command) error {
 	return errors.New("couldn't handle command")
 }
 
-func (a *TestAggregate2) ApplyEvent(event Event) {
+func (a *TestAggregate2) ApplyEvent(ctx context.Context, event Event) {
 	a.appliedEvent = event
+	a.context = ctx
 }
 
 type TestCommand struct {
@@ -135,50 +144,73 @@ type TestEvent2Data struct {
 
 type MockRepository struct {
 	Aggregates map[UUID]Aggregate
+	Context    context.Context
 }
 
-func (m *MockRepository) Load(aggregateType AggregateType, id UUID) (Aggregate, error) {
+func (m *MockRepository) Load(ctx context.Context, aggregateType AggregateType, id UUID) (Aggregate, error) {
+	m.Context = ctx
 	return m.Aggregates[id], nil
 }
 
-func (m *MockRepository) Save(aggregate Aggregate) error {
+func (m *MockRepository) Save(ctx context.Context, aggregate Aggregate) error {
 	m.Aggregates[aggregate.AggregateID()] = aggregate
+	m.Context = ctx
 	return nil
 }
 
 type MockEventStore struct {
-	Events []Event
-	Loaded UUID
+	Events  []Event
+	Loaded  UUID
+	Context context.Context
 	// Used to simulate errors in the store.
 	err error
 }
 
-func (m *MockEventStore) Save(events []Event, originalVersion int) error {
+func (m *MockEventStore) Save(ctx context.Context, events []Event, originalVersion int) error {
 	if m.err != nil {
 		return m.err
 	}
 	for _, event := range events {
 		m.Events = append(m.Events, event)
 	}
+	m.Context = ctx
 	return nil
 }
 
-func (m *MockEventStore) Load(aggregateType AggregateType, id UUID) ([]Event, error) {
+func (m *MockEventStore) Load(ctx context.Context, aggregateType AggregateType, id UUID) ([]Event, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	m.Loaded = id
+	m.Context = ctx
 	return m.Events, nil
 }
 
 type MockEventBus struct {
-	Events []Event
+	Events  []Event
+	Context context.Context
 }
 
-func (m *MockEventBus) PublishEvent(event Event) {
+func (m *MockEventBus) PublishEvent(ctx context.Context, event Event) {
 	m.Events = append(m.Events, event)
+	m.Context = ctx
 }
 
 func (m *MockEventBus) AddHandler(handler EventHandler, eventType EventType) {}
 func (m *MockEventBus) AddObserver(observer EventObserver)                   {}
 func (m *MockEventBus) SetHandlingStrategy(strategy EventHandlingStrategy)   {}
+
+type MockCommandBus struct {
+	Commands []Command
+	Context  context.Context
+}
+
+func (m *MockCommandBus) HandleCommand(ctx context.Context, command Command) error {
+	m.Commands = append(m.Commands, command)
+	m.Context = ctx
+	return nil
+}
+
+func (m *MockCommandBus) SetHandler(handler CommandHandler, commandType CommandType) error {
+	return nil
+}

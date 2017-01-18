@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -40,13 +41,13 @@ type Aggregate interface {
 	Version() int
 
 	// HandleCommand handles a command and stores events.
-	HandleCommand(Command) error
+	HandleCommand(context.Context, Command) error
 
 	// NewEvent creates a new event with the aggregate set as type and ID.
 	NewEvent(EventType, EventData) Event
 	// ApplyEvent applies an event to the aggregate by setting its values and
 	// increments the aggregate version.
-	ApplyEvent(Event)
+	ApplyEvent(context.Context, Event)
 	// StoreEvent stores an event as uncommitted.
 	StoreEvent(Event)
 	// GetUncommittedEvents gets all uncommitted events for storing.

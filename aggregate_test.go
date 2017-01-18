@@ -14,7 +14,10 @@
 
 package eventhorizon
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestCreateAggregate(t *testing.T) {
 	id := NewUUID()
@@ -84,22 +87,27 @@ const (
 
 type TestAggregateRegister struct{ *AggregateBase }
 
-func (a *TestAggregateRegister) AggregateType() AggregateType        { return TestAggregateRegisterType }
-func (a *TestAggregateRegister) HandleCommand(command Command) error { return nil }
-func (a *TestAggregateRegister) ApplyEvent(event Event)              {}
+func (a *TestAggregateRegister) AggregateType() AggregateType                             { return TestAggregateRegisterType }
+func (a *TestAggregateRegister) HandleCommand(ctx context.Context, command Command) error { return nil }
+func (a *TestAggregateRegister) ApplyEvent(ctx context.Context, event Event)              {}
 
 type TestAggregateRegisterEmpty struct{ *AggregateBase }
 
 func (a *TestAggregateRegisterEmpty) AggregateType() AggregateType {
 	return TestAggregateRegisterEmptyType
 }
-func (a *TestAggregateRegisterEmpty) HandleCommand(command Command) error { return nil }
-func (a *TestAggregateRegisterEmpty) ApplyEvent(event Event)              {}
+func (a *TestAggregateRegisterEmpty) HandleCommand(ctx context.Context, command Command) error {
+	return nil
+}
+func (a *TestAggregateRegisterEmpty) ApplyEvent(ctx context.Context, event Event) {}
 
 type TestAggregateRegisterTwice struct{ *AggregateBase }
 
 func (a *TestAggregateRegisterTwice) AggregateType() AggregateType {
 	return TestAggregateRegisterTwiceType
 }
-func (a *TestAggregateRegisterTwice) HandleCommand(command Command) error { return nil }
-func (a *TestAggregateRegisterTwice) ApplyEvent(event Event)              {}
+func (a *TestAggregateRegisterTwice) HandleCommand(ctx context.Context, command Command) error {
+	return nil
+}
+func (a *TestAggregateRegisterTwice) ApplyEvent(ctx context.Context, event Event) {
+}

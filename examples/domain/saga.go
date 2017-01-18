@@ -15,6 +15,7 @@
 package domain
 
 import (
+	"context"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -26,22 +27,17 @@ const ResponseSagaType eh.SagaType = "ResponseSaga"
 // ResponseSaga is a saga that confirmes all accepted invites until a guest
 // limit has been reached.
 type ResponseSaga struct {
-	*eh.SagaBase
-
 	acceptedGuests   map[eh.UUID]bool
 	acceptedGuestsMu sync.RWMutex
 	guestLimit       int
 }
 
 // NewResponseSaga returns a new ResponseSage with a guest limit.
-func NewResponseSaga(commandBus eh.CommandBus, guestLimit int) *ResponseSaga {
-	s := &ResponseSaga{
+func NewResponseSaga(guestLimit int) *ResponseSaga {
+	return &ResponseSaga{
 		acceptedGuests: map[eh.UUID]bool{},
 		guestLimit:     guestLimit,
 	}
-	s.SagaBase = eh.NewSagaBase(commandBus, s)
-
-	return s
 }
 
 // SagaType implements the SagaType method of the Saga interface.
@@ -50,7 +46,7 @@ func (s *ResponseSaga) SagaType() eh.SagaType {
 }
 
 // RunSaga implements the Run saga method of the Saga interface.
-func (s *ResponseSaga) RunSaga(event eh.Event) []eh.Command {
+func (s *ResponseSaga) RunSaga(ctx context.Context, event eh.Event) []eh.Command {
 	switch event.EventType() {
 	case InviteAcceptedEvent:
 		// Do nothing for already accepted guests.

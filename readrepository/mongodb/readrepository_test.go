@@ -121,15 +121,30 @@ func TestReadRepository(t *testing.T) {
 }
 
 func TestRepository(t *testing.T) {
+	if r := Repository(nil); r != nil {
+		t.Error("the parent repository should be nil:", r)
+	}
+
 	inner := &mocks.ReadRepository{}
 	if r := Repository(inner); r != nil {
 		t.Error("the parent repository should be nil:", r)
 	}
 
-	repo, err := NewReadRepository("", "", "")
+	// Support Wercker testing with MongoDB.
+	host := os.Getenv("MONGO_PORT_27017_TCP_ADDR")
+	port := os.Getenv("MONGO_PORT_27017_TCP_PORT")
+
+	url := "localhost"
+	if host != "" && port != "" {
+		url = host + ":" + port
+	}
+
+	repo, err := NewReadRepository(url, "test", "mocks.Model")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+	defer repo.Close()
+
 	outer := &mocks.ReadRepository{ParentRepo: repo}
 	if r := Repository(outer); r != repo {
 		t.Error("the parent repository should be correct:", r)

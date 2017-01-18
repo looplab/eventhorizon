@@ -15,6 +15,7 @@
 package local
 
 import (
+	"context"
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
@@ -27,9 +28,11 @@ func TestCommandBus(t *testing.T) {
 		t.Fatal("there should be a bus")
 	}
 
+	ctx := context.WithValue(context.Background(), "testkey", "testval")
+
 	t.Log("handle with no handler")
 	command1 := &mocks.Command{eh.NewUUID(), "command1"}
-	err := bus.HandleCommand(command1)
+	err := bus.HandleCommand(ctx, command1)
 	if err != eh.ErrHandlerNotFound {
 		t.Error("there should be a ErrHandlerNotFound error:", err)
 	}
@@ -42,12 +45,15 @@ func TestCommandBus(t *testing.T) {
 	}
 
 	t.Log("handle with handler")
-	err = bus.HandleCommand(command1)
+	err = bus.HandleCommand(ctx, command1)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	if handler.Command != command1 {
 		t.Error("the handled command should be correct:", handler.Command)
+	}
+	if val, ok := handler.Context.Value("testkey").(string); !ok || val != "testval" {
+		t.Error("the context should be correct:", handler.Context)
 	}
 
 	err = bus.SetHandler(handler, mocks.CommandType)
