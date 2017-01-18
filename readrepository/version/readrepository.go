@@ -146,12 +146,13 @@ func WithMinVersion(ctx context.Context, minVersion int) context.Context {
 
 // Repository returns a parent ReadRepository if there is one.
 func Repository(repo eh.ReadRepository) *ReadRepository {
+	if repo == nil {
+		return nil
+	}
+
 	if r, ok := repo.(*ReadRepository); ok {
 		return r
 	}
-	parent := repo.Parent()
-	if parent == nil {
-		return nil
-	}
-	return Repository(parent)
+
+	return Repository(repo.Parent())
 }
