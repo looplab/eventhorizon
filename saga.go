@@ -27,39 +27,30 @@ type Saga interface {
 	SagaType() SagaType
 
 	// RunSaga handles an event in the saga that can return commands.
-	RunSaga(event Event) []Command
+	RunSaga(context.Context, Event) []Command
 }
 
 // SagaType is the type of a saga, used as its unique identifier.
 type SagaType string
 
-// SagaBase is a CQRS saga base to embed in domain specific sagas.
-//
-// A typical saga example:
-//   type OrderSaga struct {
-//       *eventhorizon.SagaBase
-//
-//       amount int
-//   }
-//
-// The implementing saga must set itself as the saga in the saga base.
-type SagaBase struct {
+// SagaHandler is a CQRS saga handler to run a Saga implementation.
+type SagaHandler struct {
 	saga       Saga
 	commandBus CommandBus
 }
 
-// NewSagaBase creates a new SagaBase.
-func NewSagaBase(commandBus CommandBus, saga Saga) *SagaBase {
-	return &SagaBase{
+// NewSagaHandler creates a new SagaHandler.
+func NewSagaHandler(saga Saga, commandBus CommandBus) *SagaHandler {
+	return &SagaHandler{
 		saga:       saga,
 		commandBus: commandBus,
 	}
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (s *SagaBase) HandleEvent(ctx context.Context, event Event) {
+func (s *SagaHandler) HandleEvent(ctx context.Context, event Event) {
 	// Run the saga and collect commands.
-	commands := s.saga.RunSaga(event)
+	commands := s.saga.RunSaga(ctx, event)
 
 	// Dispatch commands back on the command bus.
 	for _, command := range commands {
@@ -72,6 +63,6 @@ func (s *SagaBase) HandleEvent(ctx context.Context, event Event) {
 
 // HandlerType implements the HandlerType method of the EventHandler
 // interface.
-func (s *SagaBase) HandlerType() EventHandlerType {
+func (s *SagaHandler) HandlerType() EventHandlerType {
 	return EventHandlerType(s.saga.SagaType())
 }

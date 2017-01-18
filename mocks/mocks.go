@@ -292,8 +292,10 @@ func (m *CommandBus) HandleCommand(ctx context.Context, command eh.Command) {
 	m.Context = ctx
 }
 
-// AddHandler implements the AddHandler method of the eventhorizon.CommandBus interface.
-func (m *CommandBus) AddHandler(handler eh.CommandHandler, event eh.Command) {}
+// SetHandler implements the SetHandler method of the eventhorizon.CommandBus interface.
+func (m *CommandBus) SetHandler(handler eh.CommandHandler, commandType eh.CommandType) error {
+	return nil
+}
 
 // EventBus is a mocked eventhorizon.EventBus, useful in testing.
 type EventBus struct {

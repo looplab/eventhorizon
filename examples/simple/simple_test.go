@@ -88,7 +88,7 @@ func Example() {
 
 	// Setup the saga that responds to the accepted guests and limits the total
 	// amount of guests, responding with a confirmation or denial.
-	responseSaga := domain.NewResponseSaga(commandBus, 2)
+	responseSaga := eh.NewSagaHandler(domain.NewResponseSaga(2), commandBus)
 	eventBus.AddHandler(responseSaga, domain.InviteAcceptedEvent)
 
 	// IDs for all the guests.
