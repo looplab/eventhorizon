@@ -128,7 +128,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, command eh.Comm
 }
 
 // ApplyEvent implements the ApplyEvent method of the Aggregate interface.
-func (a *InvitationAggregate) ApplyEvent(event eh.Event) {
+func (a *InvitationAggregate) ApplyEvent(ctx context.Context, event eh.Event) {
 	defer a.IncrementVersion()
 
 	switch event.EventType() {

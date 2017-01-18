@@ -28,7 +28,7 @@ import (
 func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	savedEvents := []eh.Event{}
 
-	ctx := context.Background()
+	ctx := context.WithValue(context.Background(), "testkey", "testval")
 
 	t.Log("save no events")
 	err := store.Save(ctx, []eh.Event{}, 0)
@@ -40,12 +40,15 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
 	agg := mocks.NewAggregate(id)
 	event1 := agg.NewEvent(mocks.EventType, &mocks.EventData{"event1"})
-	agg.ApplyEvent(event1) // Apply event to increment the aggregate version.
+	agg.ApplyEvent(ctx, event1) // Apply event to increment the aggregate version.
 	err = store.Save(ctx, []eh.Event{event1}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	savedEvents = append(savedEvents, event1)
+	if val, ok := agg.Context.Value("testkey").(string); !ok || val != "testval" {
+		t.Error("the context should be correct:", agg.Context)
+	}
 
 	t.Log("try to save same event twice")
 	err = store.Save(ctx, []eh.Event{event1}, 1)
@@ -55,7 +58,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 
 	t.Log("save event, version 2")
 	event2 := agg.NewEvent(mocks.EventType, &mocks.EventData{"event2"})
-	agg.ApplyEvent(event2) // Apply event to increment the aggregate version.
+	agg.ApplyEvent(ctx, event2) // Apply event to increment the aggregate version.
 	err = store.Save(ctx, []eh.Event{event2}, 1)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -64,7 +67,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 
 	t.Log("save event without data, version 3")
 	event3 := agg.NewEvent(mocks.EventOtherType, nil)
-	agg.ApplyEvent(event3) // Apply event to increment the aggregate version.
+	agg.ApplyEvent(ctx, event3) // Apply event to increment the aggregate version.
 	err = store.Save(ctx, []eh.Event{event3}, 2)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -73,11 +76,11 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 
 	t.Log("save multiple events, version 4, 5 and 6")
 	event4 := agg.NewEvent(mocks.EventOtherType, nil)
-	agg.ApplyEvent(event4) // Apply event to increment the aggregate version.
+	agg.ApplyEvent(ctx, event4) // Apply event to increment the aggregate version.
 	event5 := agg.NewEvent(mocks.EventOtherType, nil)
-	agg.ApplyEvent(event5) // Apply event to increment the aggregate version.
+	agg.ApplyEvent(ctx, event5) // Apply event to increment the aggregate version.
 	event6 := agg.NewEvent(mocks.EventOtherType, nil)
-	agg.ApplyEvent(event6) // Apply event to increment the aggregate version.
+	agg.ApplyEvent(ctx, event6) // Apply event to increment the aggregate version.
 	err = store.Save(ctx, []eh.Event{event4, event5, event6}, 3)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -88,7 +91,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 	id2, _ := eh.ParseUUID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
 	agg2 := mocks.NewAggregate(id2)
 	event7 := agg2.NewEvent(mocks.EventType, &mocks.EventData{"event7"})
-	agg2.ApplyEvent(event7) // Apply event to increment the aggregate version.
+	agg2.ApplyEvent(ctx, event7) // Apply event to increment the aggregate version.
 	err = store.Save(ctx, []eh.Event{event7}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)

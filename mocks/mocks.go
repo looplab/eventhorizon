@@ -81,10 +81,11 @@ func (a *Aggregate) HandleCommand(ctx context.Context, command eh.Command) error
 }
 
 // ApplyEvent implements the ApplyEvent method of the eventhorizon.Aggregate interface.
-func (a *Aggregate) ApplyEvent(event eh.Event) {
+func (a *Aggregate) ApplyEvent(ctx context.Context, event eh.Event) {
 	defer a.IncrementVersion()
 
 	a.Events = append(a.Events, event)
+	a.Context = ctx
 }
 
 // EventData is a mocked event data, useful in testing.

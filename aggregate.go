@@ -47,7 +47,7 @@ type Aggregate interface {
 	NewEvent(EventType, EventData) Event
 	// ApplyEvent applies an event to the aggregate by setting its values and
 	// increments the aggregate version.
-	ApplyEvent(Event)
+	ApplyEvent(context.Context, Event)
 	// StoreEvent stores an event as uncommitted.
 	StoreEvent(Event)
 	// GetUncommittedEvents gets all uncommitted events for storing.

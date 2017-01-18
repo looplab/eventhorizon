@@ -84,7 +84,7 @@ func (r *EventSourcingRepository) Load(ctx context.Context, aggregateType Aggreg
 			return nil, ErrMismatchedEventType
 		}
 
-		aggregate.ApplyEvent(event)
+		aggregate.ApplyEvent(ctx, event)
 	}
 
 	return aggregate, nil
@@ -109,7 +109,7 @@ func (r *EventSourcingRepository) Save(ctx context.Context, aggregate Aggregate)
 			return ErrMismatchedEventType
 		}
 
-		aggregate.ApplyEvent(event)
+		aggregate.ApplyEvent(ctx, event)
 	}
 
 	// Publish all events on the bus.

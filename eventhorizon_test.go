@@ -73,10 +73,11 @@ func (a *TestAggregate) HandleCommand(ctx context.Context, command Command) erro
 	return errors.New("couldn't handle command")
 }
 
-func (a *TestAggregate) ApplyEvent(event Event) {
+func (a *TestAggregate) ApplyEvent(ctx context.Context, event Event) {
 	defer a.IncrementVersion()
 
 	a.appliedEvent = event
+	a.context = ctx
 }
 
 type TestAggregate2 struct {
@@ -110,8 +111,9 @@ func (a *TestAggregate2) HandleCommand(ctx context.Context, command Command) err
 	return errors.New("couldn't handle command")
 }
 
-func (a *TestAggregate2) ApplyEvent(event Event) {
+func (a *TestAggregate2) ApplyEvent(ctx context.Context, event Event) {
 	a.appliedEvent = event
+	a.context = ctx
 }
 
 type TestCommand struct {
