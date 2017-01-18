@@ -53,8 +53,8 @@ func (r *ReadRepository) Parent() eh.ReadRepository {
 // either the version matches or the deadline is reached.
 func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	// If there is no min version set just return the item as normally.
-	minVersion := MinVersion(ctx)
-	if minVersion < 1 {
+	minVersion, ok := MinVersion(ctx)
+	if !ok || minVersion < 1 {
 		return r.ReadRepository.Find(ctx, id)
 	}
 
@@ -127,16 +127,9 @@ const (
 )
 
 // MinVersion returns the min version from the context.
-func MinVersion(ctx context.Context) int {
-	v := ctx.Value(minVersionKey)
-	if v == nil {
-		return 0
-	}
-	minVersion, ok := v.(int)
-	if !ok {
-		return 0
-	}
-	return minVersion
+func MinVersion(ctx context.Context) (int, bool) {
+	minVersion, ok := ctx.Value(minVersionKey).(int)
+	return minVersion, ok
 }
 
 // WithMinVersion returns the context with min value set.

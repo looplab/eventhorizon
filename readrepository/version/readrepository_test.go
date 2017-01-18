@@ -182,12 +182,12 @@ func TestReadRepository(t *testing.T) {
 func TestContextMinVersion(t *testing.T) {
 	ctx := context.Background()
 
-	if v := MinVersion(ctx); v != 0 {
+	if v, ok := MinVersion(ctx); ok {
 		t.Error("there should be no min version:", v)
 	}
 
 	ctx = WithMinVersion(ctx, 8)
-	if v := MinVersion(ctx); v != 8 {
+	if v, ok := MinVersion(ctx); !ok && v != 8 {
 		t.Error("the min version should be correct:", v)
 	}
 }
