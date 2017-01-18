@@ -14,13 +14,15 @@
 
 package eventhorizon
 
+import "context"
+
 // EventBus is an interface defining an event bus for distributing events.
 type EventBus interface {
 	// PublishEvent publishes an event on the event bus.
 	// Only one handler of each handler type that is registered for the event
 	// will receive it.
 	// All the observers will receive the event.
-	PublishEvent(Event)
+	PublishEvent(context.Context, Event)
 
 	// AddHandler adds a handler for an event.
 	// TODO: Use a pattern instead of event for what to handle.
@@ -37,7 +39,7 @@ type EventBus interface {
 // Only one handler of the same type will receive an event.
 type EventHandler interface {
 	// HandleEvent handles an event.
-	HandleEvent(Event)
+	HandleEvent(context.Context, Event)
 
 	// HandlerType returns the type of the handler.
 	HandlerType() EventHandlerType
@@ -51,7 +53,7 @@ type EventHandlerType string
 // All observers will receive an event.
 type EventObserver interface {
 	// Notify is notifed about an event.
-	Notify(Event)
+	Notify(context.Context, Event)
 }
 
 // EventHandlingStrategy is the strategy to use when handling events.

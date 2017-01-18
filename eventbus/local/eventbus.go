@@ -15,6 +15,7 @@
 package local
 
 import (
+	"context"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -54,7 +55,7 @@ func (b *EventBus) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
 // PublishEvent publishes an event to all handlers capable of handling it.
 // TODO: Put the event in a buffered channel consumed by another goroutine
 // to simulate a distributed bus.
-func (b *EventBus) PublishEvent(event eh.Event) {
+func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) {
 	b.handlerMu.RLock()
 	defer b.handlerMu.RUnlock()
 
@@ -62,9 +63,9 @@ func (b *EventBus) PublishEvent(event eh.Event) {
 	if handlers, ok := b.handlers[event.EventType()]; ok {
 		for h := range handlers {
 			if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-				go h.HandleEvent(event)
+				go h.HandleEvent(ctx, event)
 			} else {
-				h.HandleEvent(event)
+				h.HandleEvent(ctx, event)
 			}
 		}
 	}
@@ -72,9 +73,9 @@ func (b *EventBus) PublishEvent(event eh.Event) {
 	// Notify all observers about the event.
 	for o := range b.observers {
 		if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-			go o.Notify(event)
+			go o.Notify(ctx, event)
 		} else {
-			o.Notify(event)
+			o.Notify(ctx, event)
 		}
 	}
 }

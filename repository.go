@@ -114,7 +114,7 @@ func (r *EventSourcingRepository) Save(ctx context.Context, aggregate Aggregate)
 
 	// Publish all events on the bus.
 	for _, event := range uncommittedEvents {
-		r.eventBus.PublishEvent(event)
+		r.eventBus.PublishEvent(ctx, event)
 	}
 
 	aggregate.ClearUncommittedEvents()

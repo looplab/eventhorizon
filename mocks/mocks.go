@@ -156,17 +156,19 @@ func (t *CommandHandler) HandleCommand(ctx context.Context, command eh.Command) 
 
 // EventHandler is a mocked eventhorizon.EventHandler, useful in testing.
 type EventHandler struct {
-	Type   eh.EventHandlerType
-	Events []eh.Event
-	Recv   chan eh.Event
+	Type    eh.EventHandlerType
+	Events  []eh.Event
+	Context context.Context
+	Recv    chan eh.Event
 }
 
 // NewEventHandler creates a new EventHandler.
 func NewEventHandler(handlerType eh.EventHandlerType) *EventHandler {
 	return &EventHandler{
-		handlerType,
-		make([]eh.Event, 0),
-		make(chan eh.Event, 10),
+		Type:    handlerType,
+		Events:  make([]eh.Event, 0),
+		Context: context.Background(),
+		Recv:    make(chan eh.Event, 10),
 	}
 }
 
@@ -176,8 +178,9 @@ func (m *EventHandler) HandlerType() eh.EventHandlerType {
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
-func (m *EventHandler) HandleEvent(event eh.Event) {
+func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) {
 	m.Events = append(m.Events, event)
+	m.Context = ctx
 	m.Recv <- event
 }
 
@@ -194,21 +197,24 @@ func (m *EventHandler) WaitForEvent(t *testing.T) {
 
 // EventObserver is a mocked eventhorizon.EventObserver, useful in testing.
 type EventObserver struct {
-	Events []eh.Event
-	Recv   chan eh.Event
+	Events  []eh.Event
+	Context context.Context
+	Recv    chan eh.Event
 }
 
 // NewEventObserver creates a new EventObserver.
 func NewEventObserver() *EventObserver {
 	return &EventObserver{
-		make([]eh.Event, 0),
-		make(chan eh.Event, 10),
+		Events:  make([]eh.Event, 0),
+		Context: context.Background(),
+		Recv:    make(chan eh.Event, 10),
 	}
 }
 
 // Notify implements the Notify method of the eventhorizon.EventHandler interface.
-func (m *EventObserver) Notify(event eh.Event) {
+func (m *EventObserver) Notify(ctx context.Context, event eh.Event) {
 	m.Events = append(m.Events, event)
+	m.Context = ctx
 	m.Recv <- event
 }
 
@@ -290,12 +296,14 @@ func (m *CommandBus) AddHandler(handler eh.CommandHandler, event eh.Command) {}
 
 // EventBus is a mocked eventhorizon.EventBus, useful in testing.
 type EventBus struct {
-	Events []eh.Event
+	Events  []eh.Event
+	Context context.Context
 }
 
 // PublishEvent implements the PublishEvent method of the eventhorizon.EventBus interface.
-func (m *EventBus) PublishEvent(event eh.Event) {
+func (m *EventBus) PublishEvent(ctx context.Context, event eh.Event) {
 	m.Events = append(m.Events, event)
+	m.Context = ctx
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
@@ -340,4 +348,41 @@ func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 // Remove implements the Remove method of the eventhorizon.ReadRepository interface.
 func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
 	return nil
+}
+
+type contextKey int
+
+const (
+	contextKeyOne contextKey = iota
+)
+
+const (
+	// The string key used to marshal contextKeyOne.
+	contextKeyOneStr = "context_one"
+)
+
+// Register the marshalers and unmarshalers for ContextOne.
+func init() {
+	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+		if val, ok := ContextOne(ctx); ok {
+			vals[contextKeyOneStr] = val
+		}
+	})
+	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+		if val, ok := vals[contextKeyOneStr].(string); ok {
+			return WithContextOne(ctx, val)
+		}
+		return ctx
+	})
+}
+
+// WithContextOne sets a value for One one the context.
+func WithContextOne(ctx context.Context, val string) context.Context {
+	return context.WithValue(ctx, contextKeyOne, val)
+}
+
+// ContextOne returns a value for One from the context.
+func ContextOne(ctx context.Context) (string, bool) {
+	val, ok := ctx.Value(contextKeyOne).(string)
+	return val, ok
 }

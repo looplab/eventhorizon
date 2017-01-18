@@ -49,7 +49,7 @@ func (p *InvitationProjector) HandlerType() eh.EventHandlerType {
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (p *InvitationProjector) HandleEvent(event eh.Event) {
+func (p *InvitationProjector) HandleEvent(ctx context.Context, event eh.Event) {
 	// Load or create the model.
 	var i *Invitation
 	if m, _ := p.repository.Find(context.Background(), event.AggregateID()); m != nil {
@@ -128,7 +128,7 @@ func (p *GuestListProjector) HandlerType() eh.EventHandlerType {
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (p *GuestListProjector) HandleEvent(event eh.Event) {
+func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) {
 	// NOTE: Temp fix because we need to count the guests atomically.
 	p.repositoryMu.Lock()
 	defer p.repositoryMu.Unlock()

@@ -57,10 +57,7 @@ func NewSagaBase(commandBus CommandBus, saga Saga) *SagaBase {
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (s *SagaBase) HandleEvent(event Event) {
-	// TODO: Use contexct from the event.
-	ctx := context.Background()
-
+func (s *SagaBase) HandleEvent(ctx context.Context, event Event) {
 	// Run the saga and collect commands.
 	commands := s.saga.RunSaga(event)
 

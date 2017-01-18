@@ -185,11 +185,13 @@ func (m *MockEventStore) Load(ctx context.Context, aggregateType AggregateType, 
 }
 
 type MockEventBus struct {
-	Events []Event
+	Events  []Event
+	Context context.Context
 }
 
-func (m *MockEventBus) PublishEvent(event Event) {
+func (m *MockEventBus) PublishEvent(ctx context.Context, event Event) {
 	m.Events = append(m.Events, event)
+	m.Context = ctx
 }
 
 func (m *MockEventBus) AddHandler(handler EventHandler, eventType EventType) {}
