@@ -80,7 +80,7 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 	if len(result) != 1 {
 		t.Error("there should be one item:", len(result))
 	}
-	if !reflect.DeepEqual(result[0], model1Alt) {
+	if !reflect.DeepEqual(result, []interface{}{model1Alt}) {
 		t.Error("the item should be correct:", model)
 	}
 
@@ -101,7 +101,7 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 		t.Error("the item should be correct:", model)
 	}
 
-	t.Log("FindAll with two items")
+	t.Log("FindAll with two items, order should be preserved from insert")
 	result, err = repo.FindAll(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -109,7 +109,7 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 	if len(result) != 2 {
 		t.Error("there should be two items:", len(result))
 	}
-	if !reflect.DeepEqual(result[0], model1Alt) || !reflect.DeepEqual(result[1], model2) {
+	if !reflect.DeepEqual(result, []interface{}{model1Alt, model2}) {
 		t.Error("the items should be correct:", result)
 	}
 
@@ -125,8 +125,8 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 	if len(result) != 1 {
 		t.Error("there should be one item:", len(result))
 	}
-	if !reflect.DeepEqual(result[0], model2) {
-		t.Error("the item should be correct:", result[0])
+	if !reflect.DeepEqual(result, []interface{}{model2}) {
+		t.Error("the item should be correct:", result)
 	}
 
 	t.Log("Remove non-existing item")

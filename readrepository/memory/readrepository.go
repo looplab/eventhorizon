@@ -23,16 +23,17 @@ import (
 
 // ReadRepository implements an in memory repository of read models.
 type ReadRepository struct {
-	allData  []interface{}
-	dataByID map[eh.UUID]interface{}
-	dataMu   sync.RWMutex
+	db   map[eh.UUID]interface{}
+	dbMu sync.RWMutex
+	// A list of all item ids, only the order is used.
+	ids []eh.UUID
 }
 
 // NewReadRepository creates a new ReadRepository.
 func NewReadRepository() *ReadRepository {
 	r := &ReadRepository{
-		allData:  make([]interface{}, 0),
-		dataByID: make(map[eh.UUID]interface{}),
+		ids: []eh.UUID{},
+		db:  map[eh.UUID]interface{}{},
 	}
 	return r
 }
@@ -44,22 +45,14 @@ func (r *ReadRepository) Parent() eh.ReadRepository {
 
 // Save saves a read model with id to the repository.
 func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}) error {
-	r.dataMu.Lock()
-	defer r.dataMu.Unlock()
+	r.dbMu.Lock()
+	defer r.dbMu.Unlock()
 
-	if oldModel, ok := r.dataByID[id]; ok {
-		// Find index and overwrite in allData.
-		index := r.indexOfModel(oldModel)
-		if index == -1 {
-			return eh.ErrModelNotFound
-		}
-		r.allData[index] = model
-	} else {
-		// Append a new item.
-		r.allData = append(r.allData, model)
+	if _, ok := r.db[id]; !ok {
+		r.ids = append(r.ids, id)
 	}
 
-	r.dataByID[id] = model
+	r.db[id] = model
 
 	return nil
 }
@@ -67,10 +60,10 @@ func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}
 // Find returns one read model with using an id. Returns
 // ErrModelNotFound if no model could be found.
 func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
-	r.dataMu.RLock()
-	defer r.dataMu.RUnlock()
+	r.dbMu.RLock()
+	defer r.dbMu.RUnlock()
 
-	model, ok := r.dataByID[id]
+	model, ok := r.db[id]
 	if !ok {
 		return nil, eh.ErrModelNotFound
 	}
@@ -80,41 +73,41 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 
 // FindAll returns all read models in the repository.
 func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
-	r.dataMu.RLock()
-	defer r.dataMu.RUnlock()
+	r.dbMu.RLock()
+	defer r.dbMu.RUnlock()
 
-	return r.allData, nil
+	all := []interface{}{}
+	for _, id := range r.ids {
+		if m, ok := r.db[id]; ok {
+			all = append(all, m)
+		}
+	}
+
+	return all, nil
 }
 
 // Remove removes a read model with id from the repository. Returns
 // ErrModelNotFound if no model could be found.
 func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
-	r.dataMu.Lock()
-	defer r.dataMu.Unlock()
+	r.dbMu.Lock()
+	defer r.dbMu.Unlock()
 
-	if model, ok := r.dataByID[id]; ok {
-		delete(r.dataByID, id)
+	if _, ok := r.db[id]; ok {
+		delete(r.db, id)
 
-		// Find index and remove from allData.
-		index := r.indexOfModel(model)
-		if index == -1 {
-			return eh.ErrModelNotFound
+		index := -1
+		for i, d := range r.ids {
+			if id == d {
+				index = i
+				break
+			}
 		}
-		r.allData = append(r.allData[:index], r.allData[index+1:]...)
+		r.ids = append(r.ids[:index], r.ids[index+1:]...)
 
 		return nil
 	}
 
 	return eh.ErrModelNotFound
-}
-
-func (r *ReadRepository) indexOfModel(model interface{}) int {
-	for i, m := range r.allData {
-		if m == model {
-			return i
-		}
-	}
-	return -1
 }
 
 // Repository returns a parent ReadRepository if there is one.
