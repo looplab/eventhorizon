@@ -15,8 +15,10 @@
 package memory
 
 import (
+	"context"
 	"testing"
 
+	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventstore/testutil"
 )
 
@@ -27,5 +29,11 @@ func TestEventStore(t *testing.T) {
 	}
 
 	// Run the actual test suite.
-	testutil.EventStoreCommonTests(t, store)
+
+	t.Log("event store with default namespace")
+	testutil.EventStoreCommonTests(t, context.Background(), store)
+
+	t.Log("event store with other namespace")
+	ctx := eh.WithNamespace(context.Background(), "ns")
+	testutil.EventStoreCommonTests(t, ctx, store)
 }

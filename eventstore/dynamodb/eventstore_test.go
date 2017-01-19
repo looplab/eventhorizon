@@ -15,6 +15,7 @@
 package dynamodb
 
 import (
+	"context"
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
@@ -23,9 +24,9 @@ import (
 
 func DoTestEventStore(t *testing.T, url string) {
 	config := &EventStoreConfig{
-		Table:    "eventhorizonTest-" + eh.NewUUID().String(),
-		Region:   "eu-west-1",
-		Endpoint: url,
+		TablePrefix: "eventhorizonTest_" + eh.NewUUID().String(),
+		Region:      "eu-west-1",
+		Endpoint:    url,
 	}
 	store, err := NewEventStore(config)
 	if err != nil {
@@ -35,18 +36,31 @@ func DoTestEventStore(t *testing.T, url string) {
 		t.Fatal("there should be a store")
 	}
 
-	t.Log("creating table:", config.Table)
-	if err := store.CreateTable(); err != nil {
+	ctx := eh.WithNamespace(context.Background(), "ns")
+
+	t.Log("creating tables for:", config.TablePrefix)
+	if err := store.CreateTable(context.Background()); err != nil {
+		t.Fatal("could not create table:", err)
+	}
+	if err := store.CreateTable(ctx); err != nil {
 		t.Fatal("could not create table:", err)
 	}
 
 	defer func() {
-		t.Log("deleting table:", store.config.Table)
-		if err := store.DeleteTable(); err != nil {
+		t.Log("deleting tables for:", config.TablePrefix)
+		if err := store.DeleteTable(context.Background()); err != nil {
+			t.Fatal("could not delete table: ", err)
+		}
+		if err := store.DeleteTable(ctx); err != nil {
 			t.Fatal("could not delete table: ", err)
 		}
 	}()
 
 	// Run the actual test suite.
-	testutil.EventStoreCommonTests(t, store)
+
+	t.Log("event store with default namespace")
+	testutil.EventStoreCommonTests(t, context.Background(), store)
+
+	t.Log("event store with other namespace")
+	testutil.EventStoreCommonTests(t, ctx, store)
 }

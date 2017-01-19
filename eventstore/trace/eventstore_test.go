@@ -34,7 +34,7 @@ func TestEventStore(t *testing.T) {
 
 	// Run the actual test suite.
 	store.StartTracing()
-	savedEvents := testutil.EventStoreCommonTests(t, store)
+	savedEvents := testutil.EventStoreCommonTests(t, context.Background(), store)
 	store.StopTracing()
 
 	trace := store.GetTrace()

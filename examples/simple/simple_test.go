@@ -91,13 +91,14 @@ func Example() {
 	responseSaga := eh.NewSagaHandler(domain.NewResponseSaga(2), commandBus)
 	eventBus.AddHandler(responseSaga, domain.InviteAcceptedEvent)
 
+	// Set the namespace to use.
+	ctx := eh.WithNamespace(context.Background(), "mongo")
+
 	// IDs for all the guests.
 	athenaID := eh.NewUUID()
 	hadesID := eh.NewUUID()
 	zeusID := eh.NewUUID()
 	poseidonID := eh.NewUUID()
-
-	ctx := context.Background()
 
 	// Issue some invitations and responses. Error checking omitted here.
 	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})

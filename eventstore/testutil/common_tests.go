@@ -25,14 +25,14 @@ import (
 
 // EventStoreCommonTests are test cases that are common to all implementations
 // of event stores.
-func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
+func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStore) []eh.Event {
 	savedEvents := []eh.Event{}
 
-	ctx := context.WithValue(context.Background(), "testkey", "testval")
+	ctx = context.WithValue(ctx, "testkey", "testval")
 
 	t.Log("save no events")
 	err := store.Save(ctx, []eh.Event{}, 0)
-	if err != eh.ErrNoEventsToAppend {
+	if esErr, ok := err.(eh.EventStoreError); !ok || esErr.Err != eh.ErrNoEventsToAppend {
 		t.Error("there shoud be a ErrNoEventsToAppend error:", err)
 	}
 
@@ -52,7 +52,7 @@ func EventStoreCommonTests(t *testing.T, store eh.EventStore) []eh.Event {
 
 	t.Log("try to save same event twice")
 	err = store.Save(ctx, []eh.Event{event1}, 1)
-	if err != eh.ErrIncorrectEventVersion {
+	if esErr, ok := err.(eh.EventStoreError); !ok || esErr.Err != eh.ErrIncorrectEventVersion {
 		t.Error("there should be a ErrIncerrectEventVersion error:", err)
 	}
 
