@@ -26,9 +26,7 @@ import (
 
 // ReadRepositoryCommonTests are test cases that are common to all
 // implementations of read repositories.
-func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
-	ctx := context.Background()
-
+func ReadRepositoryCommonTests(t *testing.T, ctx context.Context, repo eh.ReadRepository) {
 	t.Log("FindAll with no items")
 	result, err := repo.FindAll(ctx)
 	if err != nil {
@@ -131,7 +129,7 @@ func ReadRepositoryCommonTests(t *testing.T, repo eh.ReadRepository) {
 
 	t.Log("Remove non-existing item")
 	err = repo.Remove(ctx, model1Alt.ID)
-	if err != eh.ErrModelNotFound {
+	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != eh.ErrModelNotFound {
 		t.Error("there should be a ErrModelNotFound error:", err)
 	}
 }

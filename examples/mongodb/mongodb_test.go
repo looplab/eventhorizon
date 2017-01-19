@@ -113,12 +113,12 @@ func Example() {
 	eventBus.AddHandler(responseSaga, domain.InviteAcceptedEvent)
 
 	// Set the namespace to use.
-	ctx := eh.WithNamespace(context.Background(), "mongo")
+	ctx := eh.WithNamespace(context.Background(), "example")
 
 	// Clear DB collections.
 	eventStore.Clear(ctx)
-	invitationRepository.Clear()
-	guestListRepository.Clear()
+	invitationRepository.Clear(ctx)
+	guestListRepository.Clear(ctx)
 
 	// IDs for all the guests.
 	athenaID := eh.NewUUID()

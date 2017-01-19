@@ -51,20 +51,29 @@ func TestReadRepository(t *testing.T) {
 		return &mocks.Model{}
 	})
 
+	ctx := eh.WithNamespace(context.Background(), "ns")
+
 	defer func() {
-		t.Log("clearing collection")
-		if err = repo.Clear(); err != nil {
+		t.Log("clearing db")
+		if err = repo.Clear(context.Background()); err != nil {
+			t.Fatal("there should be no error:", err)
+		}
+		if err = repo.Clear(ctx); err != nil {
 			t.Fatal("there should be no error:", err)
 		}
 	}()
 
-	testutil.ReadRepositoryCommonTests(t, repo)
+	// Run the actual test suite.
+
+	t.Log("read repository with default namespace")
+	testutil.ReadRepositoryCommonTests(t, context.Background(), repo)
+
+	t.Log("read repository with other namespace")
+	testutil.ReadRepositoryCommonTests(t, ctx, repo)
 
 	if repo.Parent() != nil {
 		t.Error("the parent repo should be nil")
 	}
-
-	ctx := context.Background()
 
 	t.Log("Save one item")
 	modelCustom := &mocks.Model{
@@ -98,7 +107,7 @@ func TestReadRepository(t *testing.T) {
 	result, err = repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		return nil
 	})
-	if err == nil || err != ErrInvalidQuery {
+	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != ErrInvalidQuery {
 		t.Error("there should be a invalid query error:", err)
 	}
 
@@ -112,7 +121,7 @@ func TestReadRepository(t *testing.T) {
 		// Be sure to return nil to not execute the query again in FindCustom.
 		return nil
 	})
-	if err == nil || err != ErrInvalidQuery {
+	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != ErrInvalidQuery {
 		t.Error("there should be a invalid query error:", err)
 	}
 	if count != 2 {

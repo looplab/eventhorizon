@@ -41,13 +41,13 @@ var ErrInvalidQuery = errors.New("invalid query")
 // ReadRepository implements an MongoDB repository of read models.
 type ReadRepository struct {
 	session    *mgo.Session
-	db         string
+	dbPrefix   string
 	collection string
 	factory    func() interface{}
 }
 
 // NewReadRepository creates a new ReadRepository.
-func NewReadRepository(url, database, collection string) (*ReadRepository, error) {
+func NewReadRepository(url, dbPrefix, collection string) (*ReadRepository, error) {
 	session, err := mgo.Dial(url)
 	if err != nil {
 		return nil, ErrCouldNotDialDB
@@ -56,18 +56,18 @@ func NewReadRepository(url, database, collection string) (*ReadRepository, error
 	session.SetMode(mgo.Strong, true)
 	session.SetSafe(&mgo.Safe{W: 1})
 
-	return NewReadRepositoryWithSession(session, database, collection)
+	return NewReadRepositoryWithSession(session, dbPrefix, collection)
 }
 
 // NewReadRepositoryWithSession creates a new ReadRepository with a session.
-func NewReadRepositoryWithSession(session *mgo.Session, database, collection string) (*ReadRepository, error) {
+func NewReadRepositoryWithSession(session *mgo.Session, dbPrefix, collection string) (*ReadRepository, error) {
 	if session == nil {
 		return nil, ErrNoDBSession
 	}
 
 	r := &ReadRepository{
 		session:    session,
-		db:         database,
+		dbPrefix:   dbPrefix,
 		collection: collection,
 	}
 
@@ -84,8 +84,12 @@ func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}
 	sess := r.session.Copy()
 	defer sess.Close()
 
-	if _, err := sess.DB(r.db).C(r.collection).UpsertId(id, model); err != nil {
-		return eh.ErrCouldNotSaveModel
+	if _, err := sess.DB(r.dbName(ctx)).C(r.collection).UpsertId(id, model); err != nil {
+		return eh.ReadRepositoryError{
+			Err:       eh.ErrCouldNotSaveModel,
+			BaseErr:   err,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 	return nil
 }
@@ -97,13 +101,20 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 	defer sess.Close()
 
 	if r.factory == nil {
-		return nil, ErrModelNotSet
+		return nil, eh.ReadRepositoryError{
+			Err:       ErrModelNotSet,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
 	model := r.factory()
-	err := sess.DB(r.db).C(r.collection).FindId(id).One(model)
+	err := sess.DB(r.dbName(ctx)).C(r.collection).FindId(id).One(model)
 	if err != nil {
-		return nil, eh.ErrModelNotFound
+		return nil, eh.ReadRepositoryError{
+			Err:       eh.ErrModelNotFound,
+			BaseErr:   err,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
 	return model, nil
@@ -119,13 +130,19 @@ func (r *ReadRepository) FindCustom(ctx context.Context, callback func(*mgo.Coll
 	defer sess.Close()
 
 	if r.factory == nil {
-		return nil, ErrModelNotSet
+		return nil, eh.ReadRepositoryError{
+			Err:       ErrModelNotSet,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
-	collection := sess.DB(r.db).C(r.collection)
+	collection := sess.DB(r.dbName(ctx)).C(r.collection)
 	query := callback(collection)
 	if query == nil {
-		return nil, ErrInvalidQuery
+		return nil, eh.ReadRepositoryError{
+			Err:       ErrInvalidQuery,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
 	iter := query.Iter()
@@ -136,7 +153,10 @@ func (r *ReadRepository) FindCustom(ctx context.Context, callback func(*mgo.Coll
 		model = r.factory()
 	}
 	if err := iter.Close(); err != nil {
-		return nil, err
+		return nil, eh.ReadRepositoryError{
+			Err:       err,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
 	return result, nil
@@ -148,10 +168,13 @@ func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 	defer sess.Close()
 
 	if r.factory == nil {
-		return nil, ErrModelNotSet
+		return nil, eh.ReadRepositoryError{
+			Err:       ErrModelNotSet,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
-	iter := sess.DB(r.db).C(r.collection).Find(nil).Iter()
+	iter := sess.DB(r.dbName(ctx)).C(r.collection).Find(nil).Iter()
 	result := []interface{}{}
 	model := r.factory()
 	for iter.Next(model) {
@@ -159,7 +182,10 @@ func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 		model = r.factory()
 	}
 	if err := iter.Close(); err != nil {
-		return nil, err
+		return nil, eh.ReadRepositoryError{
+			Err:       err,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
 	return result, nil
@@ -171,9 +197,13 @@ func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 
-	err := sess.DB(r.db).C(r.collection).RemoveId(id)
+	err := sess.DB(r.dbName(ctx)).C(r.collection).RemoveId(id)
 	if err != nil {
-		return eh.ErrModelNotFound
+		return eh.ReadRepositoryError{
+			Err:       eh.ErrModelNotFound,
+			BaseErr:   err,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
 	return nil
@@ -184,15 +214,14 @@ func (r *ReadRepository) SetModel(factory func() interface{}) {
 	r.factory = factory
 }
 
-// SetDB sets the database session and database.
-func (r *ReadRepository) SetDB(db string) {
-	r.db = db
-}
-
 // Clear clears the read model database.
-func (r *ReadRepository) Clear() error {
-	if err := r.session.DB(r.db).C(r.collection).DropCollection(); err != nil {
-		return ErrCouldNotClearDB
+func (r *ReadRepository) Clear(ctx context.Context) error {
+	if err := r.session.DB(r.dbName(ctx)).C(r.collection).DropCollection(); err != nil {
+		return eh.ReadRepositoryError{
+			Err:       ErrCouldNotClearDB,
+			BaseErr:   err,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 	return nil
 }
@@ -200,6 +229,13 @@ func (r *ReadRepository) Clear() error {
 // Close closes a database session.
 func (r *ReadRepository) Close() {
 	r.session.Close()
+}
+
+// dbName appends the namespace, if one is set, to the DB prefix to
+// get the name of the DB to use.
+func (r *ReadRepository) dbName(ctx context.Context) string {
+	ns := eh.Namespace(ctx)
+	return r.dbPrefix + "_" + ns
 }
 
 // Repository returns a parent ReadRepository if there is one.
