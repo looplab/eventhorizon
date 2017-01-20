@@ -112,10 +112,13 @@ func Example() {
 	responseSaga := eh.NewSagaHandler(domain.NewResponseSaga(2), commandBus)
 	eventBus.AddHandler(responseSaga, domain.InviteAcceptedEvent)
 
+	// Set the namespace to use.
+	ctx := eh.WithNamespace(context.Background(), "example")
+
 	// Clear DB collections.
-	eventStore.Clear()
-	invitationRepository.Clear()
-	guestListRepository.Clear()
+	eventStore.Clear(ctx)
+	invitationRepository.Clear(ctx)
+	guestListRepository.Clear(ctx)
 
 	// IDs for all the guests.
 	athenaID := eh.NewUUID()
@@ -123,13 +126,13 @@ func Example() {
 	zeusID := eh.NewUUID()
 	poseidonID := eh.NewUUID()
 
-	ctx := context.Background()
-
 	// Issue some invitations and responses. Error checking omitted here.
 	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
 	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: hadesID, Name: "Hades"})
 	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
 	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: poseidonID, Name: "Poseidon"})
+
+	time.Sleep(100 * time.Millisecond)
 
 	// The invited guests accept and decline the event.
 	// Note that Athena tries to decline the event after first accepting, but
@@ -144,11 +147,12 @@ func Example() {
 	commandBus.HandleCommand(ctx, &domain.DeclineInvite{InvitationID: zeusID})
 
 	// Poseidon is a bit late to the party...
-	time.Sleep(10 * time.Millisecond)
+	// TODO: Remove sleeps.
+	time.Sleep(100 * time.Millisecond)
 	commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: poseidonID})
 
 	// Wait for simulated eventual consistency before reading.
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	// Read all invites.
 	invitationStrs := []string{}

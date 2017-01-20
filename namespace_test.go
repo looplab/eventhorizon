@@ -1,4 +1,4 @@
-// Copyright (c) 2014 - Max Ekman <max@looplab.se>
+// Copyright (c) 2016 - Max Ekman <max@looplab.se>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,28 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package memory
+package eventhorizon
 
 import (
 	"context"
 	"testing"
-
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/eventstore/testutil"
 )
 
-func TestEventStore(t *testing.T) {
-	store := NewEventStore()
-	if store == nil {
-		t.Fatal("there should be a store")
+func TestContextNamespace(t *testing.T) {
+	ctx := context.Background()
+
+	if ns := Namespace(ctx); ns != DefaultNamespace {
+		t.Error("the namespace should be the default:", ns)
 	}
 
-	// Run the actual test suite.
-
-	t.Log("event store with default namespace")
-	testutil.EventStoreCommonTests(t, context.Background(), store)
-
-	t.Log("event store with other namespace")
-	ctx := eh.WithNamespace(context.Background(), "ns")
-	testutil.EventStoreCommonTests(t, ctx, store)
+	ctx = WithNamespace(ctx, "ns")
+	if ns := Namespace(ctx); ns != "ns" {
+		t.Error("the namespace should be correct:", ns)
+	}
 }

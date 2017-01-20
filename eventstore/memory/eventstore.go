@@ -29,14 +29,15 @@ var ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
 
 // EventStore implements EventStore as an in memory structure.
 type EventStore struct {
-	aggregateRecords   map[eh.UUID]aggregateRecord
-	aggregateRecordsMu sync.RWMutex
+	// The outer map is with namespace as key, the inner with aggregate ID.
+	db   map[string]map[eh.UUID]aggregateRecord
+	dbMu sync.RWMutex
 }
 
 // NewEventStore creates a new EventStore.
 func NewEventStore() *EventStore {
 	s := &EventStore{
-		aggregateRecords: make(map[eh.UUID]aggregateRecord),
+		db: map[string]map[eh.UUID]aggregateRecord{},
 	}
 	return s
 }
@@ -44,7 +45,10 @@ func NewEventStore() *EventStore {
 // Save appends all events in the event stream to the memory store.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
-		return eh.ErrNoEventsToAppend
+		return eh.EventStoreError{
+			Err:       eh.ErrNoEventsToAppend,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
 	// Build all event records, with incrementing versions starting from the
@@ -55,12 +59,18 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	for i, event := range events {
 		// Only accept events belonging to the same aggregate.
 		if event.AggregateID() != aggregateID {
-			return eh.ErrInvalidEvent
+			return eh.EventStoreError{
+				Err:       eh.ErrInvalidEvent,
+				Namespace: eh.Namespace(ctx),
+			}
 		}
 
 		// Only accept events that apply to the correct aggregate version.
 		if event.Version() != version+1 {
-			return eh.ErrIncorrectEventVersion
+			return eh.EventStoreError{
+				Err:       eh.ErrIncorrectEventVersion,
+				Namespace: eh.Namespace(ctx),
+			}
 		}
 
 		// Create the event record with timestamp.
@@ -76,8 +86,10 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		version++
 	}
 
-	s.aggregateRecordsMu.Lock()
-	defer s.aggregateRecordsMu.Unlock()
+	ns := s.namespace(ctx)
+
+	s.dbMu.Lock()
+	defer s.dbMu.Unlock()
 
 	// Either insert a new aggregate or append to an existing.
 	if originalVersion == 0 {
@@ -87,20 +99,23 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			Events:      dbEvents,
 		}
 
-		s.aggregateRecords[aggregateID] = aggregate
+		s.db[ns][aggregateID] = aggregate
 	} else {
 		// Increment aggregate version on insert of new event record, and
 		// only insert if version of aggregate is matching (ie not changed
 		// since loading the aggregate).
-		if aggregate, ok := s.aggregateRecords[aggregateID]; ok {
+		if aggregate, ok := s.db[ns][aggregateID]; ok {
 			if aggregate.Version != originalVersion {
-				return ErrCouldNotSaveAggregate
+				return eh.EventStoreError{
+					Err:       ErrCouldNotSaveAggregate,
+					Namespace: eh.Namespace(ctx),
+				}
 			}
 
 			aggregate.Version += len(dbEvents)
 			aggregate.Events = append(aggregate.Events, dbEvents...)
 
-			s.aggregateRecords[aggregateID] = aggregate
+			s.db[ns][aggregateID] = aggregate
 		}
 	}
 
@@ -110,10 +125,15 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 // Load loads all events for the aggregate id from the memory store.
 // Returns ErrNoEventsFound if no events can be found.
 func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
-	s.aggregateRecordsMu.RLock()
-	defer s.aggregateRecordsMu.RUnlock()
+	s.dbMu.RLock()
+	defer s.dbMu.RUnlock()
 
-	aggregate, ok := s.aggregateRecords[id]
+	// Ensure that the namespace exists.
+	s.dbMu.RUnlock()
+	ns := s.namespace(ctx)
+	s.dbMu.RLock()
+
+	aggregate, ok := s.db[ns][id]
 	if !ok {
 		return []eh.Event{}, nil
 	}
@@ -124,6 +144,17 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 	}
 
 	return events, nil
+}
+
+// Helper to get the namespace and ensure that its data exists.
+func (s *EventStore) namespace(ctx context.Context) string {
+	s.dbMu.Lock()
+	defer s.dbMu.Unlock()
+	ns := eh.Namespace(ctx)
+	if _, ok := s.db[ns]; !ok {
+		s.db[ns] = map[eh.UUID]aggregateRecord{}
+	}
+	return ns
 }
 
 type aggregateRecord struct {

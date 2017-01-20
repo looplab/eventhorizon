@@ -23,16 +23,20 @@ import (
 
 // ReadRepository implements an in memory repository of read models.
 type ReadRepository struct {
-	allData  []interface{}
-	dataByID map[eh.UUID]interface{}
-	dataMu   sync.RWMutex
+	// The outer map is with namespace as key, the inner with aggregate ID.
+	db   map[string]map[eh.UUID]interface{}
+	dbMu sync.RWMutex
+
+	// A list of all item ids, only the order is used.
+	// The outer map is for the namespace.
+	ids map[string][]eh.UUID
 }
 
 // NewReadRepository creates a new ReadRepository.
 func NewReadRepository() *ReadRepository {
 	r := &ReadRepository{
-		allData:  make([]interface{}, 0),
-		dataByID: make(map[eh.UUID]interface{}),
+		ids: map[string][]eh.UUID{},
+		db:  map[string]map[eh.UUID]interface{}{},
 	}
 	return r
 }
@@ -44,22 +48,16 @@ func (r *ReadRepository) Parent() eh.ReadRepository {
 
 // Save saves a read model with id to the repository.
 func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}) error {
-	r.dataMu.Lock()
-	defer r.dataMu.Unlock()
+	ns := r.namespace(ctx)
 
-	if oldModel, ok := r.dataByID[id]; ok {
-		// Find index and overwrite in allData.
-		index := r.indexOfModel(oldModel)
-		if index == -1 {
-			return eh.ErrModelNotFound
-		}
-		r.allData[index] = model
-	} else {
-		// Append a new item.
-		r.allData = append(r.allData, model)
+	r.dbMu.Lock()
+	defer r.dbMu.Unlock()
+
+	if _, ok := r.db[ns][id]; !ok {
+		r.ids[ns] = append(r.ids[ns], id)
 	}
 
-	r.dataByID[id] = model
+	r.db[ns][id] = model
 
 	return nil
 }
@@ -67,12 +65,17 @@ func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}
 // Find returns one read model with using an id. Returns
 // ErrModelNotFound if no model could be found.
 func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
-	r.dataMu.RLock()
-	defer r.dataMu.RUnlock()
+	ns := r.namespace(ctx)
 
-	model, ok := r.dataByID[id]
+	r.dbMu.RLock()
+	defer r.dbMu.RUnlock()
+
+	model, ok := r.db[ns][id]
 	if !ok {
-		return nil, eh.ErrModelNotFound
+		return nil, eh.ReadRepositoryError{
+			Err:       eh.ErrModelNotFound,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
 	return model, nil
@@ -80,41 +83,60 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 
 // FindAll returns all read models in the repository.
 func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
-	r.dataMu.RLock()
-	defer r.dataMu.RUnlock()
+	ns := r.namespace(ctx)
 
-	return r.allData, nil
+	r.dbMu.RLock()
+	defer r.dbMu.RUnlock()
+
+	all := []interface{}{}
+	for _, id := range r.ids[ns] {
+		if m, ok := r.db[ns][id]; ok {
+			all = append(all, m)
+		}
+	}
+
+	return all, nil
 }
 
 // Remove removes a read model with id from the repository. Returns
 // ErrModelNotFound if no model could be found.
 func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
-	r.dataMu.Lock()
-	defer r.dataMu.Unlock()
+	ns := r.namespace(ctx)
 
-	if model, ok := r.dataByID[id]; ok {
-		delete(r.dataByID, id)
+	r.dbMu.Lock()
+	defer r.dbMu.Unlock()
 
-		// Find index and remove from allData.
-		index := r.indexOfModel(model)
-		if index == -1 {
-			return eh.ErrModelNotFound
+	if _, ok := r.db[ns][id]; ok {
+		delete(r.db[ns], id)
+
+		index := -1
+		for i, d := range r.ids[ns] {
+			if id == d {
+				index = i
+				break
+			}
 		}
-		r.allData = append(r.allData[:index], r.allData[index+1:]...)
+		r.ids[ns] = append(r.ids[ns][:index], r.ids[ns][index+1:]...)
 
 		return nil
 	}
 
-	return eh.ErrModelNotFound
+	return eh.ReadRepositoryError{
+		Err:       eh.ErrModelNotFound,
+		Namespace: eh.Namespace(ctx),
+	}
 }
 
-func (r *ReadRepository) indexOfModel(model interface{}) int {
-	for i, m := range r.allData {
-		if m == model {
-			return i
-		}
+// Helper to get the namespace and ensure that its data exists.
+func (r *ReadRepository) namespace(ctx context.Context) string {
+	r.dbMu.Lock()
+	defer r.dbMu.Unlock()
+	ns := eh.Namespace(ctx)
+	if _, ok := r.db[ns]; !ok {
+		r.db[ns] = map[eh.UUID]interface{}{}
+		r.ids[ns] = []eh.UUID{}
 	}
-	return -1
+	return ns
 }
 
 // Repository returns a parent ReadRepository if there is one.

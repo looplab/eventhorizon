@@ -19,6 +19,25 @@ import (
 	"errors"
 )
 
+// ReadRepositoryError is an error in the read repository, with the namespace.
+type ReadRepositoryError struct {
+	// Err is the error.
+	Err error
+	// BaseErr is an optional underlying error, for example from the DB driver.
+	BaseErr error
+	// Namespace is the namespace for the error.
+	Namespace string
+}
+
+// Error implements the Error method of the errors.Error interface.
+func (e ReadRepositoryError) Error() string {
+	errStr := e.Err.Error()
+	if e.BaseErr != nil {
+		errStr += ": " + e.BaseErr.Error()
+	}
+	return errStr + " (" + e.Namespace + ")"
+}
+
 // ErrCouldNotSaveModel is when a model could not be found.
 var ErrCouldNotSaveModel = errors.New("could not save model")
 

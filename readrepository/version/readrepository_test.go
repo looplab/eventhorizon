@@ -37,7 +37,14 @@ func TestReadRepository(t *testing.T) {
 		t.Error("there should be a repository")
 	}
 
-	testutil.ReadRepositoryCommonTests(t, repo)
+	// Run the actual test suite.
+
+	t.Log("read repository with default namespace")
+	testutil.ReadRepositoryCommonTests(t, context.Background(), repo)
+
+	t.Log("read repository with other namespace")
+	ctx := eh.WithNamespace(context.Background(), "ns")
+	testutil.ReadRepositoryCommonTests(t, ctx, repo)
 
 	if parent := repo.Parent(); parent != memoryRepo {
 		t.Error("the parent repo should be correct:", parent)
@@ -61,9 +68,9 @@ func TestReadRepository(t *testing.T) {
 	if err := simpleRepo.Save(context.Background(), simpleModel.ID, simpleModel); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	ctx := WithMinVersion(context.Background(), 1)
+	ctx = WithMinVersion(context.Background(), 1)
 	_, err := simpleRepo.Find(ctx, simpleModel.ID)
-	if err != ErrModelHasNoVersion {
+	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != ErrModelHasNoVersion {
 		t.Error("there should be a model has no version error:", err)
 	}
 
@@ -79,7 +86,7 @@ func TestReadRepository(t *testing.T) {
 	}
 	ctx = WithMinVersion(context.Background(), 2)
 	model, err := repo.Find(ctx, modelMinVersion.ID)
-	if err != ErrIncorrectModelVersion {
+	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != ErrIncorrectModelVersion {
 		t.Error("there should be a incorrect model version error:", err)
 	}
 
@@ -182,12 +189,12 @@ func TestReadRepository(t *testing.T) {
 func TestContextMinVersion(t *testing.T) {
 	ctx := context.Background()
 
-	if v := MinVersion(ctx); v != 0 {
+	if v, ok := MinVersion(ctx); ok {
 		t.Error("there should be no min version:", v)
 	}
 
 	ctx = WithMinVersion(ctx, 8)
-	if v := MinVersion(ctx); v != 8 {
+	if v, ok := MinVersion(ctx); !ok && v != 8 {
 		t.Error("the min version should be correct:", v)
 	}
 }

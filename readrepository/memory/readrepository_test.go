@@ -15,8 +15,10 @@
 package memory
 
 import (
+	"context"
 	"testing"
 
+	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 	"github.com/looplab/eventhorizon/readrepository/testutil"
 )
@@ -27,7 +29,14 @@ func TestReadRepository(t *testing.T) {
 		t.Error("there should be a repository")
 	}
 
-	testutil.ReadRepositoryCommonTests(t, repo)
+	// Run the actual test suite.
+
+	t.Log("read repository with default namespace")
+	testutil.ReadRepositoryCommonTests(t, context.Background(), repo)
+
+	t.Log("read repository with other namespace")
+	ctx := eh.WithNamespace(context.Background(), "ns")
+	testutil.ReadRepositoryCommonTests(t, ctx, repo)
 
 	if repo.Parent() != nil {
 		t.Error("the parent repo should be nil")

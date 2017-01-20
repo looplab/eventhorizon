@@ -52,7 +52,7 @@ func (p *InvitationProjector) HandlerType() eh.EventHandlerType {
 func (p *InvitationProjector) HandleEvent(ctx context.Context, event eh.Event) {
 	// Load or create the model.
 	var i *Invitation
-	if m, _ := p.repository.Find(context.Background(), event.AggregateID()); m != nil {
+	if m, _ := p.repository.Find(ctx, event.AggregateID()); m != nil {
 		var ok bool
 		if i, ok = m.(*Invitation); !ok {
 			log.Println("error: model is of incorrect type")
@@ -91,7 +91,7 @@ func (p *InvitationProjector) HandleEvent(ctx context.Context, event eh.Event) {
 	}
 
 	// Save it back, same for new and updated models.
-	if err := p.repository.Save(context.Background(), event.AggregateID(), i); err != nil {
+	if err := p.repository.Save(ctx, event.AggregateID(), i); err != nil {
 		log.Println("error: could not save model: ", err)
 	}
 }
@@ -135,7 +135,7 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) {
 
 	// Load or create the guest list.
 	var g *GuestList
-	if m, _ := p.repository.Find(context.Background(), p.eventID); m != nil {
+	if m, _ := p.repository.Find(ctx, p.eventID); m != nil {
 		g = m.(*GuestList)
 	} else {
 		g = &GuestList{
@@ -157,5 +157,5 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) {
 		g.NumDenied++
 	}
 
-	p.repository.Save(context.Background(), p.eventID, g)
+	p.repository.Save(ctx, p.eventID, g)
 }

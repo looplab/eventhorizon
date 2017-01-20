@@ -53,8 +53,8 @@ func (r *ReadRepository) Parent() eh.ReadRepository {
 // either the version matches or the deadline is reached.
 func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	// If there is no min version set just return the item as normally.
-	minVersion := MinVersion(ctx)
-	if minVersion < 1 {
+	minVersion, ok := MinVersion(ctx)
+	if !ok || minVersion < 1 {
 		return r.ReadRepository.Find(ctx, id)
 	}
 
@@ -64,9 +64,12 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 	if !ok {
 		// Without deadline it ends here no matter what the result is.
 		return model, err
-	} else if err != nil && !(err == ErrIncorrectModelVersion || (err == eh.ErrModelNotFound && minVersion == 1)) {
+	} else if err != nil {
 		// If we have a deadline but the error is a real error return it here.
-		return nil, err
+		if rrErr, ok := err.(eh.ReadRepositoryError); ok &&
+			!(rrErr.Err == ErrIncorrectModelVersion || (rrErr.Err == eh.ErrModelNotFound && minVersion == 1)) {
+			return nil, err
+		}
 	}
 
 	// Try to get the item and retry with exponentially longer intervals until
@@ -78,8 +81,9 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 		select {
 		case <-time.After(delay.Duration()):
 			model, err := r.findMinVersion(ctx, id, minVersion)
-			if err == ErrIncorrectModelVersion ||
-				(err == eh.ErrModelNotFound && minVersion == 1) {
+			if rrErr, ok := err.(eh.ReadRepositoryError); ok &&
+				(rrErr.Err == ErrIncorrectModelVersion ||
+					(rrErr.Err == eh.ErrModelNotFound && minVersion == 1)) {
 				// Try another time for incorrect min versions and for the
 				// first creation of items.
 				continue
@@ -102,11 +106,17 @@ func (r *ReadRepository) findMinVersion(ctx context.Context, id eh.UUID, minVers
 
 	versionable, ok := model.(Versionable)
 	if !ok {
-		return nil, ErrModelHasNoVersion
+		return nil, eh.ReadRepositoryError{
+			Err:       ErrModelHasNoVersion,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
 	if versionable.AggregateVersion() < minVersion {
-		return nil, ErrIncorrectModelVersion
+		return nil, eh.ReadRepositoryError{
+			Err:       ErrIncorrectModelVersion,
+			Namespace: eh.Namespace(ctx),
+		}
 	}
 
 	return model, nil
@@ -127,16 +137,9 @@ const (
 )
 
 // MinVersion returns the min version from the context.
-func MinVersion(ctx context.Context) int {
-	v := ctx.Value(minVersionKey)
-	if v == nil {
-		return 0
-	}
-	minVersion, ok := v.(int)
-	if !ok {
-		return 0
-	}
-	return minVersion
+func MinVersion(ctx context.Context) (int, bool) {
+	minVersion, ok := ctx.Value(minVersionKey).(int)
+	return minVersion, ok
 }
 
 // WithMinVersion returns the context with min value set.

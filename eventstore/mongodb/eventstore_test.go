@@ -15,9 +15,11 @@
 package mongodb
 
 import (
+	"context"
 	"os"
 	"testing"
 
+	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventstore/testutil"
 )
 
@@ -39,14 +41,24 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
+	ctx := eh.WithNamespace(context.Background(), "ns")
+
 	defer store.Close()
 	defer func() {
-		t.Log("clearing collection")
-		if err = store.Clear(); err != nil {
+		t.Log("clearing db")
+		if err = store.Clear(context.Background()); err != nil {
+			t.Fatal("there should be no error:", err)
+		}
+		if err = store.Clear(ctx); err != nil {
 			t.Fatal("there should be no error:", err)
 		}
 	}()
 
 	// Run the actual test suite.
-	testutil.EventStoreCommonTests(t, store)
+
+	t.Log("event store with default namespace")
+	testutil.EventStoreCommonTests(t, context.Background(), store)
+
+	t.Log("event store with other namespace")
+	testutil.EventStoreCommonTests(t, ctx, store)
 }
