@@ -30,4 +30,17 @@ func TestContextNamespace(t *testing.T) {
 	if ns := Namespace(ctx); ns != "ns" {
 		t.Error("the namespace should be correct:", ns)
 	}
+
+	vals := MarshalContext(ctx)
+	if ns, ok := vals[namespaceKeyStr].(string); !ok || ns != "ns" {
+		t.Error("the marshaled namespace shoud be correct:", ns)
+	}
+
+	vals = map[string]interface{}{
+		namespaceKeyStr: "ns",
+	}
+	ctx = UnmarshalContext(vals)
+	if ns := Namespace(ctx); ns != "ns" {
+		t.Error("the namespace should be correct:", ns)
+	}
 }
