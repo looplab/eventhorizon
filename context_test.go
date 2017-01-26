@@ -20,16 +20,16 @@ import (
 )
 
 func TestContextMarshaler(t *testing.T) {
-	if len(contextMarshalFuncs) != 0 {
-		t.Error("there should be no context marshalers")
+	if len(contextMarshalFuncs) != 1 {
+		t.Error("there should be one context marshaler")
 	}
 	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
 		if val, ok := ContextTestOne(ctx); ok {
 			vals[contextTestKeyOneStr] = val
 		}
 	})
-	if len(contextMarshalFuncs) != 1 {
-		t.Error("there should be one context marshaler")
+	if len(contextMarshalFuncs) != 2 {
+		t.Error("there should be two context marshaler")
 	}
 
 	ctx := context.Background()
@@ -46,8 +46,8 @@ func TestContextMarshaler(t *testing.T) {
 }
 
 func TestContextUnmarshaler(t *testing.T) {
-	if len(contextUnmarshalFuncs) != 0 {
-		t.Error("there should be no context marshalers")
+	if len(contextUnmarshalFuncs) != 1 {
+		t.Error("there should be one context marshaler")
 	}
 	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
 		if val, ok := vals[contextTestKeyOneStr].(string); ok {
@@ -55,8 +55,8 @@ func TestContextUnmarshaler(t *testing.T) {
 		}
 		return ctx
 	})
-	if len(contextUnmarshalFuncs) != 1 {
-		t.Error("there should be one context unmarshalers")
+	if len(contextUnmarshalFuncs) != 2 {
+		t.Error("there should be two context unmarshalers")
 	}
 
 	vals := map[string]interface{}{}

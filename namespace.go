@@ -16,6 +16,20 @@ package eventhorizon
 
 import "context"
 
+func init() {
+	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+		if ns, ok := ctx.Value(namespaceKey).(string); ok {
+			vals[namespaceKeyStr] = ns
+		}
+	})
+	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+		if ns, ok := vals[namespaceKeyStr].(string); ok {
+			return WithNamespace(ctx, ns)
+		}
+		return ctx
+	})
+}
+
 // DefaultNamespace is the namespace to use if not set in the context.
 const DefaultNamespace = "default"
 
@@ -24,6 +38,11 @@ type contextKey int
 const (
 	// namespaceKey is the context key for the namespace value.
 	namespaceKey contextKey = iota
+)
+
+const (
+	// The string key used to marshal namespaceKey.
+	namespaceKeyStr = "eh_namespace"
 )
 
 // Namespace returns the namespace from the context, or the default namespace.
