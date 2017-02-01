@@ -32,14 +32,11 @@ func TestEventBus(t *testing.T) {
 		url = host + ":" + port
 	}
 
-	bus, err := NewEventBus("test", url, "")
+	bus1, err := NewEventBus("test", url, "")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	if bus == nil {
-		t.Fatal("there should be a bus")
-	}
-	defer bus.Close()
+	defer bus1.Close()
 
 	// Another bus to test the observer.
 	bus2, err := NewEventBus("test", url, "")
@@ -49,10 +46,10 @@ func TestEventBus(t *testing.T) {
 	defer bus2.Close()
 
 	// Wait for subscriptions to be ready.
-	<-bus.ready
+	<-bus1.ready
 	<-bus2.ready
 
-	testutil.EventBusCommonTests(t, bus, bus2)
+	testutil.EventBusCommonTests(t, bus1, bus2)
 }
 
 func TestEventBusAsync(t *testing.T) {
@@ -65,15 +62,12 @@ func TestEventBusAsync(t *testing.T) {
 		url = host + ":" + port
 	}
 
-	bus, err := NewEventBus("test", url, "")
+	bus1, err := NewEventBus("test", url, "")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	if bus == nil {
-		t.Fatal("there should be a bus")
-	}
-	defer bus.Close()
-	bus.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
+	defer bus1.Close()
+	bus1.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
 
 	// Another bus to test the observer.
 	bus2, err := NewEventBus("test", url, "")
@@ -84,8 +78,8 @@ func TestEventBusAsync(t *testing.T) {
 	bus2.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
 
 	// Wait for subscriptions to be ready.
-	<-bus.ready
+	<-bus1.ready
 	<-bus2.ready
 
-	testutil.EventBusCommonTests(t, bus, bus2)
+	testutil.EventBusCommonTests(t, bus1, bus2)
 }
