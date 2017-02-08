@@ -225,8 +225,8 @@ func (m *EventObserver) WaitForEvent(t *testing.T) {
 	select {
 	case <-m.Recv:
 		return
-	case <-time.After(time.Second):
-		t.Error("did not receive event in time")
+	case <-time.After(10 * time.Second):
+		t.Fatal("did not receive event in time")
 	}
 }
 

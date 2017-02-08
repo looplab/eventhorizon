@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package redis
+package gcp
 
 import (
-	"os"
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
@@ -23,23 +22,13 @@ import (
 )
 
 func TestEventBus(t *testing.T) {
-	// Support Wercker testing with MongoDB.
-	host := os.Getenv("REDIS_PORT_6379_TCP_ADDR")
-	port := os.Getenv("REDIS_PORT_6379_TCP_PORT")
-
-	url := ":6379"
-	if host != "" && port != "" {
-		url = host + ":" + port
-	}
-
-	bus1, err := NewEventBus("test", url, "")
+	bus1, err := NewEventBus("looplab-eventhorizon", "test")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 	defer bus1.Close()
 
-	// Another bus to test the observer.
-	bus2, err := NewEventBus("test", url, "")
+	bus2, err := NewEventBus("looplab-eventhorizon", "test")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -53,24 +42,14 @@ func TestEventBus(t *testing.T) {
 }
 
 func TestEventBusAsync(t *testing.T) {
-	// Support Wercker testing with MongoDB.
-	host := os.Getenv("REDIS_PORT_6379_TCP_ADDR")
-	port := os.Getenv("REDIS_PORT_6379_TCP_PORT")
-
-	url := ":6379"
-	if host != "" && port != "" {
-		url = host + ":" + port
-	}
-
-	bus1, err := NewEventBus("test", url, "")
+	bus1, err := NewEventBus("looplab-eventhorizon", "test")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 	defer bus1.Close()
 	bus1.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
 
-	// Another bus to test the observer.
-	bus2, err := NewEventBus("test", url, "")
+	bus2, err := NewEventBus("looplab-eventhorizon", "test")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}

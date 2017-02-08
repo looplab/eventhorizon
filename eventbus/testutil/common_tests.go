@@ -37,6 +37,7 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
 	agg := mocks.NewAggregate(id)
 	event1 := agg.NewEvent(mocks.EventType, &mocks.EventData{"event1"})
+	agg.IncrementVersion()
 	bus1.PublishEvent(ctx, event1)
 	expectedEvents := []eh.Event{event1}
 	observer1.WaitForEvent(t)
@@ -62,11 +63,13 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 	handler := mocks.NewEventHandler("testHandler")
 	bus1.AddHandler(handler, mocks.EventType)
 	bus1.PublishEvent(ctx, event1)
+	agg.IncrementVersion()
 	handler.WaitForEvent(t)
 	expectedEvents = []eh.Event{event1}
 	for i, event := range handler.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
-			t.Error("the event was incorrect:", err)
+			t.Error("the event was incorrect:", i, err)
+			t.Log(observer2.Events)
 		}
 	}
 	if val, ok := mocks.ContextOne(handler.Context); !ok || val != "testval" {
@@ -76,7 +79,8 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 	observer1.WaitForEvent(t)
 	for i, event := range observer1.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
-			t.Error("the event was incorrect:", err)
+			t.Error("the event was incorrect:", i, err)
+			t.Log(observer2.Events)
 		}
 	}
 	if val, ok := mocks.ContextOne(observer1.Context); !ok || val != "testval" {
@@ -85,7 +89,8 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 	observer2.WaitForEvent(t)
 	for i, event := range observer2.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
-			t.Error("the event was incorrect:", err)
+			t.Error("the event was incorrect:", i, err)
+			t.Log(observer2.Events)
 		}
 	}
 	if val, ok := mocks.ContextOne(observer2.Context); !ok || val != "testval" {
@@ -100,7 +105,8 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 	expectedEvents = []eh.Event{event1, event2}
 	for i, event := range handler.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
-			t.Error("the event was incorrect:", err)
+			t.Error("the event was incorrect:", i, err)
+			t.Log(observer2.Events)
 		}
 	}
 	if val, ok := mocks.ContextOne(handler.Context); !ok || val != "testval" {
@@ -110,7 +116,8 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 	observer1.WaitForEvent(t)
 	for i, event := range observer1.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
-			t.Error("the event was incorrect:", err)
+			t.Error("the event was incorrect:", i, err)
+			t.Log(observer2.Events)
 		}
 	}
 	if val, ok := mocks.ContextOne(observer1.Context); !ok || val != "testval" {
@@ -119,7 +126,8 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 	observer2.WaitForEvent(t)
 	for i, event := range observer2.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
-			t.Error("the event was incorrect:", err)
+			t.Error("the event was incorrect:", i, err)
+			t.Log(observer2.Events)
 		}
 	}
 	if val, ok := mocks.ContextOne(observer2.Context); !ok || val != "testval" {
