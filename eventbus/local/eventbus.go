@@ -25,12 +25,9 @@ import (
 // published events. It will use the SimpleEventHandlingStrategy by default.
 type EventBus struct {
 	handlers  map[eh.EventType]map[eh.EventHandler]bool
-	observers map[eh.EventObserver]bool
-
-	// handlerMu guards all maps at once for concurrent writes. No need for
-	// separate mutexes per map for this as AddHandler/AddObserven is often
-	// called at program init and not at run time.
 	handlerMu sync.RWMutex
+
+	publisher eh.EventPublisher
 
 	// handlingStrategy is the strategy to use when handling event, for example
 	// to handle the asynchronously.
@@ -40,22 +37,20 @@ type EventBus struct {
 // NewEventBus creates a EventBus.
 func NewEventBus() *EventBus {
 	b := &EventBus{
-		handlers:  make(map[eh.EventType]map[eh.EventHandler]bool),
-		observers: make(map[eh.EventObserver]bool),
+		handlers: make(map[eh.EventType]map[eh.EventHandler]bool),
 	}
 	return b
 }
 
-// SetHandlingStrategy implements the SetHandlingStrategy method of the
-// eventhorizon.EventBus interface.
-func (b *EventBus) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
-	b.handlingStrategy = strategy
+// HandlerType implements the HandlerType method of the EventHandler interface.
+func (b *EventBus) HandlerType() eh.EventHandlerType {
+	return eh.EventHandlerType("LocalEventBus")
 }
 
-// PublishEvent publishes an event to all handlers capable of handling it.
+// HandleEvent publishes an event to all handlers capable of handling it.
 // TODO: Put the event in a buffered channel consumed by another goroutine
 // to simulate a distributed bus.
-func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) {
+func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) {
 	b.handlerMu.RLock()
 	defer b.handlerMu.RUnlock()
 
@@ -70,14 +65,8 @@ func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) {
 		}
 	}
 
-	// Notify all observers about the event.
-	for o := range b.observers {
-		if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-			go o.Notify(ctx, event)
-		} else {
-			o.Notify(ctx, event)
-		}
-	}
+	// Publish the event.
+	b.publisher.PublishEvent(ctx, event)
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
@@ -94,10 +83,14 @@ func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
 	b.handlers[eventType][handler] = true
 }
 
-// AddObserver implements the AddObserver method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddObserver(observer eh.EventObserver) {
-	b.handlerMu.Lock()
-	defer b.handlerMu.Unlock()
+// SetPublisher implements the SetPublisher method of the
+// eventhorizon.EventBus interface.
+func (b *EventBus) SetPublisher(publisher eh.EventPublisher) {
+	b.publisher = publisher
+}
 
-	b.observers[observer] = true
+// SetHandlingStrategy implements the SetHandlingStrategy method of the
+// eventhorizon.EventBus interface.
+func (b *EventBus) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
+	b.handlingStrategy = strategy
 }

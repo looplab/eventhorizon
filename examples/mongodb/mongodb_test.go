@@ -26,6 +26,7 @@ import (
 	commandbus "github.com/looplab/eventhorizon/commandbus/local"
 	eventbus "github.com/looplab/eventhorizon/eventbus/local"
 	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
+	eventpublisher "github.com/looplab/eventhorizon/publisher/local"
 	readrepository "github.com/looplab/eventhorizon/readrepository/mongodb"
 
 	"github.com/looplab/eventhorizon/examples/domain"
@@ -50,7 +51,11 @@ func Example() {
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
 	eventBus.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
-	eventBus.AddObserver(&domain.Logger{})
+
+	// Add a event handler for publishing.
+	eventPublisher := eventpublisher.NewEventPublisher()
+	eventPublisher.AddObserver(&domain.Logger{})
+	eventBus.SetPublisher(eventPublisher)
 
 	// Create the aggregate repository.
 	repository, err := eh.NewEventSourcingRepository(eventStore, eventBus)

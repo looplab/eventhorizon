@@ -35,18 +35,13 @@ var ErrCouldNotMarshalEvent = errors.New("could not marshal event")
 // ErrCouldNotUnmarshalEvent is when an event could not be unmarshaled into a concrete type.
 var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
 
-// EventBus is an event bus that notifies registered EventHandlers of
+// EventPublisher is an event bus that notifies registered EventHandlers of
 // published events. It will use the SimpleEventHandlingStrategy by default.
-type EventBus struct {
-	handlers  map[eh.EventType]map[eh.EventHandler]bool
-	observers map[eh.EventObserver]bool
+type EventPublisher struct {
+	observers   map[eh.EventObserver]bool
+	observersMu sync.RWMutex
 
-	// handlerMu guards all maps at once for concurrent writes. No need for
-	// separate mutexes per map for this as AddHandler/AddObserven is often
-	// called at program init and not at run time.
-	handlerMu sync.RWMutex
-
-	// handlingStrategy is the strategy to use when handling event, for example
+	// handlingStrategy is the strategy to use when publishing events, for example
 	// to handle the asynchronously.
 	handlingStrategy eh.EventHandlingStrategy
 
@@ -56,8 +51,8 @@ type EventBus struct {
 	exit   chan bool
 }
 
-// NewEventBus creates a EventBus.
-func NewEventBus(projectID, appID string) (*EventBus, error) {
+// NewEventPublisher creates a EventPublisher.
+func NewEventPublisher(projectID, appID string) (*EventPublisher, error) {
 	ctx := context.Background()
 	client, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
@@ -75,9 +70,8 @@ func NewEventBus(projectID, appID string) (*EventBus, error) {
 		}
 	}
 
-	b := &EventBus{
-		handlers:  make(map[eh.EventType]map[eh.EventHandler]bool),
-		observers: make(map[eh.EventObserver]bool),
+	b := &EventPublisher{
+		observers: map[eh.EventObserver]bool{},
 		client:    client,
 		topic:     topic,
 		ready:     make(chan bool, 1), // Buffered to not block receive loop.
@@ -89,73 +83,8 @@ func NewEventBus(projectID, appID string) (*EventBus, error) {
 	return b, nil
 }
 
-// SetHandlingStrategy implements the SetHandlingStrategy method of the
-// eventhorizon.EventBus interface.
-func (b *EventBus) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
-	b.handlingStrategy = strategy
-}
-
-// PublishEvent implements the PublishEvent method of the eventhorizon.EventBus interface.
-func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) {
-	b.handlerMu.RLock()
-	defer b.handlerMu.RUnlock()
-
-	// Handle the event if there is a handler registered.
-	if handlers, ok := b.handlers[event.EventType()]; ok {
-		for h := range handlers {
-			if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-				go h.HandleEvent(ctx, event)
-			} else {
-				h.HandleEvent(ctx, event)
-			}
-		}
-	}
-
-	// Notify all observers about the event.
-	if err := b.notify(ctx, event); err != nil {
-		log.Println("error: event bus publish:", err)
-	}
-
-}
-
-// AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
-	b.handlerMu.Lock()
-	defer b.handlerMu.Unlock()
-
-	// Create list for new event types.
-	if _, ok := b.handlers[eventType]; !ok {
-		b.handlers[eventType] = make(map[eh.EventHandler]bool)
-	}
-
-	// Add the handler for the event type.
-	b.handlers[eventType][handler] = true
-}
-
-func (b *EventBus) handle(event eh.Event) {
-}
-
-// AddObserver implements the AddObserver method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddObserver(observer eh.EventObserver) {
-	b.handlerMu.Lock()
-	defer b.handlerMu.Unlock()
-
-	b.observers[observer] = true
-}
-
-// Close exits the receive goroutine by unsubscribing to all channels.
-func (b *EventBus) Close() error {
-	select {
-	case b.exit <- true:
-	default:
-		log.Println("eventbus: already closed")
-	}
-	<-b.exit
-
-	return b.topic.Delete(context.Background())
-}
-
-func (b *EventBus) notify(ctx context.Context, event eh.Event) error {
+// PublishEvent implements the PublishEvent method of the eventhorizon.EventPublisher interface.
+func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error {
 	gcpEvent := gcpEvent{
 		AggregateID:   event.AggregateID(),
 		AggregateType: event.AggregateType(),
@@ -181,20 +110,52 @@ func (b *EventBus) notify(ctx context.Context, event eh.Event) error {
 		return ErrCouldNotMarshalEvent
 	}
 
-	msgIDs, err := b.topic.Publish(context.Background(), &pubsub.Message{
+	// NOTE: Using a new context here.
+	var results []*pubsub.PublishResult
+	r := b.topic.Publish(context.Background(), &pubsub.Message{
 		Data: data,
 	})
-	if err != nil {
-		return err
-	}
 
-	// TODO: Use the message ID to avoid handling duplicate messages.
-	_ = msgIDs
+	results = append(results, r)
+	for _, r := range results {
+		id, err := r.Get(ctx)
+		if err != nil {
+			return err
+		}
+
+		// TODO: Use the message ID to avoid handling duplicate messages.
+		_ = id
+	}
 
 	return nil
 }
 
-func (b *EventBus) recv() {
+// AddObserver implements the AddObserver method of the eventhorizon.EventPublisher interface.
+func (b *EventPublisher) AddObserver(observer eh.EventObserver) {
+	b.observersMu.Lock()
+	defer b.observersMu.Unlock()
+	b.observers[observer] = true
+}
+
+// SetHandlingStrategy implements the SetHandlingStrategy method of the
+// eventhorizon.EventPublisher interface.
+func (b *EventPublisher) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
+	b.handlingStrategy = strategy
+}
+
+// Close exits the receive goroutine by unsubscribing to all channels.
+func (b *EventPublisher) Close() error {
+	select {
+	case b.exit <- true:
+	default:
+		log.Println("eventbus: already closed")
+	}
+	<-b.exit
+
+	return b.topic.Delete(context.Background())
+}
+
+func (b *EventPublisher) recv() {
 	ctx := context.Background()
 
 	// Create the subscription, it should not exist as we use a new UUID as name.
@@ -244,7 +205,7 @@ func (b *EventBus) recv() {
 	}
 }
 
-func (b *EventBus) handleMessage(msg *pubsub.Message) {
+func (b *EventPublisher) handleMessage(msg *pubsub.Message) {
 	// TODO: Only ack true when event is handled correctly.
 	defer msg.Done(true)
 
@@ -275,8 +236,8 @@ func (b *EventBus) handleMessage(msg *pubsub.Message) {
 	event := event{gcpEvent: gcpEvent}
 	ctx := eh.UnmarshalContext(gcpEvent.Context)
 
-	b.handlerMu.RLock()
-	defer b.handlerMu.RUnlock()
+	b.observersMu.RLock()
+	defer b.observersMu.RUnlock()
 
 	// Notify all observers about the event.
 	for o := range b.observers {

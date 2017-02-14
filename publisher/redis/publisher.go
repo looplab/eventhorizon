@@ -36,18 +36,13 @@ var ErrCouldNotMarshalEvent = errors.New("could not marshal event")
 // ErrCouldNotUnmarshalEvent is when an event could not be unmarshaled into a concrete type.
 var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
 
-// EventBus is an event bus that notifies registered EventHandlers of
+// EventPublisher is an event bus that notifies registered EventHandlers of
 // published events. It will use the SimpleEventHandlingStrategy by default.
-type EventBus struct {
-	handlers  map[eh.EventType]map[eh.EventHandler]bool
-	observers map[eh.EventObserver]bool
+type EventPublisher struct {
+	observers   map[eh.EventObserver]bool
+	observersMu sync.RWMutex
 
-	// handlerMu guards all maps at once for concurrent writes. No need for
-	// separate mutexes per map for this as AddHandler/AddObserven is often
-	// called at program init and not at run time.
-	handlerMu sync.RWMutex
-
-	// handlingStrategy is the strategy to use when handling event, for example
+	// handlingStrategy is the strategy to use when publishing events, for example
 	// to handle the asynchronously.
 	handlingStrategy eh.EventHandlingStrategy
 
@@ -58,8 +53,8 @@ type EventBus struct {
 	exit   chan bool
 }
 
-// NewEventBus creates a EventBus for remote events.
-func NewEventBus(appID, server, password string) (*EventBus, error) {
+// NewEventPublisher creates a EventPublisher for remote events.
+func NewEventPublisher(appID, server, password string) (*EventPublisher, error) {
 	pool := &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
@@ -82,13 +77,12 @@ func NewEventBus(appID, server, password string) (*EventBus, error) {
 		},
 	}
 
-	return NewEventBusWithPool(appID, pool)
+	return NewEventPublisherWithPool(appID, pool)
 }
 
-// NewEventBusWithPool creates a EventBus for remote events.
-func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
-	b := &EventBus{
-		handlers:  make(map[eh.EventType]map[eh.EventHandler]bool),
+// NewEventPublisherWithPool creates a EventPublisher for remote events.
+func NewEventPublisherWithPool(appID string, pool *redis.Pool) (*EventPublisher, error) {
+	b := &EventPublisher{
 		observers: make(map[eh.EventObserver]bool),
 		prefix:    appID + ":events:",
 		pool:      pool,
@@ -120,68 +114,8 @@ func NewEventBusWithPool(appID string, pool *redis.Pool) (*EventBus, error) {
 	return b, nil
 }
 
-// SetHandlingStrategy implements the SetHandlingStrategy method of the
-// eventhorizon.EventBus interface.
-func (b *EventBus) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
-	b.handlingStrategy = strategy
-}
-
 // PublishEvent publishes an event to all handlers capable of handling it.
-func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) {
-	b.handlerMu.RLock()
-	defer b.handlerMu.RUnlock()
-
-	// Handle the event if there is a handler registered.
-	if handlers, ok := b.handlers[event.EventType()]; ok {
-		for h := range handlers {
-			if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-				go h.HandleEvent(ctx, event)
-			} else {
-				h.HandleEvent(ctx, event)
-			}
-		}
-	}
-
-	// Notify all observers about the event.
-	if err := b.notify(ctx, event); err != nil {
-		log.Println("error: event bus publish:", err)
-	}
-}
-
-// AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
-	b.handlerMu.Lock()
-	defer b.handlerMu.Unlock()
-
-	// Create handler list for new event types.
-	if _, ok := b.handlers[eventType]; !ok {
-		b.handlers[eventType] = make(map[eh.EventHandler]bool)
-	}
-
-	// Add handler to event type.
-	b.handlers[eventType][handler] = true
-}
-
-// AddObserver implements the AddObserver method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddObserver(observer eh.EventObserver) {
-	b.handlerMu.Lock()
-	defer b.handlerMu.Unlock()
-
-	b.observers[observer] = true
-}
-
-// Close exits the receive goroutine by unsubscribing to all channels.
-func (b *EventBus) Close() error {
-	select {
-	case b.exit <- true:
-	default:
-		log.Println("eventbus: already closed")
-	}
-
-	return b.pool.Close()
-}
-
-func (b *EventBus) notify(ctx context.Context, event eh.Event) error {
+func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error {
 	conn := b.pool.Get()
 	defer conn.Close()
 
@@ -223,7 +157,32 @@ func (b *EventBus) notify(ctx context.Context, event eh.Event) error {
 	return nil
 }
 
-func (b *EventBus) recv(delay *backoff.Backoff) error {
+// AddObserver implements the AddObserver method of the eventhorizon.EventPublisher interface.
+func (b *EventPublisher) AddObserver(observer eh.EventObserver) {
+	b.observersMu.Lock()
+	defer b.observersMu.Unlock()
+
+	b.observers[observer] = true
+}
+
+// SetHandlingStrategy implements the SetHandlingStrategy method of the
+// eventhorizon.EventPublisher interface.
+func (b *EventPublisher) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
+	b.handlingStrategy = strategy
+}
+
+// Close exits the receive goroutine by unsubscribing to all channels.
+func (b *EventPublisher) Close() error {
+	select {
+	case b.exit <- true:
+	default:
+		log.Println("eventbus: already closed")
+	}
+
+	return b.pool.Close()
+}
+
+func (b *EventPublisher) recv(delay *backoff.Backoff) error {
 	conn := b.pool.Get()
 	defer conn.Close()
 
@@ -280,7 +239,7 @@ func (b *EventBus) recv(delay *backoff.Backoff) error {
 			event := event{redisEvent: redisEvent}
 			ctx := eh.UnmarshalContext(redisEvent.Context)
 
-			b.handlerMu.RLock()
+			b.observersMu.RLock()
 			for o := range b.observers {
 				if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
 					go o.Notify(ctx, event)
@@ -288,7 +247,7 @@ func (b *EventBus) recv(delay *backoff.Backoff) error {
 					o.Notify(ctx, event)
 				}
 			}
-			b.handlerMu.RUnlock()
+			b.observersMu.RUnlock()
 
 		case redis.Subscription:
 			if v.Kind == "psubscribe" {

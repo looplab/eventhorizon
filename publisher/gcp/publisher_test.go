@@ -12,74 +12,53 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package redis
+package gcp
 
 import (
-	"os"
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/eventbus/testutil"
+	"github.com/looplab/eventhorizon/publisher/testutil"
 )
 
 func TestEventBus(t *testing.T) {
-	// Support Wercker testing with MongoDB.
-	host := os.Getenv("REDIS_PORT_6379_TCP_ADDR")
-	port := os.Getenv("REDIS_PORT_6379_TCP_PORT")
-
-	url := ":6379"
-	if host != "" && port != "" {
-		url = host + ":" + port
-	}
-
-	bus1, err := NewEventBus("test", url, "")
+	publisher1, err := NewEventPublisher("looplab-eventhorizon", "test")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	defer bus1.Close()
+	defer publisher1.Close()
 
-	// Another bus to test the observer.
-	bus2, err := NewEventBus("test", url, "")
+	publisher2, err := NewEventPublisher("looplab-eventhorizon", "test")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	defer bus2.Close()
+	defer publisher2.Close()
 
 	// Wait for subscriptions to be ready.
-	<-bus1.ready
-	<-bus2.ready
+	<-publisher1.ready
+	<-publisher2.ready
 
-	testutil.EventBusCommonTests(t, bus1, bus2)
+	testutil.EventPublisherCommonTests(t, publisher1, publisher2)
 }
 
 func TestEventBusAsync(t *testing.T) {
-	// Support Wercker testing with MongoDB.
-	host := os.Getenv("REDIS_PORT_6379_TCP_ADDR")
-	port := os.Getenv("REDIS_PORT_6379_TCP_PORT")
-
-	url := ":6379"
-	if host != "" && port != "" {
-		url = host + ":" + port
-	}
-
-	bus1, err := NewEventBus("test", url, "")
+	publisher1, err := NewEventPublisher("looplab-eventhorizon", "test")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	defer bus1.Close()
-	bus1.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
+	defer publisher1.Close()
+	publisher1.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
 
-	// Another bus to test the observer.
-	bus2, err := NewEventBus("test", url, "")
+	publisher2, err := NewEventPublisher("looplab-eventhorizon", "test")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	defer bus2.Close()
-	bus2.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
+	defer publisher2.Close()
+	publisher2.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
 
 	// Wait for subscriptions to be ready.
-	<-bus1.ready
-	<-bus2.ready
+	<-publisher1.ready
+	<-publisher2.ready
 
-	testutil.EventBusCommonTests(t, bus1, bus2)
+	testutil.EventPublisherCommonTests(t, publisher1, publisher2)
 }

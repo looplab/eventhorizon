@@ -30,10 +30,11 @@ type CommandHandler interface {
 	HandleCommand(context.Context, Command) error
 }
 
-// CommandBus is an interface defining an event bus for distributing events.
+// CommandBus is a command handler that delegates command handling to other
+// handlers based on the command type.
 type CommandBus interface {
-	// CommandHandler is used to delegate commands to the correct command handlers.
 	CommandHandler
-	// SetHandler registers a handler with a command.
+
+	// SetHandler registers a handler for a command.
 	SetHandler(CommandHandler, CommandType) error
 }

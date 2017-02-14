@@ -207,13 +207,17 @@ type MockEventBus struct {
 	Context context.Context
 }
 
-func (m *MockEventBus) PublishEvent(ctx context.Context, event Event) {
+func (m *MockEventBus) HandlerType() EventHandlerType {
+	return EventHandlerType("MockEventBus")
+}
+
+func (m *MockEventBus) HandleEvent(ctx context.Context, event Event) {
 	m.Events = append(m.Events, event)
 	m.Context = ctx
 }
 
 func (m *MockEventBus) AddHandler(handler EventHandler, eventType EventType) {}
-func (m *MockEventBus) AddObserver(observer EventObserver)                   {}
+func (m *MockEventBus) SetPublisher(publisher EventPublisher)                {}
 func (m *MockEventBus) SetHandlingStrategy(strategy EventHandlingStrategy)   {}
 
 type MockCommandBus struct {
