@@ -51,79 +51,44 @@ func Example() {
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
 	eventBus.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
-
-	// Add a event handler for publishing.
 	eventPublisher := eventpublisher.NewEventPublisher()
-	eventPublisher.AddObserver(&domain.Logger{})
 	eventBus.SetPublisher(eventPublisher)
 
-	// Create the aggregate repository.
-	repository, err := eh.NewEventSourcingRepository(eventStore, eventBus)
-	if err != nil {
-		log.Fatalf("could not create repository: %s", err)
-	}
-
-	// Create the aggregate command handler.
-	handler, err := eh.NewAggregateCommandHandler(repository)
-	if err != nil {
-		log.Fatalf("could not create command handler: %s", err)
-	}
-
-	// Register the domain aggregates with the dispather. Remember to check for
-	// errors here in a real app!
-	handler.SetAggregate(domain.InvitationAggregateType, domain.CreateInviteCommand)
-	handler.SetAggregate(domain.InvitationAggregateType, domain.AcceptInviteCommand)
-	handler.SetAggregate(domain.InvitationAggregateType, domain.DeclineInviteCommand)
-	handler.SetAggregate(domain.InvitationAggregateType, domain.ConfirmInviteCommand)
-	handler.SetAggregate(domain.InvitationAggregateType, domain.DenyInviteCommand)
-
-	// Create the command bus and register the handler for the commands.
+	// Create the command bus.
 	commandBus := commandbus.NewCommandBus()
-	commandBus.SetHandler(handler, domain.CreateInviteCommand)
-	commandBus.SetHandler(handler, domain.AcceptInviteCommand)
-	commandBus.SetHandler(handler, domain.DeclineInviteCommand)
-	commandBus.SetHandler(handler, domain.ConfirmInviteCommand)
-	commandBus.SetHandler(handler, domain.DenyInviteCommand)
 
-	// Create and register a read model for individual invitations.
-	invitationRepository, err := readrepository.NewReadRepository(url, "demo", "invitations")
+	// Create the read repositories.
+	invitationRepo, err := readrepository.NewReadRepository(url, "demo", "invitations")
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
-	invitationRepository.SetModel(func() interface{} { return &domain.Invitation{} })
-	invitationProjector := domain.NewInvitationProjector(invitationRepository)
-	eventBus.AddHandler(invitationProjector, domain.InviteCreatedEvent)
-	eventBus.AddHandler(invitationProjector, domain.InviteAcceptedEvent)
-	eventBus.AddHandler(invitationProjector, domain.InviteDeclinedEvent)
-	eventBus.AddHandler(invitationProjector, domain.InviteConfirmedEvent)
-	eventBus.AddHandler(invitationProjector, domain.InviteDeniedEvent)
-
-	// Create and register a read model for a guest list.
-	eventID := eh.NewUUID()
-	guestListRepository, err := readrepository.NewReadRepository(url, "demo", "guest_lists")
+	invitationRepo.SetModel(func() interface{} { return &domain.Invitation{} })
+	guestListRepo, err := readrepository.NewReadRepository(url, "demo", "guest_lists")
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}
-	guestListRepository.SetModel(func() interface{} { return &domain.GuestList{} })
-	guestListProjector := domain.NewGuestListProjector(guestListRepository, eventID)
-	eventBus.AddHandler(guestListProjector, domain.InviteCreatedEvent)
-	eventBus.AddHandler(guestListProjector, domain.InviteAcceptedEvent)
-	eventBus.AddHandler(guestListProjector, domain.InviteDeclinedEvent)
-	eventBus.AddHandler(guestListProjector, domain.InviteConfirmedEvent)
-	eventBus.AddHandler(guestListProjector, domain.InviteDeniedEvent)
+	guestListRepo.SetModel(func() interface{} { return &domain.GuestList{} })
 
-	// Setup the saga that responds to the accepted guests and limits the total
-	// amount of guests, responding with a confirmation or denial.
-	responseSaga := eh.NewSagaHandler(domain.NewResponseSaga(2), commandBus)
-	eventBus.AddHandler(responseSaga, domain.InviteAcceptedEvent)
+	// Create the domain.
+	eventID := eh.NewUUID()
+	domain.Setup(
+		eventStore,
+		eventBus,
+		eventPublisher,
+		commandBus,
+		invitationRepo, guestListRepo,
+		eventID,
+	)
 
 	// Set the namespace to use.
-	ctx := eh.WithNamespace(context.Background(), "example")
+	ctx := eh.WithNamespace(context.Background(), "mongodb")
 
 	// Clear DB collections.
 	eventStore.Clear(ctx)
-	invitationRepository.Clear(ctx)
-	guestListRepository.Clear(ctx)
+	invitationRepo.Clear(ctx)
+	guestListRepo.Clear(ctx)
+
+	// --- Execute commands on the domain --------------------------------------
 
 	// IDs for all the guests.
 	athenaID := eh.NewUUID()
@@ -136,7 +101,6 @@ func Example() {
 	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: hadesID, Name: "Hades"})
 	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
 	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: poseidonID, Name: "Poseidon"})
-
 	time.Sleep(100 * time.Millisecond)
 
 	// The invited guests accept and decline the event.
@@ -144,8 +108,7 @@ func Example() {
 	// that is not allowed by the domain logic in InvitationAggregate. The
 	// result is that she is still accepted.
 	commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: athenaID})
-	err = commandBus.HandleCommand(ctx, &domain.DeclineInvite{InvitationID: athenaID})
-	if err != nil {
+	if err = commandBus.HandleCommand(ctx, &domain.DeclineInvite{InvitationID: athenaID}); err != nil {
 		log.Printf("error: %s\n", err)
 	}
 	commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: hadesID})
@@ -161,7 +124,7 @@ func Example() {
 
 	// Read all invites.
 	invitationStrs := []string{}
-	invitations, _ := invitationRepository.FindAll(ctx)
+	invitations, _ := invitationRepo.FindAll(ctx)
 	for _, i := range invitations {
 		if i, ok := i.(*domain.Invitation); ok {
 			invitationStrs = append(invitationStrs, fmt.Sprintf("%s - %s", i.Name, i.Status))
@@ -176,19 +139,13 @@ func Example() {
 	}
 
 	// Read the guest list.
-	l, _ := guestListRepository.Find(ctx, eventID)
+	l, _ := guestListRepo.Find(ctx, eventID)
 	if l, ok := l.(*domain.GuestList); ok {
 		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 		fmt.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 	}
-
-	// records := eventStore.FindAllEventRecords()
-	// fmt.Printf("event records:\n")
-	// for _, r := range records {
-	// 	fmt.Printf("%#v\n", r)
-	// }
 
 	// Output:
 	// invitation: Athena - confirmed
