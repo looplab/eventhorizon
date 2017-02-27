@@ -284,12 +284,18 @@ func (m *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 type CommandBus struct {
 	Commands []eh.Command
 	Context  context.Context
+	// Used to simulate errors in the store.
+	Err error
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.CommandBus interface.
-func (m *CommandBus) HandleCommand(ctx context.Context, command eh.Command) {
+func (m *CommandBus) HandleCommand(ctx context.Context, command eh.Command) error {
+	if m.Err != nil {
+		return nil, m.Err
+	}
 	m.Commands = append(m.Commands, command)
 	m.Context = ctx
+	return nil
 }
 
 // SetHandler implements the SetHandler method of the eventhorizon.CommandBus interface.
