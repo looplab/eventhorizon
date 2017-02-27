@@ -291,7 +291,7 @@ type CommandBus struct {
 // HandleCommand implements the HandleCommand method of the eventhorizon.CommandBus interface.
 func (m *CommandBus) HandleCommand(ctx context.Context, command eh.Command) error {
 	if m.Err != nil {
-		return nil, m.Err
+		return m.Err
 	}
 	m.Commands = append(m.Commands, command)
 	m.Context = ctx
