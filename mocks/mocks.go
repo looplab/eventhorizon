@@ -330,6 +330,8 @@ type ReadRepository struct {
 	ParentRepo eh.ReadRepository
 	Item       interface{}
 	Items      []interface{}
+	// Used to simulate errors in the store.
+	Err error
 }
 
 // Parent implements the Parent method of the eventhorizon.ReadRepository interface.
@@ -339,6 +341,9 @@ func (r *ReadRepository) Parent() eh.ReadRepository {
 
 // Save implements the Save method of the eventhorizon.ReadRepository interface.
 func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, item interface{}) error {
+	if r.Err != nil {
+		return r.Err
+	}
 	r.Item = item
 	r.Items = []interface{}{item}
 	return nil
@@ -346,16 +351,25 @@ func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, item interface{})
 
 // Find implements the Find method of the eventhorizon.ReadRepository interface.
 func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
+	if r.Err != nil {
+		return nil, r.Err
+	}
 	return r.Item, nil
 }
 
 // FindAll implements the FindAll method of the eventhorizon.ReadRepository interface.
 func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
+	if r.Err != nil {
+		return nil, r.Err
+	}
 	return r.Items, nil
 }
 
 // Remove implements the Remove method of the eventhorizon.ReadRepository interface.
 func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
+	if r.Err != nil {
+		return r.Err
+	}
 	return nil
 }
 
