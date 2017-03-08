@@ -36,34 +36,7 @@ func TestNewAggregateBase(t *testing.T) {
 	}
 }
 
-func TestAggregateNewEvent(t *testing.T) {
-	id := NewUUID()
-	agg := NewTestAggregate(id)
-	event := agg.NewEvent(TestEventType, &TestEventData{"event1"})
-	if event.EventType() != TestEventType {
-		t.Error("the event type should be correct:", event.EventType())
-	}
-	if !reflect.DeepEqual(event.Data(), &TestEventData{"event1"}) {
-		t.Error("the data should be correct:", event.Data())
-	}
-	if event.Timestamp().IsZero() {
-		t.Error("the timestamp should not be zero:", event.Timestamp())
-	}
-	if event.Version() != 1 {
-		t.Error("the version should be 1:", event.Version())
-	}
-	if event.AggregateType() != TestAggregateType {
-		t.Error("the aggregate type should be correct:", event.AggregateType())
-	}
-	if event.AggregateID() != id {
-		t.Error("the aggregate id should be correct:", event.AggregateID())
-	}
-	if event.String() != "TestEvent@1" {
-		t.Error("the string representation should be correct:", event.String())
-	}
-}
-
-func TestAggregateIncrementVersion(t *testing.T) {
+func TestAggregateVersion(t *testing.T) {
 	agg := NewAggregateBase(TestAggregateType, NewUUID())
 	if agg.Version() != 0 {
 		t.Error("the version should be 0:", agg.Version())
@@ -75,10 +48,31 @@ func TestAggregateIncrementVersion(t *testing.T) {
 	}
 }
 
-func TestAggregateStoreEvent(t *testing.T) {
-	agg := NewTestAggregate(NewUUID())
-	event1 := agg.NewEvent(TestEventType, &TestEventData{"event1"})
-	agg.StoreEvent(event1)
+func TestAggregateEvents(t *testing.T) {
+	id := NewUUID()
+	agg := NewTestAggregate(id)
+	event1 := agg.StoreEvent(TestEventType, &TestEventData{"event1"})
+	if event1.EventType() != TestEventType {
+		t.Error("the event type should be correct:", event1.EventType())
+	}
+	if !reflect.DeepEqual(event1.Data(), &TestEventData{"event1"}) {
+		t.Error("the data should be correct:", event1.Data())
+	}
+	if event1.Timestamp().IsZero() {
+		t.Error("the timestamp should not be zero:", event1.Timestamp())
+	}
+	if event1.Version() != 1 {
+		t.Error("the version should be 1:", event1.Version())
+	}
+	if event1.AggregateType() != TestAggregateType {
+		t.Error("the aggregate type should be correct:", event1.AggregateType())
+	}
+	if event1.AggregateID() != id {
+		t.Error("the aggregate id should be correct:", event1.AggregateID())
+	}
+	if event1.String() != "TestEvent@1" {
+		t.Error("the string representation should be correct:", event1.String())
+	}
 	events := agg.UncommittedEvents()
 	if len(events) != 1 {
 		t.Fatal("there should be one event stored:", len(events))
@@ -87,11 +81,24 @@ func TestAggregateStoreEvent(t *testing.T) {
 		t.Error("the stored event should be correct:", events[0])
 	}
 
+	event2 := agg.StoreEvent(TestEventType, &TestEventData{"event1"})
+	if event2.Version() != 2 {
+		t.Error("the version should be 2:", event2.Version())
+	}
+
+	agg.ClearUncommittedEvents()
+	events = agg.UncommittedEvents()
+	if len(events) != 0 {
+		t.Error("there should be no events stored:", len(events))
+	}
+	event3 := agg.StoreEvent(TestEventType, &TestEventData{"event1"})
+	if event3.Version() != 1 {
+		t.Error("the version should be 1 after clearing uncommitted events (without applying any):", event3.Version())
+	}
+
 	agg = NewTestAggregate(NewUUID())
-	event1 = agg.NewEvent(TestEventType, &TestEventData{"event1"})
-	event2 := agg.NewEvent(TestEventType, &TestEventData{"event2"})
-	agg.StoreEvent(event1)
-	agg.StoreEvent(event2)
+	event1 = agg.StoreEvent(TestEventType, &TestEventData{"event1"})
+	event2 = agg.StoreEvent(TestEventType, &TestEventData{"event2"})
 	events = agg.UncommittedEvents()
 	if len(events) != 2 {
 		t.Fatal("there should be 2 events stored:", len(events))
@@ -101,24 +108,5 @@ func TestAggregateStoreEvent(t *testing.T) {
 	}
 	if events[1] != event2 {
 		t.Error("the second stored event should be correct:", events[0])
-	}
-}
-
-func TestAggregateClearUncommittedEvents(t *testing.T) {
-	agg := NewTestAggregate(NewUUID())
-	event1 := agg.NewEvent(TestEventType, &TestEventData{"event1"})
-	agg.StoreEvent(event1)
-	events := agg.UncommittedEvents()
-	if len(events) != 1 {
-		t.Fatal("there should be one event stored:", len(events))
-	}
-	if events[0] != event1 {
-		t.Error("the stored event should be correct:", events[0])
-	}
-
-	agg.ClearUncommittedEvents()
-	events = agg.UncommittedEvents()
-	if len(events) != 0 {
-		t.Error("there should be no events stored:", len(events))
 	}
 }

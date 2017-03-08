@@ -36,7 +36,7 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 	t.Log("publish event without handler")
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
 	agg := mocks.NewAggregate(id)
-	event1 := agg.NewEvent(mocks.EventType, &mocks.EventData{"event1"})
+	event1 := agg.StoreEvent(mocks.EventType, &mocks.EventData{"event1"})
 	agg.IncrementVersion()
 	bus1.PublishEvent(ctx, event1)
 	expectedEvents := []eh.Event{event1}
@@ -99,7 +99,7 @@ func EventBusCommonTests(t *testing.T, bus1, bus2 eh.EventBus) {
 
 	t.Log("publish another event")
 	bus1.AddHandler(handler, mocks.EventOtherType)
-	event2 := agg.NewEvent(mocks.EventOtherType, nil)
+	event2 := agg.StoreEvent(mocks.EventOtherType, nil)
 	bus1.PublishEvent(ctx, event2)
 	handler.WaitForEvent(t)
 	expectedEvents = []eh.Event{event1, event2}

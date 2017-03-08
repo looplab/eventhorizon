@@ -66,8 +66,8 @@ func (a *TestAggregate) HandleCommand(ctx context.Context, command Command) erro
 		if command.Content == "error" {
 			return errors.New("command error")
 		}
-		a.StoreEvent(a.NewEvent(TestEventType,
-			&TestEventData{command.Content}))
+		a.StoreEvent(TestEventType,
+			&TestEventData{command.Content})
 		return nil
 	}
 	return errors.New("couldn't handle command")
@@ -104,8 +104,8 @@ func (a *TestAggregate2) HandleCommand(ctx context.Context, command Command) err
 		if command.Content == "error" {
 			return errors.New("command error")
 		}
-		a.StoreEvent(a.NewEvent(TestEventType,
-			&TestEvent2Data{command.Content}))
+		a.StoreEvent(TestEventType,
+			&TestEvent2Data{command.Content})
 		return nil
 	}
 	return errors.New("couldn't handle command")

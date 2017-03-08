@@ -65,7 +65,7 @@ func TestEventStore(t *testing.T) {
 	for _, e := range aggregate1events {
 		agg.ApplyEvent(ctx, e)
 	}
-	event7 := agg.NewEvent(mocks.EventType, &mocks.EventData{"event1"})
+	event7 := agg.StoreEvent(mocks.EventType, &mocks.EventData{"event1"})
 	agg.ApplyEvent(ctx, event7) // Apply event to increment the aggregate version.
 	err := store.Save(ctx, []eh.Event{event7}, 6)
 	if err != nil {

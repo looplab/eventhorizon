@@ -43,14 +43,12 @@ type Aggregate interface {
 	// HandleCommand handles a command and stores events.
 	HandleCommand(context.Context, Command) error
 
-	// NewEvent creates a new event with the aggregate set as type and ID.
-	NewEvent(EventType, EventData) Event
+	// StoreEvent creates and stores a new event as uncommitted for the aggregate.
+	StoreEvent(EventType, EventData) Event
 	// ApplyEvent applies an event to the aggregate by setting its values and
 	// increments the aggregate version.
 	ApplyEvent(context.Context, Event)
-	// StoreEvent stores an event as uncommitted.
-	StoreEvent(Event)
-	// GetUncommittedEvents gets all uncommitted events for storing.
+	// UncommittedEvents gets all uncommitted events for storing.
 	UncommittedEvents() []Event
 	// ClearUncommittedEvents clears all uncommitted events after storing.
 	ClearUncommittedEvents()
