@@ -128,9 +128,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, command eh.Comm
 }
 
 // ApplyEvent implements the ApplyEvent method of the Aggregate interface.
-func (a *InvitationAggregate) ApplyEvent(ctx context.Context, event eh.Event) {
-	defer a.IncrementVersion()
-
+func (a *InvitationAggregate) ApplyEvent(ctx context.Context, event eh.Event) error {
 	switch event.EventType() {
 	case InviteCreatedEvent:
 		if data, ok := event.Data().(*InviteCreatedData); ok {
@@ -148,4 +146,5 @@ func (a *InvitationAggregate) ApplyEvent(ctx context.Context, event eh.Event) {
 	case InviteDeniedEvent:
 		a.denied = true
 	}
+	return nil
 }

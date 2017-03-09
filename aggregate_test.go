@@ -87,9 +87,15 @@ const (
 
 type TestAggregateRegister struct{ *AggregateBase }
 
-func (a *TestAggregateRegister) AggregateType() AggregateType                             { return TestAggregateRegisterType }
-func (a *TestAggregateRegister) HandleCommand(ctx context.Context, command Command) error { return nil }
-func (a *TestAggregateRegister) ApplyEvent(ctx context.Context, event Event)              {}
+func (a *TestAggregateRegister) AggregateType() AggregateType {
+	return TestAggregateRegisterType
+}
+func (a *TestAggregateRegister) HandleCommand(ctx context.Context, command Command) error {
+	return nil
+}
+func (a *TestAggregateRegister) ApplyEvent(ctx context.Context, event Event) error {
+	return nil
+}
 
 type TestAggregateRegisterEmpty struct{ *AggregateBase }
 
@@ -99,7 +105,9 @@ func (a *TestAggregateRegisterEmpty) AggregateType() AggregateType {
 func (a *TestAggregateRegisterEmpty) HandleCommand(ctx context.Context, command Command) error {
 	return nil
 }
-func (a *TestAggregateRegisterEmpty) ApplyEvent(ctx context.Context, event Event) {}
+func (a *TestAggregateRegisterEmpty) ApplyEvent(ctx context.Context, event Event) error {
+	return nil
+}
 
 type TestAggregateRegisterTwice struct{ *AggregateBase }
 
@@ -109,5 +117,6 @@ func (a *TestAggregateRegisterTwice) AggregateType() AggregateType {
 func (a *TestAggregateRegisterTwice) HandleCommand(ctx context.Context, command Command) error {
 	return nil
 }
-func (a *TestAggregateRegisterTwice) ApplyEvent(ctx context.Context, event Event) {
+func (a *TestAggregateRegisterTwice) ApplyEvent(ctx context.Context, event Event) error {
+	return nil
 }

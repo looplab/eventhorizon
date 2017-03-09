@@ -38,18 +38,16 @@ func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStor
 
 	t.Log("save event, version 1")
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
-	agg := mocks.NewAggregate(id)
-	event1 := agg.StoreEvent(mocks.EventType, &mocks.EventData{"event1"})
+	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{"event1"},
+		mocks.AggregateType, id, 1)
 	err = store.Save(ctx, []eh.Event{event1}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	agg.ApplyEvent(ctx, event1) // Apply event to increment the aggregate version.
-	agg.ClearUncommittedEvents()
 	savedEvents = append(savedEvents, event1)
-	if val, ok := agg.Context.Value("testkey").(string); !ok || val != "testval" {
-		t.Error("the context should be correct:", agg.Context)
-	}
+	// if val, ok := agg.Context.Value("testkey").(string); !ok || val != "testval" {
+	// 	t.Error("the context should be correct:", agg.Context)
+	// }
 
 	t.Log("try to save same event twice")
 	err = store.Save(ctx, []eh.Event{event1}, 1)
@@ -58,49 +56,44 @@ func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStor
 	}
 
 	t.Log("save event, version 2")
-	event2 := agg.StoreEvent(mocks.EventType, &mocks.EventData{"event2"})
+	event2 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{"event2"},
+		mocks.AggregateType, id, 2)
 	err = store.Save(ctx, []eh.Event{event2}, 1)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	agg.ApplyEvent(ctx, event2) // Apply event to increment the aggregate version.
-	agg.ClearUncommittedEvents()
 	savedEvents = append(savedEvents, event2)
 
 	t.Log("save event without data, version 3")
-	event3 := agg.StoreEvent(mocks.EventOtherType, nil)
+	event3 := eh.NewEventForAggregate(mocks.EventOtherType, nil,
+		mocks.AggregateType, id, 3)
 	err = store.Save(ctx, []eh.Event{event3}, 2)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	agg.ApplyEvent(ctx, event3) // Apply event to increment the aggregate version.
-	agg.ClearUncommittedEvents()
 	savedEvents = append(savedEvents, event3)
 
 	t.Log("save multiple events, version 4, 5 and 6")
-	event4 := agg.StoreEvent(mocks.EventOtherType, nil)
-	event5 := agg.StoreEvent(mocks.EventOtherType, nil)
-	event6 := agg.StoreEvent(mocks.EventOtherType, nil)
+	event4 := eh.NewEventForAggregate(mocks.EventOtherType, nil,
+		mocks.AggregateType, id, 4)
+	event5 := eh.NewEventForAggregate(mocks.EventOtherType, nil,
+		mocks.AggregateType, id, 5)
+	event6 := eh.NewEventForAggregate(mocks.EventOtherType, nil,
+		mocks.AggregateType, id, 6)
 	err = store.Save(ctx, []eh.Event{event4, event5, event6}, 3)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	agg.ApplyEvent(ctx, event4) // Apply event to increment the aggregate version.
-	agg.ApplyEvent(ctx, event5) // Apply event to increment the aggregate version.
-	agg.ApplyEvent(ctx, event6) // Apply event to increment the aggregate version.
-	agg.ClearUncommittedEvents()
 	savedEvents = append(savedEvents, event4, event5, event6)
 
 	t.Log("save event for another aggregate")
 	id2, _ := eh.ParseUUID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
-	agg2 := mocks.NewAggregate(id2)
-	event7 := agg2.StoreEvent(mocks.EventType, &mocks.EventData{"event7"})
+	event7 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{"event7"},
+		mocks.AggregateType, id2, 1)
 	err = store.Save(ctx, []eh.Event{event7}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	agg2.ApplyEvent(ctx, event7) // Apply event to increment the aggregate version.
-	agg.ClearUncommittedEvents()
 	savedEvents = append(savedEvents, event7)
 
 	t.Log("load events for non-existing aggregate")

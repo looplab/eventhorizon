@@ -65,6 +65,20 @@ func NewEvent(eventType EventType, data EventData) Event {
 	}
 }
 
+// NewEventForAggregate creates a new event with a type and data, setting its
+// timestamp. It also sets the aggregate data on it.
+func NewEventForAggregate(eventType EventType, data EventData,
+	aggregateType AggregateType, aggregateID UUID, version int) Event {
+	return event{
+		eventType:     eventType,
+		data:          data,
+		timestamp:     time.Now(),
+		aggregateType: aggregateType,
+		aggregateID:   aggregateID,
+		version:       version,
+	}
+}
+
 // event is an internal representation of an event, returned when the aggregate
 // uses NewEvent to create a new event. The events loaded from the db is
 // represented by each DBs internal event type, implementing Event.
