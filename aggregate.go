@@ -39,21 +39,25 @@ type Aggregate interface {
 
 	// Version returns the version of the aggregate.
 	Version() int
+	// Increment version increments the version of the aggregate. It should be
+	// called after an event has been successfully applied.
+	IncrementVersion()
 
-	// HandleCommand handles a command and stores events.
-	HandleCommand(context.Context, Command) error
+	// CommandHandler is used to handle commands.
+	CommandHandler
 
-	// NewEvent creates a new event with the aggregate set as type and ID.
-	NewEvent(EventType, EventData) Event
-	// ApplyEvent applies an event to the aggregate by setting its values and
-	// increments the aggregate version.
-	ApplyEvent(context.Context, Event)
-	// StoreEvent stores an event as uncommitted.
-	StoreEvent(Event)
-	// GetUncommittedEvents gets all uncommitted events for storing.
+	// StoreEvent creates and stores a new event as uncommitted for the aggregate.
+	StoreEvent(EventType, EventData) Event
+	// UncommittedEvents gets all uncommitted events to commit to the store.
 	UncommittedEvents() []Event
-	// ClearUncommittedEvents clears all uncommitted events after storing.
+	// ClearUncommittedEvents clears all uncommitted events after committing to
+	// the store.
 	ClearUncommittedEvents()
+
+	// ApplyEvent applies an event on the aggregate by setting its values.
+	// If there are no errors the version shoudl be incremented by calling
+	// IncrementVersion.
+	ApplyEvent(context.Context, Event) error
 }
 
 var aggregates = make(map[AggregateType]func(UUID) Aggregate)

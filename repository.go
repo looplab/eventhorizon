@@ -28,6 +28,20 @@ var ErrInvalidEventBus = errors.New("invalid event bus")
 // ErrMismatchedEventType occurs when loaded events from ID does not match aggregate type.
 var ErrMismatchedEventType = errors.New("mismatched event type and aggregate type")
 
+// ApplyEventError is when an event could not be applied. It contains the error
+// and the event that caused it.
+type ApplyEventError struct {
+	// Event is the event that caused the error.
+	Event Event
+	// Err is the error that happened when applying the event.
+	Err error
+}
+
+// Error implements the Error method of the error interface.
+func (a ApplyEventError) Error() string {
+	return "failed to apply event " + a.Event.String() + ": " + a.Err.Error()
+}
+
 // Repository is a repository responsible for loading and saving aggregates.
 type Repository interface {
 	// Load loads the most recent version of an aggregate with a type and id.
@@ -79,12 +93,8 @@ func (r *EventSourcingRepository) Load(ctx context.Context, aggregateType Aggreg
 	}
 
 	// Apply the events.
-	for _, event := range events {
-		if event.AggregateType() != aggregateType {
-			return nil, ErrMismatchedEventType
-		}
-
-		aggregate.ApplyEvent(ctx, event)
+	if err := r.applyEvents(ctx, aggregate, events); err != nil {
+		return nil, err
 	}
 
 	return aggregate, nil
@@ -104,12 +114,8 @@ func (r *EventSourcingRepository) Save(ctx context.Context, aggregate Aggregate)
 
 	// Apply the events in case the aggregate needs to be further used
 	// after this save. Currently it is not reused.
-	for _, event := range uncommittedEvents {
-		if event.AggregateType() != aggregate.AggregateType() {
-			return ErrMismatchedEventType
-		}
-
-		aggregate.ApplyEvent(ctx, event)
+	if err := r.applyEvents(ctx, aggregate, uncommittedEvents); err != nil {
+		return err
 	}
 
 	// Publish all events on the bus.
@@ -118,6 +124,25 @@ func (r *EventSourcingRepository) Save(ctx context.Context, aggregate Aggregate)
 	}
 
 	aggregate.ClearUncommittedEvents()
+
+	return nil
+}
+
+// applyEvents is a helper to apply events to an aggregate.
+func (r *EventSourcingRepository) applyEvents(ctx context.Context, aggregate Aggregate, events []Event) error {
+	for _, event := range events {
+		if event.AggregateType() != aggregate.AggregateType() {
+			return ErrMismatchedEventType
+		}
+
+		if err := aggregate.ApplyEvent(ctx, event); err != nil {
+			return ApplyEventError{
+				Event: event,
+				Err:   err,
+			}
+		}
+		aggregate.IncrementVersion()
+	}
 
 	return nil
 }

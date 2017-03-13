@@ -16,6 +16,7 @@ package eventhorizon
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -41,8 +42,8 @@ func TestNewCommandHandler(t *testing.T) {
 	}
 }
 
-func TestCommandHandlerSimple(t *testing.T) {
-	aggregate, handler := createAggregateAndHandler(t)
+func TestCommandHandler(t *testing.T) {
+	aggregate, handler, _ := createAggregateAndHandler(t)
 
 	ctx := context.WithValue(context.Background(), "testkey", "testval")
 
@@ -59,21 +60,52 @@ func TestCommandHandlerSimple(t *testing.T) {
 	}
 }
 
-func TestCommandHandlerErrorInHandler(t *testing.T) {
-	aggregate, handler := createAggregateAndHandler(t)
+func TestCommandHandler_AggregateNotFound(t *testing.T) {
+	repo := &MockRepository{
+		Aggregates: map[UUID]Aggregate{},
+	}
+	handler, err := NewAggregateCommandHandler(repo)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	if handler == nil {
+		t.Fatal("there should be a handler")
+	}
 
-	commandError := &TestCommand{aggregate.AggregateID(), "error"}
-	err := handler.HandleCommand(context.Background(), commandError)
+	command := &TestCommand{NewUUID(), "command1"}
+	err = handler.HandleCommand(context.Background(), command)
+	if err != ErrAggregateNotFound {
+		t.Error("there should be a command error:", err)
+	}
+}
+
+func TestCommandHandler_ErrorInHandler(t *testing.T) {
+	aggregate, handler, _ := createAggregateAndHandler(t)
+
+	aggregate.err = errors.New("command error")
+	command := &TestCommand{aggregate.AggregateID(), "command1"}
+	err := handler.HandleCommand(context.Background(), command)
 	if err == nil || err.Error() != "command error" {
 		t.Error("there should be a command error:", err)
 	}
-	if aggregate.dispatchedCommand != commandError {
+	if aggregate.dispatchedCommand != command {
 		t.Error("the dispatched command should be correct:", aggregate.dispatchedCommand)
 	}
 }
 
-func TestCommandHandlerNoHandlers(t *testing.T) {
-	_, handler := createAggregateAndHandler(t)
+func TestCommandHandler_ErrorWhenSaving(t *testing.T) {
+	aggregate, handler, repo := createAggregateAndHandler(t)
+
+	repo.err = errors.New("save error")
+	command := &TestCommand{aggregate.AggregateID(), "command1"}
+	err := handler.HandleCommand(context.Background(), command)
+	if err == nil || err.Error() != "save error" {
+		t.Error("there should be a command error:", err)
+	}
+}
+
+func TestCommandHandler_NoHandlers(t *testing.T) {
+	_, handler, _ := createAggregateAndHandler(t)
 
 	command1 := &TestCommand{NewUUID(), "command1"}
 	err := handler.HandleCommand(context.Background(), command1)
@@ -82,8 +114,8 @@ func TestCommandHandlerNoHandlers(t *testing.T) {
 	}
 }
 
-func TestCommandHandlerSetHandlerTwice(t *testing.T) {
-	_, handler := createAggregateAndHandler(t)
+func TestCommandHandler_SetHandlerTwice(t *testing.T) {
+	_, handler, _ := createAggregateAndHandler(t)
 
 	err := handler.SetAggregate(TestAggregate2Type, TestCommandType)
 	if err != ErrAggregateAlreadySet {
@@ -91,8 +123,8 @@ func TestCommandHandlerSetHandlerTwice(t *testing.T) {
 	}
 }
 
-func TestCommandHandlerCheckCommand(t *testing.T) {
-	_, handler := createAggregateAndHandler(t)
+func TestCommandHandler_CheckCommand(t *testing.T) {
+	_, handler, _ := createAggregateAndHandler(t)
 
 	// Check all fields.
 	err := handler.checkCommand(&TestCommand{NewUUID(), "command1"})
@@ -188,7 +220,7 @@ func BenchmarkCommandHandler(b *testing.B) {
 	}
 }
 
-func createAggregateAndHandler(t *testing.T) (*TestAggregate, *AggregateCommandHandler) {
+func createAggregateAndHandler(t *testing.T) (*TestAggregate, *AggregateCommandHandler, *MockRepository) {
 	aggregate := NewTestAggregate(NewUUID())
 	repo := &MockRepository{
 		Aggregates: map[UUID]Aggregate{
@@ -206,7 +238,7 @@ func createAggregateAndHandler(t *testing.T) (*TestAggregate, *AggregateCommandH
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	return aggregate, handler
+	return aggregate, handler, repo
 }
 
 type TestCommandStringValue struct {

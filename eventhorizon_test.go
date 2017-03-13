@@ -49,6 +49,8 @@ type TestAggregate struct {
 	context           context.Context
 	appliedEvent      Event
 	numHandled        int
+
+	err error
 }
 
 func NewTestAggregate(id UUID) *TestAggregate {
@@ -61,23 +63,24 @@ func (a *TestAggregate) HandleCommand(ctx context.Context, command Command) erro
 	a.dispatchedCommand = command
 	a.context = ctx
 	a.numHandled++
+	if a.err != nil {
+		return a.err
+	}
 	switch command := command.(type) {
 	case *TestCommand:
-		if command.Content == "error" {
-			return errors.New("command error")
-		}
-		a.StoreEvent(a.NewEvent(TestEventType,
-			&TestEventData{command.Content}))
+		a.StoreEvent(TestEventType, &TestEventData{command.Content})
 		return nil
 	}
 	return errors.New("couldn't handle command")
 }
 
-func (a *TestAggregate) ApplyEvent(ctx context.Context, event Event) {
-	defer a.IncrementVersion()
-
+func (a *TestAggregate) ApplyEvent(ctx context.Context, event Event) error {
 	a.appliedEvent = event
 	a.context = ctx
+	if a.err != nil {
+		return a.err
+	}
+	return nil
 }
 
 type TestAggregate2 struct {
@@ -87,6 +90,8 @@ type TestAggregate2 struct {
 	context           context.Context
 	appliedEvent      Event
 	numHandled        int
+
+	err error
 }
 
 func NewTestAggregate2(id UUID) *TestAggregate2 {
@@ -99,21 +104,24 @@ func (a *TestAggregate2) HandleCommand(ctx context.Context, command Command) err
 	a.dispatchedCommand = command
 	a.context = ctx
 	a.numHandled++
+	if a.err != nil {
+		return a.err
+	}
 	switch command := command.(type) {
 	case *TestCommand2:
-		if command.Content == "error" {
-			return errors.New("command error")
-		}
-		a.StoreEvent(a.NewEvent(TestEventType,
-			&TestEvent2Data{command.Content}))
+		a.StoreEvent(TestEventType, &TestEvent2Data{command.Content})
 		return nil
 	}
 	return errors.New("couldn't handle command")
 }
 
-func (a *TestAggregate2) ApplyEvent(ctx context.Context, event Event) {
+func (a *TestAggregate2) ApplyEvent(ctx context.Context, event Event) error {
 	a.appliedEvent = event
 	a.context = ctx
+	if a.err != nil {
+		return a.err
+	}
+	return nil
 }
 
 type TestCommand struct {
@@ -145,14 +153,22 @@ type TestEvent2Data struct {
 type MockRepository struct {
 	Aggregates map[UUID]Aggregate
 	Context    context.Context
+	// Used to simulate errors in the store.
+	err error
 }
 
 func (m *MockRepository) Load(ctx context.Context, aggregateType AggregateType, id UUID) (Aggregate, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
 	m.Context = ctx
 	return m.Aggregates[id], nil
 }
 
 func (m *MockRepository) Save(ctx context.Context, aggregate Aggregate) error {
+	if m.err != nil {
+		return m.err
+	}
 	m.Aggregates[aggregate.AggregateID()] = aggregate
 	m.Context = ctx
 	return nil

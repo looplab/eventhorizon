@@ -38,11 +38,9 @@ package eventhorizon
 //       })
 //   }
 //
-// The aggregate must call IncrementVersion on the base to update the version.
-//   func (a *Aggregate) ApplyEvent(event Event) {
-//       // Call the base to make sure the version is incremented.
-//       defer a.IncrementVersion(event)
-//
+// The aggregate must return an error if the event can not be applied, or nil
+// to signal success which will increment the version.
+//   func (a *Aggregate) ApplyEvent(event Event) error {
 //       switch event.EventType() {
 //       case AddUserEvent:
 //           // Apply the event data to the aggregate.
@@ -88,25 +86,15 @@ func (a *AggregateBase) IncrementVersion() {
 	a.version++
 }
 
-// NewEvent implements the NewEvent method of the Aggregate interface.
-// The created event is only valid for the current version of the aggregate.
-// If there are uncommitted events it will mean that all the uncommitted events
-// could possibly have the same versions as they haven't been applied yet!
-// The result is that the aggregate base only supports one uncommitted event in.
-func (a *AggregateBase) NewEvent(eventType EventType, data EventData) Event {
-	e := NewEvent(eventType, data)
-	if e, ok := e.(event); ok {
-		e.aggregateType = a.aggregateType
-		e.aggregateID = a.id
-		e.version = a.Version() + 1
-		return e
-	}
-	return e
-}
-
 // StoreEvent implements the StoreEvent method of the Aggregate interface.
-func (a *AggregateBase) StoreEvent(event Event) {
-	a.uncommittedEvents = append(a.uncommittedEvents, event)
+func (a *AggregateBase) StoreEvent(eventType EventType, data EventData) Event {
+	version := a.Version() + len(a.uncommittedEvents) + 1
+	e := NewEventForAggregate(eventType, data,
+		a.AggregateType(), a.AggregateID(), version)
+
+	a.uncommittedEvents = append(a.uncommittedEvents, e)
+
+	return e
 }
 
 // UncommittedEvents implements the UncommittedEvents method of the Aggregate interface.

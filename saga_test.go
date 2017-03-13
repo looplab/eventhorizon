@@ -31,7 +31,7 @@ func TestSagaHandler(t *testing.T) {
 
 	id := NewUUID()
 	agg := NewTestAggregate(id)
-	event := agg.NewEvent(TestEventType, &TestEventData{"event1"})
+	event := agg.StoreEvent(TestEventType, &TestEventData{"event1"})
 	saga.commands = []Command{&TestCommand{NewUUID(), "content"}}
 	sagaHandler.HandleEvent(ctx, event)
 	if saga.event != event {
