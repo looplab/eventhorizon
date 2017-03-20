@@ -362,7 +362,7 @@ type EventBus struct {
 	Context context.Context
 }
 
-// HandlerType implements the HandlerType method of the EventHandler interface.
+// HandlerType implements the HandlerType method of the eventhorizon.EventBus interface.
 func (m *EventBus) HandlerType() eh.EventHandlerType {
 	return eh.EventHandlerType("MockEventBus")
 }
@@ -374,7 +374,7 @@ func (m *EventBus) HandleEvent(ctx context.Context, event eh.Event) {
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (m *EventBus) AddHandler(handler eh.EventHandler, event eh.Event) {}
+func (m *EventBus) AddHandler(handler eh.EventHandler, event eh.EventType) {}
 
 // SetPublisher implements the SetPublisher method of the
 // eventhorizon.EventBus interface.
