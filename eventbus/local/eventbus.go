@@ -42,31 +42,55 @@ func NewEventBus() *EventBus {
 	return b
 }
 
-// HandlerType implements the HandlerType method of the EventHandler interface.
+// HandlerType implements the HandlerType method of the eventhorizon.EventBus interface.
 func (b *EventBus) HandlerType() eh.EventHandlerType {
 	return eh.EventHandlerType("LocalEventBus")
 }
 
-// HandleEvent publishes an event to all handlers capable of handling it.
-// TODO: Put the event in a buffered channel consumed by another goroutine
-// to simulate a distributed bus.
-func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) {
+// HandleEvent implements the HandleEvent method of the eventhorizon.EventBus interface.
+func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	b.handlerMu.RLock()
 	defer b.handlerMu.RUnlock()
 
 	// Handle the event if there is a handler registered.
 	if handlers, ok := b.handlers[event.EventType()]; ok {
-		for h := range handlers {
-			if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-				go h.HandleEvent(ctx, event)
-			} else {
-				h.HandleEvent(ctx, event)
+		if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
+			wg := sync.WaitGroup{}
+			errc := make(chan error)
+			for h := range handlers {
+				wg.Add(1)
+				go func(h eh.EventHandler) {
+					defer wg.Done()
+					if err := h.HandleEvent(ctx, event); err != nil {
+						// Try to report the error. Only the first error is
+						// taken care of.
+						select {
+						case errc <- err:
+						default:
+						}
+					}
+				}(h)
+			}
+
+			// Wait for handling to finish, but only care about the first error.
+			go func() {
+				wg.Wait()
+				close(errc)
+			}()
+			if err := <-errc; err != nil {
+				return err
+			}
+		} else {
+			for h := range handlers {
+				if err := h.HandleEvent(ctx, event); err != nil {
+					return err
+				}
 			}
 		}
 	}
 
 	// Publish the event.
-	b.publisher.PublishEvent(ctx, event)
+	return b.publisher.PublishEvent(ctx, event)
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.

@@ -37,7 +37,9 @@ func EventPublisherCommonTests(t *testing.T, publisher1, publisher2 eh.EventPubl
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
 	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{"event1"},
 		mocks.AggregateType, id, 1)
-	publisher1.PublishEvent(ctx, event1)
+	if err := publisher1.PublishEvent(ctx, event1); err != nil {
+		t.Error("there should be no error:", err)
+	}
 	expectedEvents := []eh.Event{event1}
 	observer1.WaitForEvent(t)
 	for i, event := range observer1.Events {
@@ -61,7 +63,9 @@ func EventPublisherCommonTests(t *testing.T, publisher1, publisher2 eh.EventPubl
 	t.Log("publish another event")
 	event2 := eh.NewEventForAggregate(mocks.EventOtherType, nil,
 		mocks.AggregateType, id, 2)
-	publisher1.PublishEvent(ctx, event2)
+	if err := publisher1.PublishEvent(ctx, event2); err != nil {
+		t.Error("there should be no error:", err)
+	}
 	expectedEvents = []eh.Event{event1, event2}
 	observer1.WaitForEvent(t)
 	for i, event := range observer1.Events {

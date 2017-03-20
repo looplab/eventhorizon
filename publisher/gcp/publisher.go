@@ -19,14 +19,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"google.golang.org/api/iterator"
+	contextorg "golang.org/x/net/context"
 	"gopkg.in/mgo.v2/bson"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/publisher/local"
 )
 
 // ErrCouldNotMarshalEvent is when an event could not be marshaled into BSON.
@@ -38,12 +38,7 @@ var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
 // EventPublisher is an event bus that notifies registered EventHandlers of
 // published events. It will use the SimpleEventHandlingStrategy by default.
 type EventPublisher struct {
-	observers   map[eh.EventObserver]bool
-	observersMu sync.RWMutex
-
-	// handlingStrategy is the strategy to use when publishing events, for example
-	// to handle the asynchronously.
-	handlingStrategy eh.EventHandlingStrategy
+	*local.EventPublisher
 
 	client *pubsub.Client
 	topic  *pubsub.Topic
@@ -71,11 +66,11 @@ func NewEventPublisher(projectID, appID string) (*EventPublisher, error) {
 	}
 
 	b := &EventPublisher{
-		observers: map[eh.EventObserver]bool{},
-		client:    client,
-		topic:     topic,
-		ready:     make(chan bool, 1), // Buffered to not block receive loop.
-		exit:      make(chan bool),
+		EventPublisher: local.NewEventPublisher(),
+		client:         client,
+		topic:          topic,
+		ready:          make(chan bool, 1), // Buffered to not block receive loop.
+		exit:           make(chan bool),
 	}
 
 	go b.recv()
@@ -130,19 +125,6 @@ func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error
 	return nil
 }
 
-// AddObserver implements the AddObserver method of the eventhorizon.EventPublisher interface.
-func (b *EventPublisher) AddObserver(observer eh.EventObserver) {
-	b.observersMu.Lock()
-	defer b.observersMu.Unlock()
-	b.observers[observer] = true
-}
-
-// SetHandlingStrategy implements the SetHandlingStrategy method of the
-// eventhorizon.EventPublisher interface.
-func (b *EventPublisher) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
-	b.handlingStrategy = strategy
-}
-
 // Close exits the receive goroutine by unsubscribing to all channels.
 func (b *EventPublisher) Close() error {
 	select {
@@ -183,31 +165,20 @@ func (b *EventPublisher) recv() {
 	default:
 	}
 
-	it, err := sub.Pull(ctx)
-	if err != nil {
-		// TODO: Handle error.
-		log.Println("could not pull messages:", err)
-	}
-	defer it.Stop()
-
-	for {
-		msg, err := it.Next()
-		if err == iterator.Done {
-			break
+	err = sub.Receive(ctx, func(ctx contextorg.Context, m *pubsub.Message) {
+		if err := b.handleMessage(m); err != nil {
+			log.Println("error: event bus publishing:", err)
 		}
-		if err != nil {
-			// TODO: Handle error.
-			log.Println("could not get next message:", err)
-			break
-		}
-
-		b.handleMessage(msg)
+		m.Ack()
+	})
+	if err != contextorg.Canceled {
+		log.Println("could not get next message:", err)
 	}
 }
 
-func (b *EventPublisher) handleMessage(msg *pubsub.Message) {
-	// TODO: Only ack true when event is handled correctly.
-	defer msg.Done(true)
+func (b *EventPublisher) handleMessage(msg *pubsub.Message) error {
+	// // TODO: Only ack true when event is handled correctly.
+	// defer msg.Done(true)
 
 	// Manually decode the raw BSON event.
 	data := bson.Raw{
@@ -216,16 +187,16 @@ func (b *EventPublisher) handleMessage(msg *pubsub.Message) {
 	}
 	var gcpEvent gcpEvent
 	if err := data.Unmarshal(&gcpEvent); err != nil {
-		log.Println("error: event bus receive:", ErrCouldNotUnmarshalEvent)
-		return
+		// TODO: Forward the real error.
+		return ErrCouldNotUnmarshalEvent
 	}
 
 	// Create an event of the correct type.
 	if data, err := eh.CreateEventData(gcpEvent.EventType); err == nil {
 		// Manually decode the raw BSON event.
 		if err := gcpEvent.RawData.Unmarshal(data); err != nil {
-			log.Println("error: event bus receive:", ErrCouldNotUnmarshalEvent)
-			return
+			// TODO: Forward the real error.
+			return ErrCouldNotUnmarshalEvent
 		}
 
 		// Set concrete event and zero out the decoded event.
@@ -236,17 +207,8 @@ func (b *EventPublisher) handleMessage(msg *pubsub.Message) {
 	event := event{gcpEvent: gcpEvent}
 	ctx := eh.UnmarshalContext(gcpEvent.Context)
 
-	b.observersMu.RLock()
-	defer b.observersMu.RUnlock()
-
 	// Notify all observers about the event.
-	for o := range b.observers {
-		if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-			go o.Notify(ctx, event)
-		} else {
-			o.Notify(ctx, event)
-		}
-	}
+	return b.EventPublisher.PublishEvent(ctx, event)
 }
 
 // gcpEvent is the internal event used with the gcp event bus.

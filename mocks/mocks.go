@@ -163,6 +163,8 @@ type EventHandler struct {
 	Events  []eh.Event
 	Context context.Context
 	Recv    chan eh.Event
+	// Used to simulate errors when publishing.
+	Err error
 }
 
 // NewEventHandler creates a new EventHandler.
@@ -181,10 +183,14 @@ func (m *EventHandler) HandlerType() eh.EventHandlerType {
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
-func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) {
+func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
+	if m.Err != nil {
+		return m.Err
+	}
 	m.Events = append(m.Events, event)
 	m.Context = ctx
 	m.Recv <- event
+	return nil
 }
 
 // WaitForEvent is a helper to wait until an event has been handled, it timeouts
@@ -254,6 +260,8 @@ type EventObserver struct {
 	Events  []eh.Event
 	Context context.Context
 	Recv    chan eh.Event
+	// Used to simulate errors in HandleCommand.
+	Err error
 }
 
 // NewEventObserver creates a new EventObserver.
@@ -266,10 +274,14 @@ func NewEventObserver() *EventObserver {
 }
 
 // Notify implements the Notify method of the eventhorizon.EventHandler interface.
-func (m *EventObserver) Notify(ctx context.Context, event eh.Event) {
+func (m *EventObserver) Notify(ctx context.Context, event eh.Event) error {
+	if m.Err != nil {
+		return m.Err
+	}
 	m.Events = append(m.Events, event)
 	m.Context = ctx
 	m.Recv <- event
+	return nil
 }
 
 // WaitForEvent is a helper to wait until an event has been notified, it timeouts
@@ -360,6 +372,8 @@ func (m *CommandBus) SetHandler(handler eh.CommandHandler, commandType eh.Comman
 type EventBus struct {
 	Events  []eh.Event
 	Context context.Context
+	// Used to simulate errors in HandleCommand.
+	Err error
 }
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventBus interface.
@@ -368,9 +382,13 @@ func (m *EventBus) HandlerType() eh.EventHandlerType {
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventBus interface.
-func (m *EventBus) HandleEvent(ctx context.Context, event eh.Event) {
+func (m *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
+	if m.Err != nil {
+		return m.Err
+	}
 	m.Events = append(m.Events, event)
 	m.Context = ctx
+	return nil
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.

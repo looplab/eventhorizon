@@ -16,7 +16,7 @@ package eventhorizon
 
 import (
 	"context"
-	"log"
+	"errors"
 )
 
 // Saga is an interface for a CQRS saga that listens to events and generate
@@ -48,17 +48,18 @@ func NewSagaHandler(saga Saga, commandBus CommandBus) *SagaHandler {
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (s *SagaHandler) HandleEvent(ctx context.Context, event Event) {
+func (s *SagaHandler) HandleEvent(ctx context.Context, event Event) error {
 	// Run the saga and collect commands.
 	commands := s.saga.RunSaga(ctx, event)
 
 	// Dispatch commands back on the command bus.
 	for _, command := range commands {
 		if err := s.commandBus.HandleCommand(ctx, command); err != nil {
-			// TODO: Better error handling.
-			log.Println("could not handle command in saga:", err)
+			return errors.New("coud not handle command in saga: " + err.Error())
 		}
 	}
+
+	return nil
 }
 
 // HandlerType implements the HandlerType method of the EventHandler

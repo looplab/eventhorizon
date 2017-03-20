@@ -20,7 +20,7 @@ import "context"
 // Only one handler of the same type will receive an event.
 type EventHandler interface {
 	// HandleEvent handles an event.
-	HandleEvent(context.Context, Event)
+	HandleEvent(context.Context, Event) error
 
 	// HandlerType returns the type of the handler.
 	HandlerType() EventHandlerType
@@ -62,7 +62,7 @@ type EventPublisher interface {
 // All observers will receive an event.
 type EventObserver interface {
 	// Notify is notifed about an event.
-	Notify(context.Context, Event)
+	Notify(context.Context, Event) error
 }
 
 // EventHandlingStrategy is the strategy to use when handling events.

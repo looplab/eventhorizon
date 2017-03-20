@@ -16,6 +16,7 @@ package local
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
@@ -53,7 +54,9 @@ func EventBusCommonTests(t *testing.T, bus eh.EventBus) {
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
 	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{"event1"},
 		mocks.AggregateType, id, 1)
-	bus.HandleEvent(ctx, event1)
+	if err := bus.HandleEvent(ctx, event1); err != nil {
+		t.Error("there should be no error:", err)
+	}
 	expectedEvents := []eh.Event{event1}
 	publisher.WaitForEvent(t)
 	for i, event := range publisher.Events {
@@ -68,7 +71,9 @@ func EventBusCommonTests(t *testing.T, bus eh.EventBus) {
 	t.Log("publish event")
 	handler := mocks.NewEventHandler("testHandler")
 	bus.AddHandler(handler, mocks.EventType)
-	bus.HandleEvent(ctx, event1)
+	if err := bus.HandleEvent(ctx, event1); err != nil {
+		t.Error("there should be no error:", err)
+	}
 	handler.WaitForEvent(t)
 	expectedEvents = []eh.Event{event1}
 	for i, event := range handler.Events {
@@ -96,7 +101,9 @@ func EventBusCommonTests(t *testing.T, bus eh.EventBus) {
 	bus.AddHandler(handler, mocks.EventOtherType)
 	event2 := eh.NewEventForAggregate(mocks.EventOtherType, nil,
 		mocks.AggregateType, id, 1)
-	bus.HandleEvent(ctx, event2)
+	if err := bus.HandleEvent(ctx, event2); err != nil {
+		t.Error("there should be no error:", err)
+	}
 	handler.WaitForEvent(t)
 	expectedEvents = []eh.Event{event1, event2}
 	for i, event := range handler.Events {
@@ -118,5 +125,18 @@ func EventBusCommonTests(t *testing.T, bus eh.EventBus) {
 	}
 	if val, ok := mocks.ContextOne(publisher.Context); !ok || val != "testval" {
 		t.Error("the context should be correct:", publisher.Context)
+	}
+
+	t.Log("error in handler")
+	handler.Err = errors.New("handler error")
+	if err := bus.HandleEvent(ctx, event1); err != handler.Err {
+		t.Error("there should be an error:", err)
+	}
+
+	t.Log("error in publisher")
+	handler.Err = nil
+	publisher.Err = errors.New("publisher error")
+	if err := bus.HandleEvent(ctx, event1); err != publisher.Err {
+		t.Error("there should be an error:", err)
 	}
 }

@@ -40,19 +40,44 @@ func NewEventPublisher() *EventPublisher {
 	return b
 }
 
-// PublishEvent publishes an event to all handlers capable of handling it.
-// TODO: Put the event in a buffered channel consumed by another goroutine
-// to simulate a distributed bus.
+// PublishEvent implements the PublishEvent method of the eventhorizon.EventPublisher
+// interface.
 func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error {
 	b.observersMu.RLock()
 	defer b.observersMu.RUnlock()
 
 	// Notify all observers about the event.
-	for o := range b.observers {
-		if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-			go o.Notify(ctx, event)
-		} else {
-			o.Notify(ctx, event)
+	if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
+		wg := sync.WaitGroup{}
+		errc := make(chan error)
+		for o := range b.observers {
+			wg.Add(1)
+			go func(o eh.EventObserver) {
+				defer wg.Done()
+				if err := o.Notify(ctx, event); err != nil {
+					// Try to report the error. Only the first error is
+					// taken care of.
+					select {
+					case errc <- err:
+					default:
+					}
+				}
+			}(o)
+		}
+
+		// Wait for notifying to finish, but only care about the first error.
+		go func() {
+			wg.Wait()
+			close(errc)
+		}()
+		if err := <-errc; err != nil {
+			return err
+		}
+	} else {
+		for o := range b.observers {
+			if err := o.Notify(ctx, event); err != nil {
+				return err
+			}
 		}
 	}
 

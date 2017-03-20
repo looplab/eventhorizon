@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -28,6 +27,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/publisher/local"
 )
 
 // ErrCouldNotMarshalEvent is when an event could not be marshaled into BSON.
@@ -39,12 +39,7 @@ var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
 // EventPublisher is an event bus that notifies registered EventHandlers of
 // published events. It will use the SimpleEventHandlingStrategy by default.
 type EventPublisher struct {
-	observers   map[eh.EventObserver]bool
-	observersMu sync.RWMutex
-
-	// handlingStrategy is the strategy to use when publishing events, for example
-	// to handle the asynchronously.
-	handlingStrategy eh.EventHandlingStrategy
+	*local.EventPublisher
 
 	prefix string
 	pool   *redis.Pool
@@ -83,11 +78,11 @@ func NewEventPublisher(appID, server, password string) (*EventPublisher, error) 
 // NewEventPublisherWithPool creates a EventPublisher for remote events.
 func NewEventPublisherWithPool(appID string, pool *redis.Pool) (*EventPublisher, error) {
 	b := &EventPublisher{
-		observers: make(map[eh.EventObserver]bool),
-		prefix:    appID + ":events:",
-		pool:      pool,
-		ready:     make(chan bool, 1), // Buffered to not block receive loop.
-		exit:      make(chan bool),
+		EventPublisher: local.NewEventPublisher(),
+		prefix:         appID + ":events:",
+		pool:           pool,
+		ready:          make(chan bool, 1), // Buffered to not block receive loop.
+		exit:           make(chan bool),
 	}
 
 	go func() {
@@ -157,20 +152,6 @@ func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error
 	return nil
 }
 
-// AddObserver implements the AddObserver method of the eventhorizon.EventPublisher interface.
-func (b *EventPublisher) AddObserver(observer eh.EventObserver) {
-	b.observersMu.Lock()
-	defer b.observersMu.Unlock()
-
-	b.observers[observer] = true
-}
-
-// SetHandlingStrategy implements the SetHandlingStrategy method of the
-// eventhorizon.EventPublisher interface.
-func (b *EventPublisher) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
-	b.handlingStrategy = strategy
-}
-
 // Close exits the receive goroutine by unsubscribing to all channels.
 func (b *EventPublisher) Close() error {
 	select {
@@ -203,55 +184,15 @@ func (b *EventPublisher) recv(delay *backoff.Backoff) error {
 	}
 
 	for {
-		switch v := pubSubConn.Receive().(type) {
+		switch m := pubSubConn.Receive().(type) {
 		case redis.PMessage:
-			// Manually decode the raw BSON event.
-			data := bson.Raw{
-				Kind: 3,
-				Data: v.Data,
+			if err := b.handleMessage(m); err != nil {
+				log.Println("error: event bus publishing:", err)
 			}
-			var redisEvent redisEvent
-			if err := data.Unmarshal(&redisEvent); err != nil {
-				log.Println("error: event bus receive:", ErrCouldNotUnmarshalEvent)
-				continue
-			}
-
-			// Extract the event type from the channel name.
-			eventType := eh.EventType(strings.TrimPrefix(v.Channel, b.prefix))
-			if redisEvent.EventType != eventType {
-				log.Println("error: event bus receive: event type mismatch")
-				continue
-			}
-
-			// Create an event of the correct type.
-			if data, err := eh.CreateEventData(redisEvent.EventType); err == nil {
-				// Manually decode the raw BSON event.
-				if err := redisEvent.RawData.Unmarshal(data); err != nil {
-					log.Println("error: event bus receive:", ErrCouldNotUnmarshalEvent)
-					continue
-				}
-
-				// Set concrete event and zero out the decoded event.
-				redisEvent.data = data
-				redisEvent.RawData = bson.Raw{}
-			}
-
-			event := event{redisEvent: redisEvent}
-			ctx := eh.UnmarshalContext(redisEvent.Context)
-
-			b.observersMu.RLock()
-			for o := range b.observers {
-				if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-					go o.Notify(ctx, event)
-				} else {
-					o.Notify(ctx, event)
-				}
-			}
-			b.observersMu.RUnlock()
 
 		case redis.Subscription:
-			if v.Kind == "psubscribe" {
-				log.Println("eventbus: subscribed to:", v.Channel)
+			if m.Kind == "psubscribe" {
+				log.Println("eventbus: subscribed to:", m.Channel)
 				delay.Reset()
 
 				// Don't block if no one is receiving and buffer is full.
@@ -262,14 +203,52 @@ func (b *EventPublisher) recv(delay *backoff.Backoff) error {
 			}
 		case error:
 			// Don' treat connections closed by the user as errors.
-			if v.Error() == "redigo: get on closed pool" ||
-				v.Error() == "redigo: connection closed" {
+			if m.Error() == "redigo: get on closed pool" ||
+				m.Error() == "redigo: connection closed" {
 				return nil
 			}
 
-			return v
+			return m
 		}
 	}
+}
+
+func (b *EventPublisher) handleMessage(msg redis.PMessage) error {
+	// Manually decode the raw BSON event.
+	data := bson.Raw{
+		Kind: 3,
+		Data: msg.Data,
+	}
+	var redisEvent redisEvent
+	if err := data.Unmarshal(&redisEvent); err != nil {
+		// TODO: Forward the real error.
+		return ErrCouldNotUnmarshalEvent
+	}
+
+	// Extract the event type from the channel name.
+	eventType := eh.EventType(strings.TrimPrefix(msg.Channel, b.prefix))
+	if redisEvent.EventType != eventType {
+		return errors.New("event type mismatch")
+	}
+
+	// Create an event of the correct type.
+	if data, err := eh.CreateEventData(redisEvent.EventType); err == nil {
+		// Manually decode the raw BSON event.
+		if err := redisEvent.RawData.Unmarshal(data); err != nil {
+			// TODO: Forward the real error.
+			return ErrCouldNotUnmarshalEvent
+		}
+
+		// Set concrete event and zero out the decoded event.
+		redisEvent.data = data
+		redisEvent.RawData = bson.Raw{}
+	}
+
+	event := event{redisEvent: redisEvent}
+	ctx := eh.UnmarshalContext(redisEvent.Context)
+
+	// Notify all observers about the event.
+	return b.EventPublisher.PublishEvent(ctx, event)
 }
 
 // redisEvent is the internal event used with the Redis event bus.
