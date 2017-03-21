@@ -50,7 +50,7 @@ func TestReadRepository(t *testing.T) {
 		return &mocks.Model{}
 	})
 
-	ctx := eh.WithNamespace(context.Background(), "ns")
+	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
 
 	defer func() {
 		t.Log("clearing db")

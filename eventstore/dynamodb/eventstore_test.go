@@ -36,7 +36,7 @@ func DoTestEventStore(t *testing.T, url string) {
 		t.Fatal("there should be a store")
 	}
 
-	ctx := eh.WithNamespace(context.Background(), "ns")
+	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
 
 	t.Log("creating tables for:", config.TablePrefix)
 	if err := store.CreateTable(context.Background()); err != nil {

@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/readrepository/version"
 )
 
 func TestMocks(t *testing.T) {
@@ -45,7 +44,7 @@ func TestMocks(t *testing.T) {
 
 	var model interface{}
 	model = &Model{}
-	if _, ok := model.(version.Versionable); !ok {
+	if _, ok := model.(eh.Versionable); !ok {
 		t.Error("the model should be versionable")
 	}
 

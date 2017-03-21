@@ -36,6 +36,6 @@ func TestProjectorDriver(t *testing.T) {
 	testutil.ProjectorDriverCommonTests(t, context.Background(), driver)
 
 	t.Log("driver with other namespace")
-	ctx := eh.WithNamespace(context.Background(), "ns")
+	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
 	testutil.ProjectorDriverCommonTests(t, ctx, driver)
 }

@@ -37,7 +37,7 @@ func TestReadRepository(t *testing.T) {
 	readRepositoryCommonTests(t, context.Background(), repo, baseRepo)
 
 	t.Log("read repository with other namespace")
-	ctx := eh.WithNamespace(context.Background(), "ns")
+	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
 	readRepositoryCommonTests(t, ctx, repo, baseRepo)
 
 	if parent := repo.Parent(); parent != baseRepo {
@@ -124,9 +124,9 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 	baseRepo.Items = []interface{}{}
 
 	t.Log("Find with min version without version")
-	ctx = WithMinVersion(context.Background(), 1)
+	ctx = eh.NewContextWithMinVersion(context.Background(), 1)
 	_, err = repo.Find(ctx, simpleModel.ID)
-	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != ErrModelHasNoVersion {
+	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != eh.ErrModelHasNoVersion {
 		t.Error("there should be a model has no version error:", err)
 	}
 
@@ -140,15 +140,15 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 	baseRepo.Item = modelMinVersion
 
 	t.Log("Find with min version, too low")
-	ctx = WithMinVersion(context.Background(), 2)
+	ctx = eh.NewContextWithMinVersion(context.Background(), 2)
 	model, err = repo.Find(ctx, modelMinVersion.ID)
-	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != ErrIncorrectModelVersion {
+	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != eh.ErrIncorrectModelVersion {
 		t.Error("there should be a incorrect model version error:", err)
 	}
 
 	t.Log("Find with min version, exactly")
 	modelMinVersion.Version = 2
-	ctx = WithMinVersion(context.Background(), 2)
+	ctx = eh.NewContextWithMinVersion(context.Background(), 2)
 	model, err = repo.Find(ctx, modelMinVersion.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -159,7 +159,7 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 
 	t.Log("Find with min version, higher")
 	modelMinVersion.Version = 3
-	ctx = WithMinVersion(context.Background(), 2)
+	ctx = eh.NewContextWithMinVersion(context.Background(), 2)
 	model, err = repo.Find(ctx, modelMinVersion.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -170,7 +170,7 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 
 	t.Log("Find with min version, with timeout, data available immediately")
 	modelMinVersion.Version = 4
-	ctx = WithMinVersion(context.Background(), 4)
+	ctx = eh.NewContextWithMinVersion(context.Background(), 4)
 	ctx, _ = context.WithTimeout(ctx, time.Second)
 	model, err = repo.Find(ctx, modelMinVersion.ID)
 	if err != nil {
@@ -185,7 +185,7 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 		<-time.After(100 * time.Millisecond)
 		modelMinVersion.Version = 5
 	}()
-	ctx = WithMinVersion(context.Background(), 5)
+	ctx = eh.NewContextWithMinVersion(context.Background(), 5)
 	ctx, _ = context.WithTimeout(ctx, time.Second)
 	model, err = repo.Find(ctx, modelMinVersion.ID)
 	if err != nil {
@@ -207,7 +207,7 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 		<-time.After(100 * time.Millisecond)
 		baseRepo.Item = modelMinVersion
 	}()
-	ctx = WithMinVersion(context.Background(), 1)
+	ctx = eh.NewContextWithMinVersion(context.Background(), 1)
 	ctx, _ = context.WithTimeout(ctx, time.Second)
 	model, err = repo.Find(ctx, modelMinVersion.ID)
 	if err != nil {
@@ -222,24 +222,11 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 		<-time.After(100 * time.Millisecond)
 		modelMinVersion.Version = 6
 	}()
-	ctx = WithMinVersion(context.Background(), 6)
+	ctx = eh.NewContextWithMinVersion(context.Background(), 6)
 	ctx, _ = context.WithTimeout(ctx, 10*time.Millisecond)
 	model, err = repo.Find(ctx, modelMinVersion.ID)
 	if err != context.DeadlineExceeded {
 		t.Error("there should be a deadline exceeded error:", err)
-	}
-}
-
-func TestContextMinVersion(t *testing.T) {
-	ctx := context.Background()
-
-	if v, ok := MinVersion(ctx); ok {
-		t.Error("there should be no min version:", v)
-	}
-
-	ctx = WithMinVersion(ctx, 8)
-	if v, ok := MinVersion(ctx); !ok && v != 8 {
-		t.Error("the min version should be correct:", v)
 	}
 }
 

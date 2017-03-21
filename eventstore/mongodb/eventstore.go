@@ -85,7 +85,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	if len(events) == 0 {
 		return eh.EventStoreError{
 			Err:       eh.ErrNoEventsToAppend,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -102,7 +102,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if event.AggregateID() != aggregateID {
 			return eh.EventStoreError{
 				Err:       eh.ErrInvalidEvent,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 
@@ -110,7 +110,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if event.Version() != version+1 {
 			return eh.EventStoreError{
 				Err:       eh.ErrIncorrectEventVersion,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 
@@ -129,7 +129,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			if err != nil {
 				return eh.EventStoreError{
 					Err:       ErrCouldNotMarshalEvent,
-					Namespace: eh.Namespace(ctx),
+					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
 			dbEvents[i].RawData = bson.Raw{Kind: 3, Data: rawData}
@@ -149,7 +149,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if err := sess.DB(s.dbName(ctx)).C("events").Insert(aggregate); err != nil {
 			return eh.EventStoreError{
 				Err:       ErrCouldNotSaveAggregate,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 	} else {
@@ -168,7 +168,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		); err != nil {
 			return eh.EventStoreError{
 				Err:       ErrCouldNotSaveAggregate,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 	}
@@ -189,7 +189,7 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 	} else if err != nil {
 		return nil, eh.EventStoreError{
 			Err:       err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -201,7 +201,7 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 			if err := dbEvent.RawData.Unmarshal(data); err != nil {
 				return nil, eh.EventStoreError{
 					Err:       ErrCouldNotUnmarshalEvent,
-					Namespace: eh.Namespace(ctx),
+					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
 
@@ -221,7 +221,7 @@ func (s *EventStore) Clear(ctx context.Context) error {
 	if err := s.session.DB(s.dbName(ctx)).C("events").DropCollection(); err != nil {
 		return eh.EventStoreError{
 			Err:       ErrCouldNotClearDB,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 	return nil
@@ -235,7 +235,7 @@ func (s *EventStore) Close() {
 // dbName appends the namespace, if one is set, to the DB prefix to
 // get the name of the DB to use.
 func (s *EventStore) dbName(ctx context.Context) string {
-	ns := eh.Namespace(ctx)
+	ns := eh.NamespaceFromContext(ctx)
 	return s.dbPrefix + "_" + ns
 }
 

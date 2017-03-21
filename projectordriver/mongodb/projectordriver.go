@@ -82,7 +82,7 @@ func (r *ProjectorDriver) Model(ctx context.Context, id eh.UUID) (interface{}, e
 	if r.factory == nil {
 		return nil, eh.ProjectorError{
 			Err:       ErrModelNotSet,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 	model := r.factory()
@@ -92,7 +92,7 @@ func (r *ProjectorDriver) Model(ctx context.Context, id eh.UUID) (interface{}, e
 		return nil, eh.ProjectorError{
 			Err:       eh.ErrModelNotFound,
 			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -112,7 +112,7 @@ func (r *ProjectorDriver) SetModel(ctx context.Context, id eh.UUID, model interf
 		return eh.ProjectorError{
 			Err:       eh.ErrCouldNotSetModel,
 			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 	return nil
@@ -127,7 +127,7 @@ func (r *ProjectorDriver) remove(ctx context.Context, id eh.UUID) error {
 		return eh.ProjectorError{
 			Err:       eh.ErrModelNotFound,
 			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -145,7 +145,7 @@ func (r *ProjectorDriver) Clear(ctx context.Context) error {
 		return eh.ProjectorError{
 			Err:       ErrCouldNotClearDB,
 			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 	return nil
@@ -159,6 +159,6 @@ func (r *ProjectorDriver) Close() {
 // dbName appends the namespace, if one is set, to the DB prefix to
 // get the name of the DB to use.
 func (r *ProjectorDriver) dbName(ctx context.Context) string {
-	ns := eh.Namespace(ctx)
+	ns := eh.NamespaceFromContext(ctx)
 	return r.dbPrefix + "_" + ns
 }

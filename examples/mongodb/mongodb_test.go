@@ -94,7 +94,7 @@ func Example() {
 	)
 
 	// Set the namespace to use.
-	ctx := eh.WithNamespace(context.Background(), "mongodb")
+	ctx := eh.NewContextWithNamespace(context.Background(), "mongodb")
 
 	// Clear DB collections.
 	eventStore.Clear(ctx)

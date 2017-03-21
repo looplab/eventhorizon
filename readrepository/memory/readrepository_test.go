@@ -36,7 +36,7 @@ func TestReadRepository(t *testing.T) {
 	readRepositoryCommonTests(t, context.Background(), repo)
 
 	t.Log("read repository with other namespace")
-	ctx := eh.WithNamespace(context.Background(), "ns")
+	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
 	readRepositoryCommonTests(t, ctx, repo)
 
 	if repo.Parent() != nil {
@@ -60,7 +60,7 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 		Content:   "model1",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	ns := eh.Namespace(ctx)
+	ns := eh.NamespaceFromContext(ctx)
 	if _, ok := repo.db[ns][model1.ID]; !ok {
 		repo.ids[ns] = append(repo.ids[ns], model1.ID)
 	}

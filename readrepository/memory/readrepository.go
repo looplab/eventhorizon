@@ -57,7 +57,7 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 	if !ok {
 		return nil, eh.ReadRepositoryError{
 			Err:       eh.ErrModelNotFound,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -122,7 +122,7 @@ func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
 
 	return eh.ReadRepositoryError{
 		Err:       eh.ErrModelNotFound,
-		Namespace: eh.Namespace(ctx),
+		Namespace: eh.NamespaceFromContext(ctx),
 	}
 }
 
@@ -130,7 +130,7 @@ func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
 func (r *ReadRepository) namespace(ctx context.Context) string {
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
-	ns := eh.Namespace(ctx)
+	ns := eh.NamespaceFromContext(ctx)
 	if _, ok := r.db[ns]; !ok {
 		r.db[ns] = map[eh.UUID]interface{}{}
 		r.ids[ns] = []eh.UUID{}

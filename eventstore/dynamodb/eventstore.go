@@ -90,7 +90,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	if len(events) == 0 {
 		return eh.EventStoreError{
 			Err:       eh.ErrNoEventsToAppend,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -104,7 +104,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if event.AggregateID() != aggregateID {
 			return eh.EventStoreError{
 				Err:       eh.ErrInvalidEvent,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 
@@ -112,7 +112,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if event.Version() != version+1 {
 			return eh.EventStoreError{
 				Err:       eh.ErrIncorrectEventVersion,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 
@@ -131,7 +131,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			if err != nil {
 				return eh.EventStoreError{
 					Err:       ErrCouldNotMarshalEvent,
-					Namespace: eh.Namespace(ctx),
+					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
 			dbEvents[i].RawData = rawData
@@ -150,7 +150,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			// empty list.
 			return eh.EventStoreError{
 				Err:       err,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 		putParams := &dynamodb.PutItemInput{
@@ -162,12 +162,12 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			if err, ok := err.(awserr.RequestFailure); ok && err.Code() == "ConditionalCheckFailedException" {
 				return eh.EventStoreError{
 					Err:       ErrCouldNotSaveAggregate,
-					Namespace: eh.Namespace(ctx),
+					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
 			return eh.EventStoreError{
 				Err:       err,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 	}
@@ -190,7 +190,7 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 	if err != nil {
 		return nil, eh.EventStoreError{
 			Err:       err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -204,7 +204,7 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 		if err := dynamodbattribute.UnmarshalMap(item, &dbEvent); err != nil {
 			return nil, eh.EventStoreError{
 				Err:       err,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 		dbEvents[i] = dbEvent
@@ -217,7 +217,7 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 		if err != nil {
 			return nil, eh.EventStoreError{
 				Err:       err,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 		dbEvent.AggregateID = string(id)
@@ -227,7 +227,7 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 			if err := dynamodbattribute.UnmarshalMap(dbEvent.RawData, data); err != nil {
 				return nil, eh.EventStoreError{
 					Err:       ErrCouldNotUnmarshalEvent,
-					Namespace: eh.Namespace(ctx),
+					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
 
@@ -329,7 +329,7 @@ func (s *EventStore) DeleteTable(ctx context.Context) error {
 // tableName appends the namespace, if one is set, to the table prefix to
 // get the name of the table to use.
 func (s *EventStore) tableName(ctx context.Context) string {
-	ns := eh.Namespace(ctx)
+	ns := eh.NamespaceFromContext(ctx)
 	return s.config.TablePrefix + "_" + ns
 }
 

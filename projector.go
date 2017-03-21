@@ -44,6 +44,19 @@ var ErrCouldNotSetModel = errors.New("could not set model")
 // ErrModelNotSet is when an model is not set on a read repository.
 var ErrModelNotSet = errors.New("model not set")
 
+// ErrModelHasNoVersion is when a model has no version number.
+var ErrModelHasNoVersion = errors.New("model has no version")
+
+// ErrIncorrectModelVersion is when a model has an incorrect version.
+var ErrIncorrectModelVersion = errors.New("incorrect model version")
+
+// Versionable is a read model that has a version number saved, used by
+// version.ReadRepository.FindMinVersion().
+type Versionable interface {
+	// AggregateVersion returns the aggregate version that a read model represents.
+	AggregateVersion() int
+}
+
 // Projector is a projector of events onto models.
 type Projector interface {
 	// Project projects an event onto a model and returns the updated model or
@@ -89,14 +102,14 @@ func (h *ProjectorHandler) HandleEvent(ctx context.Context, event Event) error {
 		if h.factory == nil {
 			return ProjectorError{
 				Err:       ErrModelNotSet,
-				Namespace: Namespace(ctx),
+				Namespace: NamespaceFromContext(ctx),
 			}
 		}
 		model = h.factory()
 	} else if err != nil {
 		return ProjectorError{
 			Err:       err,
-			Namespace: Namespace(ctx),
+			Namespace: NamespaceFromContext(ctx),
 		}
 	}
 
@@ -105,7 +118,7 @@ func (h *ProjectorHandler) HandleEvent(ctx context.Context, event Event) error {
 	if err != nil {
 		return ProjectorError{
 			Err:       err,
-			Namespace: Namespace(ctx),
+			Namespace: NamespaceFromContext(ctx),
 		}
 	}
 
@@ -113,7 +126,7 @@ func (h *ProjectorHandler) HandleEvent(ctx context.Context, event Event) error {
 	if err := h.driver.SetModel(ctx, event.AggregateID(), newModel); err != nil {
 		return ProjectorError{
 			Err:       err,
-			Namespace: Namespace(ctx),
+			Namespace: NamespaceFromContext(ctx),
 		}
 	}
 

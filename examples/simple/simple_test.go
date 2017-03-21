@@ -65,7 +65,7 @@ func Example() {
 	)
 
 	// Set the namespace to use.
-	ctx := eh.WithNamespace(context.Background(), "simple")
+	ctx := eh.NewContextWithNamespace(context.Background(), "simple")
 
 	// --- Execute commands on the domain --------------------------------------
 

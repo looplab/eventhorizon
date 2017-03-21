@@ -19,6 +19,82 @@ import (
 	"sync"
 )
 
+// DefaultNamespace is the namespace to use if not set in the context.
+const DefaultNamespace = "default"
+
+func init() {
+	// Register the namespace context.
+	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+		if ns, ok := ctx.Value(namespaceKey).(string); ok {
+			vals[namespaceKeyStr] = ns
+		}
+	})
+	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+		if ns, ok := vals[namespaceKeyStr].(string); ok {
+			return NewContextWithNamespace(ctx, ns)
+		}
+		return ctx
+	})
+
+	// Register the version context.
+	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+		if v, ok := ctx.Value(minVersionKey).(int); ok {
+			vals[minVersionKeyStr] = v
+		}
+	})
+	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+		if v, ok := vals[minVersionKeyStr].(int); ok {
+			return NewContextWithMinVersion(ctx, v)
+		}
+		// Support JSON-like marshaling of ints as floats.
+		if v, ok := vals[minVersionKeyStr].(float64); ok {
+			return NewContextWithMinVersion(ctx, int(v))
+		}
+		return ctx
+	})
+}
+
+type contextKey int
+
+// Context keys for namespace and min version.
+const (
+	namespaceKey contextKey = iota
+	minVersionKey
+)
+
+// Strings used to marshal context values.
+const (
+	namespaceKeyStr  = "eh_namespace"
+	minVersionKeyStr = "eh_minversion"
+)
+
+// NamespaceFromContext returns the namespace from the context, or the default
+// namespace.
+func NamespaceFromContext(ctx context.Context) string {
+	if ns, ok := ctx.Value(namespaceKey).(string); ok {
+		return ns
+	}
+	return DefaultNamespace
+}
+
+// NewContextWithNamespace sets the namespace to use in the context. The
+// namespace is used to determine which database.
+func NewContextWithNamespace(ctx context.Context, namespace string) context.Context {
+	return context.WithValue(ctx, namespaceKey, namespace)
+}
+
+// MinVersionFromContext returns the min version from the context.
+func MinVersionFromContext(ctx context.Context) (int, bool) {
+	minVersion, ok := ctx.Value(minVersionKey).(int)
+	return minVersion, ok
+}
+
+// NewContextWithMinVersion returns the context with min value set.
+func NewContextWithMinVersion(ctx context.Context, minVersion int) context.Context {
+	return context.WithValue(ctx, minVersionKey, minVersion)
+}
+
+// Private context marshaling funcs.
 var (
 	contextMarshalFuncs   = []ContextMarshalFunc{}
 	contextMarshalFuncsMu = sync.RWMutex{}

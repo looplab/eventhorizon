@@ -141,7 +141,7 @@ func TestProjectorHandler_LoadError(t *testing.T) {
 	driver.loadErr = loadErr
 	expectedErr := ProjectorError{
 		Err:       loadErr,
-		Namespace: Namespace(ctx),
+		Namespace: NamespaceFromContext(ctx),
 	}
 	if err := projectorHandler.HandleEvent(ctx, event); !reflect.DeepEqual(err, expectedErr) {
 		t.Error("there shoud be an error:", err)
@@ -166,7 +166,7 @@ func TestProjectorHandler_SaveError(t *testing.T) {
 	driver.saveErr = saveErr
 	expectedErr := ProjectorError{
 		Err:       saveErr,
-		Namespace: Namespace(ctx),
+		Namespace: NamespaceFromContext(ctx),
 	}
 	if err := projectorHandler.HandleEvent(ctx, event); !reflect.DeepEqual(err, expectedErr) {
 		t.Error("there shoud be an error:", err)
@@ -191,7 +191,7 @@ func TestProjectorHandler_ProjectError(t *testing.T) {
 	projector.err = projectErr
 	expectedErr := ProjectorError{
 		Err:       projectErr,
-		Namespace: Namespace(ctx),
+		Namespace: NamespaceFromContext(ctx),
 	}
 	if err := projectorHandler.HandleEvent(ctx, event); !reflect.DeepEqual(err, expectedErr) {
 		t.Error("there shoud be an error:", err)

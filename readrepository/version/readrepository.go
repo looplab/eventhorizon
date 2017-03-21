@@ -16,18 +16,11 @@ package version
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/jpillora/backoff"
 	eh "github.com/looplab/eventhorizon"
 )
-
-// ErrModelHasNoVersion is when a model has no version number.
-var ErrModelHasNoVersion = errors.New("model has no version")
-
-// ErrIncorrectModelVersion is when a model has an incorrect version.
-var ErrIncorrectModelVersion = errors.New("incorrect model version")
 
 // ReadRepository is a middleware that adds version checking to a read repository.
 type ReadRepository struct {
@@ -53,7 +46,7 @@ func (r *ReadRepository) Parent() eh.ReadRepository {
 // either the version matches or the deadline is reached.
 func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	// If there is no min version set just return the item as normally.
-	minVersion, ok := MinVersion(ctx)
+	minVersion, ok := eh.MinVersionFromContext(ctx)
 	if !ok || minVersion < 1 {
 		return r.ReadRepository.Find(ctx, id)
 	}
@@ -67,7 +60,7 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 	} else if err != nil {
 		// If we have a deadline but the error is a real error return it here.
 		if rrErr, ok := err.(eh.ReadRepositoryError); ok &&
-			!(rrErr.Err == ErrIncorrectModelVersion || (rrErr.Err == eh.ErrModelNotFound && minVersion == 1)) {
+			!(rrErr.Err == eh.ErrIncorrectModelVersion || (rrErr.Err == eh.ErrModelNotFound && minVersion == 1)) {
 			return nil, err
 		}
 	}
@@ -82,7 +75,7 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 		case <-time.After(delay.Duration()):
 			model, err := r.findMinVersion(ctx, id, minVersion)
 			if rrErr, ok := err.(eh.ReadRepositoryError); ok &&
-				(rrErr.Err == ErrIncorrectModelVersion ||
+				(rrErr.Err == eh.ErrIncorrectModelVersion ||
 					(rrErr.Err == eh.ErrModelNotFound && minVersion == 1)) {
 				// Try another time for incorrect min versions and for the
 				// first creation of items.
@@ -104,47 +97,22 @@ func (r *ReadRepository) findMinVersion(ctx context.Context, id eh.UUID, minVers
 		return nil, err
 	}
 
-	versionable, ok := model.(Versionable)
+	versionable, ok := model.(eh.Versionable)
 	if !ok {
 		return nil, eh.ReadRepositoryError{
-			Err:       ErrModelHasNoVersion,
-			Namespace: eh.Namespace(ctx),
+			Err:       eh.ErrModelHasNoVersion,
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
 	if versionable.AggregateVersion() < minVersion {
 		return nil, eh.ReadRepositoryError{
-			Err:       ErrIncorrectModelVersion,
-			Namespace: eh.Namespace(ctx),
+			Err:       eh.ErrIncorrectModelVersion,
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
 	return model, nil
-}
-
-// Versionable is a read model that has a version number saved, used by
-// ReadRepository.FindMinVersion().
-type Versionable interface {
-	// AggregateVersion returns the aggregate version that a read model represents.
-	AggregateVersion() int
-}
-
-type contextKey int
-
-const (
-	// minVersionKey is the context key for the min version value.
-	minVersionKey contextKey = iota
-)
-
-// MinVersion returns the min version from the context.
-func MinVersion(ctx context.Context) (int, bool) {
-	minVersion, ok := ctx.Value(minVersionKey).(int)
-	return minVersion, ok
-}
-
-// WithMinVersion returns the context with min value set.
-func WithMinVersion(ctx context.Context, minVersion int) context.Context {
-	return context.WithValue(ctx, minVersionKey, minVersion)
 }
 
 // Repository returns a parent ReadRepository if there is one.

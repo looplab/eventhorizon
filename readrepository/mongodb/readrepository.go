@@ -88,7 +88,7 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 	if r.factory == nil {
 		return nil, eh.ReadRepositoryError{
 			Err:       ErrModelNotSet,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -98,7 +98,7 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 		return nil, eh.ReadRepositoryError{
 			Err:       eh.ErrModelNotFound,
 			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -117,7 +117,7 @@ func (r *ReadRepository) FindCustom(ctx context.Context, callback func(*mgo.Coll
 	if r.factory == nil {
 		return nil, eh.ReadRepositoryError{
 			Err:       ErrModelNotSet,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -126,7 +126,7 @@ func (r *ReadRepository) FindCustom(ctx context.Context, callback func(*mgo.Coll
 	if query == nil {
 		return nil, eh.ReadRepositoryError{
 			Err:       ErrInvalidQuery,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -140,7 +140,7 @@ func (r *ReadRepository) FindCustom(ctx context.Context, callback func(*mgo.Coll
 	if err := iter.Close(); err != nil {
 		return nil, eh.ReadRepositoryError{
 			Err:       err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -155,7 +155,7 @@ func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 	if r.factory == nil {
 		return nil, eh.ReadRepositoryError{
 			Err:       ErrModelNotSet,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -169,7 +169,7 @@ func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 	if err := iter.Close(); err != nil {
 		return nil, eh.ReadRepositoryError{
 			Err:       err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -187,7 +187,7 @@ func (r *ReadRepository) Clear(ctx context.Context) error {
 		return eh.ReadRepositoryError{
 			Err:       ErrCouldNotClearDB,
 			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 	return nil
@@ -201,7 +201,7 @@ func (r *ReadRepository) Close() {
 // dbName appends the namespace, if one is set, to the DB prefix to
 // get the name of the DB to use.
 func (r *ReadRepository) dbName(ctx context.Context) string {
-	ns := eh.Namespace(ctx)
+	ns := eh.NamespaceFromContext(ctx)
 	return r.dbPrefix + "_" + ns
 }
 
