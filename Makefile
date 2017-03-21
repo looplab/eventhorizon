@@ -14,7 +14,7 @@ test_cover: clean run_services
 	gover
 
 cover:
-	go tool cover -html=.coverprofile
+	go tool cover -html=gover.coverprofile
 
 run_services:
 	-docker run -d --name mongo -p 27017:27017 mongo:latest
