@@ -38,9 +38,6 @@ func (e ReadRepositoryError) Error() string {
 	return errStr + " (" + e.Namespace + ")"
 }
 
-// ErrCouldNotSaveModel is when a model could not be found.
-var ErrCouldNotSaveModel = errors.New("could not save model")
-
 // ErrModelNotFound is when a model could not be found.
 var ErrModelNotFound = errors.New("could not find model")
 
@@ -50,15 +47,9 @@ type ReadRepository interface {
 	// Useful for iterating a wrapped set of repositories to get a specific one.
 	Parent() ReadRepository
 
-	// Save saves a read model with id to the repository.
-	Save(context.Context, UUID, interface{}) error
-
 	// Find returns a read model with an id.
 	Find(context.Context, UUID) (interface{}, error)
 
 	// FindAll returns all read models in the repository.
 	FindAll(context.Context) ([]interface{}, error)
-
-	// Remove removes a read model with id from the repository.
-	Remove(context.Context, UUID) error
 }

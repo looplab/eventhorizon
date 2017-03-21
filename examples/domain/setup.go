@@ -26,7 +26,7 @@ func Setup(
 	eventBus eh.EventBus,
 	eventPublisher eh.EventPublisher,
 	commandBus eh.CommandBus,
-	invitationRepo, guestListRepo eh.ReadRepository,
+	invitationDriver, guestListDriver eh.ProjectorDriver,
 	eventID eh.UUID) {
 
 	// Add the logger as an observer.
@@ -60,8 +60,9 @@ func Setup(
 	commandBus.SetHandler(handler, DenyInviteCommand)
 
 	// Create and register a read model for individual invitations.
-	// invitationRepo := readrepository.NewReadRepository()
-	invitationProjector := NewInvitationProjector(invitationRepo)
+	invitationProjector := eh.NewProjectorHandler(
+		NewInvitationProjector(), invitationDriver)
+	invitationProjector.SetModelFactory(func() interface{} { return &Invitation{} })
 	eventBus.AddHandler(invitationProjector, InviteCreatedEvent)
 	eventBus.AddHandler(invitationProjector, InviteAcceptedEvent)
 	eventBus.AddHandler(invitationProjector, InviteDeclinedEvent)
@@ -69,9 +70,7 @@ func Setup(
 	eventBus.AddHandler(invitationProjector, InviteDeniedEvent)
 
 	// Create and register a read model for a guest list.
-	// eventID := eh.NewUUID()
-	// guestListRepo := readrepository.NewReadRepository()
-	guestListProjector := NewGuestListProjector(guestListRepo, eventID)
+	guestListProjector := NewGuestListProjector(guestListDriver, eventID)
 	eventBus.AddHandler(guestListProjector, InviteCreatedEvent)
 	eventBus.AddHandler(guestListProjector, InviteAcceptedEvent)
 	eventBus.AddHandler(guestListProjector, InviteDeclinedEvent)

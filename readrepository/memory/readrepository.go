@@ -46,24 +46,7 @@ func (r *ReadRepository) Parent() eh.ReadRepository {
 	return nil
 }
 
-// Save saves a read model with id to the repository.
-func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}) error {
-	ns := r.namespace(ctx)
-
-	r.dbMu.Lock()
-	defer r.dbMu.Unlock()
-
-	if _, ok := r.db[ns][id]; !ok {
-		r.ids[ns] = append(r.ids[ns], id)
-	}
-
-	r.db[ns][id] = model
-
-	return nil
-}
-
-// Find returns one read model with using an id. Returns
-// ErrModelNotFound if no model could be found.
+// Find implements the Find method of the eventhorizon.ReadRepository interface.
 func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	ns := r.namespace(ctx)
 
@@ -81,7 +64,7 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 	return model, nil
 }
 
-// FindAll returns all read models in the repository.
+// FindAll implements the FindAll method of the eventhorizon.ReadRepository interface.
 func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 	ns := r.namespace(ctx)
 
@@ -98,8 +81,24 @@ func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 	return all, nil
 }
 
+// Save saves a read model with id to the repository, used for testing.
+func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}) error {
+	ns := r.namespace(ctx)
+
+	r.dbMu.Lock()
+	defer r.dbMu.Unlock()
+
+	if _, ok := r.db[ns][id]; !ok {
+		r.ids[ns] = append(r.ids[ns], id)
+	}
+
+	r.db[ns][id] = model
+
+	return nil
+}
+
 // Remove removes a read model with id from the repository. Returns
-// ErrModelNotFound if no model could be found.
+// ErrModelNotFound if no model could be found. Used for testing.
 func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
 	ns := r.namespace(ctx)
 

@@ -416,16 +416,6 @@ func (r *ReadRepository) Parent() eh.ReadRepository {
 	return r.ParentRepo
 }
 
-// Save implements the Save method of the eventhorizon.ReadRepository interface.
-func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, item interface{}) error {
-	if r.Err != nil {
-		return r.Err
-	}
-	r.Item = item
-	r.Items = []interface{}{item}
-	return nil
-}
-
 // Find implements the Find method of the eventhorizon.ReadRepository interface.
 func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	if r.Err != nil {
@@ -440,14 +430,6 @@ func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 		return nil, r.Err
 	}
 	return r.Items, nil
-}
-
-// Remove implements the Remove method of the eventhorizon.ReadRepository interface.
-func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
-	if r.Err != nil {
-		return r.Err
-	}
-	return nil
 }
 
 type contextKey int

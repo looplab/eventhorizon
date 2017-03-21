@@ -17,6 +17,7 @@ package eventhorizon
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 func init() {
@@ -200,6 +201,43 @@ func (m *MockEventStore) Load(ctx context.Context, aggregateType AggregateType, 
 	m.Loaded = id
 	m.Context = ctx
 	return m.Events, nil
+}
+
+// MockModel is a mocked read model, useful in testing.
+type MockModel struct {
+	ID        UUID      `json:"id"         bson:"_id"`
+	Version   int       `json:"version"    bson:"version"`
+	Content   string    `json:"content"    bson:"content"`
+	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+}
+
+// AggregateVersion implements the AggregateVersion method of the eventhorizon.Versionable interface.
+func (m *MockModel) AggregateVersion() int {
+	return m.Version
+}
+
+type MockProjectorDriver struct {
+	Item    interface{}
+	Context context.Context
+	// Used to simulate errors in the store.
+	loadErr, saveErr error
+}
+
+func (m *MockProjectorDriver) Model(ctx context.Context, id UUID) (interface{}, error) {
+	if m.loadErr != nil {
+		return nil, m.loadErr
+	}
+	m.Context = ctx
+	return m.Item, nil
+}
+
+func (m *MockProjectorDriver) SetModel(ctx context.Context, id UUID, model interface{}) error {
+	if m.saveErr != nil {
+		return m.saveErr
+	}
+	m.Item = model
+	m.Context = ctx
+	return nil
 }
 
 type MockEventBus struct {

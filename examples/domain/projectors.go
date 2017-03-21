@@ -32,37 +32,23 @@ type Invitation struct {
 }
 
 // InvitationProjector is a projector that updates the invitations.
-type InvitationProjector struct {
-	repository eh.ReadRepository
-}
+type InvitationProjector struct{}
 
 // NewInvitationProjector creates a new InvitationProjector.
-func NewInvitationProjector(repository eh.ReadRepository) *InvitationProjector {
-	p := &InvitationProjector{
-		repository: repository,
-	}
-	return p
+func NewInvitationProjector() *InvitationProjector {
+	return &InvitationProjector{}
 }
 
-// HandlerType implements the HandlerType method of the EventHandler interface.
-func (p *InvitationProjector) HandlerType() eh.EventHandlerType {
-	return eh.EventHandlerType("InvitationProjector")
+// ProjectorType implements the ProjectorType method of the Projector interface.
+func (p *InvitationProjector) ProjectorType() eh.ProjectorType {
+	return eh.ProjectorType("InvitationProjector")
 }
 
-// HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (p *InvitationProjector) HandleEvent(ctx context.Context, event eh.Event) error {
-	// Load or create the model.
-	var i *Invitation
-	if m, _ := p.repository.Find(ctx, event.AggregateID()); m != nil {
-		var ok bool
-		if i, ok = m.(*Invitation); !ok {
-			return errors.New("projector: model is of incorrect type")
-		}
-	} else {
-		i = &Invitation{
-			ID:     event.AggregateID(),
-			Status: "created",
-		}
+// Project implements the Project method of the Projector interface.
+func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, model interface{}) (interface{}, error) {
+	i, ok := model.(*Invitation)
+	if !ok {
+		return nil, errors.New("model is of incorrect type")
 	}
 
 	// Apply the changes for the event.
@@ -72,7 +58,7 @@ func (p *InvitationProjector) HandleEvent(ctx context.Context, event eh.Event) e
 			i.Name = data.Name
 			i.Age = data.Age
 		} else {
-			return fmt.Errorf("projector: invalid event data type: %v", event.Data())
+			return nil, fmt.Errorf("projector: invalid event data type: %v", event.Data())
 		}
 	case InviteAcceptedEvent:
 		// NOTE: Temp fix for events that arrive out of order.
@@ -90,12 +76,7 @@ func (p *InvitationProjector) HandleEvent(ctx context.Context, event eh.Event) e
 		i.Status = "denied"
 	}
 
-	// Save it back, same for new and updated models.
-	if err := p.repository.Save(ctx, event.AggregateID(), i); err != nil {
-		return errors.New("projector: could not save: " + err.Error())
-	}
-
-	return nil
+	return i, nil
 }
 
 // GuestList is a read model object for the guest list.
@@ -108,18 +89,19 @@ type GuestList struct {
 	NumDenied    int
 }
 
-// GuestListProjector is a projector that updates the guest list.
+// GuestListProjector is a projector that updates the guest list. It is
+// implemented as a manual projector, not using the Projector interface.
 type GuestListProjector struct {
-	repository   eh.ReadRepository
+	driver       eh.ProjectorDriver
 	repositoryMu sync.Mutex
 	eventID      eh.UUID
 }
 
 // NewGuestListProjector creates a new GuestListProjector.
-func NewGuestListProjector(repository eh.ReadRepository, eventID eh.UUID) *GuestListProjector {
+func NewGuestListProjector(driver eh.ProjectorDriver, eventID eh.UUID) *GuestListProjector {
 	p := &GuestListProjector{
-		repository: repository,
-		eventID:    eventID,
+		driver:  driver,
+		eventID: eventID,
 	}
 	return p
 }
@@ -137,11 +119,18 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 
 	// Load or create the guest list.
 	var g *GuestList
-	if m, _ := p.repository.Find(ctx, p.eventID); m != nil {
-		g = m.(*GuestList)
-	} else {
+	m, err := p.driver.Model(ctx, p.eventID)
+	if rrErr, ok := err.(eh.ProjectorError); ok && rrErr.Err == eh.ErrModelNotFound {
 		g = &GuestList{
 			ID: p.eventID,
+		}
+	} else if err != nil {
+		return err
+	} else {
+		var ok bool
+		g, ok = m.(*GuestList)
+		if !ok {
+			return errors.New("projector: incorrect model type")
 		}
 	}
 
@@ -159,7 +148,7 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 		g.NumDenied++
 	}
 
-	if err := p.repository.Save(ctx, p.eventID, g); err != nil {
+	if err := p.driver.SetModel(ctx, p.eventID, g); err != nil {
 		return errors.New("projector: could not save: " + err.Error())
 	}
 

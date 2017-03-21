@@ -26,6 +26,7 @@ import (
 	commandbus "github.com/looplab/eventhorizon/commandbus/local"
 	eventbus "github.com/looplab/eventhorizon/eventbus/local"
 	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
+	projectordriver "github.com/looplab/eventhorizon/projectordriver/mongodb"
 	eventpublisher "github.com/looplab/eventhorizon/publisher/local"
 	readrepository "github.com/looplab/eventhorizon/readrepository/mongodb"
 
@@ -62,21 +63,33 @@ func Example() {
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
-	invitationRepo.SetModel(func() interface{} { return &domain.Invitation{} })
+	invitationRepo.SetModelFactory(func() interface{} { return &domain.Invitation{} })
 	guestListRepo, err := readrepository.NewReadRepository(url, "demo", "guest_lists")
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}
-	guestListRepo.SetModel(func() interface{} { return &domain.GuestList{} })
+	guestListRepo.SetModelFactory(func() interface{} { return &domain.GuestList{} })
 
-	// Create the domain.
+	// Create the projector drivers.
+	invitationDriver, err := projectordriver.NewProjectorDriver(url, "demo", "invitations")
+	if err != nil {
+		log.Fatalf("could not create invitation projector driver: %s", err)
+	}
+	invitationDriver.SetModelFactory(func() interface{} { return &domain.Invitation{} })
+	guestListDriver, err := projectordriver.NewProjectorDriver(url, "demo", "guest_lists")
+	if err != nil {
+		log.Fatalf("could not create guest list projector driver: %s", err)
+	}
+	guestListDriver.SetModelFactory(func() interface{} { return &domain.GuestList{} })
+
+	// Setup the domain.
 	eventID := eh.NewUUID()
 	domain.Setup(
 		eventStore,
 		eventBus,
 		eventPublisher,
 		commandBus,
-		invitationRepo, guestListRepo,
+		invitationDriver, guestListDriver,
 		eventID,
 	)
 
@@ -97,34 +110,54 @@ func Example() {
 	poseidonID := eh.NewUUID()
 
 	// Issue some invitations and responses. Error checking omitted here.
-	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42})
-	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: hadesID, Name: "Hades"})
-	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"})
-	commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: poseidonID, Name: "Poseidon"})
+	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: athenaID, Name: "Athena", Age: 42}); err != nil {
+		log.Println("error:", err)
+	}
+	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: hadesID, Name: "Hades"}); err != nil {
+		log.Println("error:", err)
+	}
+	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: zeusID, Name: "Zeus"}); err != nil {
+		log.Println("error:", err)
+	}
+	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{InvitationID: poseidonID, Name: "Poseidon"}); err != nil {
+		log.Println("error:", err)
+	}
 	time.Sleep(100 * time.Millisecond)
 
 	// The invited guests accept and decline the event.
 	// Note that Athena tries to decline the event after first accepting, but
 	// that is not allowed by the domain logic in InvitationAggregate. The
 	// result is that she is still accepted.
-	commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: athenaID})
+	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: athenaID}); err != nil {
+		log.Println("error:", err)
+	}
 	if err = commandBus.HandleCommand(ctx, &domain.DeclineInvite{InvitationID: athenaID}); err != nil {
+		// NOTE: This error is supposed to be printed!
 		log.Printf("error: %s\n", err)
 	}
-	commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: hadesID})
-	commandBus.HandleCommand(ctx, &domain.DeclineInvite{InvitationID: zeusID})
+	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: hadesID}); err != nil {
+		log.Println("error:", err)
+	}
+	if err := commandBus.HandleCommand(ctx, &domain.DeclineInvite{InvitationID: zeusID}); err != nil {
+		log.Println("error:", err)
+	}
 
 	// Poseidon is a bit late to the party...
 	// TODO: Remove sleeps.
 	time.Sleep(100 * time.Millisecond)
-	commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: poseidonID})
+	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{InvitationID: poseidonID}); err != nil {
+		log.Println("error:", err)
+	}
 
 	// Wait for simulated eventual consistency before reading.
 	time.Sleep(100 * time.Millisecond)
 
 	// Read all invites.
 	invitationStrs := []string{}
-	invitations, _ := invitationRepo.FindAll(ctx)
+	invitations, err := invitationRepo.FindAll(ctx)
+	if err != nil {
+		log.Println("error:", err)
+	}
 	for _, i := range invitations {
 		if i, ok := i.(*domain.Invitation); ok {
 			invitationStrs = append(invitationStrs, fmt.Sprintf("%s - %s", i.Name, i.Status))
@@ -139,7 +172,10 @@ func Example() {
 	}
 
 	// Read the guest list.
-	l, _ := guestListRepo.Find(ctx, eventID)
+	l, err := guestListRepo.Find(ctx, eventID)
+	if err != nil {
+		log.Println("error:", err)
+	}
 	if l, ok := l.(*domain.GuestList); ok {
 		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)

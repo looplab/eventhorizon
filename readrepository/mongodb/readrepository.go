@@ -79,21 +79,6 @@ func (r *ReadRepository) Parent() eh.ReadRepository {
 	return nil
 }
 
-// Save saves a read model with id to the repository.
-func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}) error {
-	sess := r.session.Copy()
-	defer sess.Close()
-
-	if _, err := sess.DB(r.dbName(ctx)).C(r.collection).UpsertId(id, model); err != nil {
-		return eh.ReadRepositoryError{
-			Err:       eh.ErrCouldNotSaveModel,
-			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
-		}
-	}
-	return nil
-}
-
 // Find returns one read model with using an id. Returns
 // ErrModelNotFound if no model could be found.
 func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
@@ -191,26 +176,8 @@ func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 	return result, nil
 }
 
-// Remove removes a read model with id from the repository. Returns
-// ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
-	sess := r.session.Copy()
-	defer sess.Close()
-
-	err := sess.DB(r.dbName(ctx)).C(r.collection).RemoveId(id)
-	if err != nil {
-		return eh.ReadRepositoryError{
-			Err:       eh.ErrModelNotFound,
-			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
-		}
-	}
-
-	return nil
-}
-
-// SetModel sets a factory function that creates concrete model types.
-func (r *ReadRepository) SetModel(factory func() interface{}) {
+// SetModelFactory sets a factory function that creates concrete model types.
+func (r *ReadRepository) SetModelFactory(factory func() interface{}) {
 	r.factory = factory
 }
 

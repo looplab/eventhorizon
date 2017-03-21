@@ -26,7 +26,6 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/readrepository/testutil"
 )
 
 func TestReadRepository(t *testing.T) {
@@ -47,7 +46,7 @@ func TestReadRepository(t *testing.T) {
 		t.Error("there should be a repository")
 	}
 	defer repo.Close()
-	repo.SetModel(func() interface{} {
+	repo.SetModelFactory(func() interface{} {
 		return &mocks.Model{}
 	})
 
@@ -66,34 +65,103 @@ func TestReadRepository(t *testing.T) {
 	// Run the actual test suite.
 
 	t.Log("read repository with default namespace")
-	testutil.ReadRepositoryCommonTests(t, context.Background(), repo)
+	readRepositoryCommonTests(t, context.Background(), repo)
 
 	t.Log("read repository with other namespace")
-	testutil.ReadRepositoryCommonTests(t, ctx, repo)
+	readRepositoryCommonTests(t, ctx, repo)
 
 	if repo.Parent() != nil {
 		t.Error("the parent repo should be nil")
 	}
+}
 
-	t.Log("Save one item")
+func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepository) {
+	sess := repo.session.Copy()
+	defer sess.Close()
+
+	t.Log("FindAll with no items")
+	result, err := repo.FindAll(ctx)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if len(result) != 0 {
+		t.Error("there should be no items:", len(result))
+	}
+
+	// Insert item.
+	model1 := &mocks.Model{
+		ID:        eh.NewUUID(),
+		Content:   "model1",
+		CreatedAt: time.Now().Round(time.Millisecond),
+	}
+	if _, err := sess.DB(repo.dbName(ctx)).C(repo.collection).UpsertId(model1.ID, model1); err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	t.Log("Find one item")
+	model, err := repo.Find(ctx, model1.ID)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(model, model1) {
+		t.Error("the item should be correct:", model)
+	}
+
+	t.Log("FindAll with one item")
+	result, err = repo.FindAll(ctx)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if len(result) != 1 {
+		t.Error("there should be one item:", len(result))
+	}
+	if !reflect.DeepEqual(result, []interface{}{model1}) {
+		t.Error("the item should be correct:", model1)
+	}
+
+	// Insert another item.
+	model2 := &mocks.Model{
+		ID:        eh.NewUUID(),
+		Content:   "model2",
+		CreatedAt: time.Now().Round(time.Millisecond),
+	}
+	if _, err := sess.DB(repo.dbName(ctx)).C(repo.collection).UpsertId(model2.ID, model2); err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	t.Log("Find another item")
+	model, err = repo.Find(ctx, model2.ID)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(model, model2) {
+		t.Error("the item should be correct:", model)
+	}
+
+	t.Log("FindAll with two items, order should be preserved from insert")
+	result, err = repo.FindAll(ctx)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if len(result) != 2 {
+		t.Error("there should be two items:", len(result))
+	}
+	if !reflect.DeepEqual(result, []interface{}{model1, model2}) {
+		t.Error("the items should be correct:", result)
+	}
+
+	// Insert a custom item.
 	modelCustom := &mocks.Model{
 		ID:        eh.NewUUID(),
 		Content:   "modelCustom",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	if err = repo.Save(ctx, modelCustom.ID, modelCustom); err != nil {
+	if _, err := sess.DB(repo.dbName(ctx)).C(repo.collection).UpsertId(modelCustom.ID, modelCustom); err != nil {
 		t.Error("there should be no error:", err)
-	}
-	model, err := repo.Find(ctx, modelCustom.ID)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if !reflect.DeepEqual(model, modelCustom) {
-		t.Error("the item should be correct:", model)
 	}
 
 	t.Log("FindCustom by content")
-	result, err := repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
+	result, err = repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		return c.Find(bson.M{"content": "modelCustom"})
 	})
 	if len(result) != 1 {
@@ -124,7 +192,7 @@ func TestReadRepository(t *testing.T) {
 	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != ErrInvalidQuery {
 		t.Error("there should be a invalid query error:", err)
 	}
-	if count != 2 {
+	if count != 3 {
 		t.Error("the count should be correct:", count)
 	}
 }
