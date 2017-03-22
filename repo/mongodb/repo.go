@@ -32,7 +32,7 @@ var ErrNoDBSession = errors.New("no database session")
 // ErrCouldNotClearDB is when the database could not be cleared.
 var ErrCouldNotClearDB = errors.New("could not clear database")
 
-// ErrModelNotSet is when an model is not set on a read repository.
+// ErrModelNotSet is when an model factory is not set on the Repo.
 var ErrModelNotSet = errors.New("model not set")
 
 // ErrInvalidQuery is when a query was not returned from the callback to FindCustom.
@@ -182,7 +182,7 @@ func (r *Repo) Save(ctx context.Context, id eh.UUID, model interface{}) error {
 
 	if _, err := sess.DB(r.dbName(ctx)).C(r.collection).UpsertId(id, model); err != nil {
 		return eh.RepoError{
-			Err:       eh.ErrCouldNotSetModel,
+			Err:       eh.ErrCouldNotSaveModel,
 			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}

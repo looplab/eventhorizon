@@ -41,6 +41,9 @@ func (e RepoError) Error() string {
 // ErrModelNotFound is when a model could not be found.
 var ErrModelNotFound = errors.New("could not find model")
 
+// ErrCouldNotSaveModel is when a model could not be saved.
+var ErrCouldNotSaveModel = errors.New("could not save model")
+
 // ReadRepo is a storage for read models.
 type ReadRepo interface {
 	// Parent returns the parent read repository, if there is one.

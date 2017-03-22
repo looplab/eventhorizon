@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/eventhandler/projector"
 )
 
 // Invitation is a read model object for an invitation.
@@ -40,8 +41,8 @@ func NewInvitationProjector() *InvitationProjector {
 }
 
 // ProjectorType implements the ProjectorType method of the Projector interface.
-func (p *InvitationProjector) ProjectorType() eh.ProjectorType {
-	return eh.ProjectorType("InvitationProjector")
+func (p *InvitationProjector) ProjectorType() projector.Type {
+	return projector.Type("InvitationProjector")
 }
 
 // Project implements the Project method of the Projector interface.

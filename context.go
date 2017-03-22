@@ -17,10 +17,15 @@ package eventhorizon
 import (
 	"context"
 	"sync"
+	"time"
 )
 
 // DefaultNamespace is the namespace to use if not set in the context.
 const DefaultNamespace = "default"
+
+// DefaultMinVersionDeadline is the deadline to use when creating a min version
+// context that waits.
+const DefaultMinVersionDeadline = 5 * time.Second
 
 func init() {
 	// Register the namespace context.
@@ -89,9 +94,16 @@ func MinVersionFromContext(ctx context.Context) (int, bool) {
 	return minVersion, ok
 }
 
-// NewContextWithMinVersion returns the context with min value set.
+// NewContextWithMinVersion returns the context with min version set.
 func NewContextWithMinVersion(ctx context.Context, minVersion int) context.Context {
 	return context.WithValue(ctx, minVersionKey, minVersion)
+}
+
+// NewContextWithMinVersionWait returns the context with min version and a
+// default deadline set.
+func NewContextWithMinVersionWait(ctx context.Context, minVersion int) (c context.Context, cancel func()) {
+	ctx = context.WithValue(ctx, minVersionKey, minVersion)
+	return context.WithTimeout(ctx, DefaultMinVersionDeadline)
 }
 
 // Private context marshaling funcs.

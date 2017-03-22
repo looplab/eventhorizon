@@ -408,7 +408,7 @@ type Repo struct {
 	Item       interface{}
 	Items      []interface{}
 	// Used to simulate errors in the store.
-	Err error
+	LoadErr, SaveErr error
 }
 
 // Parent implements the Parent method of the eventhorizon.ReadRepo interface.
@@ -418,35 +418,35 @@ func (r *Repo) Parent() eh.ReadRepo {
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
-	if r.Err != nil {
-		return nil, r.Err
+	if r.LoadErr != nil {
+		return nil, r.LoadErr
 	}
 	return r.Item, nil
 }
 
 // FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
 func (r *Repo) FindAll(ctx context.Context) ([]interface{}, error) {
-	if r.Err != nil {
-		return nil, r.Err
+	if r.LoadErr != nil {
+		return nil, r.LoadErr
 	}
 	return r.Items, nil
 }
 
 // Save implements the Save method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Save(ctx context.Context, id eh.UUID, item interface{}) error {
-	if r.Err != nil {
-		return r.Err
+	if r.SaveErr != nil {
+		return r.SaveErr
 	}
 	r.Item = item
-	r.Items = []interface{}{item}
 	return nil
 }
 
 // Remove implements the Remove method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
-	if r.Err != nil {
-		return r.Err
+	if r.SaveErr != nil {
+		return r.SaveErr
 	}
+	r.Item = nil
 	return nil
 }
 

@@ -17,7 +17,6 @@ package eventhorizon
 import (
 	"context"
 	"errors"
-	"time"
 )
 
 func init() {
@@ -203,66 +202,6 @@ func (m *MockEventStore) Load(ctx context.Context, aggregateType AggregateType, 
 	return m.Events, nil
 }
 
-// MockModel is a mocked read model, useful in testing.
-type MockModel struct {
-	ID        UUID      `json:"id"         bson:"_id"`
-	Version   int       `json:"version"    bson:"version"`
-	Content   string    `json:"content"    bson:"content"`
-	CreatedAt time.Time `json:"created_at" bson:"created_at"`
-}
-
-// AggregateVersion implements the AggregateVersion method of the eventhorizon.Versionable interface.
-func (m *MockModel) AggregateVersion() int {
-	return m.Version
-}
-
-type MockRepo struct {
-	ParentRepo ReadWriteRepo
-	Item       interface{}
-	Items      []interface{}
-	Context    context.Context
-	// Used to simulate errors in the store.
-	loadErr, saveErr error
-}
-
-// Parent implements the Parent method of the eventhorizon.ReadRepo interface.
-func (m *MockRepo) Parent() ReadRepo {
-	return m.ParentRepo
-}
-
-func (m *MockRepo) Find(ctx context.Context, id UUID) (interface{}, error) {
-	if m.loadErr != nil {
-		return nil, m.loadErr
-	}
-	m.Context = ctx
-	return m.Item, nil
-}
-
-// FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
-func (m *MockRepo) FindAll(ctx context.Context) ([]interface{}, error) {
-	if m.loadErr != nil {
-		return nil, m.loadErr
-	}
-	return m.Items, nil
-}
-
-func (m *MockRepo) Save(ctx context.Context, id UUID, model interface{}) error {
-	if m.saveErr != nil {
-		return m.saveErr
-	}
-	m.Item = model
-	m.Context = ctx
-	return nil
-}
-
-// Remove implements the Remove method of the eventhorizon.ReadRepo interface.
-func (m *MockRepo) Remove(ctx context.Context, id UUID) error {
-	if m.saveErr != nil {
-		return m.saveErr
-	}
-	return nil
-}
-
 type MockEventBus struct {
 	Events  []Event
 	Context context.Context
@@ -286,18 +225,3 @@ func (m *MockEventBus) HandleEvent(ctx context.Context, event Event) error {
 func (m *MockEventBus) AddHandler(handler EventHandler, eventType EventType) {}
 func (m *MockEventBus) SetPublisher(publisher EventPublisher)                {}
 func (m *MockEventBus) SetHandlingStrategy(strategy EventHandlingStrategy)   {}
-
-type MockCommandBus struct {
-	Commands []Command
-	Context  context.Context
-}
-
-func (m *MockCommandBus) HandleCommand(ctx context.Context, command Command) error {
-	m.Commands = append(m.Commands, command)
-	m.Context = ctx
-	return nil
-}
-
-func (m *MockCommandBus) SetHandler(handler CommandHandler, commandType CommandType) error {
-	return nil
-}

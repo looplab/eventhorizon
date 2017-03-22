@@ -12,28 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package eventhorizon
+package saga
 
 import (
 	"context"
 	"reflect"
 	"testing"
+
+	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/mocks"
 )
 
-func TestSagaHandler(t *testing.T) {
-	commandBus := &MockCommandBus{
-		Commands: []Command{},
+func TestEventHandler(t *testing.T) {
+	commandBus := &mocks.CommandBus{
+		Commands: []eh.Command{},
 	}
 	saga := &TestSaga{}
-	sagaHandler := NewSagaHandler(saga, commandBus)
+	handler := NewEventHandler(saga, commandBus)
 
 	ctx := context.Background()
 
-	id := NewUUID()
-	agg := NewTestAggregate(id)
-	event := agg.StoreEvent(TestEventType, &TestEventData{"event1"})
-	saga.commands = []Command{&TestCommand{NewUUID(), "content"}}
-	sagaHandler.HandleEvent(ctx, event)
+	id := eh.NewUUID()
+	eventData := &mocks.EventData{"event1"}
+	event := eh.NewEventForAggregate(mocks.EventType, eventData, mocks.AggregateType, id, 1)
+	saga.commands = []eh.Command{&mocks.Command{eh.NewUUID(), "content"}}
+	handler.HandleEvent(ctx, event)
 	if saga.event != event {
 		t.Error("the handled event should be correct:", saga.event)
 	}
@@ -43,20 +46,20 @@ func TestSagaHandler(t *testing.T) {
 }
 
 const (
-	TestSagaType SagaType = "TestSaga"
+	TestSagaType Type = "TestSaga"
 )
 
 type TestSaga struct {
-	event    Event
+	event    eh.Event
 	context  context.Context
-	commands []Command
+	commands []eh.Command
 }
 
-func (m *TestSaga) SagaType() SagaType {
+func (m *TestSaga) SagaType() Type {
 	return TestSagaType
 }
 
-func (m *TestSaga) RunSaga(ctx context.Context, event Event) []Command {
+func (m *TestSaga) RunSaga(ctx context.Context, event eh.Event) []eh.Command {
 	m.event = event
 	m.context = ctx
 	return m.commands
