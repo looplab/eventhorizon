@@ -163,13 +163,15 @@ type EventHandler struct {
 	Events  []eh.Event
 	Context context.Context
 	Recv    chan eh.Event
+	// Used to simulate errors when publishing.
+	Err error
 }
 
 // NewEventHandler creates a new EventHandler.
 func NewEventHandler(handlerType eh.EventHandlerType) *EventHandler {
 	return &EventHandler{
 		Type:    handlerType,
-		Events:  make([]eh.Event, 0),
+		Events:  []eh.Event{},
 		Context: context.Background(),
 		Recv:    make(chan eh.Event, 10),
 	}
@@ -181,10 +183,14 @@ func (m *EventHandler) HandlerType() eh.EventHandlerType {
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
-func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) {
+func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
+	if m.Err != nil {
+		return m.Err
+	}
 	m.Events = append(m.Events, event)
 	m.Context = ctx
 	m.Recv <- event
+	return nil
 }
 
 // WaitForEvent is a helper to wait until an event has been handled, it timeouts
@@ -198,27 +204,84 @@ func (m *EventHandler) WaitForEvent(t *testing.T) {
 	}
 }
 
+// EventPublisher is a mocked eventhorizon.EventPublisher, useful in testing.
+type EventPublisher struct {
+	Events    []eh.Event
+	Context   context.Context
+	Recv      chan eh.Event
+	Observers []eh.EventObserver
+	// Used to simulate errors when publishing.
+	Err error
+}
+
+// NewEventPublisher creates a new EventPublisher.
+func NewEventPublisher() *EventPublisher {
+	return &EventPublisher{
+		Events:    []eh.Event{},
+		Context:   context.Background(),
+		Recv:      make(chan eh.Event, 10),
+		Observers: []eh.EventObserver{},
+	}
+}
+
+// PublishEvent implements the PublishEvent method of the eventhorizon.EventPublisher interface.
+func (m *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	m.Events = append(m.Events, event)
+	m.Context = ctx
+	m.Recv <- event
+	return nil
+}
+
+// AddObserver implements the AddObserver method of the eventhorizon.EventPublisher interface.
+func (m *EventPublisher) AddObserver(o eh.EventObserver) {
+	m.Observers = append(m.Observers, o)
+}
+
+// SetHandlingStrategy implements the SetHandlingStrategy method of the
+// eventhorizon.EventBus interface.
+func (m *EventPublisher) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {}
+
+// WaitForEvent is a helper to wait until an event has been notified, it timeouts
+// after 1 second.
+func (m *EventPublisher) WaitForEvent(t *testing.T) {
+	select {
+	case <-m.Recv:
+		return
+	case <-time.After(10 * time.Second):
+		t.Fatal("did not receive event in time")
+	}
+}
+
 // EventObserver is a mocked eventhorizon.EventObserver, useful in testing.
 type EventObserver struct {
 	Events  []eh.Event
 	Context context.Context
 	Recv    chan eh.Event
+	// Used to simulate errors in HandleCommand.
+	Err error
 }
 
 // NewEventObserver creates a new EventObserver.
 func NewEventObserver() *EventObserver {
 	return &EventObserver{
-		Events:  make([]eh.Event, 0),
+		Events:  []eh.Event{},
 		Context: context.Background(),
 		Recv:    make(chan eh.Event, 10),
 	}
 }
 
 // Notify implements the Notify method of the eventhorizon.EventHandler interface.
-func (m *EventObserver) Notify(ctx context.Context, event eh.Event) {
+func (m *EventObserver) Notify(ctx context.Context, event eh.Event) error {
+	if m.Err != nil {
+		return m.Err
+	}
 	m.Events = append(m.Events, event)
 	m.Context = ctx
 	m.Recv <- event
+	return nil
 }
 
 // WaitForEvent is a helper to wait until an event has been notified, it timeouts
@@ -309,19 +372,31 @@ func (m *CommandBus) SetHandler(handler eh.CommandHandler, commandType eh.Comman
 type EventBus struct {
 	Events  []eh.Event
 	Context context.Context
+	// Used to simulate errors in HandleCommand.
+	Err error
 }
 
-// PublishEvent implements the PublishEvent method of the eventhorizon.EventBus interface.
-func (m *EventBus) PublishEvent(ctx context.Context, event eh.Event) {
+// HandlerType implements the HandlerType method of the eventhorizon.EventBus interface.
+func (m *EventBus) HandlerType() eh.EventHandlerType {
+	return eh.EventHandlerType("MockEventBus")
+}
+
+// HandleEvent implements the HandleEvent method of the eventhorizon.EventBus interface.
+func (m *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
+	if m.Err != nil {
+		return m.Err
+	}
 	m.Events = append(m.Events, event)
 	m.Context = ctx
+	return nil
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (m *EventBus) AddHandler(handler eh.EventHandler, event eh.Event) {}
+func (m *EventBus) AddHandler(handler eh.EventHandler, event eh.EventType) {}
 
-// AddObserver implements the AddObserver method of the eventhorizon.EventBus interface.
-func (m *EventBus) AddObserver(observer eh.EventObserver) {}
+// SetPublisher implements the SetPublisher method of the
+// eventhorizon.EventBus interface.
+func (m *EventBus) SetPublisher(publisher eh.EventPublisher) {}
 
 // SetHandlingStrategy implements the SetHandlingStrategy method of the
 // eventhorizon.EventBus interface.

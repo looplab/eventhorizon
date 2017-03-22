@@ -16,7 +16,8 @@ package domain
 
 import (
 	"context"
-	"log"
+	"errors"
+	"fmt"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -49,14 +50,13 @@ func (p *InvitationProjector) HandlerType() eh.EventHandlerType {
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (p *InvitationProjector) HandleEvent(ctx context.Context, event eh.Event) {
+func (p *InvitationProjector) HandleEvent(ctx context.Context, event eh.Event) error {
 	// Load or create the model.
 	var i *Invitation
 	if m, _ := p.repository.Find(ctx, event.AggregateID()); m != nil {
 		var ok bool
 		if i, ok = m.(*Invitation); !ok {
-			log.Println("error: model is of incorrect type")
-			return
+			return errors.New("projector: model is of incorrect type")
 		}
 	} else {
 		i = &Invitation{
@@ -72,7 +72,7 @@ func (p *InvitationProjector) HandleEvent(ctx context.Context, event eh.Event) {
 			i.Name = data.Name
 			i.Age = data.Age
 		} else {
-			log.Println("invalid event data type:", event.Data())
+			return fmt.Errorf("projector: invalid event data type: %v", event.Data())
 		}
 	case InviteAcceptedEvent:
 		// NOTE: Temp fix for events that arrive out of order.
@@ -92,8 +92,10 @@ func (p *InvitationProjector) HandleEvent(ctx context.Context, event eh.Event) {
 
 	// Save it back, same for new and updated models.
 	if err := p.repository.Save(ctx, event.AggregateID(), i); err != nil {
-		log.Println("error: could not save model: ", err)
+		return errors.New("projector: could not save: " + err.Error())
 	}
+
+	return nil
 }
 
 // GuestList is a read model object for the guest list.
@@ -128,7 +130,7 @@ func (p *GuestListProjector) HandlerType() eh.EventHandlerType {
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) {
+func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) error {
 	// NOTE: Temp fix because we need to count the guests atomically.
 	p.repositoryMu.Lock()
 	defer p.repositoryMu.Unlock()
@@ -157,5 +159,9 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) {
 		g.NumDenied++
 	}
 
-	p.repository.Save(ctx, p.eventID, g)
+	if err := p.repository.Save(ctx, p.eventID, g); err != nil {
+		return errors.New("projector: could not save: " + err.Error())
+	}
+
+	return nil
 }

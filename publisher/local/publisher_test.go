@@ -1,4 +1,4 @@
-// Copyright (c) 2016 - Max Ekman <max@looplab.se>
+// Copyright (c) 2014 - Max Ekman <max@looplab.se>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package local
 
 import (
-	"context"
-	"log"
+	"testing"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/publisher/testutil"
 )
 
-// Logger is a simple event handler for logging all events.
-type Logger struct{}
+func TestEventPublisher(t *testing.T) {
+	publisher := NewEventPublisher()
+	if publisher == nil {
+		t.Fatal("there should be a publisher")
+	}
 
-// Notify implements the HandleEvent method of the EventHandler interface.
-func (l *Logger) Notify(ctx context.Context, event eh.Event) error {
-	log.Println("event:", event)
-	return nil
+	testutil.EventPublisherCommonTests(t, publisher, publisher)
+}
+
+func TestEventPublisherAsync(t *testing.T) {
+	publisher := NewEventPublisher()
+	if publisher == nil {
+		t.Fatal("there should be a publisher")
+	}
+	publisher.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
+
+	testutil.EventPublisherCommonTests(t, publisher, publisher)
 }

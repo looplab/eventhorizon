@@ -205,15 +205,25 @@ func (m *MockEventStore) Load(ctx context.Context, aggregateType AggregateType, 
 type MockEventBus struct {
 	Events  []Event
 	Context context.Context
+	// Used to simulate errors in the store.
+	err error
 }
 
-func (m *MockEventBus) PublishEvent(ctx context.Context, event Event) {
+func (m *MockEventBus) HandlerType() EventHandlerType {
+	return EventHandlerType("MockEventBus")
+}
+
+func (m *MockEventBus) HandleEvent(ctx context.Context, event Event) error {
+	if m.err != nil {
+		return m.err
+	}
 	m.Events = append(m.Events, event)
 	m.Context = ctx
+	return nil
 }
 
 func (m *MockEventBus) AddHandler(handler EventHandler, eventType EventType) {}
-func (m *MockEventBus) AddObserver(observer EventObserver)                   {}
+func (m *MockEventBus) SetPublisher(publisher EventPublisher)                {}
 func (m *MockEventBus) SetHandlingStrategy(strategy EventHandlingStrategy)   {}
 
 type MockCommandBus struct {

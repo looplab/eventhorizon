@@ -16,30 +16,11 @@ package eventhorizon
 
 import "context"
 
-// EventBus is an interface defining an event bus for distributing events.
-type EventBus interface {
-	// PublishEvent publishes an event on the event bus.
-	// Only one handler of each handler type that is registered for the event
-	// will receive it.
-	// All the observers will receive the event.
-	PublishEvent(context.Context, Event)
-
-	// AddHandler adds a handler for an event.
-	// TODO: Use a pattern instead of event for what to handle.
-	AddHandler(EventHandler, EventType)
-	// AddObserver adds an observer.
-	// TODO: Add pattern for what to observe.
-	AddObserver(EventObserver)
-
-	// SetHandlingStrategy will set the strategy to use for handling events.
-	SetHandlingStrategy(EventHandlingStrategy)
-}
-
 // EventHandler is a handler of events.
 // Only one handler of the same type will receive an event.
 type EventHandler interface {
 	// HandleEvent handles an event.
-	HandleEvent(context.Context, Event)
+	HandleEvent(context.Context, Event) error
 
 	// HandlerType returns the type of the handler.
 	HandlerType() EventHandlerType
@@ -49,11 +30,39 @@ type EventHandler interface {
 // an event by one handler of each type.
 type EventHandlerType string
 
+// EventBus is an event handler that handles events with the correct subhandlers
+// after which it publishes the event using the publisher.
+type EventBus interface {
+	EventHandler
+
+	// AddHandler adds a handler for an event.
+	AddHandler(EventHandler, EventType)
+
+	// SetPublisher sets the publisher to use for publishing the event after all
+	// handlers have been run.
+	SetPublisher(EventPublisher)
+
+	// SetHandlingStrategy will set the strategy to use for handling events.
+	SetHandlingStrategy(EventHandlingStrategy)
+}
+
+// EventPublisher is a publisher of events to observers.
+type EventPublisher interface {
+	// PublishEvent publishes the event to all observers.
+	PublishEvent(context.Context, Event) error
+
+	// AddObserver adds an observer.
+	AddObserver(EventObserver)
+
+	// SetHandlingStrategy will set the strategy to use for handling events.
+	SetHandlingStrategy(EventHandlingStrategy)
+}
+
 // EventObserver is an observer of events.
 // All observers will receive an event.
 type EventObserver interface {
 	// Notify is notifed about an event.
-	Notify(context.Context, Event)
+	Notify(context.Context, Event) error
 }
 
 // EventHandlingStrategy is the strategy to use when handling events.
