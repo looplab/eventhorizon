@@ -22,21 +22,21 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// ReadRepository is a middleware that adds version checking to a read repository.
-type ReadRepository struct {
-	eh.ReadRepository
+// Repo is a middleware that adds version checking to a read repository.
+type Repo struct {
+	eh.ReadWriteRepo
 }
 
-// NewReadRepository creates a new ReadRepository.
-func NewReadRepository(repo eh.ReadRepository) *ReadRepository {
-	return &ReadRepository{
-		ReadRepository: repo,
+// NewRepo creates a new Repo.
+func NewRepo(repo eh.ReadWriteRepo) *Repo {
+	return &Repo{
+		ReadWriteRepo: repo,
 	}
 }
 
-// Parent implements the Parent method of the eventhorizon.ReadRepository interface.
-func (r *ReadRepository) Parent() eh.ReadRepository {
-	return r.ReadRepository
+// Parent implements the Parent method of the eventhorizon.ReadRepo interface.
+func (r *Repo) Parent() eh.ReadRepo {
+	return r.ReadWriteRepo
 }
 
 // Find implements the Find method of the eventhorizon.ReadModel interface.
@@ -44,11 +44,11 @@ func (r *ReadRepository) Parent() eh.ReadRepository {
 // return an item if its version is at least min version. If a timeout or
 // deadline is set on the context it will repetedly try to get the item until
 // either the version matches or the deadline is reached.
-func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
+func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	// If there is no min version set just return the item as normally.
 	minVersion, ok := eh.MinVersionFromContext(ctx)
 	if !ok || minVersion < 1 {
-		return r.ReadRepository.Find(ctx, id)
+		return r.ReadWriteRepo.Find(ctx, id)
 	}
 
 	// Try to get a model with a min version
@@ -59,7 +59,7 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 		return model, err
 	} else if err != nil {
 		// If we have a deadline but the error is a real error return it here.
-		if rrErr, ok := err.(eh.ReadRepositoryError); ok &&
+		if rrErr, ok := err.(eh.RepoError); ok &&
 			!(rrErr.Err == eh.ErrIncorrectModelVersion || (rrErr.Err == eh.ErrModelNotFound && minVersion == 1)) {
 			return nil, err
 		}
@@ -74,7 +74,7 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 		select {
 		case <-time.After(delay.Duration()):
 			model, err := r.findMinVersion(ctx, id, minVersion)
-			if rrErr, ok := err.(eh.ReadRepositoryError); ok &&
+			if rrErr, ok := err.(eh.RepoError); ok &&
 				(rrErr.Err == eh.ErrIncorrectModelVersion ||
 					(rrErr.Err == eh.ErrModelNotFound && minVersion == 1)) {
 				// Try another time for incorrect min versions and for the
@@ -91,22 +91,22 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 }
 
 // findMinVersion finds an item if it has a version and it is at least minVersion.
-func (r *ReadRepository) findMinVersion(ctx context.Context, id eh.UUID, minVersion int) (interface{}, error) {
-	model, err := r.ReadRepository.Find(ctx, id)
+func (r *Repo) findMinVersion(ctx context.Context, id eh.UUID, minVersion int) (interface{}, error) {
+	model, err := r.ReadWriteRepo.Find(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	versionable, ok := model.(eh.Versionable)
 	if !ok {
-		return nil, eh.ReadRepositoryError{
+		return nil, eh.RepoError{
 			Err:       eh.ErrModelHasNoVersion,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
 	if versionable.AggregateVersion() < minVersion {
-		return nil, eh.ReadRepositoryError{
+		return nil, eh.RepoError{
 			Err:       eh.ErrIncorrectModelVersion,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
@@ -115,13 +115,13 @@ func (r *ReadRepository) findMinVersion(ctx context.Context, id eh.UUID, minVers
 	return model, nil
 }
 
-// Repository returns a parent ReadRepository if there is one.
-func Repository(repo eh.ReadRepository) *ReadRepository {
+// Repository returns a parent ReadRepo if there is one.
+func Repository(repo eh.ReadRepo) *Repo {
 	if repo == nil {
 		return nil
 	}
 
-	if r, ok := repo.(*ReadRepository); ok {
+	if r, ok := repo.(*Repo); ok {
 		return r
 	}
 

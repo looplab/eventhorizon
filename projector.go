@@ -44,19 +44,6 @@ var ErrCouldNotSetModel = errors.New("could not set model")
 // ErrModelNotSet is when an model is not set on a read repository.
 var ErrModelNotSet = errors.New("model not set")
 
-// ErrModelHasNoVersion is when a model has no version number.
-var ErrModelHasNoVersion = errors.New("model has no version")
-
-// ErrIncorrectModelVersion is when a model has an incorrect version.
-var ErrIncorrectModelVersion = errors.New("incorrect model version")
-
-// Versionable is a read model that has a version number saved, used by
-// version.ReadRepository.FindMinVersion().
-type Versionable interface {
-	// AggregateVersion returns the aggregate version that a read model represents.
-	AggregateVersion() int
-}
-
 // Projector is a projector of events onto models.
 type Projector interface {
 	// Project projects an event onto a model and returns the updated model or
@@ -67,38 +54,29 @@ type Projector interface {
 	ProjectorType() ProjectorType
 }
 
-// ProjectorDriver is a storage driver for projectors.
-type ProjectorDriver interface {
-	// Get gets a model from the storage.
-	Model(context.Context, UUID) (interface{}, error)
-
-	// Set sets a model in the storage, if it is nil it should be removed.
-	SetModel(context.Context, UUID, interface{}) error
-}
-
 // ProjectorType is the type of a projector, used as its unique identifier.
 type ProjectorType string
 
 // ProjectorHandler is a CQRS projection handler to run a Projector implementation.
 type ProjectorHandler struct {
 	projector Projector
-	driver    ProjectorDriver
+	repo      ReadWriteRepo
 	factory   func() interface{}
 }
 
 // NewProjectorHandler creates a new ProjectorHandler.
-func NewProjectorHandler(projector Projector, driver ProjectorDriver) *ProjectorHandler {
+func NewProjectorHandler(projector Projector, repo ReadWriteRepo) *ProjectorHandler {
 	return &ProjectorHandler{
 		projector: projector,
-		driver:    driver,
+		repo:      repo,
 	}
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (h *ProjectorHandler) HandleEvent(ctx context.Context, event Event) error {
 	// Get or create the model.
-	model, err := h.driver.Model(ctx, event.AggregateID())
-	if rrErr, ok := err.(ProjectorError); ok && rrErr.Err == ErrModelNotFound {
+	model, err := h.repo.Find(ctx, event.AggregateID())
+	if rrErr, ok := err.(RepoError); ok && rrErr.Err == ErrModelNotFound {
 		if h.factory == nil {
 			return ProjectorError{
 				Err:       ErrModelNotSet,
@@ -123,7 +101,7 @@ func (h *ProjectorHandler) HandleEvent(ctx context.Context, event Event) error {
 	}
 
 	// Save the model.
-	if err := h.driver.SetModel(ctx, event.AggregateID(), newModel); err != nil {
+	if err := h.repo.Save(ctx, event.AggregateID(), newModel); err != nil {
 		return ProjectorError{
 			Err:       err,
 			Namespace: NamespaceFromContext(ctx),
@@ -138,7 +116,7 @@ func (h *ProjectorHandler) HandlerType() EventHandlerType {
 	return EventHandlerType(h.projector.ProjectorType())
 }
 
-// SetModelFactory sets a factory function that creates concrete model types.
-func (h *ProjectorHandler) SetModelFactory(factory func() interface{}) {
+// SetModel sets a factory function that creates concrete model types.
+func (h *ProjectorHandler) SetModel(factory func() interface{}) {
 	h.factory = factory
 }

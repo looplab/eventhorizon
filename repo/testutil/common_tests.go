@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package memory
+package testutil
 
 import (
 	"context"
@@ -24,28 +24,19 @@ import (
 	"github.com/looplab/eventhorizon/mocks"
 )
 
-func TestReadRepository(t *testing.T) {
-	repo := NewReadRepository()
-	if repo == nil {
-		t.Error("there should be a repository")
+// RepoCommonTests are test cases that are common to all
+// implementations of projector drivers.
+func RepoCommonTests(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
+	// Find non-existing item.
+	model, err := repo.Find(ctx, eh.NewUUID())
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrModelNotFound {
+		t.Error("there should be a ErrModelNotFound error:", err)
+	}
+	if model != nil {
+		t.Error("there should be no model:", model)
 	}
 
-	// Run the actual test suite.
-
-	t.Log("read repository with default namespace")
-	readRepositoryCommonTests(t, context.Background(), repo)
-
-	t.Log("read repository with other namespace")
-	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
-	readRepositoryCommonTests(t, ctx, repo)
-
-	if repo.Parent() != nil {
-		t.Error("the parent repo should be nil")
-	}
-}
-
-func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepository) {
-	t.Log("FindAll with no items")
+	// FindAll with no items.
 	result, err := repo.FindAll(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -54,20 +45,16 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 		t.Error("there should be no items:", len(result))
 	}
 
-	// Insert item.
+	// Save and find one item.
 	model1 := &mocks.Model{
 		ID:        eh.NewUUID(),
 		Content:   "model1",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	ns := eh.NamespaceFromContext(ctx)
-	if _, ok := repo.db[ns][model1.ID]; !ok {
-		repo.ids[ns] = append(repo.ids[ns], model1.ID)
+	if err = repo.Save(ctx, model1.ID, model1); err != nil {
+		t.Error("there should be no error:", err)
 	}
-	repo.db[ns][model1.ID] = model1
-
-	t.Log("Find one item")
-	model, err := repo.Find(ctx, model1.ID)
+	model, err = repo.Find(ctx, model1.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -75,7 +62,7 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 		t.Error("the item should be correct:", model)
 	}
 
-	t.Log("FindAll with one item")
+	// FindAll with one item.
 	result, err = repo.FindAll(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -87,18 +74,32 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 		t.Error("the item should be correct:", model1)
 	}
 
-	// Insert another item.
+	// Save and overwrite with same ID.
+	model1Alt := &mocks.Model{
+		ID:        model1.ID,
+		Content:   "model1Alt",
+		CreatedAt: time.Now().Round(time.Millisecond),
+	}
+	if err = repo.Save(ctx, model1Alt.ID, model1Alt); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	model, err = repo.Find(ctx, model1Alt.ID)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(model, model1Alt) {
+		t.Error("the item should be correct:", model)
+	}
+
+	// Save with another ID.
 	model2 := &mocks.Model{
 		ID:        eh.NewUUID(),
 		Content:   "model2",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	if _, ok := repo.db[ns][model2.ID]; !ok {
-		repo.ids[ns] = append(repo.ids[ns], model2.ID)
+	if err = repo.Save(ctx, model2.ID, model2); err != nil {
+		t.Error("there should be no error:", err)
 	}
-	repo.db[ns][model2.ID] = model2
-
-	t.Log("Find another item")
 	model, err = repo.Find(ctx, model2.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -107,7 +108,7 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 		t.Error("the item should be correct:", model)
 	}
 
-	t.Log("FindAll with two items, order should be preserved from insert")
+	// FindAll with two items, order should be preserved from insert.
 	result, err = repo.FindAll(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -115,24 +116,25 @@ func readRepositoryCommonTests(t *testing.T, ctx context.Context, repo *ReadRepo
 	if len(result) != 2 {
 		t.Error("there should be two items:", len(result))
 	}
-	if !reflect.DeepEqual(result, []interface{}{model1, model2}) {
+	if !reflect.DeepEqual(result, []interface{}{model1Alt, model2}) {
 		t.Error("the items should be correct:", result)
 	}
-}
 
-func TestRepository(t *testing.T) {
-	if r := Repository(nil); r != nil {
-		t.Error("the parent repository should be nil:", r)
+	// Remove item.
+	if err := repo.Remove(ctx, model1Alt.ID); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	model, err = repo.Find(ctx, model1Alt.ID)
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrModelNotFound {
+		t.Error("there should be a ErrModelNotFound error:", err)
+	}
+	if model != nil {
+		t.Error("there should be no model:", model)
 	}
 
-	inner := &mocks.ReadRepository{}
-	if r := Repository(inner); r != nil {
-		t.Error("the parent repository should be nil:", r)
-	}
-
-	repo := NewReadRepository()
-	outer := &mocks.ReadRepository{ParentRepo: repo}
-	if r := Repository(outer); r != repo {
-		t.Error("the parent repository should be correct:", r)
+	// Remove non-existing item.
+	err = repo.Remove(ctx, model1Alt.ID)
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrModelNotFound {
+		t.Error("there should be a ErrModelNotFound error:", err)
 	}
 }

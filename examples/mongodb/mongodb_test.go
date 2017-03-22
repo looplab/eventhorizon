@@ -26,9 +26,8 @@ import (
 	commandbus "github.com/looplab/eventhorizon/commandbus/local"
 	eventbus "github.com/looplab/eventhorizon/eventbus/local"
 	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
-	projectordriver "github.com/looplab/eventhorizon/projectordriver/mongodb"
 	eventpublisher "github.com/looplab/eventhorizon/publisher/local"
-	readrepository "github.com/looplab/eventhorizon/readrepository/mongodb"
+	repo "github.com/looplab/eventhorizon/repo/mongodb"
 
 	"github.com/looplab/eventhorizon/examples/domain"
 )
@@ -59,28 +58,16 @@ func Example() {
 	commandBus := commandbus.NewCommandBus()
 
 	// Create the read repositories.
-	invitationRepo, err := readrepository.NewReadRepository(url, "demo", "invitations")
+	invitationRepo, err := repo.NewRepo(url, "demo", "invitations")
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
-	invitationRepo.SetModelFactory(func() interface{} { return &domain.Invitation{} })
-	guestListRepo, err := readrepository.NewReadRepository(url, "demo", "guest_lists")
+	invitationRepo.SetModel(func() interface{} { return &domain.Invitation{} })
+	guestListRepo, err := repo.NewRepo(url, "demo", "guest_lists")
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}
-	guestListRepo.SetModelFactory(func() interface{} { return &domain.GuestList{} })
-
-	// Create the projector drivers.
-	invitationDriver, err := projectordriver.NewProjectorDriver(url, "demo", "invitations")
-	if err != nil {
-		log.Fatalf("could not create invitation projector driver: %s", err)
-	}
-	invitationDriver.SetModelFactory(func() interface{} { return &domain.Invitation{} })
-	guestListDriver, err := projectordriver.NewProjectorDriver(url, "demo", "guest_lists")
-	if err != nil {
-		log.Fatalf("could not create guest list projector driver: %s", err)
-	}
-	guestListDriver.SetModelFactory(func() interface{} { return &domain.GuestList{} })
+	guestListRepo.SetModel(func() interface{} { return &domain.GuestList{} })
 
 	// Setup the domain.
 	eventID := eh.NewUUID()
@@ -89,7 +76,7 @@ func Example() {
 		eventBus,
 		eventPublisher,
 		commandBus,
-		invitationDriver, guestListDriver,
+		invitationRepo, guestListRepo,
 		eventID,
 	)
 

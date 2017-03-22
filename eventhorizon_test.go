@@ -216,14 +216,21 @@ func (m *MockModel) AggregateVersion() int {
 	return m.Version
 }
 
-type MockProjectorDriver struct {
-	Item    interface{}
-	Context context.Context
+type MockRepo struct {
+	ParentRepo ReadWriteRepo
+	Item       interface{}
+	Items      []interface{}
+	Context    context.Context
 	// Used to simulate errors in the store.
 	loadErr, saveErr error
 }
 
-func (m *MockProjectorDriver) Model(ctx context.Context, id UUID) (interface{}, error) {
+// Parent implements the Parent method of the eventhorizon.ReadRepo interface.
+func (m *MockRepo) Parent() ReadRepo {
+	return m.ParentRepo
+}
+
+func (m *MockRepo) Find(ctx context.Context, id UUID) (interface{}, error) {
 	if m.loadErr != nil {
 		return nil, m.loadErr
 	}
@@ -231,12 +238,28 @@ func (m *MockProjectorDriver) Model(ctx context.Context, id UUID) (interface{}, 
 	return m.Item, nil
 }
 
-func (m *MockProjectorDriver) SetModel(ctx context.Context, id UUID, model interface{}) error {
+// FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
+func (m *MockRepo) FindAll(ctx context.Context) ([]interface{}, error) {
+	if m.loadErr != nil {
+		return nil, m.loadErr
+	}
+	return m.Items, nil
+}
+
+func (m *MockRepo) Save(ctx context.Context, id UUID, model interface{}) error {
 	if m.saveErr != nil {
 		return m.saveErr
 	}
 	m.Item = model
 	m.Context = ctx
+	return nil
+}
+
+// Remove implements the Remove method of the eventhorizon.ReadRepo interface.
+func (m *MockRepo) Remove(ctx context.Context, id UUID) error {
+	if m.saveErr != nil {
+		return m.saveErr
+	}
 	return nil
 }
 

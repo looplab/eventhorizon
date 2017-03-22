@@ -22,10 +22,10 @@ import (
 )
 
 func TestProjectorHandler_CreateModel(t *testing.T) {
-	driver := &MockProjectorDriver{}
+	repo := &MockRepo{}
 	projector := &TestProjector{}
-	projectorHandler := NewProjectorHandler(projector, driver)
-	projectorHandler.SetModelFactory(func() interface{} {
+	projectorHandler := NewProjectorHandler(projector, repo)
+	projectorHandler.SetModel(func() interface{} {
 		return &MockModel{}
 	})
 
@@ -38,7 +38,7 @@ func TestProjectorHandler_CreateModel(t *testing.T) {
 	}
 	eventData := &TestEventData{"event1"}
 	event := NewEventForAggregate(TestEventType, eventData, TestAggregateType, id, 1)
-	driver.loadErr = ProjectorError{
+	repo.loadErr = RepoError{
 		Err: ErrModelNotFound,
 	}
 	projector.newModel = item
@@ -51,16 +51,16 @@ func TestProjectorHandler_CreateModel(t *testing.T) {
 	if !reflect.DeepEqual(projector.model, &MockModel{}) {
 		t.Error("the model should be correct:", projector.model)
 	}
-	if driver.Item != projector.newModel {
-		t.Error("the new model should be correct:", driver.Item)
+	if repo.Item != projector.newModel {
+		t.Error("the new model should be correct:", repo.Item)
 	}
 }
 
 func TestProjectorHandler_UpdateModel(t *testing.T) {
-	driver := &MockProjectorDriver{}
+	repo := &MockRepo{}
 	projector := &TestProjector{}
-	projectorHandler := NewProjectorHandler(projector, driver)
-	projectorHandler.SetModelFactory(func() interface{} {
+	projectorHandler := NewProjectorHandler(projector, repo)
+	projectorHandler.SetModel(func() interface{} {
 		return &MockModel{}
 	})
 
@@ -72,7 +72,7 @@ func TestProjectorHandler_UpdateModel(t *testing.T) {
 	}
 	eventData := &TestEventData{"event1"}
 	event := NewEventForAggregate(TestEventType, eventData, TestAggregateType, id, 1)
-	driver.Item = item
+	repo.Item = item
 	projector.newModel = &MockModel{
 		ID:      id,
 		Content: "updated",
@@ -86,16 +86,16 @@ func TestProjectorHandler_UpdateModel(t *testing.T) {
 	if projector.model != item {
 		t.Error("the model should be correct:", projector.model)
 	}
-	if driver.Item != projector.newModel {
-		t.Error("the new model should be correct:", driver.Item)
+	if repo.Item != projector.newModel {
+		t.Error("the new model should be correct:", repo.Item)
 	}
 }
 
 func TestProjectorHandler_DeleteModel(t *testing.T) {
-	driver := &MockProjectorDriver{}
+	repo := &MockRepo{}
 	projector := &TestProjector{}
-	projectorHandler := NewProjectorHandler(projector, driver)
-	projectorHandler.SetModelFactory(func() interface{} {
+	projectorHandler := NewProjectorHandler(projector, repo)
+	projectorHandler.SetModel(func() interface{} {
 		return &MockModel{}
 	})
 
@@ -107,7 +107,7 @@ func TestProjectorHandler_DeleteModel(t *testing.T) {
 	}
 	eventData := &TestEventData{"event1"}
 	event := NewEventForAggregate(TestEventType, eventData, TestAggregateType, id, 1)
-	driver.Item = item
+	repo.Item = item
 	projector.newModel = nil
 	if err := projectorHandler.HandleEvent(ctx, event); err != nil {
 		t.Error("there shoud be no error:", err)
@@ -118,16 +118,16 @@ func TestProjectorHandler_DeleteModel(t *testing.T) {
 	if projector.model != item {
 		t.Error("the model should be correct:", projector.model)
 	}
-	if driver.Item != projector.newModel {
-		t.Error("the new model should be correct:", driver.Item)
+	if repo.Item != projector.newModel {
+		t.Error("the new model should be correct:", repo.Item)
 	}
 }
 
 func TestProjectorHandler_LoadError(t *testing.T) {
-	driver := &MockProjectorDriver{}
+	repo := &MockRepo{}
 	projector := &TestProjector{}
-	projectorHandler := NewProjectorHandler(projector, driver)
-	projectorHandler.SetModelFactory(func() interface{} {
+	projectorHandler := NewProjectorHandler(projector, repo)
+	projectorHandler.SetModel(func() interface{} {
 		return &MockModel{}
 	})
 
@@ -138,7 +138,7 @@ func TestProjectorHandler_LoadError(t *testing.T) {
 	eventData := &TestEventData{"event1"}
 	event := NewEventForAggregate(TestEventType, eventData, TestAggregateType, id, 1)
 	loadErr := errors.New("load error")
-	driver.loadErr = loadErr
+	repo.loadErr = loadErr
 	expectedErr := ProjectorError{
 		Err:       loadErr,
 		Namespace: NamespaceFromContext(ctx),
@@ -149,10 +149,10 @@ func TestProjectorHandler_LoadError(t *testing.T) {
 }
 
 func TestProjectorHandler_SaveError(t *testing.T) {
-	driver := &MockProjectorDriver{}
+	repo := &MockRepo{}
 	projector := &TestProjector{}
-	projectorHandler := NewProjectorHandler(projector, driver)
-	projectorHandler.SetModelFactory(func() interface{} {
+	projectorHandler := NewProjectorHandler(projector, repo)
+	projectorHandler.SetModel(func() interface{} {
 		return &MockModel{}
 	})
 
@@ -163,7 +163,7 @@ func TestProjectorHandler_SaveError(t *testing.T) {
 	eventData := &TestEventData{"event1"}
 	event := NewEventForAggregate(TestEventType, eventData, TestAggregateType, id, 1)
 	saveErr := errors.New("save error")
-	driver.saveErr = saveErr
+	repo.saveErr = saveErr
 	expectedErr := ProjectorError{
 		Err:       saveErr,
 		Namespace: NamespaceFromContext(ctx),
@@ -174,10 +174,10 @@ func TestProjectorHandler_SaveError(t *testing.T) {
 }
 
 func TestProjectorHandler_ProjectError(t *testing.T) {
-	driver := &MockProjectorDriver{}
+	repo := &MockRepo{}
 	projector := &TestProjector{}
-	projectorHandler := NewProjectorHandler(projector, driver)
-	projectorHandler.SetModelFactory(func() interface{} {
+	projectorHandler := NewProjectorHandler(projector, repo)
+	projectorHandler.SetModel(func() interface{} {
 		return &MockModel{}
 	})
 

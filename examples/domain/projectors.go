@@ -92,15 +92,15 @@ type GuestList struct {
 // GuestListProjector is a projector that updates the guest list. It is
 // implemented as a manual projector, not using the Projector interface.
 type GuestListProjector struct {
-	driver       eh.ProjectorDriver
-	repositoryMu sync.Mutex
-	eventID      eh.UUID
+	repo    eh.ReadWriteRepo
+	repoMu  sync.Mutex
+	eventID eh.UUID
 }
 
 // NewGuestListProjector creates a new GuestListProjector.
-func NewGuestListProjector(driver eh.ProjectorDriver, eventID eh.UUID) *GuestListProjector {
+func NewGuestListProjector(repo eh.ReadWriteRepo, eventID eh.UUID) *GuestListProjector {
 	p := &GuestListProjector{
-		driver:  driver,
+		repo:    repo,
 		eventID: eventID,
 	}
 	return p
@@ -114,13 +114,13 @@ func (p *GuestListProjector) HandlerType() eh.EventHandlerType {
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) error {
 	// NOTE: Temp fix because we need to count the guests atomically.
-	p.repositoryMu.Lock()
-	defer p.repositoryMu.Unlock()
+	p.repoMu.Lock()
+	defer p.repoMu.Unlock()
 
 	// Load or create the guest list.
 	var g *GuestList
-	m, err := p.driver.Model(ctx, p.eventID)
-	if rrErr, ok := err.(eh.ProjectorError); ok && rrErr.Err == eh.ErrModelNotFound {
+	m, err := p.repo.Find(ctx, p.eventID)
+	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrModelNotFound {
 		g = &GuestList{
 			ID: p.eventID,
 		}
@@ -148,7 +148,7 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 		g.NumDenied++
 	}
 
-	if err := p.driver.SetModel(ctx, p.eventID, g); err != nil {
+	if err := p.repo.Save(ctx, p.eventID, g); err != nil {
 		return errors.New("projector: could not save: " + err.Error())
 	}
 

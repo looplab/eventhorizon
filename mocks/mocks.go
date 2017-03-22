@@ -402,34 +402,52 @@ func (m *EventBus) SetPublisher(publisher eh.EventPublisher) {}
 // eventhorizon.EventBus interface.
 func (m *EventBus) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {}
 
-// ReadRepository is a mocked eventhorizon.ReadRepository, useful in testing.
-type ReadRepository struct {
-	ParentRepo eh.ReadRepository
+// Repo is a mocked eventhorizon.ReadRepo, useful in testing.
+type Repo struct {
+	ParentRepo eh.ReadWriteRepo
 	Item       interface{}
 	Items      []interface{}
 	// Used to simulate errors in the store.
 	Err error
 }
 
-// Parent implements the Parent method of the eventhorizon.ReadRepository interface.
-func (r *ReadRepository) Parent() eh.ReadRepository {
+// Parent implements the Parent method of the eventhorizon.ReadRepo interface.
+func (r *Repo) Parent() eh.ReadRepo {
 	return r.ParentRepo
 }
 
-// Find implements the Find method of the eventhorizon.ReadRepository interface.
-func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
+// Find implements the Find method of the eventhorizon.ReadRepo interface.
+func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	if r.Err != nil {
 		return nil, r.Err
 	}
 	return r.Item, nil
 }
 
-// FindAll implements the FindAll method of the eventhorizon.ReadRepository interface.
-func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
+// FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
+func (r *Repo) FindAll(ctx context.Context) ([]interface{}, error) {
 	if r.Err != nil {
 		return nil, r.Err
 	}
 	return r.Items, nil
+}
+
+// Save implements the Save method of the eventhorizon.ReadRepo interface.
+func (r *Repo) Save(ctx context.Context, id eh.UUID, item interface{}) error {
+	if r.Err != nil {
+		return r.Err
+	}
+	r.Item = item
+	r.Items = []interface{}{item}
+	return nil
+}
+
+// Remove implements the Remove method of the eventhorizon.ReadRepo interface.
+func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
+	if r.Err != nil {
+		return r.Err
+	}
+	return nil
 }
 
 type contextKey int

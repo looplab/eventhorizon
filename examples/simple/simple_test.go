@@ -25,9 +25,8 @@ import (
 	commandbus "github.com/looplab/eventhorizon/commandbus/local"
 	eventbus "github.com/looplab/eventhorizon/eventbus/local"
 	eventstore "github.com/looplab/eventhorizon/eventstore/memory"
-	projectordriver "github.com/looplab/eventhorizon/projectordriver/memory"
 	eventpublisher "github.com/looplab/eventhorizon/publisher/local"
-	readrepository "github.com/looplab/eventhorizon/readrepository/memory"
+	repo "github.com/looplab/eventhorizon/repo/memory"
 
 	"github.com/looplab/eventhorizon/examples/domain"
 )
@@ -46,12 +45,8 @@ func Example() {
 	commandBus := commandbus.NewCommandBus()
 
 	// Create the read repositories.
-	invitationRepo := readrepository.NewReadRepository()
-	guestListRepo := readrepository.NewReadRepository()
-
-	// Create the projector drivers.
-	invitationDriver := projectordriver.NewProjectorDriver(invitationRepo)
-	guestListDriver := projectordriver.NewProjectorDriver(guestListRepo)
+	invitationRepo := repo.NewRepo()
+	guestListRepo := repo.NewRepo()
 
 	// Setup the domain.
 	eventID := eh.NewUUID()
@@ -60,7 +55,7 @@ func Example() {
 		eventBus,
 		eventPublisher,
 		commandBus,
-		invitationDriver, guestListDriver,
+		invitationRepo, guestListRepo,
 		eventID,
 	)
 
