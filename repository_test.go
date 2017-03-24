@@ -170,9 +170,9 @@ func TestEventSourcingRepository_SaveEvents(t *testing.T) {
 
 	// Store error.
 	event1 = agg.StoreEvent(TestEventType, &TestEventData{"event"})
-	store.err = errors.New("error")
+	store.err = errors.New("aggregate error")
 	err = repo.Save(ctx, agg)
-	if err == nil || err.Error() != "error" {
+	if err == nil || err.Error() != "aggregate error" {
 		t.Error("there should be an error named 'error':", err)
 	}
 	store.err = nil
@@ -183,6 +183,15 @@ func TestEventSourcingRepository_SaveEvents(t *testing.T) {
 	err = repo.Save(ctx, agg)
 	if _, ok := err.(ApplyEventError); !ok {
 		t.Error("there should be an error of type ApplyEventError:", err)
+	}
+	agg.err = nil
+
+	// Aggregate error.
+	event1 = agg.StoreEvent(TestEventType, &TestEventData{"event"})
+	bus.err = errors.New("bus error")
+	err = repo.Save(ctx, agg)
+	if err == nil || err.Error() != "bus error" {
+		t.Error("there should be an error named 'error':", err)
 	}
 }
 
