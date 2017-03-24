@@ -162,6 +162,7 @@ type EventHandler struct {
 	Type    eh.EventHandlerType
 	Events  []eh.Event
 	Context context.Context
+	Time    time.Time
 	Recv    chan eh.Event
 	// Used to simulate errors when publishing.
 	Err error
@@ -189,6 +190,7 @@ func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	}
 	m.Events = append(m.Events, event)
 	m.Context = ctx
+	m.Time = time.Now()
 	m.Recv <- event
 	return nil
 }

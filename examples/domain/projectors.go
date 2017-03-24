@@ -55,26 +55,27 @@ func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, model
 	// Apply the changes for the event.
 	switch event.EventType() {
 	case InviteCreatedEvent:
-		if data, ok := event.Data().(*InviteCreatedData); ok {
-			i.Name = data.Name
-			i.Age = data.Age
-		} else {
+		data, ok := event.Data().(*InviteCreatedData)
+		if !ok {
 			return nil, fmt.Errorf("projector: invalid event data type: %v", event.Data())
 		}
+		i.Name = data.Name
+		i.Age = data.Age
+
 	case InviteAcceptedEvent:
-		// NOTE: Temp fix for events that arrive out of order.
-		if i.Status != "confirmed" && i.Status != "denied" {
-			i.Status = "accepted"
-		}
+		i.Status = "accepted"
+
 	case InviteDeclinedEvent:
-		// NOTE: Temp fix for events that arrive out of order.
-		if i.Status != "confirmed" && i.Status != "denied" {
-			i.Status = "declined"
-		}
+		i.Status = "declined"
+
 	case InviteConfirmedEvent:
 		i.Status = "confirmed"
+
 	case InviteDeniedEvent:
 		i.Status = "denied"
+
+	default:
+		return nil, errors.New("could not handle event: " + event.String())
 	}
 
 	return i, nil
@@ -140,13 +141,19 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 	case InviteAcceptedEvent:
 		g.NumAccepted++
 		g.NumGuests++
+
 	case InviteDeclinedEvent:
 		g.NumDeclined++
 		g.NumGuests++
+
 	case InviteConfirmedEvent:
 		g.NumConfirmed++
+
 	case InviteDeniedEvent:
 		g.NumDenied++
+
+	default:
+		return errors.New("could not handle event: " + event.String())
 	}
 
 	if err := p.repo.Save(ctx, p.eventID, g); err != nil {

@@ -24,33 +24,30 @@ import (
 )
 
 func TestEventBus(t *testing.T) {
-	bus := NewEventBus()
-	if bus == nil {
-		t.Fatal("there should be a bus")
-	}
-
-	EventBusCommonTests(t, bus)
+	EventBusCommonTests(t, false)
 }
 
 func TestEventBusAsync(t *testing.T) {
-	bus := NewEventBus()
-	if bus == nil {
-		t.Fatal("there should be a bus")
-	}
-	bus.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
-
-	EventBusCommonTests(t, bus)
+	EventBusCommonTests(t, true)
 }
 
 // EventBusCommonTests are test cases that are common to all implementations
 // of event busses.
-func EventBusCommonTests(t *testing.T, bus eh.EventBus) {
+func EventBusCommonTests(t *testing.T, async bool) {
+	bus := NewEventBus()
+	if bus == nil {
+		t.Fatal("there should be a bus")
+	}
+	if async {
+		bus.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
+	}
+
 	publisher := mocks.NewEventPublisher()
 	bus.SetPublisher(publisher)
 
 	ctx := mocks.WithContextOne(context.Background(), "testval")
 
-	t.Log("publish event without handler")
+	// Publish event without handler.
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
 	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{"event1"},
 		mocks.AggregateType, id, 1)
@@ -68,7 +65,7 @@ func EventBusCommonTests(t *testing.T, bus eh.EventBus) {
 		t.Error("the context should be correct:", publisher.Context)
 	}
 
-	t.Log("publish event")
+	// Publish event.
 	handler := mocks.NewEventHandler("testHandler")
 	bus.AddHandler(handler, mocks.EventType)
 	if err := bus.HandleEvent(ctx, event1); err != nil {
@@ -97,7 +94,7 @@ func EventBusCommonTests(t *testing.T, bus eh.EventBus) {
 		t.Error("the context should be correct:", publisher.Context)
 	}
 
-	t.Log("publish another event")
+	// Publish another event.
 	bus.AddHandler(handler, mocks.EventOtherType)
 	event2 := eh.NewEventForAggregate(mocks.EventOtherType, nil,
 		mocks.AggregateType, id, 1)
@@ -127,16 +124,31 @@ func EventBusCommonTests(t *testing.T, bus eh.EventBus) {
 		t.Error("the context should be correct:", publisher.Context)
 	}
 
-	t.Log("error in handler")
+	// Error in handler.
 	handler.Err = errors.New("handler error")
 	if err := bus.HandleEvent(ctx, event1); err != handler.Err {
 		t.Error("there should be an error:", err)
 	}
 
-	t.Log("error in publisher")
+	// Error in publisher.
 	handler.Err = nil
 	publisher.Err = errors.New("publisher error")
 	if err := bus.HandleEvent(ctx, event1); err != publisher.Err {
 		t.Error("there should be an error:", err)
+	}
+	publisher.Err = nil
+
+	// Event handler order, only important for non-async mode.
+	if !async {
+		handler2 := mocks.NewEventHandler("testHandler2")
+		bus.AddHandler(handler2, mocks.EventType)
+		if err := bus.HandleEvent(ctx, event1); err != nil {
+			t.Error("there should be no error:", err)
+		}
+		handler.WaitForEvent(t)
+		handler2.WaitForEvent(t)
+		if handler2.Time.Before(handler.Time) {
+			t.Error("the first handler shoud be run first")
+		}
 	}
 }
