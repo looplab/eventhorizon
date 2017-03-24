@@ -57,7 +57,9 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	// Dispatch commands back on the command bus.
 	for _, command := range commands {
 		if err := h.commandBus.HandleCommand(ctx, command); err != nil {
-			return errors.New("coud not handle command in saga: " + err.Error())
+			return errors.New("could not handle command '" +
+				string(command.CommandType()) + "' from saga '" +
+				string(h.saga.SagaType()) + "': " + err.Error())
 		}
 	}
 
