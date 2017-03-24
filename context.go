@@ -25,7 +25,7 @@ const DefaultNamespace = "default"
 
 // DefaultMinVersionDeadline is the deadline to use when creating a min version
 // context that waits.
-const DefaultMinVersionDeadline = 5 * time.Second
+const DefaultMinVersionDeadline = 10 * time.Second
 
 func init() {
 	// Register the namespace context.
