@@ -41,7 +41,7 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	ctx := eh.WithNamespace(context.Background(), "ns")
+	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
 
 	defer store.Close()
 	defer func() {

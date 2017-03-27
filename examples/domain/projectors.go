@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/eventhandler/projector"
 )
 
 // Invitation is a read model object for an invitation.
@@ -32,70 +33,52 @@ type Invitation struct {
 }
 
 // InvitationProjector is a projector that updates the invitations.
-type InvitationProjector struct {
-	repository eh.ReadRepository
-}
+type InvitationProjector struct{}
 
 // NewInvitationProjector creates a new InvitationProjector.
-func NewInvitationProjector(repository eh.ReadRepository) *InvitationProjector {
-	p := &InvitationProjector{
-		repository: repository,
-	}
-	return p
+func NewInvitationProjector() *InvitationProjector {
+	return &InvitationProjector{}
 }
 
-// HandlerType implements the HandlerType method of the EventHandler interface.
-func (p *InvitationProjector) HandlerType() eh.EventHandlerType {
-	return eh.EventHandlerType("InvitationProjector")
+// ProjectorType implements the ProjectorType method of the Projector interface.
+func (p *InvitationProjector) ProjectorType() projector.Type {
+	return projector.Type("InvitationProjector")
 }
 
-// HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (p *InvitationProjector) HandleEvent(ctx context.Context, event eh.Event) error {
-	// Load or create the model.
-	var i *Invitation
-	if m, _ := p.repository.Find(ctx, event.AggregateID()); m != nil {
-		var ok bool
-		if i, ok = m.(*Invitation); !ok {
-			return errors.New("projector: model is of incorrect type")
-		}
-	} else {
-		i = &Invitation{
-			ID:     event.AggregateID(),
-			Status: "created",
-		}
+// Project implements the Project method of the Projector interface.
+func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, model interface{}) (interface{}, error) {
+	i, ok := model.(*Invitation)
+	if !ok {
+		return nil, errors.New("model is of incorrect type")
 	}
 
 	// Apply the changes for the event.
 	switch event.EventType() {
 	case InviteCreatedEvent:
-		if data, ok := event.Data().(*InviteCreatedData); ok {
-			i.Name = data.Name
-			i.Age = data.Age
-		} else {
-			return fmt.Errorf("projector: invalid event data type: %v", event.Data())
+		data, ok := event.Data().(*InviteCreatedData)
+		if !ok {
+			return nil, fmt.Errorf("projector: invalid event data type: %v", event.Data())
 		}
+		i.Name = data.Name
+		i.Age = data.Age
+
 	case InviteAcceptedEvent:
-		// NOTE: Temp fix for events that arrive out of order.
-		if i.Status != "confirmed" && i.Status != "denied" {
-			i.Status = "accepted"
-		}
+		i.Status = "accepted"
+
 	case InviteDeclinedEvent:
-		// NOTE: Temp fix for events that arrive out of order.
-		if i.Status != "confirmed" && i.Status != "denied" {
-			i.Status = "declined"
-		}
+		i.Status = "declined"
+
 	case InviteConfirmedEvent:
 		i.Status = "confirmed"
+
 	case InviteDeniedEvent:
 		i.Status = "denied"
+
+	default:
+		return nil, errors.New("could not handle event: " + event.String())
 	}
 
-	// Save it back, same for new and updated models.
-	if err := p.repository.Save(ctx, event.AggregateID(), i); err != nil {
-		return errors.New("projector: could not save: " + err.Error())
-	}
-
-	return nil
+	return i, nil
 }
 
 // GuestList is a read model object for the guest list.
@@ -108,18 +91,19 @@ type GuestList struct {
 	NumDenied    int
 }
 
-// GuestListProjector is a projector that updates the guest list.
+// GuestListProjector is a projector that updates the guest list. It is
+// implemented as a manual projector, not using the Projector interface.
 type GuestListProjector struct {
-	repository   eh.ReadRepository
-	repositoryMu sync.Mutex
-	eventID      eh.UUID
+	repo    eh.ReadWriteRepo
+	repoMu  sync.Mutex
+	eventID eh.UUID
 }
 
 // NewGuestListProjector creates a new GuestListProjector.
-func NewGuestListProjector(repository eh.ReadRepository, eventID eh.UUID) *GuestListProjector {
+func NewGuestListProjector(repo eh.ReadWriteRepo, eventID eh.UUID) *GuestListProjector {
 	p := &GuestListProjector{
-		repository: repository,
-		eventID:    eventID,
+		repo:    repo,
+		eventID: eventID,
 	}
 	return p
 }
@@ -132,16 +116,23 @@ func (p *GuestListProjector) HandlerType() eh.EventHandlerType {
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) error {
 	// NOTE: Temp fix because we need to count the guests atomically.
-	p.repositoryMu.Lock()
-	defer p.repositoryMu.Unlock()
+	p.repoMu.Lock()
+	defer p.repoMu.Unlock()
 
 	// Load or create the guest list.
 	var g *GuestList
-	if m, _ := p.repository.Find(ctx, p.eventID); m != nil {
-		g = m.(*GuestList)
-	} else {
+	m, err := p.repo.Find(ctx, p.eventID)
+	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrModelNotFound {
 		g = &GuestList{
 			ID: p.eventID,
+		}
+	} else if err != nil {
+		return err
+	} else {
+		var ok bool
+		g, ok = m.(*GuestList)
+		if !ok {
+			return errors.New("projector: incorrect model type")
 		}
 	}
 
@@ -150,16 +141,22 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 	case InviteAcceptedEvent:
 		g.NumAccepted++
 		g.NumGuests++
+
 	case InviteDeclinedEvent:
 		g.NumDeclined++
 		g.NumGuests++
+
 	case InviteConfirmedEvent:
 		g.NumConfirmed++
+
 	case InviteDeniedEvent:
 		g.NumDenied++
+
+	default:
+		return errors.New("could not handle event: " + event.String())
 	}
 
-	if err := p.repository.Save(ctx, p.eventID, g); err != nil {
+	if err := p.repo.Save(ctx, p.eventID, g); err != nil {
 		return errors.New("projector: could not save: " + err.Error())
 	}
 

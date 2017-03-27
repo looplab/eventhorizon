@@ -34,6 +34,6 @@ func TestEventStore(t *testing.T) {
 	testutil.EventStoreCommonTests(t, context.Background(), store)
 
 	t.Log("event store with other namespace")
-	ctx := eh.WithNamespace(context.Background(), "ns")
+	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
 	testutil.EventStoreCommonTests(t, ctx, store)
 }

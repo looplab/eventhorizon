@@ -24,7 +24,7 @@ import (
 // EventBus is an event bus that notifies registered EventHandlers of
 // published events. It will use the SimpleEventHandlingStrategy by default.
 type EventBus struct {
-	handlers  map[eh.EventType]map[eh.EventHandler]bool
+	handlers  map[eh.EventType][]eh.EventHandler
 	handlerMu sync.RWMutex
 
 	publisher eh.EventPublisher
@@ -36,10 +36,9 @@ type EventBus struct {
 
 // NewEventBus creates a EventBus.
 func NewEventBus() *EventBus {
-	b := &EventBus{
-		handlers: make(map[eh.EventType]map[eh.EventHandler]bool),
+	return &EventBus{
+		handlers: map[eh.EventType][]eh.EventHandler{},
 	}
-	return b
 }
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventBus interface.
@@ -57,7 +56,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 		if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
 			wg := sync.WaitGroup{}
 			errc := make(chan error)
-			for h := range handlers {
+			for _, h := range handlers {
 				wg.Add(1)
 				go func(h eh.EventHandler) {
 					defer wg.Done()
@@ -81,7 +80,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 				return err
 			}
 		} else {
-			for h := range handlers {
+			for _, h := range handlers {
 				if err := h.HandleEvent(ctx, event); err != nil {
 					return err
 				}
@@ -98,13 +97,13 @@ func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
 	b.handlerMu.Lock()
 	defer b.handlerMu.Unlock()
 
-	// Create list for new event types.
-	if _, ok := b.handlers[eventType]; !ok {
-		b.handlers[eventType] = make(map[eh.EventHandler]bool)
+	// Add the handler for the event type (if not added).
+	for _, h := range b.handlers[eventType] {
+		if handler == h {
+			return
+		}
 	}
-
-	// Add the handler for the event type.
-	b.handlers[eventType][handler] = true
+	b.handlers[eventType] = append(b.handlers[eventType], handler)
 }
 
 // SetPublisher implements the SetPublisher method of the

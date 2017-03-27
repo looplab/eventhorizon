@@ -20,27 +20,25 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/readrepository/testutil"
+	"github.com/looplab/eventhorizon/repo/testutil"
 )
 
-func TestReadRepository(t *testing.T) {
-	repo := NewReadRepository()
+func TestReadRepo(t *testing.T) {
+	repo := NewRepo()
 	if repo == nil {
 		t.Error("there should be a repository")
 	}
-
-	// Run the actual test suite.
-
-	t.Log("read repository with default namespace")
-	testutil.ReadRepositoryCommonTests(t, context.Background(), repo)
-
-	t.Log("read repository with other namespace")
-	ctx := eh.WithNamespace(context.Background(), "ns")
-	testutil.ReadRepositoryCommonTests(t, ctx, repo)
-
 	if repo.Parent() != nil {
 		t.Error("the parent repo should be nil")
 	}
+
+	// Repo with default namespace.
+	testutil.RepoCommonTests(t, context.Background(), repo)
+
+	// Repo with other namespace
+	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
+	testutil.RepoCommonTests(t, ctx, repo)
+
 }
 
 func TestRepository(t *testing.T) {
@@ -48,13 +46,13 @@ func TestRepository(t *testing.T) {
 		t.Error("the parent repository should be nil:", r)
 	}
 
-	inner := &mocks.ReadRepository{}
+	inner := &mocks.Repo{}
 	if r := Repository(inner); r != nil {
 		t.Error("the parent repository should be nil:", r)
 	}
 
-	repo := NewReadRepository()
-	outer := &mocks.ReadRepository{ParentRepo: repo}
+	repo := NewRepo()
+	outer := &mocks.Repo{ParentRepo: repo}
 	if r := Repository(outer); r != repo {
 		t.Error("the parent repository should be correct:", r)
 	}

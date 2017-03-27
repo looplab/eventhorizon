@@ -18,6 +18,8 @@ import (
 	"log"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/eventhandler/projector"
+	"github.com/looplab/eventhorizon/eventhandler/saga"
 )
 
 // Setup configures the domain.
@@ -26,7 +28,7 @@ func Setup(
 	eventBus eh.EventBus,
 	eventPublisher eh.EventPublisher,
 	commandBus eh.CommandBus,
-	invitationRepo, guestListRepo eh.ReadRepository,
+	invitationRepo, guestListRepo eh.ReadWriteRepo,
 	eventID eh.UUID) {
 
 	// Add the logger as an observer.
@@ -60,8 +62,9 @@ func Setup(
 	commandBus.SetHandler(handler, DenyInviteCommand)
 
 	// Create and register a read model for individual invitations.
-	// invitationRepo := readrepository.NewReadRepository()
-	invitationProjector := NewInvitationProjector(invitationRepo)
+	invitationProjector := projector.NewEventHandler(
+		NewInvitationProjector(), invitationRepo)
+	invitationProjector.SetModel(func() interface{} { return &Invitation{} })
 	eventBus.AddHandler(invitationProjector, InviteCreatedEvent)
 	eventBus.AddHandler(invitationProjector, InviteAcceptedEvent)
 	eventBus.AddHandler(invitationProjector, InviteDeclinedEvent)
@@ -69,8 +72,6 @@ func Setup(
 	eventBus.AddHandler(invitationProjector, InviteDeniedEvent)
 
 	// Create and register a read model for a guest list.
-	// eventID := eh.NewUUID()
-	// guestListRepo := readrepository.NewReadRepository()
 	guestListProjector := NewGuestListProjector(guestListRepo, eventID)
 	eventBus.AddHandler(guestListProjector, InviteCreatedEvent)
 	eventBus.AddHandler(guestListProjector, InviteAcceptedEvent)
@@ -80,6 +81,6 @@ func Setup(
 
 	// Setup the saga that responds to the accepted guests and limits the total
 	// amount of guests, responding with a confirmation or denial.
-	responseSaga := eh.NewSagaHandler(NewResponseSaga(2), commandBus)
+	responseSaga := saga.NewEventHandler(NewResponseSaga(2), commandBus)
 	eventBus.AddHandler(responseSaga, InviteAcceptedEvent)
 }

@@ -47,7 +47,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	if len(events) == 0 {
 		return eh.EventStoreError{
 			Err:       eh.ErrNoEventsToAppend,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -61,7 +61,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if event.AggregateID() != aggregateID {
 			return eh.EventStoreError{
 				Err:       eh.ErrInvalidEvent,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 
@@ -69,7 +69,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if event.Version() != version+1 {
 			return eh.EventStoreError{
 				Err:       eh.ErrIncorrectEventVersion,
-				Namespace: eh.Namespace(ctx),
+				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 
@@ -108,7 +108,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			if aggregate.Version != originalVersion {
 				return eh.EventStoreError{
 					Err:       ErrCouldNotSaveAggregate,
-					Namespace: eh.Namespace(ctx),
+					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
 
@@ -150,7 +150,7 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 func (s *EventStore) namespace(ctx context.Context) string {
 	s.dbMu.Lock()
 	defer s.dbMu.Unlock()
-	ns := eh.Namespace(ctx)
+	ns := eh.NamespaceFromContext(ctx)
 	if _, ok := s.db[ns]; !ok {
 		s.db[ns] = map[eh.UUID]aggregateRecord{}
 	}

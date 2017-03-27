@@ -32,22 +32,22 @@ var ErrNoDBSession = errors.New("no database session")
 // ErrCouldNotClearDB is when the database could not be cleared.
 var ErrCouldNotClearDB = errors.New("could not clear database")
 
-// ErrModelNotSet is when an model is not set on a read repository.
+// ErrModelNotSet is when an model factory is not set on the Repo.
 var ErrModelNotSet = errors.New("model not set")
 
 // ErrInvalidQuery is when a query was not returned from the callback to FindCustom.
 var ErrInvalidQuery = errors.New("invalid query")
 
-// ReadRepository implements an MongoDB repository of read models.
-type ReadRepository struct {
+// Repo implements an MongoDB repository of read models.
+type Repo struct {
 	session    *mgo.Session
 	dbPrefix   string
 	collection string
 	factory    func() interface{}
 }
 
-// NewReadRepository creates a new ReadRepository.
-func NewReadRepository(url, dbPrefix, collection string) (*ReadRepository, error) {
+// NewRepo creates a new Repo.
+func NewRepo(url, dbPrefix, collection string) (*Repo, error) {
 	session, err := mgo.Dial(url)
 	if err != nil {
 		return nil, ErrCouldNotDialDB
@@ -56,16 +56,16 @@ func NewReadRepository(url, dbPrefix, collection string) (*ReadRepository, error
 	session.SetMode(mgo.Strong, true)
 	session.SetSafe(&mgo.Safe{W: 1})
 
-	return NewReadRepositoryWithSession(session, dbPrefix, collection)
+	return NewRepoWithSession(session, dbPrefix, collection)
 }
 
-// NewReadRepositoryWithSession creates a new ReadRepository with a session.
-func NewReadRepositoryWithSession(session *mgo.Session, dbPrefix, collection string) (*ReadRepository, error) {
+// NewRepoWithSession creates a new Repo with a session.
+func NewRepoWithSession(session *mgo.Session, dbPrefix, collection string) (*Repo, error) {
 	if session == nil {
 		return nil, ErrNoDBSession
 	}
 
-	r := &ReadRepository{
+	r := &Repo{
 		session:    session,
 		dbPrefix:   dbPrefix,
 		collection: collection,
@@ -74,46 +74,30 @@ func NewReadRepositoryWithSession(session *mgo.Session, dbPrefix, collection str
 	return r, nil
 }
 
-// Parent implements the Parent method of the eventhorizon.ReadRepository interface.
-func (r *ReadRepository) Parent() eh.ReadRepository {
+// Parent implements the Parent method of the eventhorizon.ReadRepo interface.
+func (r *Repo) Parent() eh.ReadRepo {
 	return nil
 }
 
-// Save saves a read model with id to the repository.
-func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}) error {
-	sess := r.session.Copy()
-	defer sess.Close()
-
-	if _, err := sess.DB(r.dbName(ctx)).C(r.collection).UpsertId(id, model); err != nil {
-		return eh.ReadRepositoryError{
-			Err:       eh.ErrCouldNotSaveModel,
-			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
-		}
-	}
-	return nil
-}
-
-// Find returns one read model with using an id. Returns
-// ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
+// Find implements the Find method of the eventhorizon.ReadRepo interface.
+func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
 
 	if r.factory == nil {
-		return nil, eh.ReadRepositoryError{
+		return nil, eh.RepoError{
 			Err:       ErrModelNotSet,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
 	model := r.factory()
 	err := sess.DB(r.dbName(ctx)).C(r.collection).FindId(id).One(model)
 	if err != nil {
-		return nil, eh.ReadRepositoryError{
+		return nil, eh.RepoError{
 			Err:       eh.ErrModelNotFound,
 			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -125,23 +109,23 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 // the query in the callback and returning nil to block a second execution of
 // the same query in FindCustom. Expect a ErrInvalidQuery if returning a nil
 // query from the callback.
-func (r *ReadRepository) FindCustom(ctx context.Context, callback func(*mgo.Collection) *mgo.Query) ([]interface{}, error) {
+func (r *Repo) FindCustom(ctx context.Context, callback func(*mgo.Collection) *mgo.Query) ([]interface{}, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
 
 	if r.factory == nil {
-		return nil, eh.ReadRepositoryError{
+		return nil, eh.RepoError{
 			Err:       ErrModelNotSet,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
 	collection := sess.DB(r.dbName(ctx)).C(r.collection)
 	query := callback(collection)
 	if query == nil {
-		return nil, eh.ReadRepositoryError{
+		return nil, eh.RepoError{
 			Err:       ErrInvalidQuery,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -153,24 +137,24 @@ func (r *ReadRepository) FindCustom(ctx context.Context, callback func(*mgo.Coll
 		model = r.factory()
 	}
 	if err := iter.Close(); err != nil {
-		return nil, eh.ReadRepositoryError{
+		return nil, eh.RepoError{
 			Err:       err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
 	return result, nil
 }
 
-// FindAll returns all read models in the repository.
-func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
+// FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
+func (r *Repo) FindAll(ctx context.Context) ([]interface{}, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
 
 	if r.factory == nil {
-		return nil, eh.ReadRepositoryError{
+		return nil, eh.RepoError{
 			Err:       ErrModelNotSet,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -182,27 +166,41 @@ func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 		model = r.factory()
 	}
 	if err := iter.Close(); err != nil {
-		return nil, eh.ReadRepositoryError{
+		return nil, eh.RepoError{
 			Err:       err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
 	return result, nil
 }
 
-// Remove removes a read model with id from the repository. Returns
-// ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
+// Save implements the Save method of the eventhorizon.WriteRepo interface.
+func (r *Repo) Save(ctx context.Context, id eh.UUID, model interface{}) error {
+	sess := r.session.Copy()
+	defer sess.Close()
+
+	if _, err := sess.DB(r.dbName(ctx)).C(r.collection).UpsertId(id, model); err != nil {
+		return eh.RepoError{
+			Err:       eh.ErrCouldNotSaveModel,
+			BaseErr:   err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+	return nil
+}
+
+// Remove implements the Remove method of the eventhorizon.WriteRepo interface.
+func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 
 	err := sess.DB(r.dbName(ctx)).C(r.collection).RemoveId(id)
 	if err != nil {
-		return eh.ReadRepositoryError{
+		return eh.RepoError{
 			Err:       eh.ErrModelNotFound,
 			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -210,41 +208,41 @@ func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
 }
 
 // SetModel sets a factory function that creates concrete model types.
-func (r *ReadRepository) SetModel(factory func() interface{}) {
+func (r *Repo) SetModel(factory func() interface{}) {
 	r.factory = factory
 }
 
 // Clear clears the read model database.
-func (r *ReadRepository) Clear(ctx context.Context) error {
+func (r *Repo) Clear(ctx context.Context) error {
 	if err := r.session.DB(r.dbName(ctx)).C(r.collection).DropCollection(); err != nil {
-		return eh.ReadRepositoryError{
+		return eh.RepoError{
 			Err:       ErrCouldNotClearDB,
 			BaseErr:   err,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 	return nil
 }
 
 // Close closes a database session.
-func (r *ReadRepository) Close() {
+func (r *Repo) Close() {
 	r.session.Close()
 }
 
 // dbName appends the namespace, if one is set, to the DB prefix to
 // get the name of the DB to use.
-func (r *ReadRepository) dbName(ctx context.Context) string {
-	ns := eh.Namespace(ctx)
+func (r *Repo) dbName(ctx context.Context) string {
+	ns := eh.NamespaceFromContext(ctx)
 	return r.dbPrefix + "_" + ns
 }
 
-// Repository returns a parent ReadRepository if there is one.
-func Repository(repo eh.ReadRepository) *ReadRepository {
+// Repository returns a parent ReadRepo if there is one.
+func Repository(repo eh.ReadRepo) *Repo {
 	if repo == nil {
 		return nil
 	}
 
-	if r, ok := repo.(*ReadRepository); ok {
+	if r, ok := repo.(*Repo); ok {
 		return r
 	}
 

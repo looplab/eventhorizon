@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package eventhorizon
+package saga
 
 import (
 	"context"
 	"errors"
+
+	eh "github.com/looplab/eventhorizon"
 )
 
 // Saga is an interface for a CQRS saga that listens to events and generate
@@ -24,38 +26,40 @@ import (
 // on multiple events.
 type Saga interface {
 	// SagaType returns the type of the saga.
-	SagaType() SagaType
+	SagaType() Type
 
 	// RunSaga handles an event in the saga that can return commands.
-	RunSaga(context.Context, Event) []Command
+	RunSaga(context.Context, eh.Event) []eh.Command
 }
 
-// SagaType is the type of a saga, used as its unique identifier.
-type SagaType string
+// Type is the type of a saga, used as its unique identifier.
+type Type string
 
-// SagaHandler is a CQRS saga handler to run a Saga implementation.
-type SagaHandler struct {
+// EventHandler is a CQRS saga handler to run a Saga implementation.
+type EventHandler struct {
 	saga       Saga
-	commandBus CommandBus
+	commandBus eh.CommandBus
 }
 
-// NewSagaHandler creates a new SagaHandler.
-func NewSagaHandler(saga Saga, commandBus CommandBus) *SagaHandler {
-	return &SagaHandler{
+// NewEventHandler creates a new EventHandler.
+func NewEventHandler(saga Saga, commandBus eh.CommandBus) *EventHandler {
+	return &EventHandler{
 		saga:       saga,
 		commandBus: commandBus,
 	}
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (s *SagaHandler) HandleEvent(ctx context.Context, event Event) error {
+func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	// Run the saga and collect commands.
-	commands := s.saga.RunSaga(ctx, event)
+	commands := h.saga.RunSaga(ctx, event)
 
 	// Dispatch commands back on the command bus.
 	for _, command := range commands {
-		if err := s.commandBus.HandleCommand(ctx, command); err != nil {
-			return errors.New("coud not handle command in saga: " + err.Error())
+		if err := h.commandBus.HandleCommand(ctx, command); err != nil {
+			return errors.New("could not handle command '" +
+				string(command.CommandType()) + "' from saga '" +
+				string(h.saga.SagaType()) + "': " + err.Error())
 		}
 	}
 
@@ -64,6 +68,6 @@ func (s *SagaHandler) HandleEvent(ctx context.Context, event Event) error {
 
 // HandlerType implements the HandlerType method of the EventHandler
 // interface.
-func (s *SagaHandler) HandlerType() EventHandlerType {
-	return EventHandlerType(s.saga.SagaType())
+func (h *EventHandler) HandlerType() eh.EventHandlerType {
+	return eh.EventHandlerType(h.saga.SagaType())
 }

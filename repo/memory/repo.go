@@ -21,8 +21,8 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// ReadRepository implements an in memory repository of read models.
-type ReadRepository struct {
+// Repo implements an in memory repository of read models.
+type Repo struct {
 	// The outer map is with namespace as key, the inner with aggregate ID.
 	db   map[string]map[eh.UUID]interface{}
 	dbMu sync.RWMutex
@@ -32,39 +32,22 @@ type ReadRepository struct {
 	ids map[string][]eh.UUID
 }
 
-// NewReadRepository creates a new ReadRepository.
-func NewReadRepository() *ReadRepository {
-	r := &ReadRepository{
+// NewRepo creates a new Repo.
+func NewRepo() *Repo {
+	r := &Repo{
 		ids: map[string][]eh.UUID{},
 		db:  map[string]map[eh.UUID]interface{}{},
 	}
 	return r
 }
 
-// Parent implements the Parent method of the eventhorizon.ReadRepository interface.
-func (r *ReadRepository) Parent() eh.ReadRepository {
+// Parent implements the Parent method of the eventhorizon.ReadRepo interface.
+func (r *Repo) Parent() eh.ReadRepo {
 	return nil
 }
 
-// Save saves a read model with id to the repository.
-func (r *ReadRepository) Save(ctx context.Context, id eh.UUID, model interface{}) error {
-	ns := r.namespace(ctx)
-
-	r.dbMu.Lock()
-	defer r.dbMu.Unlock()
-
-	if _, ok := r.db[ns][id]; !ok {
-		r.ids[ns] = append(r.ids[ns], id)
-	}
-
-	r.db[ns][id] = model
-
-	return nil
-}
-
-// Find returns one read model with using an id. Returns
-// ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
+// Find implements the Find method of the eventhorizon.ReadRepo interface.
+func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	ns := r.namespace(ctx)
 
 	r.dbMu.RLock()
@@ -72,17 +55,17 @@ func (r *ReadRepository) Find(ctx context.Context, id eh.UUID) (interface{}, err
 
 	model, ok := r.db[ns][id]
 	if !ok {
-		return nil, eh.ReadRepositoryError{
+		return nil, eh.RepoError{
 			Err:       eh.ErrModelNotFound,
-			Namespace: eh.Namespace(ctx),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
 	return model, nil
 }
 
-// FindAll returns all read models in the repository.
-func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
+// FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
+func (r *Repo) FindAll(ctx context.Context) ([]interface{}, error) {
 	ns := r.namespace(ctx)
 
 	r.dbMu.RLock()
@@ -98,9 +81,24 @@ func (r *ReadRepository) FindAll(ctx context.Context) ([]interface{}, error) {
 	return all, nil
 }
 
-// Remove removes a read model with id from the repository. Returns
-// ErrModelNotFound if no model could be found.
-func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
+// Save implements the Save method of the eventhorizon.WriteRepo interface.
+func (r *Repo) Save(ctx context.Context, id eh.UUID, model interface{}) error {
+	ns := r.namespace(ctx)
+
+	r.dbMu.Lock()
+	defer r.dbMu.Unlock()
+
+	if _, ok := r.db[ns][id]; !ok {
+		r.ids[ns] = append(r.ids[ns], id)
+	}
+
+	r.db[ns][id] = model
+
+	return nil
+}
+
+// Remove implements the Remove method of the eventhorizon.WriteRepo interface.
+func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
 	ns := r.namespace(ctx)
 
 	r.dbMu.Lock()
@@ -121,17 +119,17 @@ func (r *ReadRepository) Remove(ctx context.Context, id eh.UUID) error {
 		return nil
 	}
 
-	return eh.ReadRepositoryError{
+	return eh.RepoError{
 		Err:       eh.ErrModelNotFound,
-		Namespace: eh.Namespace(ctx),
+		Namespace: eh.NamespaceFromContext(ctx),
 	}
 }
 
 // Helper to get the namespace and ensure that its data exists.
-func (r *ReadRepository) namespace(ctx context.Context) string {
+func (r *Repo) namespace(ctx context.Context) string {
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
-	ns := eh.Namespace(ctx)
+	ns := eh.NamespaceFromContext(ctx)
 	if _, ok := r.db[ns]; !ok {
 		r.db[ns] = map[eh.UUID]interface{}{}
 		r.ids[ns] = []eh.UUID{}
@@ -139,13 +137,13 @@ func (r *ReadRepository) namespace(ctx context.Context) string {
 	return ns
 }
 
-// Repository returns a parent ReadRepository if there is one.
-func Repository(repo eh.ReadRepository) *ReadRepository {
+// Repository returns a parent ReadRepo if there is one.
+func Repository(repo eh.ReadRepo) *Repo {
 	if repo == nil {
 		return nil
 	}
 
-	if r, ok := repo.(*ReadRepository); ok {
+	if r, ok := repo.(*Repo); ok {
 		return r
 	}
 

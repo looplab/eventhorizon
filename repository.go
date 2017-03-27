@@ -120,7 +120,9 @@ func (r *EventSourcingRepository) Save(ctx context.Context, aggregate Aggregate)
 
 	// Publish all events on the bus.
 	for _, event := range uncommittedEvents {
-		r.eventBus.HandleEvent(ctx, event)
+		if err := r.eventBus.HandleEvent(ctx, event); err != nil {
+			return err
+		}
 	}
 
 	aggregate.ClearUncommittedEvents()

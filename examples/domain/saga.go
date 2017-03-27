@@ -19,10 +19,11 @@ import (
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/eventhandler/saga"
 )
 
 // ResponseSagaType is the type of the saga.
-const ResponseSagaType eh.SagaType = "ResponseSaga"
+const ResponseSagaType saga.Type = "ResponseSaga"
 
 // ResponseSaga is a saga that confirmes all accepted invites until a guest
 // limit has been reached.
@@ -41,7 +42,7 @@ func NewResponseSaga(guestLimit int) *ResponseSaga {
 }
 
 // SagaType implements the SagaType method of the Saga interface.
-func (s *ResponseSaga) SagaType() eh.SagaType {
+func (s *ResponseSaga) SagaType() saga.Type {
 	return ResponseSagaType
 }
 

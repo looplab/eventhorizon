@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/readrepository/version"
 )
 
 func TestMocks(t *testing.T) {
@@ -45,7 +44,7 @@ func TestMocks(t *testing.T) {
 
 	var model interface{}
 	model = &Model{}
-	if _, ok := model.(version.Versionable); !ok {
+	if _, ok := model.(eh.Versionable); !ok {
 		t.Error("the model should be versionable")
 	}
 
@@ -97,9 +96,9 @@ func TestMocks(t *testing.T) {
 		t.Error("the mocked event bus is incorrect")
 	}
 
-	var readRepo interface{}
-	readRepo = &ReadRepository{}
-	if _, ok := readRepo.(eh.ReadRepository); !ok {
+	var repo interface{}
+	repo = &Repo{}
+	if _, ok := repo.(eh.ReadWriteRepo); !ok {
 		t.Error("the mocked read repository is incorrect")
 	}
 

@@ -26,10 +26,10 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/readrepository/testutil"
+	"github.com/looplab/eventhorizon/repo/testutil"
 )
 
-func TestReadRepository(t *testing.T) {
+func TestReadRepo(t *testing.T) {
 	// Support Wercker testing with MongoDB.
 	host := os.Getenv("MONGO_PORT_27017_TCP_ADDR")
 	port := os.Getenv("MONGO_PORT_27017_TCP_PORT")
@@ -39,7 +39,7 @@ func TestReadRepository(t *testing.T) {
 		url = host + ":" + port
 	}
 
-	repo, err := NewReadRepository(url, "test", "mocks.Model")
+	repo, err := NewRepo(url, "test", "mocks.Model")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -50,49 +50,45 @@ func TestReadRepository(t *testing.T) {
 	repo.SetModel(func() interface{} {
 		return &mocks.Model{}
 	})
-
-	ctx := eh.WithNamespace(context.Background(), "ns")
-
-	defer func() {
-		t.Log("clearing db")
-		if err = repo.Clear(context.Background()); err != nil {
-			t.Fatal("there should be no error:", err)
-		}
-		if err = repo.Clear(ctx); err != nil {
-			t.Fatal("there should be no error:", err)
-		}
-	}()
-
-	// Run the actual test suite.
-
-	t.Log("read repository with default namespace")
-	testutil.ReadRepositoryCommonTests(t, context.Background(), repo)
-
-	t.Log("read repository with other namespace")
-	testutil.ReadRepositoryCommonTests(t, ctx, repo)
-
 	if repo.Parent() != nil {
 		t.Error("the parent repo should be nil")
 	}
 
-	t.Log("Save one item")
+	// Repo with default namespace.
+	defer func() {
+		t.Log("clearing default db")
+		if err = repo.Clear(context.Background()); err != nil {
+			t.Fatal("there should be no error:", err)
+		}
+	}()
+	testutil.RepoCommonTests(t, context.Background(), repo)
+	extraRepoTests(t, context.Background(), repo)
+
+	// Repo with other namespace.
+	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
+	defer func() {
+		t.Log("clearing ns db")
+		if err = repo.Clear(ctx); err != nil {
+			t.Fatal("there should be no error:", err)
+		}
+	}()
+	testutil.RepoCommonTests(t, ctx, repo)
+	extraRepoTests(t, ctx, repo)
+
+}
+
+func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
+	// Insert a custom item.
 	modelCustom := &mocks.Model{
 		ID:        eh.NewUUID(),
 		Content:   "modelCustom",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	if err = repo.Save(ctx, modelCustom.ID, modelCustom); err != nil {
+	if err := repo.Save(ctx, modelCustom.ID, modelCustom); err != nil {
 		t.Error("there should be no error:", err)
-	}
-	model, err := repo.Find(ctx, modelCustom.ID)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if !reflect.DeepEqual(model, modelCustom) {
-		t.Error("the item should be correct:", model)
 	}
 
-	t.Log("FindCustom by content")
+	// FindCustom by content.
 	result, err := repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		return c.Find(bson.M{"content": "modelCustom"})
 	})
@@ -100,19 +96,19 @@ func TestReadRepository(t *testing.T) {
 		t.Error("there should be one item:", len(result))
 	}
 	if !reflect.DeepEqual(result[0], modelCustom) {
-		t.Error("the item should be correct:", model)
+		t.Error("the item should be correct:", modelCustom)
 	}
 
-	t.Log("FindCustom with no query")
+	// FindCustom with no query.
 	result, err = repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		return nil
 	})
-	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != ErrInvalidQuery {
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != ErrInvalidQuery {
 		t.Error("there should be a invalid query error:", err)
 	}
 
 	count := 0
-	t.Log("FindCustom with query execution in the callback")
+	// FindCustom with query execution in the callback.
 	_, err = repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		if count, err = c.Count(); err != nil {
 			t.Error("there should be no error:", err)
@@ -121,7 +117,7 @@ func TestReadRepository(t *testing.T) {
 		// Be sure to return nil to not execute the query again in FindCustom.
 		return nil
 	})
-	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != ErrInvalidQuery {
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != ErrInvalidQuery {
 		t.Error("there should be a invalid query error:", err)
 	}
 	if count != 2 {
@@ -134,7 +130,7 @@ func TestRepository(t *testing.T) {
 		t.Error("the parent repository should be nil:", r)
 	}
 
-	inner := &mocks.ReadRepository{}
+	inner := &mocks.Repo{}
 	if r := Repository(inner); r != nil {
 		t.Error("the parent repository should be nil:", r)
 	}
@@ -148,13 +144,13 @@ func TestRepository(t *testing.T) {
 		url = host + ":" + port
 	}
 
-	repo, err := NewReadRepository(url, "test", "mocks.Model")
+	repo, err := NewRepo(url, "test", "mocks.Model")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	defer repo.Close()
 
-	outer := &mocks.ReadRepository{ParentRepo: repo}
+	outer := &mocks.Repo{ParentRepo: repo}
 	if r := Repository(outer); r != repo {
 		t.Error("the parent repository should be correct:", r)
 	}

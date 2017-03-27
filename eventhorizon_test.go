@@ -225,18 +225,3 @@ func (m *MockEventBus) HandleEvent(ctx context.Context, event Event) error {
 func (m *MockEventBus) AddHandler(handler EventHandler, eventType EventType) {}
 func (m *MockEventBus) SetPublisher(publisher EventPublisher)                {}
 func (m *MockEventBus) SetHandlingStrategy(strategy EventHandlingStrategy)   {}
-
-type MockCommandBus struct {
-	Commands []Command
-	Context  context.Context
-}
-
-func (m *MockCommandBus) HandleCommand(ctx context.Context, command Command) error {
-	m.Commands = append(m.Commands, command)
-	m.Context = ctx
-	return nil
-}
-
-func (m *MockCommandBus) SetHandler(handler CommandHandler, commandType CommandType) error {
-	return nil
-}

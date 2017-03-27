@@ -24,10 +24,19 @@ import (
 	"github.com/looplab/eventhorizon/mocks"
 )
 
-// ReadRepositoryCommonTests are test cases that are common to all
-// implementations of read repositories.
-func ReadRepositoryCommonTests(t *testing.T, ctx context.Context, repo eh.ReadRepository) {
-	t.Log("FindAll with no items")
+// RepoCommonTests are test cases that are common to all
+// implementations of projector drivers.
+func RepoCommonTests(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
+	// Find non-existing item.
+	model, err := repo.Find(ctx, eh.NewUUID())
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrModelNotFound {
+		t.Error("there should be a ErrModelNotFound error:", err)
+	}
+	if model != nil {
+		t.Error("there should be no model:", model)
+	}
+
+	// FindAll with no items.
 	result, err := repo.FindAll(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -36,7 +45,7 @@ func ReadRepositoryCommonTests(t *testing.T, ctx context.Context, repo eh.ReadRe
 		t.Error("there should be no items:", len(result))
 	}
 
-	t.Log("Save one item")
+	// Save and find one item.
 	model1 := &mocks.Model{
 		ID:        eh.NewUUID(),
 		Content:   "model1",
@@ -45,7 +54,7 @@ func ReadRepositoryCommonTests(t *testing.T, ctx context.Context, repo eh.ReadRe
 	if err = repo.Save(ctx, model1.ID, model1); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	model, err := repo.Find(ctx, model1.ID)
+	model, err = repo.Find(ctx, model1.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -53,7 +62,19 @@ func ReadRepositoryCommonTests(t *testing.T, ctx context.Context, repo eh.ReadRe
 		t.Error("the item should be correct:", model)
 	}
 
-	t.Log("Save and overwrite with same ID")
+	// FindAll with one item.
+	result, err = repo.FindAll(ctx)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if len(result) != 1 {
+		t.Error("there should be one item:", len(result))
+	}
+	if !reflect.DeepEqual(result, []interface{}{model1}) {
+		t.Error("the item should be correct:", model1)
+	}
+
+	// Save and overwrite with same ID.
 	model1Alt := &mocks.Model{
 		ID:        model1.ID,
 		Content:   "model1Alt",
@@ -70,19 +91,7 @@ func ReadRepositoryCommonTests(t *testing.T, ctx context.Context, repo eh.ReadRe
 		t.Error("the item should be correct:", model)
 	}
 
-	t.Log("FindAll with one item")
-	result, err = repo.FindAll(ctx)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if len(result) != 1 {
-		t.Error("there should be one item:", len(result))
-	}
-	if !reflect.DeepEqual(result, []interface{}{model1Alt}) {
-		t.Error("the item should be correct:", model)
-	}
-
-	t.Log("Save with another ID")
+	// Save with another ID.
 	model2 := &mocks.Model{
 		ID:        eh.NewUUID(),
 		Content:   "model2",
@@ -99,7 +108,7 @@ func ReadRepositoryCommonTests(t *testing.T, ctx context.Context, repo eh.ReadRe
 		t.Error("the item should be correct:", model)
 	}
 
-	t.Log("FindAll with two items, order should be preserved from insert")
+	// FindAll with two items, order should be preserved from insert.
 	result, err = repo.FindAll(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -111,25 +120,21 @@ func ReadRepositoryCommonTests(t *testing.T, ctx context.Context, repo eh.ReadRe
 		t.Error("the items should be correct:", result)
 	}
 
-	t.Log("Remove one item")
-	err = repo.Remove(ctx, model1Alt.ID)
-	if err != nil {
+	// Remove item.
+	if err := repo.Remove(ctx, model1Alt.ID); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	result, err = repo.FindAll(ctx)
-	if err != nil {
-		t.Error("there should be no error:", err)
+	model, err = repo.Find(ctx, model1Alt.ID)
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrModelNotFound {
+		t.Error("there should be a ErrModelNotFound error:", err)
 	}
-	if len(result) != 1 {
-		t.Error("there should be one item:", len(result))
-	}
-	if !reflect.DeepEqual(result, []interface{}{model2}) {
-		t.Error("the item should be correct:", result)
+	if model != nil {
+		t.Error("there should be no model:", model)
 	}
 
-	t.Log("Remove non-existing item")
+	// Remove non-existing item.
 	err = repo.Remove(ctx, model1Alt.ID)
-	if rrErr, ok := err.(eh.ReadRepositoryError); !ok || rrErr.Err != eh.ErrModelNotFound {
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrModelNotFound {
 		t.Error("there should be a ErrModelNotFound error:", err)
 	}
 }
