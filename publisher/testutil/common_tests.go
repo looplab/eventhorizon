@@ -41,7 +41,9 @@ func EventPublisherCommonTests(t *testing.T, publisher1, publisher2 eh.EventPubl
 		t.Error("there should be no error:", err)
 	}
 	expectedEvents := []eh.Event{event1}
-	observer1.WaitForEvent(t)
+	if err := observer1.WaitForEvent(); err != nil {
+		t.Error("did not receive event in time:", err)
+	}
 	for i, event := range observer1.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", err)
@@ -50,7 +52,9 @@ func EventPublisherCommonTests(t *testing.T, publisher1, publisher2 eh.EventPubl
 	if val, ok := mocks.ContextOne(observer1.Context); !ok || val != "testval" {
 		t.Error("the context should be correct:", observer1.Context)
 	}
-	observer2.WaitForEvent(t)
+	if err := observer2.WaitForEvent(); err != nil {
+		t.Error("did not receive event in time:", err)
+	}
 	for i, event := range observer2.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", err)
@@ -67,7 +71,9 @@ func EventPublisherCommonTests(t *testing.T, publisher1, publisher2 eh.EventPubl
 		t.Error("there should be no error:", err)
 	}
 	expectedEvents = []eh.Event{event1, event2}
-	observer1.WaitForEvent(t)
+	if err := observer1.WaitForEvent(); err != nil {
+		t.Error("did not receive event in time:", err)
+	}
 	for i, event := range observer1.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", i, err)
@@ -77,7 +83,9 @@ func EventPublisherCommonTests(t *testing.T, publisher1, publisher2 eh.EventPubl
 	if val, ok := mocks.ContextOne(observer1.Context); !ok || val != "testval" {
 		t.Error("the context should be correct:", observer1.Context)
 	}
-	observer2.WaitForEvent(t)
+	if err := observer2.WaitForEvent(); err != nil {
+		t.Error("did not receive event in time:", err)
+	}
 	for i, event := range observer2.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", i, err)

@@ -16,7 +16,6 @@ package local
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
@@ -55,7 +54,9 @@ func EventBusCommonTests(t *testing.T, async bool) {
 		t.Error("there should be no error:", err)
 	}
 	expectedEvents := []eh.Event{event1}
-	publisher.WaitForEvent(t)
+	if err := publisher.WaitForEvent(); err != nil {
+		t.Error("did not receive event in time:", err)
+	}
 	for i, event := range publisher.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", err)
@@ -71,7 +72,9 @@ func EventBusCommonTests(t *testing.T, async bool) {
 	if err := bus.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	handler.WaitForEvent(t)
+	if err := handler.WaitForEvent(); err != nil {
+		t.Error("did not receive event in time:", err)
+	}
 	expectedEvents = []eh.Event{event1}
 	for i, event := range handler.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
@@ -83,7 +86,9 @@ func EventBusCommonTests(t *testing.T, async bool) {
 		t.Error("the context should be correct:", handler.Context)
 	}
 	expectedEvents = []eh.Event{event1, event1}
-	publisher.WaitForEvent(t)
+	if err := publisher.WaitForEvent(); err != nil {
+		t.Error("did not receive event in time:", err)
+	}
 	for i, event := range publisher.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", i, err)
@@ -101,7 +106,9 @@ func EventBusCommonTests(t *testing.T, async bool) {
 	if err := bus.HandleEvent(ctx, event2); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	handler.WaitForEvent(t)
+	if err := handler.WaitForEvent(); err != nil {
+		t.Error("did not receive event in time:", err)
+	}
 	expectedEvents = []eh.Event{event1, event2}
 	for i, event := range handler.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
@@ -113,7 +120,9 @@ func EventBusCommonTests(t *testing.T, async bool) {
 		t.Error("the context should be correct:", handler.Context)
 	}
 	expectedEvents = []eh.Event{event1, event1, event2}
-	publisher.WaitForEvent(t)
+	if err := publisher.WaitForEvent(); err != nil {
+		t.Error("did not receive event in time:", err)
+	}
 	for i, event := range publisher.Events {
 		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", i, err)
@@ -124,20 +133,6 @@ func EventBusCommonTests(t *testing.T, async bool) {
 		t.Error("the context should be correct:", publisher.Context)
 	}
 
-	// Error in handler.
-	handler.Err = errors.New("handler error")
-	if err := bus.HandleEvent(ctx, event1); err != handler.Err {
-		t.Error("there should be an error:", err)
-	}
-
-	// Error in publisher.
-	handler.Err = nil
-	publisher.Err = errors.New("publisher error")
-	if err := bus.HandleEvent(ctx, event1); err != publisher.Err {
-		t.Error("there should be an error:", err)
-	}
-	publisher.Err = nil
-
 	// Event handler order, only important for non-async mode.
 	if !async {
 		handler2 := mocks.NewEventHandler("testHandler2")
@@ -145,8 +140,12 @@ func EventBusCommonTests(t *testing.T, async bool) {
 		if err := bus.HandleEvent(ctx, event1); err != nil {
 			t.Error("there should be no error:", err)
 		}
-		handler.WaitForEvent(t)
-		handler2.WaitForEvent(t)
+		if err := handler.WaitForEvent(); err != nil {
+			t.Error("did not receive event in time:", err)
+		}
+		if err := handler2.WaitForEvent(); err != nil {
+			t.Error("did not receive event in time:", err)
+		}
 		if handler2.Time.Before(handler.Time) {
 			t.Error("the first handler shoud be run first")
 		}
