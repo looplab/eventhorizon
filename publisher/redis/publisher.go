@@ -86,8 +86,8 @@ func NewEventPublisherWithPool(appID string, pool *redis.Pool) (*EventPublisher,
 	}
 
 	go func() {
-		log.Println("eventbus: start receiving")
-		defer log.Println("eventbus: stop receiving")
+		log.Println("eventpublisher: start receiving")
+		defer log.Println("eventpublisher: stop receiving")
 
 		// Used for exponential fall back on reconnects.
 		delay := &backoff.Backoff{
@@ -97,7 +97,7 @@ func NewEventPublisherWithPool(appID string, pool *redis.Pool) (*EventPublisher,
 		for {
 			if err := b.recv(delay); err != nil {
 				d := delay.Duration()
-				log.Printf("eventbus: receive failed, retrying in %s: %s", d, err)
+				log.Printf("eventpublisher: receive failed, retrying in %s: %s", d, err)
 				time.Sleep(d)
 				continue
 			}
@@ -157,7 +157,7 @@ func (b *EventPublisher) Close() error {
 	select {
 	case b.exit <- true:
 	default:
-		log.Println("eventbus: already closed")
+		log.Println("eventpublisher: already closed")
 	}
 
 	return b.pool.Close()
@@ -171,10 +171,10 @@ func (b *EventPublisher) recv(delay *backoff.Backoff) error {
 	go func() {
 		<-b.exit
 		if err := pubSubConn.PUnsubscribe(); err != nil {
-			log.Println("eventbus: could not unsubscribe:", err)
+			log.Println("eventpublisher: could not unsubscribe:", err)
 		}
 		if err := pubSubConn.Close(); err != nil {
-			log.Println("eventbus: could not close connection:", err)
+			log.Println("eventpublisher: could not close connection:", err)
 		}
 	}()
 
@@ -187,12 +187,12 @@ func (b *EventPublisher) recv(delay *backoff.Backoff) error {
 		switch m := pubSubConn.Receive().(type) {
 		case redis.PMessage:
 			if err := b.handleMessage(m); err != nil {
-				log.Println("error: event bus publishing:", err)
+				log.Println("eventpublisher: error publishing:", err)
 			}
 
 		case redis.Subscription:
 			if m.Kind == "psubscribe" {
-				log.Println("eventbus: subscribed to:", m.Channel)
+				log.Println("eventpublisher: subscribed to:", m.Channel)
 				delay.Reset()
 
 				// Don't block if no one is receiving and buffer is full.

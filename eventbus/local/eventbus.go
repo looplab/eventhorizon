@@ -16,6 +16,7 @@ package local
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -51,40 +52,30 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	b.handlerMu.RLock()
 	defer b.handlerMu.RUnlock()
 
-	// Handle the event if there is a handler registered.
-	if handlers, ok := b.handlers[event.EventType()]; ok {
-		if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-			wg := sync.WaitGroup{}
-			errc := make(chan error)
-			for _, h := range handlers {
-				wg.Add(1)
-				go func(h eh.EventHandler) {
-					defer wg.Done()
-					if err := h.HandleEvent(ctx, event); err != nil {
-						// Try to report the error. Only the first error is
-						// taken care of.
-						select {
-						case errc <- err:
-						default:
-						}
-					}
-				}(h)
-			}
-
-			// Wait for handling to finish, but only care about the first error.
-			go func() {
-				wg.Wait()
-				close(errc)
-			}()
-			if err := <-errc; err != nil {
-				return err
-			}
-		} else {
-			for _, h := range handlers {
+	if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
+		// Handle the event, if there are no handlers this will be a no-op.
+		for _, h := range b.handlers[event.EventType()] {
+			go func(h eh.EventHandler) {
 				if err := h.HandleEvent(ctx, event); err != nil {
-					return err
+					log.Println("eventbus: error handling:", err)
 				}
+			}(h)
+		}
+
+		// Publish the event.
+		go func() {
+			if err := b.publisher.PublishEvent(ctx, event); err != nil {
+				log.Println("eventbus: error publishing:", err)
 			}
+		}()
+
+		return nil
+	}
+
+	// Handle the event, if there are no handlers this will be a no-op.
+	for _, h := range b.handlers[event.EventType()] {
+		if err := h.HandleEvent(ctx, event); err != nil {
+			return err
 		}
 	}
 

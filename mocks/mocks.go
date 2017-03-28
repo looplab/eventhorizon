@@ -16,7 +16,7 @@ package mocks
 
 import (
 	"context"
-	"testing"
+	"errors"
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
@@ -197,12 +197,12 @@ func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 
 // WaitForEvent is a helper to wait until an event has been handled, it timeouts
 // after 1 second.
-func (m *EventHandler) WaitForEvent(t *testing.T) {
+func (m *EventHandler) WaitForEvent() error {
 	select {
 	case <-m.Recv:
-		return
+		return nil
 	case <-time.After(time.Second):
-		t.Error("did not receive event in time")
+		return errors.New("timeout")
 	}
 }
 
@@ -248,12 +248,12 @@ func (m *EventPublisher) SetHandlingStrategy(strategy eh.EventHandlingStrategy) 
 
 // WaitForEvent is a helper to wait until an event has been notified, it timeouts
 // after 1 second.
-func (m *EventPublisher) WaitForEvent(t *testing.T) {
+func (m *EventPublisher) WaitForEvent() error {
 	select {
 	case <-m.Recv:
-		return
+		return nil
 	case <-time.After(10 * time.Second):
-		t.Fatal("did not receive event in time")
+		return errors.New("timeout")
 	}
 }
 
@@ -288,12 +288,12 @@ func (m *EventObserver) Notify(ctx context.Context, event eh.Event) error {
 
 // WaitForEvent is a helper to wait until an event has been notified, it timeouts
 // after 1 second.
-func (m *EventObserver) WaitForEvent(t *testing.T) {
+func (m *EventObserver) WaitForEvent() error {
 	select {
 	case <-m.Recv:
-		return
+		return nil
 	case <-time.After(10 * time.Second):
-		t.Fatal("did not receive event in time")
+		return errors.New("timeout")
 	}
 }
 

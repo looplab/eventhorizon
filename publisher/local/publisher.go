@@ -16,6 +16,7 @@ package local
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -46,10 +47,12 @@ func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error
 	b.observersMu.RLock()
 	defer b.observersMu.RUnlock()
 
-	// Notify all observers about the event.
+	// Async event publishing.
 	if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
 		wg := sync.WaitGroup{}
 		errc := make(chan error)
+
+		// Notify all observers about the event.
 		for o := range b.observers {
 			wg.Add(1)
 			go func(o eh.EventObserver) {
@@ -70,14 +73,19 @@ func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error
 			wg.Wait()
 			close(errc)
 		}()
-		if err := <-errc; err != nil {
-			return err
-		}
-	} else {
-		for o := range b.observers {
-			if err := o.Notify(ctx, event); err != nil {
-				return err
+		go func() {
+			if err := <-errc; err != nil {
+				log.Println("eventpublisher: error publishing:", err)
 			}
+		}()
+
+		return nil
+	}
+
+	// Notify all observers about the event.
+	for o := range b.observers {
+		if err := o.Notify(ctx, event); err != nil {
+			log.Println("eventpublisher: error publishing:", err)
 		}
 	}
 

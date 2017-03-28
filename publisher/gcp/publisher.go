@@ -130,7 +130,7 @@ func (b *EventPublisher) Close() error {
 	select {
 	case b.exit <- true:
 	default:
-		log.Println("eventbus: already closed")
+		log.Println("eventpublisher: already closed")
 	}
 	<-b.exit
 
@@ -145,17 +145,17 @@ func (b *EventPublisher) recv() {
 	sub, err := b.client.CreateSubscription(ctx, id, b.topic, 10*time.Second, nil)
 	if err != nil {
 		// TODO: Handle error.
-		log.Println("could not create subscription:", err)
+		log.Println("eventpublisher: could not create subscription:", err)
 		return
 	}
 
-	log.Println("eventbus: start receiving")
+	log.Println("eventpublisher: start receiving")
 	go func() {
 		<-b.exit
 		if err := sub.Delete(ctx); err != nil {
-			log.Println("eventbus: could not delete subscription:", err)
+			log.Println("eventpublisher: could not delete subscription:", err)
 		}
-		log.Println("eventbus: stop receiving")
+		log.Println("eventpublisher: stop receiving")
 		close(b.exit)
 	}()
 
@@ -167,12 +167,12 @@ func (b *EventPublisher) recv() {
 
 	err = sub.Receive(ctx, func(ctx contextorg.Context, m *pubsub.Message) {
 		if err := b.handleMessage(m); err != nil {
-			log.Println("error: event bus publishing:", err)
+			log.Println("eventpublisher: error publishing:", err)
 		}
 		m.Ack()
 	})
 	if err != contextorg.Canceled {
-		log.Println("could not get next message:", err)
+		log.Println("eventpublisher: could not get next message:", err)
 	}
 }
 
