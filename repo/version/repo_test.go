@@ -143,6 +143,32 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 		t.Error("the item should be correct:", model)
 	}
 
+	// Find with min version, with timeout, data available immediately.
+	modelMinVersion = &mocks.Model{
+		ID:        eh.NewUUID(),
+		Version:   1,
+		Content:   "modelMinVersion",
+		CreatedAt: time.Now().Round(time.Millisecond),
+	}
+	if err := repo.Save(ctx, modelMinVersion.ID, modelMinVersion); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	ctxVersion = eh.NewContextWithMinVersion(ctx, 1)
+	ctxVersion, _ = context.WithTimeout(ctxVersion, time.Second)
+	// Meassure the time it takes, it should not wait > 100ms (the first retry).
+	t1 := time.Now()
+	model, err = repo.Find(ctxVersion, modelMinVersion.ID)
+	dt := time.Now().Sub(t1)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if dt > 10*time.Millisecond {
+		t.Error("the result should be available without delay")
+	}
+	if !reflect.DeepEqual(model, modelMinVersion) {
+		t.Error("the item should be correct:", model)
+	}
+
 	// Find with min version, with timeout, created data available on retry.
 	modelMinVersion = &mocks.Model{
 		ID:        eh.NewUUID(),
