@@ -51,22 +51,29 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 		return r.ReadWriteRepo.Find(ctx, id)
 	}
 
-	// Try to get a model with a min version
+	// Get a deadline to use when retrying.
+	deadline, hasDeadline := ctx.Deadline()
+
+	// Try to get a model with a min version.
 	model, err := r.findMinVersion(ctx, id, minVersion)
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		// Without deadline it ends here no matter what the result is.
+
+	// Return the model if we found it on the first try.
+	// Without a deadline it ends here event if there was an error.
+	if err == nil || !hasDeadline {
 		return model, err
-	} else if err != nil {
-		// If we have a deadline but the error is a real error return it here.
+	}
+
+	// If we have a deadline but the error is a real error return it here.
+	if err != nil {
 		if rrErr, ok := err.(eh.RepoError); ok &&
-			!(rrErr.Err == eh.ErrIncorrectModelVersion || (rrErr.Err == eh.ErrModelNotFound && minVersion == 1)) {
+			!(rrErr.Err == eh.ErrIncorrectModelVersion ||
+				(rrErr.Err == eh.ErrModelNotFound && minVersion == 1)) {
 			return nil, err
 		}
 	}
 
-	// Try to get the item and retry with exponentially longer intervals until
-	// the deadline expires.
+	// Try to get the model and retry with exponentially longer
+	// intervals until the deadline expires.
 	delay := &backoff.Backoff{
 		Max: deadline.Sub(time.Now()),
 	}
