@@ -51,49 +51,39 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 		return r.ReadWriteRepo.Find(ctx, id)
 	}
 
-	// Get a deadline to use when retrying.
-	deadline, hasDeadline := ctx.Deadline()
-
-	// Try to get a model with a min version.
-	model, err := r.findMinVersion(ctx, id, minVersion)
-
-	// Return the model if we found it on the first try.
-	// Without a deadline it ends here event if there was an error.
-	if err == nil || !hasDeadline {
-		return model, err
-	}
-
-	// If we have a deadline but the error is a real error return it here.
-	if err != nil {
-		if rrErr, ok := err.(eh.RepoError); ok &&
-			!(rrErr.Err == eh.ErrIncorrectModelVersion ||
-				(rrErr.Err == eh.ErrModelNotFound && minVersion == 1)) {
-			return nil, err
-		}
-	}
-
-	// Try to get the model and retry with exponentially longer
-	// intervals until the deadline expires.
-	delay := &backoff.Backoff{
-		Max: deadline.Sub(time.Now()),
-	}
+	// Try to get the correct version, retry with exponentially longer intervals
+	// until the deadline expires. If there is no deadline just try once.
+	delay := &backoff.Backoff{}
+	_, hasDeadline := ctx.Deadline()
 	for {
+		model, err := r.findMinVersion(ctx, id, minVersion)
+		if rrErr, ok := err.(eh.RepoError); ok &&
+			(rrErr.Err == eh.ErrIncorrectModelVersion || rrErr.Err == eh.ErrModelNotFound) {
+			// Try again for incorrect version or if the model was not found.
+		} else if err != nil {
+			// Return any real error.
+			return nil, err
+		} else {
+			// Return the model.
+			return model, nil
+		}
+
+		// If there is no deadline, return whatever we have at this point.
+		if !hasDeadline {
+			return model, err
+		}
+
 		select {
 		case <-time.After(delay.Duration()):
-			model, err := r.findMinVersion(ctx, id, minVersion)
-			if rrErr, ok := err.(eh.RepoError); ok &&
-				(rrErr.Err == eh.ErrIncorrectModelVersion ||
-					(rrErr.Err == eh.ErrModelNotFound && minVersion == 1)) {
-				// Try another time for incorrect min versions and for the
-				// first creation of items.
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			return model, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
+	}
+
+	// Should never get here.
+	return nil, eh.RepoError{
+		Err:       eh.ErrModelNotFound,
+		Namespace: eh.NamespaceFromContext(ctx),
 	}
 }
 

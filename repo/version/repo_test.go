@@ -206,6 +206,29 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 	if err != context.DeadlineExceeded {
 		t.Error("there should be a deadline exceeded error:", err)
 	}
+
+	// Find with min version, with timeout, created data available on retry.
+	modelMinVersion = &mocks.Model{
+		ID:        eh.NewUUID(),
+		Version:   4,
+		Content:   "modelMinVersion",
+		CreatedAt: time.Now().Round(time.Millisecond),
+	}
+	go func() {
+		<-time.After(100 * time.Millisecond)
+		if err := repo.Save(ctx, modelMinVersion.ID, modelMinVersion); err != nil {
+			t.Error("there should be no error:", err)
+		}
+	}()
+	ctxVersion = eh.NewContextWithMinVersion(ctx, 4)
+	ctxVersion, _ = context.WithTimeout(ctxVersion, time.Second)
+	model, err = repo.Find(ctxVersion, modelMinVersion.ID)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(model, modelMinVersion) {
+		t.Error("the item should be correct:", model)
+	}
 }
 
 func TestRepository(t *testing.T) {
