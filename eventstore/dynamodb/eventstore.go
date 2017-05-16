@@ -85,7 +85,7 @@ func NewEventStore(config *EventStoreConfig) (*EventStore, error) {
 	return s, nil
 }
 
-// Save appends all events in the event stream to the database.
+// Save implements the Save method of the eventhorizon.EventStore interface.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return eh.EventStoreError{
@@ -116,38 +116,23 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			}
 		}
 
-		// Create the event record with current version and timestamp.
-		dbEvents[i] = dbEvent{
-			EventType:     event.EventType(),
-			Timestamp:     event.Timestamp(),
-			AggregateType: event.AggregateType(),
-			AggregateID:   event.AggregateID().String(),
-			Version:       event.Version(),
+		// Create the event record for the DB.
+		e, err := newDBEvent(ctx, event)
+		if err != nil {
+			return err
 		}
-
-		// Marshal event data if there is any.
-		if event.Data() != nil {
-			rawData, err := dynamodbattribute.MarshalMap(event.Data())
-			if err != nil {
-				return eh.EventStoreError{
-					Err:       ErrCouldNotMarshalEvent,
-					Namespace: eh.NamespaceFromContext(ctx),
-				}
-			}
-			dbEvents[i].RawData = rawData
-		}
-
+		dbEvents[i] = *e
 		version++
 	}
 
 	// TODO: Implement atomic version counter for the aggregate.
 	// TODO: Batch write all events.
+	// TODO: Support translating not found to not be an error but an
+	// empty list.
 	for _, dbEvent := range dbEvents {
 		// Marshal and store the event record.
 		item, err := dynamodbattribute.MarshalMap(dbEvent)
 		if err != nil {
-			// TODO: Support translating not found to not be an error but an
-			// empty list.
 			return eh.EventStoreError{
 				Err:       err,
 				Namespace: eh.NamespaceFromContext(ctx),
@@ -175,8 +160,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	return nil
 }
 
-// Load loads all events for the aggregate id from the database.
-// Returns ErrNoEventsFound if no events can be found.
+// Load implements the Load method of the eventhorizon.EventStore interface.
 func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	params := &dynamodb.QueryInput{
 		TableName:              aws.String(s.tableName(ctx)),
@@ -240,6 +224,61 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 	}
 
 	return events, nil
+}
+
+// Replace implements the Replace method of the eventhorizon.EventStore interface.
+func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
+	// TODO: Use a more efficient query.
+	params := &dynamodb.QueryInput{
+		TableName:              aws.String(s.tableName(ctx)),
+		KeyConditionExpression: aws.String("AggregateID = :id"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":id": {S: aws.String(event.AggregateID().String())},
+		},
+		ConsistentRead: aws.Bool(true),
+	}
+	resp, err := s.service.Query(params)
+	if err != nil {
+		return eh.EventStoreError{
+			Err:       err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	if len(resp.Items) == 0 {
+		return eh.ErrAggregateNotFound
+	}
+
+	// Create the event record for the DB.
+	e, err := newDBEvent(ctx, event)
+	if err != nil {
+		return err
+	}
+
+	// Marshal and store the event record.
+	item, err := dynamodbattribute.MarshalMap(e)
+	if err != nil {
+		return eh.EventStoreError{
+			Err:       err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+	putParams := &dynamodb.PutItemInput{
+		TableName:           aws.String(s.tableName(ctx)),
+		ConditionExpression: aws.String("attribute_exists(AggregateID) AND attribute_exists(Version)"),
+		Item:                item,
+	}
+	if _, err = s.service.PutItem(putParams); err != nil {
+		if err, ok := err.(awserr.RequestFailure); ok && err.Code() == "ConditionalCheckFailedException" {
+			return eh.ErrInvalidEvent
+		}
+		return eh.EventStoreError{
+			Err:       err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	return nil
 }
 
 // CreateTable creates the table if it is not allready existing and correct.
@@ -354,6 +393,31 @@ type dbEvent struct {
 	AggregateType eh.AggregateType
 	AggregateID   string
 	Version       int
+}
+
+// newDBEvent returns a new dbEvent for an event.
+func newDBEvent(ctx context.Context, event eh.Event) (*dbEvent, error) {
+	// Marshal event data if there is any.
+	var rawData map[string]*dynamodb.AttributeValue
+	if event.Data() != nil {
+		var err error
+		rawData, err = dynamodbattribute.MarshalMap(event.Data())
+		if err != nil {
+			return nil, eh.EventStoreError{
+				Err:       ErrCouldNotMarshalEvent,
+				Namespace: eh.NamespaceFromContext(ctx),
+			}
+		}
+	}
+
+	return &dbEvent{
+		EventType:     event.EventType(),
+		RawData:       rawData,
+		Timestamp:     event.Timestamp(),
+		AggregateType: event.AggregateType(),
+		AggregateID:   event.AggregateID().String(),
+		Version:       event.Version(),
+	}, nil
 }
 
 // event is the private implementation of the eventhorizon.Event

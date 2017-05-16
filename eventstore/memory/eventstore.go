@@ -34,7 +34,7 @@ type EventStore struct {
 	dbMu sync.RWMutex
 }
 
-// NewEventStore creates a new EventStore.
+// NewEventStore creates a new EventStore using memory as storage.
 func NewEventStore() *EventStore {
 	s := &EventStore{
 		db: map[string]map[eh.UUID]aggregateRecord{},
@@ -42,7 +42,7 @@ func NewEventStore() *EventStore {
 	return s
 }
 
-// Save appends all events in the event stream to the memory store.
+// Save implements the Save method of the eventhorizon.EventStore interface.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return eh.EventStoreError{
@@ -74,15 +74,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		}
 
 		// Create the event record with timestamp.
-		dbEvents[i] = dbEvent{
-			EventType:     event.EventType(),
-			Data:          event.Data(),
-			Timestamp:     event.Timestamp(),
-			AggregateType: event.AggregateType(),
-			AggregateID:   event.AggregateID(),
-			Version:       event.Version(),
-		}
-
+		dbEvents[i] = newDBEvent(event)
 		version++
 	}
 
@@ -122,8 +114,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	return nil
 }
 
-// Load loads all events for the aggregate id from the memory store.
-// Returns ErrNoEventsFound if no events can be found.
+// Load implements the Load method of the eventhorizon.EventStore interface.
 func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	s.dbMu.RLock()
 	defer s.dbMu.RUnlock()
@@ -144,6 +135,39 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 	}
 
 	return events, nil
+}
+
+// Replace implements the Replace method of the eventhorizon.EventStore interface.
+func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
+	// Ensure that the namespace exists.
+	ns := s.namespace(ctx)
+
+	s.dbMu.RLock()
+	aggregate, ok := s.db[ns][event.AggregateID()]
+	if !ok {
+		s.dbMu.RUnlock()
+		return eh.ErrAggregateNotFound
+	}
+	s.dbMu.RUnlock()
+
+	// Find the event to replace.
+	idx := -1
+	for i, e := range aggregate.Events {
+		if e.Version == event.Version() {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return eh.ErrInvalidEvent
+	}
+
+	// Replace event.
+	s.dbMu.Lock()
+	defer s.dbMu.Unlock()
+	aggregate.Events[idx] = newDBEvent(event)
+
+	return nil
 }
 
 // Helper to get the namespace and ensure that its data exists.
@@ -172,6 +196,18 @@ type dbEvent struct {
 	AggregateType eh.AggregateType
 	AggregateID   eh.UUID
 	Version       int
+}
+
+// newDBEvent returns a new dbEvent for an event.
+func newDBEvent(event eh.Event) dbEvent {
+	return dbEvent{
+		EventType:     event.EventType(),
+		Data:          event.Data(),
+		Timestamp:     event.Timestamp(),
+		AggregateType: event.AggregateType(),
+		AggregateID:   event.AggregateID(),
+		Version:       event.Version(),
+	}
 }
 
 // event is the private implementation of the eventhorizon.Event interface

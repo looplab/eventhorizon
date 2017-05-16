@@ -202,6 +202,15 @@ func (m *MockEventStore) Load(ctx context.Context, aggregateType AggregateType, 
 	return m.Events, nil
 }
 
+func (m *MockEventStore) Replace(ctx context.Context, event Event) error {
+	if m.err != nil {
+		return m.err
+	}
+	m.Events = []Event{event}
+	m.Context = ctx
+	return nil
+}
+
 type MockEventBus struct {
 	Events  []Event
 	Context context.Context

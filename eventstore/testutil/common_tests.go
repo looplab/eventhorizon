@@ -38,7 +38,7 @@ func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStor
 
 	t.Log("save event, version 1")
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
-	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{"event1"},
+	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
 		mocks.AggregateType, id, 1)
 	err = store.Save(ctx, []eh.Event{event1}, 0)
 	if err != nil {
@@ -56,7 +56,7 @@ func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStor
 	}
 
 	t.Log("save event, version 2")
-	event2 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{"event2"},
+	event2 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event2"},
 		mocks.AggregateType, id, 2)
 	err = store.Save(ctx, []eh.Event{event2}, 1)
 	if err != nil {
@@ -88,7 +88,7 @@ func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStor
 
 	t.Log("save event for another aggregate")
 	id2, _ := eh.ParseUUID("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
-	event7 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{"event7"},
+	event7 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event7"},
 		mocks.AggregateType, id2, 1)
 	err = store.Save(ctx, []eh.Event{event7}, 0)
 	if err != nil {
@@ -124,7 +124,6 @@ func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStor
 			t.Error("the event version should be correct:", event, event.Version())
 		}
 	}
-	t.Log(events)
 
 	t.Log("load events for another aggregate")
 	events, err = store.Load(ctx, mocks.AggregateType, id2)
@@ -142,6 +141,62 @@ func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStor
 	}
 
 	return savedEvents
+}
+
+// EventStoreMaintainerCommonTests are test cases that are common to all implementations
+// of event stores.
+func EventStoreMaintainerCommonTests(t *testing.T, ctx context.Context, store eh.EventStoreMaintainer) {
+	ctx = context.WithValue(ctx, "testkey", "testval")
+
+	t.Log("save some events")
+	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3757")
+	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
+		mocks.AggregateType, id, 1)
+	event2 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
+		mocks.AggregateType, id, 2)
+	event3 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
+		mocks.AggregateType, id, 3)
+	if err := store.Save(ctx, []eh.Event{event1, event2, event3}, 0); err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	t.Log("replace event, no aggregate")
+	eventWithoutAggregate := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event"},
+		mocks.AggregateType, eh.NewUUID(), 1)
+	if err := store.Replace(ctx, eventWithoutAggregate); err != eh.ErrAggregateNotFound {
+		t.Error("there should be an aggregate not found error:", err)
+	}
+
+	t.Log("replace event, no event version")
+	eventWithoutVersion := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event20"},
+		mocks.AggregateType, id, 20)
+	if err := store.Replace(ctx, eventWithoutVersion); err != eh.ErrInvalidEvent {
+		t.Error("there should be an invalid event error:", err)
+	}
+
+	t.Log("replace event")
+	event2Mod := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event2_mod"},
+		mocks.AggregateType, id, 2)
+	if err := store.Replace(ctx, event2Mod); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	events, err := store.Load(ctx, mocks.AggregateType, id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	expectedEvents := []eh.Event{
+		event1,    // Version 1
+		event2Mod, // Version 2, modified
+		event3,    // Version 3
+	}
+	for i, event := range events {
+		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
+			t.Error("the event was incorrect:", err)
+		}
+		if event.Version() != i+1 {
+			t.Error("the event version should be correct:", event, event.Version())
+		}
+	}
 }
 
 func eventsToString(events []eh.Event) string {

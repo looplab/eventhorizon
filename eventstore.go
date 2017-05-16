@@ -55,3 +55,13 @@ type EventStore interface {
 	// Load loads all events for the aggregate id from the store.
 	Load(context.Context, AggregateType, UUID) ([]Event, error)
 }
+
+// EventStoreMaintainer is an interface for a maintainer of an EventStore.
+// NOTE: Should not be used in apps, useful for migration tools etc.
+type EventStoreMaintainer interface {
+	EventStore
+
+	// Replace an event, the version must match. Useful for maintenance actions.
+	// Returns ErrAggregateNotFound if there is no aggregate.
+	Replace(ctx context.Context, event Event) error
+}

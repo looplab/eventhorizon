@@ -347,6 +347,16 @@ func (m *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 	return m.Events, nil
 }
 
+// Replace implements the Replace method of the eventhorizon.EventStore interface.
+func (m *EventStore) Replace(ctx context.Context, event eh.Event) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	m.Events = []eh.Event{event}
+	m.Context = ctx
+	return nil
+}
+
 // CommandBus is a mocked eventhorizon.CommandBus, useful in testing.
 type CommandBus struct {
 	Commands []eh.Command

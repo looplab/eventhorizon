@@ -61,4 +61,7 @@ func TestEventStore(t *testing.T) {
 
 	t.Log("event store with other namespace")
 	testutil.EventStoreCommonTests(t, ctx, store)
+
+	t.Log("event store maintainer")
+	testutil.EventStoreMaintainerCommonTests(t, context.Background(), store)
 }
