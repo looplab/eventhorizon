@@ -80,7 +80,7 @@ func NewEventStoreWithSession(session *mgo.Session, dbPrefix string) (*EventStor
 	return s, nil
 }
 
-// Save appends all events in the event stream to the database.
+// Save implements the Save method of the eventhorizon.EventStore interface.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return eh.EventStoreError{
@@ -114,27 +114,12 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			}
 		}
 
-		// Create the event record with timestamp.
-		dbEvents[i] = dbEvent{
-			EventType:     event.EventType(),
-			Timestamp:     event.Timestamp(),
-			AggregateType: event.AggregateType(),
-			AggregateID:   event.AggregateID(),
-			Version:       event.Version(),
+		// Create the event record for the DB.
+		e, err := newDBEvent(ctx, event)
+		if err != nil {
+			return err
 		}
-
-		// Marshal event data if there is any.
-		if event.Data() != nil {
-			rawData, err := bson.Marshal(event.Data())
-			if err != nil {
-				return eh.EventStoreError{
-					Err:       ErrCouldNotMarshalEvent,
-					Namespace: eh.NamespaceFromContext(ctx),
-				}
-			}
-			dbEvents[i].RawData = bson.Raw{Kind: 3, Data: rawData}
-		}
-
+		dbEvents[i] = *e
 		version++
 	}
 
@@ -176,8 +161,8 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	return nil
 }
 
-// Load loads all events for the aggregate id from the database.
-// Returns ErrNoEventsFound if no events can be found.
+// Load implements the Load method of the eventhorizon.EventStore interface.
+// Load implements the Load method of the eventhorizon.EventStore interface.
 func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
 	sess := s.session.Copy()
 	defer sess.Close()
@@ -214,6 +199,51 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 	}
 
 	return events, nil
+}
+
+// Replace implements the Replace method of the eventhorizon.EventStore interface.
+func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
+	sess := s.session.Copy()
+	defer sess.Close()
+
+	// First check if the aggregate exists, the not found error in the update
+	// query can mean both that the aggregate or the event is not found.
+	n, err := sess.DB(s.dbName(ctx)).C("events").FindId(event.AggregateID().String()).Count()
+	if n == 0 {
+		return eh.ErrAggregateNotFound
+	} else if err != nil {
+		return eh.EventStoreError{
+			Err:       err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	// Create the event record for the DB.
+	e, err := newDBEvent(ctx, event)
+	if err != nil {
+		return err
+	}
+
+	// Find and replace the event.
+	err = sess.DB(s.dbName(ctx)).C("events").Update(
+		bson.M{
+			"_id":            event.AggregateID().String(),
+			"events.version": event.Version(),
+		},
+		bson.M{
+			"$set": bson.M{"events.$": *e},
+		},
+	)
+	if err == mgo.ErrNotFound {
+		return eh.ErrInvalidEvent
+	} else if err != nil {
+		return eh.EventStoreError{
+			Err:       ErrCouldNotSaveAggregate,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	return nil
 }
 
 // Clear clears the event storge.
@@ -258,6 +288,31 @@ type dbEvent struct {
 	AggregateType eh.AggregateType `bson:"aggregate_type"`
 	AggregateID   eh.UUID          `bson:"_id"`
 	Version       int              `bson:"version"`
+}
+
+// newDBEvent returns a new dbEvent for an event.
+func newDBEvent(ctx context.Context, event eh.Event) (*dbEvent, error) {
+	// Marshal event data if there is any.
+	var rawData bson.Raw
+	if event.Data() != nil {
+		raw, err := bson.Marshal(event.Data())
+		if err != nil {
+			return nil, eh.EventStoreError{
+				Err:       ErrCouldNotMarshalEvent,
+				Namespace: eh.NamespaceFromContext(ctx),
+			}
+		}
+		rawData = bson.Raw{Kind: 3, Data: raw}
+	}
+
+	return &dbEvent{
+		EventType:     event.EventType(),
+		RawData:       rawData,
+		Timestamp:     event.Timestamp(),
+		AggregateType: event.AggregateType(),
+		AggregateID:   event.AggregateID(),
+		Version:       event.Version(),
+	}, nil
 }
 
 // event is the private implementation of the eventhorizon.Event interface

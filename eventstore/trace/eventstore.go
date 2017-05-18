@@ -16,39 +16,34 @@ package trace
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
 )
 
-// ErrNoEventStoreDefined is if no event store has been defined.
-var ErrNoEventStoreDefined = errors.New("no event store defined")
-
 // EventStore wraps an EventStore and adds debug tracing.
 type EventStore struct {
-	eventStore eh.EventStore
-	tracing    bool
-	trace      []eh.Event
-	traceMu    sync.RWMutex
+	eh.EventStore
+	tracing bool
+	trace   []eh.Event
+	traceMu sync.RWMutex
 }
 
 // NewEventStore creates a new EventStore.
 func NewEventStore(eventStore eh.EventStore) *EventStore {
-	s := &EventStore{
-		eventStore: eventStore,
+	if eventStore == nil {
+		return nil
+	}
+
+	return &EventStore{
+		EventStore: eventStore,
 		trace:      make([]eh.Event, 0),
 	}
-	return s
 }
 
-// Save appends all events to the base store and trace them if enabled.
+// Save implements the Save method of the eventhorizon.EventStore interface.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
-	if s.eventStore == nil {
-		return ErrNoEventStoreDefined
-	}
-
-	if err := s.eventStore.Save(ctx, events, originalVersion); err != nil {
+	if err := s.EventStore.Save(ctx, events, originalVersion); err != nil {
 		return err
 	}
 
@@ -60,16 +55,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	}
 
 	return nil
-}
-
-// Load loads all events for the aggregate id from the base store.
-// Returns ErrNoEventStoreDefined if no event store could be found.
-func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
-	if s.eventStore != nil {
-		return s.eventStore.Load(ctx, aggregateType, id)
-	}
-
-	return nil, ErrNoEventStoreDefined
 }
 
 // StartTracing starts the tracing of events.
