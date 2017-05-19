@@ -63,10 +63,32 @@ func TestRegisterCommandTwice(t *testing.T) {
 	RegisterCommand(func() Command { return &TestCommandRegisterTwice{} })
 }
 
+func TestUnregisterCommandEmptyName(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil || r != "eventhorizon: attempt to unregister empty command type" {
+			t.Error("there should have been a panic:", r)
+		}
+	}()
+	UnregisterCommand(TestCommandUnregisterEmptyType)
+}
+
+func TestUnregisterCommandTwice(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil || r != "eventhorizon: unregister of non-registered type \"TestCommandUnregisterTwice\"" {
+			t.Error("there should have been a panic:", r)
+		}
+	}()
+	RegisterCommand(func() Command { return &TestCommandUnregisterTwice{} })
+	UnregisterCommand(TestCommandUnregisterTwiceType)
+	UnregisterCommand(TestCommandUnregisterTwiceType)
+}
+
 const (
-	TestCommandRegisterType      CommandType = "TestCommandRegister"
-	TestCommandRegisterEmptyType CommandType = ""
-	TestCommandRegisterTwiceType CommandType = "TestCommandRegisterTwice"
+	TestCommandRegisterType        CommandType = "TestCommandRegister"
+	TestCommandRegisterEmptyType   CommandType = ""
+	TestCommandRegisterTwiceType   CommandType = "TestCommandRegisterTwice"
+	TestCommandUnregisterEmptyType CommandType = ""
+	TestCommandUnregisterTwiceType CommandType = "TestCommandUnregisterTwice"
 )
 
 type TestCommandRegister struct{}
@@ -86,3 +108,9 @@ type TestCommandRegisterTwice struct{}
 func (a TestCommandRegisterTwice) AggregateID() UUID            { return UUID("") }
 func (a TestCommandRegisterTwice) AggregateType() AggregateType { return TestAggregateType }
 func (a TestCommandRegisterTwice) CommandType() CommandType     { return TestCommandRegisterTwiceType }
+
+type TestCommandUnregisterTwice struct{}
+
+func (a TestCommandUnregisterTwice) AggregateID() UUID            { return UUID("") }
+func (a TestCommandUnregisterTwice) AggregateType() AggregateType { return TestAggregateType }
+func (a TestCommandUnregisterTwice) CommandType() CommandType     { return TestCommandUnregisterTwiceType }

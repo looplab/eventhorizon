@@ -153,6 +153,22 @@ func RegisterEventData(eventType EventType, factory func() EventData) {
 	eventDataFactories[eventType] = factory
 }
 
+// UnregisterEventData removes the registration of the event data factory for
+// a type. This is mainly useful in mainenance situations where the event data
+// needs to be switched in a migrations.
+func UnregisterEventData(eventType EventType) {
+	if eventType == EventType("") {
+		panic("eventhorizon: attempt to unregister empty event type")
+	}
+
+	registerEventDataMu.Lock()
+	defer registerEventDataMu.Unlock()
+	if _, ok := eventDataFactories[eventType]; !ok {
+		panic(fmt.Sprintf("eventhorizon: unregister of non-registered type %q", eventType))
+	}
+	delete(eventDataFactories, eventType)
+}
+
 // CreateEventData creates an event data of a type using the factory registered
 // with RegisterEventData.
 func CreateEventData(eventType EventType) (EventData, error) {
