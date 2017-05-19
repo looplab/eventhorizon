@@ -77,6 +77,22 @@ func RegisterCommand(factory func() Command) {
 	commands[commandType] = factory
 }
 
+// UnregisterCommand removes the registration of the command factory for
+// a type. This is mainly useful in mainenance situations where the command type
+// needs to be switched at runtime.
+func UnregisterCommand(commandType CommandType) {
+	if commandType == CommandType("") {
+		panic("eventhorizon: attempt to unregister empty command type")
+	}
+
+	registerCommandLock.Lock()
+	defer registerCommandLock.Unlock()
+	if _, ok := commands[commandType]; !ok {
+		panic(fmt.Sprintf("eventhorizon: unregister of non-registered type %q", commandType))
+	}
+	delete(commands, commandType)
+}
+
 // CreateCommand creates an command of a type with an ID using the factory
 // registered with RegisterCommand.
 func CreateCommand(commandType CommandType) (Command, error) {
