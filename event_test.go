@@ -80,6 +80,8 @@ func TestCreateEventData(t *testing.T) {
 	if _, ok := data.(*TestEventRegister); !ok {
 		t.Errorf("the event type should be correct: %T", data)
 	}
+
+	UnregisterEventData(TestEventRegisterType)
 }
 
 func TestRegisterEventEmptyName(t *testing.T) {
@@ -107,10 +109,34 @@ func TestRegisterEventTwice(t *testing.T) {
 	})
 }
 
+func TestUnregisterEventEmptyName(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil || r != "eventhorizon: attempt to unregister empty event type" {
+			t.Error("there should have been a panic:", r)
+		}
+	}()
+	UnregisterEventData(TestEventUnregisterEmptyType)
+}
+
+func TestUnregisterEventTwice(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil || r != "eventhorizon: unregister of non-registered type \"TestEventUnregisterTwice\"" {
+			t.Error("there should have been a panic:", r)
+		}
+	}()
+	RegisterEventData(TestEventUnregisterTwiceType, func() EventData {
+		return &TestEventUnregisterTwice{}
+	})
+	UnregisterEventData(TestEventUnregisterTwiceType)
+	UnregisterEventData(TestEventUnregisterTwiceType)
+}
+
 const (
-	TestEventRegisterType      EventType = "TestEventRegister"
-	TestEventRegisterEmptyType EventType = ""
-	TestEventRegisterTwiceType EventType = "TestEventRegisterTwice"
+	TestEventRegisterType        EventType = "TestEventRegister"
+	TestEventRegisterEmptyType   EventType = ""
+	TestEventRegisterTwiceType   EventType = "TestEventRegisterTwice"
+	TestEventUnregisterEmptyType EventType = ""
+	TestEventUnregisterTwiceType EventType = "TestEventUnregisterTwice"
 )
 
 type TestEventRegister struct{}
@@ -118,3 +144,5 @@ type TestEventRegister struct{}
 type TestEventRegisterEmpty struct{}
 
 type TestEventRegisterTwice struct{}
+
+type TestEventUnregisterTwice struct{}
