@@ -34,7 +34,8 @@ func NewEventWaiter() *EventWaiter {
 	}
 }
 
-// Notify implements the Notify method of the eventhorizon.EventObserver interface.
+// Notify implements the eventhorizon.EventObserver.Notify method which forwards
+// events to the waiters so that they can match the events.
 func (w *EventWaiter) Notify(ctx context.Context, event eh.Event) error {
 	w.waitsMu.RLock()
 	defer w.waitsMu.RUnlock()
