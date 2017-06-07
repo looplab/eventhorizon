@@ -142,7 +142,10 @@ func (b *EventPublisher) recv() {
 
 	// Create the subscription, it should not exist as we use a new UUID as name.
 	id := "subscriber_" + eh.NewUUID().String()
-	sub, err := b.client.CreateSubscription(ctx, id, b.topic, 10*time.Second, nil)
+	sub, err := b.client.CreateSubscription(ctx, id, pubsub.SubscriptionConfig{
+		Topic:       b.topic,
+		AckDeadline: 10 * time.Second,
+	})
 	if err != nil {
 		// TODO: Handle error.
 		log.Println("eventpublisher: could not create subscription:", err)
