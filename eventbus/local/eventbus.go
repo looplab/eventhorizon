@@ -53,16 +53,21 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	defer b.handlerMu.RUnlock()
 
 	if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
+		wg := sync.WaitGroup{}
+
 		// Handle the event, if there are no handlers this will be a no-op.
 		for _, h := range b.handlers[event.EventType()] {
+			wg.Add(1)
 			go func(h eh.EventHandler) {
+				defer wg.Done()
 				if err := h.HandleEvent(ctx, event); err != nil {
 					log.Println("eventbus: error handling:", err)
 				}
 			}(h)
 		}
 
-		// Publish the event.
+		// Wait until all handlers has finished then publish the event.
+		wg.Wait()
 		go func() {
 			if err := b.publisher.PublishEvent(ctx, event); err != nil {
 				log.Println("eventbus: error publishing:", err)
