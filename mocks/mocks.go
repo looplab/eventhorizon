@@ -148,12 +148,17 @@ type SimpleModel struct {
 type CommandHandler struct {
 	Command eh.Command
 	Context context.Context
+	// Used to simulate errors when handling.
+	Err error
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.CommandHandler interface.
-func (t *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
-	t.Command = cmd
-	t.Context = ctx
+func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	if h.Err != nil {
+		return h.Err
+	}
+	h.Command = cmd
+	h.Context = ctx
 	return nil
 }
 

@@ -67,7 +67,7 @@ func TestContextMinVersion(t *testing.T) {
 
 	vals := MarshalContext(ctx)
 	if v, ok := vals[minVersionKeyStr].(int); !ok || v != 8 {
-		t.Error("the marshaled namespace shoud be correct:", v)
+		t.Error("the marshaled min version shoud be correct:", v)
 	}
 	b, err := json.Marshal(vals)
 	if err != nil {
@@ -82,13 +82,13 @@ func TestContextMinVersion(t *testing.T) {
 	}
 	ctx = UnmarshalContext(vals)
 	if v, ok := MinVersionFromContext(ctx); !ok || v != 8 {
-		t.Error("the namespace should be correct:", v)
+		t.Error("the min version should be correct:", v)
 	}
 }
 
 func TestContextMarshaler(t *testing.T) {
 	if len(contextMarshalFuncs) != 2 {
-		t.Error("there should be one context marshaler")
+		t.Error("there should be two context marshalers")
 	}
 	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
 		if val, ok := ContextTestOne(ctx); ok {
@@ -96,7 +96,7 @@ func TestContextMarshaler(t *testing.T) {
 		}
 	})
 	if len(contextMarshalFuncs) != 3 {
-		t.Error("there should be two context marshaler")
+		t.Error("there should be three context marshaler")
 	}
 
 	ctx := context.Background()
@@ -114,7 +114,7 @@ func TestContextMarshaler(t *testing.T) {
 
 func TestContextUnmarshaler(t *testing.T) {
 	if len(contextUnmarshalFuncs) != 2 {
-		t.Error("there should be one context marshaler")
+		t.Error("there should be two context marshalers")
 	}
 	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
 		if val, ok := vals[contextTestKeyOneStr].(string); ok {
@@ -123,7 +123,7 @@ func TestContextUnmarshaler(t *testing.T) {
 		return ctx
 	})
 	if len(contextUnmarshalFuncs) != 3 {
-		t.Error("there should be two context unmarshalers")
+		t.Error("there should be three context unmarshalers")
 	}
 
 	vals := map[string]interface{}{}
