@@ -19,19 +19,19 @@ import (
 )
 
 func TestCreateCommand(t *testing.T) {
-	command, err := CreateCommand(TestCommandRegisterType)
+	cmd, err := CreateCommand(TestCommandRegisterType)
 	if err != ErrCommandNotRegistered {
 		t.Error("there should be a command not registered error:", err)
 	}
 
 	RegisterCommand(func() Command { return &TestCommandRegister{} })
 
-	command, err = CreateCommand(TestCommandRegisterType)
+	cmd, err = CreateCommand(TestCommandRegisterType)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if command.CommandType() != TestCommandRegisterType {
-		t.Error("the command type should be correct:", command.CommandType())
+	if cmd.CommandType() != TestCommandRegisterType {
+		t.Error("the command type should be correct:", cmd.CommandType())
 	}
 }
 

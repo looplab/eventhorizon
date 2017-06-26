@@ -127,7 +127,7 @@ func (e event) String() string {
 }
 
 var eventDataFactories = make(map[EventType]func() EventData)
-var registerEventDataMu sync.RWMutex
+var eventDataFactoriesMu sync.RWMutex
 
 // ErrEventDataNotRegistered is when no event data factory was registered.
 var ErrEventDataNotRegistered = errors.New("event data not registered")
@@ -145,8 +145,8 @@ func RegisterEventData(eventType EventType, factory func() EventData) {
 		panic("eventhorizon: attempt to register empty event type")
 	}
 
-	registerEventDataMu.Lock()
-	defer registerEventDataMu.Unlock()
+	eventDataFactoriesMu.Lock()
+	defer eventDataFactoriesMu.Unlock()
 	if _, ok := eventDataFactories[eventType]; ok {
 		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", eventType))
 	}
@@ -161,8 +161,8 @@ func UnregisterEventData(eventType EventType) {
 		panic("eventhorizon: attempt to unregister empty event type")
 	}
 
-	registerEventDataMu.Lock()
-	defer registerEventDataMu.Unlock()
+	eventDataFactoriesMu.Lock()
+	defer eventDataFactoriesMu.Unlock()
 	if _, ok := eventDataFactories[eventType]; !ok {
 		panic(fmt.Sprintf("eventhorizon: unregister of non-registered type %q", eventType))
 	}
@@ -172,8 +172,8 @@ func UnregisterEventData(eventType EventType) {
 // CreateEventData creates an event data of a type using the factory registered
 // with RegisterEventData.
 func CreateEventData(eventType EventType) (EventData, error) {
-	registerEventDataMu.RLock()
-	defer registerEventDataMu.RUnlock()
+	eventDataFactoriesMu.RLock()
+	defer eventDataFactoriesMu.RUnlock()
 	if factory, ok := eventDataFactories[eventType]; ok {
 		return factory(), nil
 	}

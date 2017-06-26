@@ -59,16 +59,16 @@ func NewTestAggregate(id UUID) *TestAggregate {
 	}
 }
 
-func (a *TestAggregate) HandleCommand(ctx context.Context, command Command) error {
-	a.dispatchedCommand = command
+func (a *TestAggregate) HandleCommand(ctx context.Context, cmd Command) error {
+	a.dispatchedCommand = cmd
 	a.context = ctx
 	a.numHandled++
 	if a.err != nil {
 		return a.err
 	}
-	switch command := command.(type) {
+	switch cmd := cmd.(type) {
 	case *TestCommand:
-		a.StoreEvent(TestEventType, &TestEventData{command.Content})
+		a.StoreEvent(TestEventType, &TestEventData{cmd.Content})
 		return nil
 	}
 	return errors.New("couldn't handle command")
@@ -100,16 +100,16 @@ func NewTestAggregate2(id UUID) *TestAggregate2 {
 	}
 }
 
-func (a *TestAggregate2) HandleCommand(ctx context.Context, command Command) error {
-	a.dispatchedCommand = command
+func (a *TestAggregate2) HandleCommand(ctx context.Context, cmd Command) error {
+	a.dispatchedCommand = cmd
 	a.context = ctx
 	a.numHandled++
 	if a.err != nil {
 		return a.err
 	}
-	switch command := command.(type) {
+	switch cmd := cmd.(type) {
 	case *TestCommand2:
-		a.StoreEvent(TestEventType, &TestEvent2Data{command.Content})
+		a.StoreEvent(TestEventType, &TestEvent2Data{cmd.Content})
 		return nil
 	}
 	return errors.New("couldn't handle command")

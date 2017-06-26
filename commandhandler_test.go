@@ -47,12 +47,12 @@ func TestCommandHandler(t *testing.T) {
 
 	ctx := context.WithValue(context.Background(), "testkey", "testval")
 
-	command1 := &TestCommand{aggregate.AggregateID(), "command1"}
-	err := handler.HandleCommand(ctx, command1)
+	cmd := &TestCommand{aggregate.AggregateID(), "command1"}
+	err := handler.HandleCommand(ctx, cmd)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if aggregate.dispatchedCommand != command1 {
+	if aggregate.dispatchedCommand != cmd {
 		t.Error("the dispatched command should be correct:", aggregate.dispatchedCommand)
 	}
 	if val, ok := aggregate.context.Value("testkey").(string); !ok || val != "testval" {
@@ -72,8 +72,8 @@ func TestCommandHandler_AggregateNotFound(t *testing.T) {
 		t.Fatal("there should be a handler")
 	}
 
-	command := &TestCommand{NewUUID(), "command1"}
-	err = handler.HandleCommand(context.Background(), command)
+	cmd := &TestCommand{NewUUID(), "command1"}
+	err = handler.HandleCommand(context.Background(), cmd)
 	if err != ErrAggregateNotFound {
 		t.Error("there should be a command error:", err)
 	}
@@ -83,12 +83,12 @@ func TestCommandHandler_ErrorInHandler(t *testing.T) {
 	aggregate, handler, _ := createAggregateAndHandler(t)
 
 	aggregate.err = errors.New("command error")
-	command := &TestCommand{aggregate.AggregateID(), "command1"}
-	err := handler.HandleCommand(context.Background(), command)
+	cmd := &TestCommand{aggregate.AggregateID(), "command1"}
+	err := handler.HandleCommand(context.Background(), cmd)
 	if err == nil || err.Error() != "command error" {
 		t.Error("there should be a command error:", err)
 	}
-	if aggregate.dispatchedCommand != command {
+	if aggregate.dispatchedCommand != cmd {
 		t.Error("the dispatched command should be correct:", aggregate.dispatchedCommand)
 	}
 }
@@ -97,8 +97,8 @@ func TestCommandHandler_ErrorWhenSaving(t *testing.T) {
 	aggregate, handler, repo := createAggregateAndHandler(t)
 
 	repo.err = errors.New("save error")
-	command := &TestCommand{aggregate.AggregateID(), "command1"}
-	err := handler.HandleCommand(context.Background(), command)
+	cmd := &TestCommand{aggregate.AggregateID(), "command1"}
+	err := handler.HandleCommand(context.Background(), cmd)
 	if err == nil || err.Error() != "save error" {
 		t.Error("there should be a command error:", err)
 	}
@@ -107,8 +107,8 @@ func TestCommandHandler_ErrorWhenSaving(t *testing.T) {
 func TestCommandHandler_NoHandlers(t *testing.T) {
 	_, handler, _ := createAggregateAndHandler(t)
 
-	command1 := &TestCommand{NewUUID(), "command1"}
-	err := handler.HandleCommand(context.Background(), command1)
+	cmd := &TestCommand{NewUUID(), "command1"}
+	err := handler.HandleCommand(context.Background(), cmd)
 	if err != ErrAggregateNotFound {
 		t.Error("there should be a ErrAggregateNotFound error:", nil)
 	}
@@ -211,9 +211,9 @@ func BenchmarkCommandHandler(b *testing.B) {
 
 	ctx := context.WithValue(context.Background(), "testkey", "testval")
 
-	command1 := &TestCommand{aggregate.AggregateID(), "command1"}
+	cmd := &TestCommand{aggregate.AggregateID(), "command1"}
 	for i := 0; i < b.N; i++ {
-		handler.HandleCommand(ctx, command1)
+		handler.HandleCommand(ctx, cmd)
 	}
 	if aggregate.numHandled != b.N {
 		b.Error("the num handled commands should be correct:", aggregate.numHandled, b.N)
