@@ -52,13 +52,13 @@ func NewEventHandler(saga Saga, commandBus eh.CommandBus) *EventHandler {
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	// Run the saga and collect commands.
-	commands := h.saga.RunSaga(ctx, event)
+	cmds := h.saga.RunSaga(ctx, event)
 
 	// Dispatch commands back on the command bus.
-	for _, command := range commands {
-		if err := h.commandBus.HandleCommand(ctx, command); err != nil {
+	for _, cmd := range cmds {
+		if err := h.commandBus.HandleCommand(ctx, cmd); err != nil {
 			return errors.New("could not handle command '" +
-				string(command.CommandType()) + "' from saga '" +
+				string(cmd.CommandType()) + "' from saga '" +
 				string(h.saga.SagaType()) + "': " + err.Error())
 		}
 	}

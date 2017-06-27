@@ -67,39 +67,39 @@ func NewAggregateCommandHandler(repository Repository) (*AggregateCommandHandler
 }
 
 // SetAggregate sets an aggregate as handler for a command.
-func (h *AggregateCommandHandler) SetAggregate(aggregateType AggregateType, commandType CommandType) error {
+func (h *AggregateCommandHandler) SetAggregate(aggregateType AggregateType, cmdType CommandType) error {
 	// Check for already existing handler.
-	if _, ok := h.aggregates[commandType]; ok {
+	if _, ok := h.aggregates[cmdType]; ok {
 		return ErrAggregateAlreadySet
 	}
 
 	// Add aggregate type to command type.
-	h.aggregates[commandType] = aggregateType
+	h.aggregates[cmdType] = aggregateType
 
 	return nil
 }
 
 // HandleCommand handles a command with the registered aggregate.
 // Returns ErrAggregateNotFound if no aggregate could be found.
-func (h *AggregateCommandHandler) HandleCommand(ctx context.Context, command Command) error {
-	err := h.checkCommand(command)
+func (h *AggregateCommandHandler) HandleCommand(ctx context.Context, cmd Command) error {
+	err := h.checkCommand(cmd)
 	if err != nil {
 		return err
 	}
 
-	aggregateType, ok := h.aggregates[command.CommandType()]
+	aggregateType, ok := h.aggregates[cmd.CommandType()]
 	if !ok {
 		return ErrAggregateNotFound
 	}
 
-	aggregate, err := h.repository.Load(ctx, aggregateType, command.AggregateID())
+	aggregate, err := h.repository.Load(ctx, aggregateType, cmd.AggregateID())
 	if err != nil {
 		return err
 	} else if aggregate == nil {
 		return ErrAggregateNotFound
 	}
 
-	if err = aggregate.HandleCommand(ctx, command); err != nil {
+	if err = aggregate.HandleCommand(ctx, cmd); err != nil {
 		return err
 	}
 
@@ -110,8 +110,8 @@ func (h *AggregateCommandHandler) HandleCommand(ctx context.Context, command Com
 	return nil
 }
 
-func (h *AggregateCommandHandler) checkCommand(command Command) error {
-	rv := reflect.Indirect(reflect.ValueOf(command))
+func (h *AggregateCommandHandler) checkCommand(cmd Command) error {
+	rv := reflect.Indirect(reflect.ValueOf(cmd))
 	rt := rv.Type()
 
 	for i := 0; i < rt.NumField(); i++ {

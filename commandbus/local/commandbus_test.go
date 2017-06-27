@@ -31,8 +31,8 @@ func TestCommandBus(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "testkey", "testval")
 
 	t.Log("handle with no handler")
-	command1 := &mocks.Command{eh.NewUUID(), "command1"}
-	err := bus.HandleCommand(ctx, command1)
+	cmd := &mocks.Command{eh.NewUUID(), "command1"}
+	err := bus.HandleCommand(ctx, cmd)
 	if err != eh.ErrHandlerNotFound {
 		t.Error("there should be a ErrHandlerNotFound error:", err)
 	}
@@ -45,11 +45,11 @@ func TestCommandBus(t *testing.T) {
 	}
 
 	t.Log("handle with handler")
-	err = bus.HandleCommand(ctx, command1)
+	err = bus.HandleCommand(ctx, cmd)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if handler.Command != command1 {
+	if handler.Command != cmd {
 		t.Error("the handled command should be correct:", handler.Command)
 	}
 	if val, ok := handler.Context.Value("testkey").(string); !ok || val != "testval" {

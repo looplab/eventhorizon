@@ -57,13 +57,13 @@ func NewInvitationAggregate(id eh.UUID) *InvitationAggregate {
 }
 
 // HandleCommand implements the HandleCommand method of the Aggregate interface.
-func (a *InvitationAggregate) HandleCommand(ctx context.Context, command eh.Command) error {
-	switch command := command.(type) {
+func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	switch cmd := cmd.(type) {
 	case *CreateInvite:
 		a.StoreEvent(InviteCreatedEvent,
 			&InviteCreatedData{
-				command.Name,
-				command.Age,
+				cmd.Name,
+				cmd.Age,
 			},
 		)
 		return nil

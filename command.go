@@ -45,7 +45,7 @@ type Command interface {
 type CommandType string
 
 var commands = make(map[CommandType]func() Command)
-var registerCommandLock sync.RWMutex
+var commandsMu sync.RWMutex
 
 // ErrCommandNotRegistered is when no command factory was registered.
 var ErrCommandNotRegistered = errors.New("command not registered")
@@ -60,17 +60,17 @@ func RegisterCommand(factory func() Command) {
 	// a factory func.
 
 	// Check that the created command matches the type registered.
-	command := factory()
-	if command == nil {
+	cmd := factory()
+	if cmd == nil {
 		panic("eventhorizon: created command is nil")
 	}
-	commandType := command.CommandType()
+	commandType := cmd.CommandType()
 	if commandType == CommandType("") {
 		panic("eventhorizon: attempt to register empty command type")
 	}
 
-	registerCommandLock.Lock()
-	defer registerCommandLock.Unlock()
+	commandsMu.Lock()
+	defer commandsMu.Unlock()
 	if _, ok := commands[commandType]; ok {
 		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", commandType))
 	}
@@ -85,8 +85,8 @@ func UnregisterCommand(commandType CommandType) {
 		panic("eventhorizon: attempt to unregister empty command type")
 	}
 
-	registerCommandLock.Lock()
-	defer registerCommandLock.Unlock()
+	commandsMu.Lock()
+	defer commandsMu.Unlock()
 	if _, ok := commands[commandType]; !ok {
 		panic(fmt.Sprintf("eventhorizon: unregister of non-registered type %q", commandType))
 	}
@@ -96,8 +96,8 @@ func UnregisterCommand(commandType CommandType) {
 // CreateCommand creates an command of a type with an ID using the factory
 // registered with RegisterCommand.
 func CreateCommand(commandType CommandType) (Command, error) {
-	registerCommandLock.RLock()
-	defer registerCommandLock.RUnlock()
+	commandsMu.RLock()
+	defer commandsMu.RUnlock()
 	if factory, ok := commands[commandType]; ok {
 		return factory(), nil
 	}

@@ -61,7 +61,7 @@ type Aggregate interface {
 }
 
 var aggregates = make(map[AggregateType]func(UUID) Aggregate)
-var registerAggregateLock sync.RWMutex
+var aggregatesMu sync.RWMutex
 
 // ErrAggregateNotRegistered is when no aggregate factory was registered.
 var ErrAggregateNotRegistered = errors.New("aggregate not registered")
@@ -85,8 +85,8 @@ func RegisterAggregate(factory func(UUID) Aggregate) {
 		panic("eventhorizon: attempt to register empty aggregate type")
 	}
 
-	registerAggregateLock.Lock()
-	defer registerAggregateLock.Unlock()
+	aggregatesMu.Lock()
+	defer aggregatesMu.Unlock()
 	if _, ok := aggregates[aggregateType]; ok {
 		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", aggregateType))
 	}
@@ -96,8 +96,8 @@ func RegisterAggregate(factory func(UUID) Aggregate) {
 // CreateAggregate creates an aggregate of a type with an ID using the factory
 // registered with RegisterAggregate.
 func CreateAggregate(aggregateType AggregateType, id UUID) (Aggregate, error) {
-	registerAggregateLock.RLock()
-	defer registerAggregateLock.RUnlock()
+	aggregatesMu.RLock()
+	defer aggregatesMu.RUnlock()
 	if factory, ok := aggregates[aggregateType]; ok {
 		return factory(id), nil
 	}

@@ -71,11 +71,11 @@ func NewAggregate(id eh.UUID) *Aggregate {
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.Aggregate interface.
-func (a *Aggregate) HandleCommand(ctx context.Context, command eh.Command) error {
+func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 	if a.Err != nil {
 		return a.Err
 	}
-	a.Commands = append(a.Commands, command)
+	a.Commands = append(a.Commands, cmd)
 	a.Context = ctx
 	return nil
 }
@@ -148,12 +148,17 @@ type SimpleModel struct {
 type CommandHandler struct {
 	Command eh.Command
 	Context context.Context
+	// Used to simulate errors when handling.
+	Err error
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.CommandHandler interface.
-func (t *CommandHandler) HandleCommand(ctx context.Context, command eh.Command) error {
-	t.Command = command
-	t.Context = ctx
+func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	if h.Err != nil {
+		return h.Err
+	}
+	h.Command = cmd
+	h.Context = ctx
 	return nil
 }
 
@@ -366,11 +371,11 @@ type CommandBus struct {
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.CommandBus interface.
-func (m *CommandBus) HandleCommand(ctx context.Context, command eh.Command) error {
+func (m *CommandBus) HandleCommand(ctx context.Context, cmd eh.Command) error {
 	if m.Err != nil {
 		return m.Err
 	}
-	m.Commands = append(m.Commands, command)
+	m.Commands = append(m.Commands, cmd)
 	m.Context = ctx
 	return nil
 }
