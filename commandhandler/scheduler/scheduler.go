@@ -67,8 +67,8 @@ func (b *CommandHandler) Error() <-chan error {
 // HandleCommand implements the HandleCommand method of the
 // eventhorizon.CommandHandler interface.
 func (b *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
-	// Delayed command execution.
-	if c, ok := cmd.(Command); ok {
+	// Delayed command execution if there is time set.
+	if c, ok := cmd.(Command); ok && !c.ExecuteAt().IsZero() {
 		go func() {
 			t := time.NewTimer(c.ExecuteAt().Sub(time.Now()))
 			defer t.Stop()

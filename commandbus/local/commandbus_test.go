@@ -16,6 +16,7 @@ package local
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
@@ -49,8 +50,8 @@ func TestCommandBus(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if handler.Command != cmd {
-		t.Error("the handled command should be correct:", handler.Command)
+	if !reflect.DeepEqual(handler.Commands, []eh.Command{cmd}) {
+		t.Error("the handled command should be correct:", handler.Commands)
 	}
 	if val, ok := handler.Context.Value("testkey").(string); !ok || val != "testval" {
 		t.Error("the context should be correct:", handler.Context)

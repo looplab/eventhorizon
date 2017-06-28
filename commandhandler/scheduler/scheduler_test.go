@@ -36,8 +36,8 @@ func TestCommandHandler_Immediate(t *testing.T) {
 	if err := sch.HandleCommand(context.Background(), cmd); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(h.Command, cmd) {
-		t.Error("the command should have been handled:", cmd)
+	if !reflect.DeepEqual(h.Commands, []eh.Command{cmd}) {
+		t.Error("the command should have been handled:", h.Commands)
 	}
 }
 
@@ -52,12 +52,28 @@ func TestCommandHandler_Delayed(t *testing.T) {
 	if err := sch.HandleCommand(context.Background(), c); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if h.Command != nil {
-		t.Error("the command should not have been handled yet:", h.Command)
+	if len(h.Commands) != 0 {
+		t.Error("the command should not have been handled yet:", h.Commands)
 	}
 	time.Sleep(10 * time.Millisecond)
-	if !reflect.DeepEqual(h.Command, c) {
-		t.Error("the command should have been handled:", h.Command)
+	if !reflect.DeepEqual(h.Commands, []eh.Command{c}) {
+		t.Error("the command should have been handled:", h.Commands)
+	}
+}
+
+func TestCommandHandler_ZeroTime(t *testing.T) {
+	h := &mocks.CommandHandler{}
+	sch := NewCommandHandler(h)
+	cmd := mocks.Command{
+		ID:      eh.NewUUID(),
+		Content: "content",
+	}
+	c := CommandWithExecuteTime(cmd, time.Time{})
+	if err := sch.HandleCommand(context.Background(), c); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(h.Commands, []eh.Command{c}) {
+		t.Error("the command should have been handled:", h.Commands)
 	}
 }
 
@@ -75,8 +91,8 @@ func TestCommandHandler_Errors(t *testing.T) {
 	if err := sch.HandleCommand(context.Background(), c); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if h.Command != nil {
-		t.Error("the command should not have been handled yet:", h.Command)
+	if len(h.Commands) != 0 {
+		t.Error("the command should not have been handled yet:", h.Commands)
 	}
 	var err error
 	select {
@@ -104,8 +120,8 @@ func TestCommandHandler_ContextCanceled(t *testing.T) {
 	if err := sch.HandleCommand(ctx, c); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if h.Command != nil {
-		t.Error("the command should not have been handled yet:", h.Command)
+	if len(h.Commands) != 0 {
+		t.Error("the command should not have been handled yet:", h.Commands)
 	}
 	var err error
 	select {
@@ -133,8 +149,8 @@ func TestCommandHandler_ContextDeadline(t *testing.T) {
 	if err := sch.HandleCommand(ctx, c); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if h.Command != nil {
-		t.Error("the command should not have been handled yet:", h.Command)
+	if len(h.Commands) != 0 {
+		t.Error("the command should not have been handled yet:", h.Commands)
 	}
 	var err error
 	select {
