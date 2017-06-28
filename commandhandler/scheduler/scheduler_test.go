@@ -37,7 +37,7 @@ func TestCommandHandler_Immediate(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 	if !reflect.DeepEqual(h.Commands, []eh.Command{cmd}) {
-		t.Error("the command should have been handled:", cmd)
+		t.Error("the command should have been handled:", h.Commands)
 	}
 }
 
@@ -56,6 +56,22 @@ func TestCommandHandler_Delayed(t *testing.T) {
 		t.Error("the command should not have been handled yet:", h.Commands)
 	}
 	time.Sleep(10 * time.Millisecond)
+	if !reflect.DeepEqual(h.Commands, []eh.Command{c}) {
+		t.Error("the command should have been handled:", h.Commands)
+	}
+}
+
+func TestCommandHandler_ZeroTime(t *testing.T) {
+	h := &mocks.CommandHandler{}
+	sch := NewCommandHandler(h)
+	cmd := mocks.Command{
+		ID:      eh.NewUUID(),
+		Content: "content",
+	}
+	c := CommandWithExecuteTime(cmd, time.Time{})
+	if err := sch.HandleCommand(context.Background(), c); err != nil {
+		t.Error("there should be no error:", err)
+	}
 	if !reflect.DeepEqual(h.Commands, []eh.Command{c}) {
 		t.Error("the command should have been handled:", h.Commands)
 	}
