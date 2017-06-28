@@ -123,6 +123,23 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 	if count != 2 {
 		t.Error("the count should be correct:", count)
 	}
+
+	modelCustom2 := &mocks.Model{
+		ID:      eh.NewUUID(),
+		Content: "modelCustom2",
+	}
+	if err := repo.Collection(ctx, func(c *mgo.Collection) error {
+		return c.Insert(modelCustom2)
+	}); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	model, err := repo.Find(ctx, modelCustom2.ID)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(model, modelCustom2) {
+		t.Error("the item should be correct:", model)
+	}
 }
 
 func TestRepository(t *testing.T) {
