@@ -146,8 +146,8 @@ type SimpleModel struct {
 
 // CommandHandler is a mocked eventhorizon.CommandHandler, useful in testing.
 type CommandHandler struct {
-	Command eh.Command
-	Context context.Context
+	Commands []eh.Command
+	Context  context.Context
 	// Used to simulate errors when handling.
 	Err error
 }
@@ -157,7 +157,7 @@ func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) erro
 	if h.Err != nil {
 		return h.Err
 	}
-	h.Command = cmd
+	h.Commands = append(h.Commands, cmd)
 	h.Context = ctx
 	return nil
 }
@@ -359,29 +359,6 @@ func (m *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	}
 	m.Events = []eh.Event{event}
 	m.Context = ctx
-	return nil
-}
-
-// CommandBus is a mocked eventhorizon.CommandBus, useful in testing.
-type CommandBus struct {
-	Commands []eh.Command
-	Context  context.Context
-	// Used to simulate errors in the store.
-	Err error
-}
-
-// HandleCommand implements the HandleCommand method of the eventhorizon.CommandBus interface.
-func (m *CommandBus) HandleCommand(ctx context.Context, cmd eh.Command) error {
-	if m.Err != nil {
-		return m.Err
-	}
-	m.Commands = append(m.Commands, cmd)
-	m.Context = ctx
-	return nil
-}
-
-// SetHandler implements the SetHandler method of the eventhorizon.CommandBus interface.
-func (m *CommandBus) SetHandler(handler eh.CommandHandler, commandType eh.CommandType) error {
 	return nil
 }
 

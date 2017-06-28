@@ -24,11 +24,11 @@ import (
 )
 
 func TestEventHandler(t *testing.T) {
-	commandBus := &mocks.CommandBus{
+	commandHandler := &mocks.CommandHandler{
 		Commands: []eh.Command{},
 	}
 	saga := &TestSaga{}
-	handler := NewEventHandler(saga, commandBus)
+	handler := NewEventHandler(saga, commandHandler)
 
 	ctx := context.Background()
 
@@ -40,8 +40,8 @@ func TestEventHandler(t *testing.T) {
 	if saga.event != event {
 		t.Error("the handled event should be correct:", saga.event)
 	}
-	if !reflect.DeepEqual(commandBus.Commands, saga.commands) {
-		t.Error("the produced commands should be correct:", commandBus.Commands)
+	if !reflect.DeepEqual(commandHandler.Commands, saga.commands) {
+		t.Error("the produced commands should be correct:", commandHandler.Commands)
 	}
 }
 

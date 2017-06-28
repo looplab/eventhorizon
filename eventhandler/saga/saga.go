@@ -37,15 +37,15 @@ type Type string
 
 // EventHandler is a CQRS saga handler to run a Saga implementation.
 type EventHandler struct {
-	saga       Saga
-	commandBus eh.CommandBus
+	saga           Saga
+	commandHandler eh.CommandHandler
 }
 
 // NewEventHandler creates a new EventHandler.
-func NewEventHandler(saga Saga, commandBus eh.CommandBus) *EventHandler {
+func NewEventHandler(saga Saga, commandHandler eh.CommandHandler) *EventHandler {
 	return &EventHandler{
-		saga:       saga,
-		commandBus: commandBus,
+		saga:           saga,
+		commandHandler: commandHandler,
 	}
 }
 
@@ -56,7 +56,7 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 
 	// Dispatch commands back on the command bus.
 	for _, cmd := range cmds {
-		if err := h.commandBus.HandleCommand(ctx, cmd); err != nil {
+		if err := h.commandHandler.HandleCommand(ctx, cmd); err != nil {
 			return errors.New("could not handle command '" +
 				string(cmd.CommandType()) + "' from saga '" +
 				string(h.saga.SagaType()) + "': " + err.Error())

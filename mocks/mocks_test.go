@@ -84,12 +84,6 @@ func TestMocks(t *testing.T) {
 		t.Error("the mocked event store is incorrect")
 	}
 
-	var commandBus interface{}
-	commandBus = &CommandBus{}
-	if _, ok := commandBus.(eh.CommandBus); !ok {
-		t.Error("the mocked command bus is incorrect")
-	}
-
 	var eventBus interface{}
 	eventBus = &EventBus{}
 	if _, ok := eventBus.(eh.EventBus); !ok {
