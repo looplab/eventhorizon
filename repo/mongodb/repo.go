@@ -207,6 +207,22 @@ func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
 	return nil
 }
 
+// Collection lets the function do custom actions on the collection.
+func (r *Repo) Collection(ctx context.Context, f func(*mgo.Collection) error) error {
+	sess := r.session.Copy()
+	defer sess.Close()
+
+	c := sess.DB(r.dbName(ctx)).C(r.collection)
+	if err := f(c); err != nil {
+		return eh.RepoError{
+			Err:       err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	return nil
+}
+
 // SetModel sets a factory function that creates concrete model types.
 func (r *Repo) SetModel(factory func() interface{}) {
 	r.factory = factory
