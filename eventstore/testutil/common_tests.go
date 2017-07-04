@@ -197,6 +197,47 @@ func EventStoreMaintainerCommonTests(t *testing.T, ctx context.Context, store eh
 			t.Error("the event version should be correct:", event, event.Version())
 		}
 	}
+
+	t.Log("save events of the old type")
+	oldEventType := eh.EventType("old_event_type")
+	id1 := eh.NewUUID()
+	oldEvent1 := eh.NewEventForAggregate(oldEventType, nil, mocks.AggregateType, id1, 1)
+	if err := store.Save(ctx, []eh.Event{oldEvent1}, 0); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	id2 := eh.NewUUID()
+	oldEvent2 := eh.NewEventForAggregate(oldEventType, nil, mocks.AggregateType, id2, 1)
+	if err := store.Save(ctx, []eh.Event{oldEvent2}, 0); err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	t.Log("rename events to the new type")
+	newEventType := eh.EventType("new_event_type")
+	if err := store.RenameEvent(ctx, oldEventType, newEventType); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	events, err = store.Load(ctx, mocks.AggregateType, id1)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	newEvent1 := eh.NewEventForAggregate(newEventType, nil, mocks.AggregateType, id1, 1)
+	if len(events) != 1 {
+		t.Fatal("there should be one event")
+	}
+	if err := mocks.CompareEvents(events[0], newEvent1); err != nil {
+		t.Error("the event was incorrect:", err)
+	}
+	events, err = store.Load(ctx, mocks.AggregateType, id2)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	newEvent2 := eh.NewEventForAggregate(newEventType, nil, mocks.AggregateType, id2, 1)
+	if len(events) != 1 {
+		t.Fatal("there should be one event")
+	}
+	if err := mocks.CompareEvents(events[0], newEvent2); err != nil {
+		t.Error("the event was incorrect:", err)
+	}
 }
 
 func eventsToString(events []eh.Event) string {

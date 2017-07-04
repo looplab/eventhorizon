@@ -63,5 +63,8 @@ type EventStoreMaintainer interface {
 
 	// Replace an event, the version must match. Useful for maintenance actions.
 	// Returns ErrAggregateNotFound if there is no aggregate.
-	Replace(ctx context.Context, event Event) error
+	Replace(context.Context, Event) error
+
+	// RenameEvent renames all instances of the event type.
+	RenameEvent(ctx context.Context, from, to EventType) error
 }

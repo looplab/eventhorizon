@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -275,6 +276,62 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 		return eh.EventStoreError{
 			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	return nil
+}
+
+// RenameEvent implements the RenameEvent method of the eventhorizon.EventStore interface.
+func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) error {
+	// We need to do a full scan to query for non-key values.
+	scanParams := &dynamodb.ScanInput{
+		TableName:        aws.String(s.tableName(ctx)),
+		FilterExpression: aws.String("EventType = :eventType"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":eventType": {S: aws.String(string(from))},
+		},
+		ConsistentRead: aws.Bool(true),
+	}
+	result, err := s.service.Scan(scanParams)
+	if err != nil {
+		return eh.EventStoreError{
+			Err:       err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	for _, item := range result.Items {
+		dbEvent := dbEvent{}
+		if err := dynamodbattribute.UnmarshalMap(item, &dbEvent); err != nil {
+			return eh.EventStoreError{
+				Err:       err,
+				Namespace: eh.NamespaceFromContext(ctx),
+			}
+		}
+
+		updateParams := &dynamodb.UpdateItemInput{
+			TableName: aws.String(s.tableName(ctx)),
+			Key: map[string]*dynamodb.AttributeValue{
+				"AggregateID": {
+					S: aws.String(dbEvent.AggregateID),
+				},
+				"Version": {
+					N: aws.String(strconv.Itoa(dbEvent.Version)),
+				},
+			},
+			ConditionExpression: aws.String("EventType = :from"),
+			UpdateExpression:    aws.String("set EventType = :to"),
+			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+				":from": {S: aws.String(string(from))},
+				":to":   {S: aws.String(string(to))},
+			},
+		}
+		if _, err := s.service.UpdateItem(updateParams); err != nil {
+			return eh.EventStoreError{
+				Err:       err,
+				Namespace: eh.NamespaceFromContext(ctx),
+			}
 		}
 	}
 
