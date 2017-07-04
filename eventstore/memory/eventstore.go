@@ -170,6 +170,35 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	return nil
 }
 
+// RenameEvent implements the RenameEvent method of the eventhorizon.EventStore interface.
+func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) error {
+	// Ensure that the namespace exists.
+	ns := s.namespace(ctx)
+
+	s.dbMu.Lock()
+	defer s.dbMu.Unlock()
+
+	updated := map[eh.UUID]aggregateRecord{}
+	for id, aggregate := range s.db[ns] {
+		events := make([]dbEvent, len(aggregate.Events))
+		for i, e := range aggregate.Events {
+			if e.EventType == from {
+				// Rename any matching event.
+				e.EventType = to
+			}
+			events[i] = e
+		}
+		aggregate.Events = events
+		updated[id] = aggregate
+	}
+
+	for id, aggregate := range updated {
+		s.db[ns][id] = aggregate
+	}
+
+	return nil
+}
+
 // Helper to get the namespace and ensure that its data exists.
 func (s *EventStore) namespace(ctx context.Context) string {
 	s.dbMu.Lock()

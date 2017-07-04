@@ -246,6 +246,30 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	return nil
 }
 
+// RenameEvent implements the RenameEvent method of the eventhorizon.EventStore interface.
+func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) error {
+	sess := s.session.Copy()
+	defer sess.Close()
+
+	// Find and rename all events.
+	// TODO: Maybe use change info.
+	if _, err := sess.DB(s.dbName(ctx)).C("events").UpdateAll(
+		bson.M{
+			"events.event_type": string(from),
+		},
+		bson.M{
+			"$set": bson.M{"events.$.event_type": string(to)},
+		},
+	); err != nil {
+		return eh.EventStoreError{
+			Err:       ErrCouldNotSaveAggregate,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	return nil
+}
+
 // Clear clears the event storge.
 func (s *EventStore) Clear(ctx context.Context) error {
 	if err := s.session.DB(s.dbName(ctx)).C("events").DropCollection(); err != nil {
