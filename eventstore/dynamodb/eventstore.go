@@ -135,6 +135,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		item, err := dynamodbattribute.MarshalMap(dbEvent)
 		if err != nil {
 			return eh.EventStoreError{
+				BaseErr:   err,
 				Err:       err,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
@@ -147,11 +148,13 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if _, err = s.service.PutItem(putParams); err != nil {
 			if err, ok := err.(awserr.RequestFailure); ok && err.Code() == "ConditionalCheckFailedException" {
 				return eh.EventStoreError{
+					BaseErr:   err,
 					Err:       ErrCouldNotSaveAggregate,
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
 			return eh.EventStoreError{
+				BaseErr:   err,
 				Err:       err,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
@@ -174,6 +177,7 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 	resp, err := s.service.Query(params)
 	if err != nil {
 		return nil, eh.EventStoreError{
+			BaseErr:   err,
 			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
@@ -188,6 +192,7 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 		dbEvent := dbEvent{}
 		if err := dynamodbattribute.UnmarshalMap(item, &dbEvent); err != nil {
 			return nil, eh.EventStoreError{
+				BaseErr:   err,
 				Err:       err,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
@@ -201,6 +206,7 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 		id, err := eh.ParseUUID(dbEvent.AggregateID)
 		if err != nil {
 			return nil, eh.EventStoreError{
+				BaseErr:   err,
 				Err:       err,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
@@ -211,6 +217,7 @@ func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, i
 		if data, err := eh.CreateEventData(dbEvent.EventType); err == nil {
 			if err := dynamodbattribute.UnmarshalMap(dbEvent.RawData, data); err != nil {
 				return nil, eh.EventStoreError{
+					BaseErr:   err,
 					Err:       ErrCouldNotUnmarshalEvent,
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
@@ -241,6 +248,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	resp, err := s.service.Query(params)
 	if err != nil {
 		return eh.EventStoreError{
+			BaseErr:   err,
 			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
@@ -260,6 +268,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	item, err := dynamodbattribute.MarshalMap(e)
 	if err != nil {
 		return eh.EventStoreError{
+			BaseErr:   err,
 			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
@@ -274,6 +283,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 			return eh.ErrInvalidEvent
 		}
 		return eh.EventStoreError{
+			BaseErr:   err,
 			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
@@ -296,6 +306,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 	result, err := s.service.Scan(scanParams)
 	if err != nil {
 		return eh.EventStoreError{
+			BaseErr:   err,
 			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
@@ -305,6 +316,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 		dbEvent := dbEvent{}
 		if err := dynamodbattribute.UnmarshalMap(item, &dbEvent); err != nil {
 			return eh.EventStoreError{
+				BaseErr:   err,
 				Err:       err,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
@@ -329,6 +341,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 		}
 		if _, err := s.service.UpdateItem(updateParams); err != nil {
 			return eh.EventStoreError{
+				BaseErr:   err,
 				Err:       err,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
@@ -461,6 +474,7 @@ func newDBEvent(ctx context.Context, event eh.Event) (*dbEvent, error) {
 		rawData, err = dynamodbattribute.MarshalMap(event.Data())
 		if err != nil {
 			return nil, eh.EventStoreError{
+				BaseErr:   err,
 				Err:       ErrCouldNotMarshalEvent,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
