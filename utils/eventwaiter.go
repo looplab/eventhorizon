@@ -21,16 +21,21 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
+type singleWaiter struct {
+	ch    chan eh.Event
+	match func(eh.Event) bool
+}
+
 // EventWaiter waits for certain events to match a criteria.
 type EventWaiter struct {
-	waits   map[eh.UUID]chan eh.Event
+	waits   map[eh.UUID]singleWaiter
 	waitsMu sync.RWMutex
 }
 
 // NewEventWaiter returns a new EventWaiter.
 func NewEventWaiter() *EventWaiter {
 	return &EventWaiter{
-		waits: map[eh.UUID]chan eh.Event{},
+		waits: map[eh.UUID]singleWaiter{},
 	}
 }
 
@@ -39,40 +44,47 @@ func NewEventWaiter() *EventWaiter {
 func (w *EventWaiter) Notify(ctx context.Context, event eh.Event) error {
 	w.waitsMu.RLock()
 	defer w.waitsMu.RUnlock()
-	for _, ch := range w.waits {
-		ch <- event
+	for _, sw := range w.waits {
+		if sw.match(event) {
+			sw.ch <- event
+		}
 	}
-
 	return nil
 }
 
-// Wait waits unil the match function returns true for an event, or the context
-// deadline expires. The match function can be used to filter or otherwise select
+// SetupWait sets up the waiter with the match function
+// The match function can be used to filter or otherwise select
 // interesting events by analysing the event data.
-func (w *EventWaiter) Wait(ctx context.Context, match func(eh.Event) bool) (eh.Event, error) {
-	id := eh.NewUUID()
-	ch := make(chan eh.Event, 1) // Use bufferd chan to not block other waits.
+func (w *EventWaiter) SetupWait(match func(eh.Event) bool) (id eh.UUID, ch chan eh.Event) {
+	id = eh.NewUUID()
+
+	ch = make(chan eh.Event, 1) // Use bufferd chan to not block other waits.
+	sw := singleWaiter{ch: ch, match: match}
 
 	// Add us to the in-flight waits and make sure we get removed when done.
 	w.waitsMu.Lock()
-	w.waits[id] = ch
+	w.waits[id] = sw
 	w.waitsMu.Unlock()
-	defer func() {
-		w.waitsMu.Lock()
-		delete(w.waits, id)
-		w.waitsMu.Unlock()
-	}()
 
-	// Wait for a matching event or that the context is cancelled. Use the done
-	// func to match events.
-	for {
-		select {
-		case event := <-ch:
-			if match(event) {
-				return event, nil
-			}
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
+	return
+}
+
+func (w *EventWaiter) CancelWait(id eh.UUID) {
+	w.waitsMu.Lock()
+	delete(w.waits, id)
+	w.waitsMu.Unlock()
+}
+
+func (w *EventWaiter) Wait(ctx context.Context, match func(eh.Event) bool) (event eh.Event, err error) {
+	waitID, resultChan := w.SetupWait(match)
+	defer w.CancelWait(waitID)
+
+	// now just wait...
+	select {
+	case event = <-resultChan:
+	case <-ctx.Done():
+		err = ctx.Err()
 	}
+
+	return
 }
