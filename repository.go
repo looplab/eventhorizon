@@ -87,7 +87,7 @@ func (r *EventSourcingRepository) Load(ctx context.Context, aggregateType Aggreg
 	}
 
 	// Load aggregate events.
-	events, err := r.eventStore.Load(ctx, aggregate.AggregateType(), aggregate.AggregateID())
+	events, err := r.eventStore.Load(ctx, aggregate.AggregateID())
 	if err != nil {
 		return nil, err
 	}

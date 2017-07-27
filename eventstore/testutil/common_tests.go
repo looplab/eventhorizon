@@ -97,7 +97,7 @@ func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStor
 	savedEvents = append(savedEvents, event7)
 
 	t.Log("load events for non-existing aggregate")
-	events, err := store.Load(ctx, mocks.AggregateType, eh.NewUUID())
+	events, err := store.Load(ctx, eh.NewUUID())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -106,7 +106,7 @@ func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStor
 	}
 
 	t.Log("load events")
-	events, err = store.Load(ctx, mocks.AggregateType, id)
+	events, err = store.Load(ctx, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -126,7 +126,7 @@ func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStor
 	}
 
 	t.Log("load events for another aggregate")
-	events, err = store.Load(ctx, mocks.AggregateType, id2)
+	events, err = store.Load(ctx, id2)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -180,7 +180,7 @@ func EventStoreMaintainerCommonTests(t *testing.T, ctx context.Context, store eh
 	if err := store.Replace(ctx, event2Mod); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	events, err := store.Load(ctx, mocks.AggregateType, id)
+	events, err := store.Load(ctx, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -216,7 +216,7 @@ func EventStoreMaintainerCommonTests(t *testing.T, ctx context.Context, store eh
 	if err := store.RenameEvent(ctx, oldEventType, newEventType); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	events, err = store.Load(ctx, mocks.AggregateType, id1)
+	events, err = store.Load(ctx, id1)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -227,7 +227,7 @@ func EventStoreMaintainerCommonTests(t *testing.T, ctx context.Context, store eh
 	if err := mocks.CompareEvents(events[0], newEvent1); err != nil {
 		t.Error("the event was incorrect:", err)
 	}
-	events, err = store.Load(ctx, mocks.AggregateType, id2)
+	events, err = store.Load(ctx, id2)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

@@ -165,7 +165,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
+func (s *EventStore) Load(ctx context.Context, id eh.UUID) ([]eh.Event, error) {
 	params := &dynamodb.QueryInput{
 		TableName:              aws.String(s.tableName(ctx)),
 		KeyConditionExpression: aws.String("AggregateID = :id"),

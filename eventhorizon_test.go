@@ -193,7 +193,7 @@ func (m *MockEventStore) Save(ctx context.Context, events []Event, originalVersi
 	return nil
 }
 
-func (m *MockEventStore) Load(ctx context.Context, aggregateType AggregateType, id UUID) ([]Event, error) {
+func (m *MockEventStore) Load(ctx context.Context, id UUID) ([]Event, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
