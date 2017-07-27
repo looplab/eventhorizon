@@ -39,7 +39,7 @@ package eventhorizon
 //   }
 //
 // The aggregate must return an error if the event can not be applied, or nil
-// to signal success which will increment the version.
+// to signal success (which will increment the version).
 //   func (a *Aggregate) ApplyEvent(event Event) error {
 //       switch event.EventType() {
 //       case AddUserEvent:

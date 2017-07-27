@@ -24,7 +24,7 @@ import (
 // Logger is a simple event handler for logging all events.
 type Logger struct{}
 
-// Notify implements the HandleEvent method of the EventHandler interface.
+// Notify implements the Notify method of the EventObserver interface.
 func (l *Logger) Notify(ctx context.Context, event eh.Event) error {
 	log.Println("event:", event)
 	return nil
