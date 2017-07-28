@@ -164,8 +164,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-// Load implements the Load method of the eventhorizon.EventStore interface.
-func (s *EventStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) ([]eh.Event, error) {
+func (s *EventStore) Load(ctx context.Context, id eh.UUID) ([]eh.Event, error) {
 	sess := s.session.Copy()
 	defer sess.Close()
 

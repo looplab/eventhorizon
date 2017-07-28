@@ -25,7 +25,7 @@ import (
 type AggregateType string
 
 // Aggregate is an interface representing a versioned data entity created from
-// events. It receives commands and generates evens that are stored.
+// events. It receives commands and generates events that are stored.
 //
 // The aggregate is created/loaded and saved by the Repository inside the
 // Dispatcher. A domain specific aggregate can either implement the full interface,
@@ -55,7 +55,7 @@ type Aggregate interface {
 	ClearUncommittedEvents()
 
 	// ApplyEvent applies an event on the aggregate by setting its values.
-	// If there are no errors the version shoudl be incremented by calling
+	// If there are no errors the version should be incremented by calling
 	// IncrementVersion.
 	ApplyEvent(context.Context, Event) error
 }
@@ -75,7 +75,7 @@ func RegisterAggregate(factory func(UUID) Aggregate) {
 	// TODO: Explore the use of reflect/gob for creating concrete types without
 	// a factory func.
 
-	// Check that the created aggregate matches the type registered.
+	// Check that the created aggregate matches the registered type.
 	aggregate := factory(NewUUID())
 	if aggregate == nil {
 		panic("eventhorizon: created aggregate is nil")

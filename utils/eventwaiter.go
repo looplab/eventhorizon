@@ -51,7 +51,7 @@ func (w *EventWaiter) Notify(ctx context.Context, event eh.Event) error {
 // interesting events by analysing the event data.
 func (w *EventWaiter) Wait(ctx context.Context, match func(eh.Event) bool) (eh.Event, error) {
 	id := eh.NewUUID()
-	ch := make(chan eh.Event, 1) // Use bufferd chan to not block other waits.
+	ch := make(chan eh.Event, 1) // Use buffered chan to not block other waits.
 
 	// Add us to the in-flight waits and make sure we get removed when done.
 	w.waitsMu.Lock()
