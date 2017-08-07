@@ -50,7 +50,7 @@ func EventBusCommonTests(t *testing.T, async bool) {
 	// Publish event without handler.
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{"event1"}, timestamp,
+	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
 		mocks.AggregateType, id, 1)
 	if err := bus.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)

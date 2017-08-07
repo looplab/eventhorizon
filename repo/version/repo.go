@@ -79,12 +79,6 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 			return nil, ctx.Err()
 		}
 	}
-
-	// Should never get here.
-	return nil, eh.RepoError{
-		Err:       eh.ErrModelNotFound,
-		Namespace: eh.NamespaceFromContext(ctx),
-	}
 }
 
 // findMinVersion finds an item if it has a version and it is at least minVersion.
