@@ -17,6 +17,7 @@ package eventhorizon
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestNewAggregateBase(t *testing.T) {
@@ -51,14 +52,15 @@ func TestAggregateVersion(t *testing.T) {
 func TestAggregateEvents(t *testing.T) {
 	id := NewUUID()
 	agg := NewTestAggregate(id)
-	event1 := agg.StoreEvent(TestEventType, &TestEventData{"event1"})
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event1 := agg.StoreEvent(TestEventType, &TestEventData{"event1"}, timestamp)
 	if event1.EventType() != TestEventType {
 		t.Error("the event type should be correct:", event1.EventType())
 	}
 	if !reflect.DeepEqual(event1.Data(), &TestEventData{"event1"}) {
 		t.Error("the data should be correct:", event1.Data())
 	}
-	if event1.Timestamp().IsZero() {
+	if !event1.Timestamp().Equal(timestamp) {
 		t.Error("the timestamp should not be zero:", event1.Timestamp())
 	}
 	if event1.Version() != 1 {
@@ -81,7 +83,7 @@ func TestAggregateEvents(t *testing.T) {
 		t.Error("the stored event should be correct:", events[0])
 	}
 
-	event2 := agg.StoreEvent(TestEventType, &TestEventData{"event1"})
+	event2 := agg.StoreEvent(TestEventType, &TestEventData{"event1"}, timestamp)
 	if event2.Version() != 2 {
 		t.Error("the version should be 2:", event2.Version())
 	}
@@ -91,14 +93,14 @@ func TestAggregateEvents(t *testing.T) {
 	if len(events) != 0 {
 		t.Error("there should be no events stored:", len(events))
 	}
-	event3 := agg.StoreEvent(TestEventType, &TestEventData{"event1"})
+	event3 := agg.StoreEvent(TestEventType, &TestEventData{"event1"}, timestamp)
 	if event3.Version() != 1 {
 		t.Error("the version should be 1 after clearing uncommitted events (without applying any):", event3.Version())
 	}
 
 	agg = NewTestAggregate(NewUUID())
-	event1 = agg.StoreEvent(TestEventType, &TestEventData{"event1"})
-	event2 = agg.StoreEvent(TestEventType, &TestEventData{"event2"})
+	event1 = agg.StoreEvent(TestEventType, &TestEventData{"event1"}, timestamp)
+	event2 = agg.StoreEvent(TestEventType, &TestEventData{"event2"}, timestamp)
 	events = agg.UncommittedEvents()
 	if len(events) != 2 {
 		t.Fatal("there should be 2 events stored:", len(events))

@@ -14,6 +14,8 @@
 
 package eventhorizon
 
+import "time"
+
 // AggregateBase is a CQRS aggregate base to embed in domain specific aggregates.
 //
 // A typical aggregate example:
@@ -87,9 +89,9 @@ func (a *AggregateBase) IncrementVersion() {
 }
 
 // StoreEvent implements the StoreEvent method of the Aggregate interface.
-func (a *AggregateBase) StoreEvent(eventType EventType, data EventData) Event {
+func (a *AggregateBase) StoreEvent(eventType EventType, data EventData, timestamp time.Time) Event {
 	version := a.Version() + len(a.uncommittedEvents) + 1
-	e := NewEventForAggregate(eventType, data,
+	e := NewEventForAggregate(eventType, data, timestamp,
 		a.AggregateType(), a.AggregateID(), version)
 
 	a.uncommittedEvents = append(a.uncommittedEvents, e)

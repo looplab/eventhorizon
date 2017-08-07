@@ -38,8 +38,10 @@ func TestEventHandler_CreateModel(t *testing.T) {
 
 	// Driver creates item.
 	id := eh.NewUUID()
-	eventData := &mocks.EventData{"event1"}
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, mocks.AggregateType, id, 1)
+	eventData := &mocks.EventData{Content: "event1"}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
+		mocks.AggregateType, id, 1)
 	item := &mocks.SimpleModel{
 		ID: id,
 	}
@@ -72,8 +74,10 @@ func TestEventHandler_UpdateModel(t *testing.T) {
 	ctx := context.Background()
 
 	id := eh.NewUUID()
-	eventData := &mocks.EventData{"event1"}
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, mocks.AggregateType, id, 1)
+	eventData := &mocks.EventData{Content: "event1"}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
+		mocks.AggregateType, id, 1)
 	item := &mocks.SimpleModel{
 		ID: id,
 	}
@@ -107,8 +111,10 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 	ctx := context.Background()
 
 	id := eh.NewUUID()
-	eventData := &mocks.EventData{"event1"}
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, mocks.AggregateType, id, 1)
+	eventData := &mocks.EventData{Content: "event1"}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
+		mocks.AggregateType, id, 1)
 	item := &mocks.Model{
 		ID: id,
 	}
@@ -143,8 +149,10 @@ func TestEventHandler_UpdateModelWithEventsOutOfOrder(t *testing.T) {
 	ctx := context.Background()
 
 	id := eh.NewUUID()
-	eventData := &mocks.EventData{"event1"}
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, mocks.AggregateType, id, 3)
+	eventData := &mocks.EventData{Content: "event1"}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
+		mocks.AggregateType, id, 3)
 	item := &mocks.Model{
 		ID:      id,
 		Version: 1,
@@ -190,8 +198,10 @@ func TestEventHandler_DeleteModel(t *testing.T) {
 	ctx := context.Background()
 
 	id := eh.NewUUID()
-	eventData := &mocks.EventData{"event1"}
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, mocks.AggregateType, id, 1)
+	eventData := &mocks.EventData{Content: "event1"}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
+		mocks.AggregateType, id, 1)
 	item := &mocks.SimpleModel{
 		ID: id,
 	}
@@ -223,8 +233,10 @@ func TestEventHandler_LoadError(t *testing.T) {
 
 	// Driver creates item.
 	id := eh.NewUUID()
-	eventData := &mocks.EventData{"event1"}
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, mocks.AggregateType, id, 1)
+	eventData := &mocks.EventData{Content: "event1"}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
+		mocks.AggregateType, id, 1)
 	loadErr := errors.New("load error")
 	repo.LoadErr = loadErr
 	expectedErr := Error{
@@ -248,8 +260,10 @@ func TestEventHandler_SaveError(t *testing.T) {
 
 	// Driver creates item.
 	id := eh.NewUUID()
-	eventData := &mocks.EventData{"event1"}
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, mocks.AggregateType, id, 1)
+	eventData := &mocks.EventData{Content: "event1"}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
+		mocks.AggregateType, id, 1)
 	saveErr := errors.New("save error")
 	repo.SaveErr = saveErr
 	expectedErr := Error{
@@ -273,8 +287,10 @@ func TestEventHandler_ProjectError(t *testing.T) {
 
 	// Driver creates item.
 	id := eh.NewUUID()
-	eventData := &mocks.EventData{"event1"}
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, mocks.AggregateType, id, 1)
+	eventData := &mocks.EventData{Content: "event1"}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
+		mocks.AggregateType, id, 1)
 	projectErr := errors.New("save error")
 	projector.err = projectErr
 	expectedErr := Error{

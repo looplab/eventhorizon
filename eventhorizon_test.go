@@ -17,6 +17,7 @@ package eventhorizon
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 func init() {
@@ -68,7 +69,7 @@ func (a *TestAggregate) HandleCommand(ctx context.Context, cmd Command) error {
 	}
 	switch cmd := cmd.(type) {
 	case *TestCommand:
-		a.StoreEvent(TestEventType, &TestEventData{cmd.Content})
+		a.StoreEvent(TestEventType, &TestEventData{cmd.Content}, time.Now())
 		return nil
 	}
 	return errors.New("couldn't handle command")
@@ -109,7 +110,7 @@ func (a *TestAggregate2) HandleCommand(ctx context.Context, cmd Command) error {
 	}
 	switch cmd := cmd.(type) {
 	case *TestCommand2:
-		a.StoreEvent(TestEventType, &TestEvent2Data{cmd.Content})
+		a.StoreEvent(TestEventType, &TestEvent2Data{cmd.Content}, time.Now())
 		return nil
 	}
 	return errors.New("couldn't handle command")

@@ -17,17 +17,19 @@ package eventhorizon
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestNewEvent(t *testing.T) {
-	event := NewEvent(TestEventType, &TestEventData{"event1"})
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := NewEvent(TestEventType, &TestEventData{"event1"}, timestamp)
 	if event.EventType() != TestEventType {
 		t.Error("the event type should be correct:", event.EventType())
 	}
 	if !reflect.DeepEqual(event.Data(), &TestEventData{"event1"}) {
 		t.Error("the data should be correct:", event.Data())
 	}
-	if event.Timestamp().IsZero() {
+	if !event.Timestamp().Equal(timestamp) {
 		t.Error("the timestamp should not be zero:", event.Timestamp())
 	}
 	if event.Version() != 0 {
@@ -38,7 +40,7 @@ func TestNewEvent(t *testing.T) {
 	}
 
 	id := NewUUID()
-	event = NewEventForAggregate(TestEventType, &TestEventData{"event1"},
+	event = NewEventForAggregate(TestEventType, &TestEventData{"event1"}, timestamp,
 		TestAggregateType, id, 3)
 	if event.EventType() != TestEventType {
 		t.Error("the event type should be correct:", event.EventType())
@@ -46,7 +48,7 @@ func TestNewEvent(t *testing.T) {
 	if !reflect.DeepEqual(event.Data(), &TestEventData{"event1"}) {
 		t.Error("the data should be correct:", event.Data())
 	}
-	if event.Timestamp().IsZero() {
+	if !event.Timestamp().Equal(timestamp) {
 		t.Error("the timestamp should not be zero:", event.Timestamp())
 	}
 	if event.AggregateType() != TestAggregateType {

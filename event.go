@@ -57,22 +57,22 @@ type Event interface {
 }
 
 // NewEvent creates a new event with a type and data, setting its timestamp.
-func NewEvent(eventType EventType, data EventData) Event {
+func NewEvent(eventType EventType, data EventData, timestamp time.Time) Event {
 	return event{
 		eventType: eventType,
 		data:      data,
-		timestamp: time.Now(),
+		timestamp: timestamp,
 	}
 }
 
 // NewEventForAggregate creates a new event with a type and data, setting its
 // timestamp. It also sets the aggregate data on it.
-func NewEventForAggregate(eventType EventType, data EventData,
+func NewEventForAggregate(eventType EventType, data EventData, timestamp time.Time,
 	aggregateType AggregateType, aggregateID UUID, version int) Event {
 	return event{
 		eventType:     eventType,
 		data:          data,
-		timestamp:     time.Now(),
+		timestamp:     timestamp,
 		aggregateType: aggregateType,
 		aggregateID:   aggregateID,
 		version:       version,
