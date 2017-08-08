@@ -17,6 +17,7 @@ package testutil
 import (
 	"context"
 	"testing"
+	"time"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
@@ -35,7 +36,9 @@ func EventPublisherCommonTests(t *testing.T, publisher1, publisher2 eh.EventPubl
 
 	t.Log("publish event")
 	id, _ := eh.ParseUUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
-	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{"event1"},
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
+		timestamp,
 		mocks.AggregateType, id, 1)
 	if err := publisher1.PublishEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
@@ -65,7 +68,7 @@ func EventPublisherCommonTests(t *testing.T, publisher1, publisher2 eh.EventPubl
 	}
 
 	t.Log("publish another event")
-	event2 := eh.NewEventForAggregate(mocks.EventOtherType, nil,
+	event2 := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
 		mocks.AggregateType, id, 2)
 	if err := publisher1.PublishEvent(ctx, event2); err != nil {
 		t.Error("there should be no error:", err)

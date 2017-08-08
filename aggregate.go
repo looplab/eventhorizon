@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 )
 
 // AggregateType is the type of an aggregate.
@@ -47,7 +48,7 @@ type Aggregate interface {
 	CommandHandler
 
 	// StoreEvent creates and stores a new event as uncommitted for the aggregate.
-	StoreEvent(EventType, EventData) Event
+	StoreEvent(EventType, EventData, time.Time) Event
 	// UncommittedEvents gets all uncommitted events to commit to the store.
 	UncommittedEvents() []Event
 	// ClearUncommittedEvents clears all uncommitted events after committing to

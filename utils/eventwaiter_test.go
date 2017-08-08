@@ -29,7 +29,9 @@ func TestEventWaiter(t *testing.T) {
 	w := NewEventWaiter()
 
 	// Event should match when waiting.
-	expectedEvent := eh.NewEventForAggregate(mocks.EventType, nil, mocks.AggregateType, eh.NewUUID(), 1)
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	expectedEvent := eh.NewEventForAggregate(mocks.EventType, nil, timestamp,
+		mocks.AggregateType, eh.NewUUID(), 1)
 	go func() {
 		time.Sleep(time.Millisecond)
 		if err := w.Notify(context.Background(), expectedEvent); err != nil {
@@ -56,7 +58,8 @@ func TestEventWaiter(t *testing.T) {
 	}
 
 	// Other events should not match.
-	otherEvent := eh.NewEventForAggregate(mocks.EventOtherType, nil, mocks.AggregateType, eh.NewUUID(), 1)
+	otherEvent := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
+		mocks.AggregateType, eh.NewUUID(), 1)
 	go func() {
 		time.Sleep(time.Millisecond)
 		if err := w.Notify(context.Background(), otherEvent); err != nil {

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestNewEventSourcingRepository(t *testing.T) {
@@ -79,7 +80,8 @@ func TestEventSourcingRepository_LoadEvents(t *testing.T) {
 
 	id := NewUUID()
 	agg := NewTestAggregate(id)
-	event1 := agg.StoreEvent(TestEventType, &TestEventData{"event1"})
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event1 := agg.StoreEvent(TestEventType, &TestEventData{"event1"}, timestamp)
 	store.Save(ctx, []Event{event1}, 0)
 	t.Log(store.Events)
 	loadedAgg, err := repo.Load(ctx, TestAggregateType, id)
@@ -112,12 +114,13 @@ func TestEventSourcingRepository_LoadEvents_MismatchedEventType(t *testing.T) {
 
 	id := NewUUID()
 	agg := NewTestAggregate(id)
-	event1 := agg.StoreEvent(TestEventType, &TestEventData{"event"})
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event1 := agg.StoreEvent(TestEventType, &TestEventData{"event"}, timestamp)
 	store.Save(ctx, []Event{event1}, 0)
 
 	otherAggregateID := NewUUID()
 	otherAgg := NewTestAggregate2(otherAggregateID)
-	event2 := otherAgg.StoreEvent(TestEvent2Type, &TestEvent2Data{"event2"})
+	event2 := otherAgg.StoreEvent(TestEvent2Type, &TestEvent2Data{"event2"}, timestamp)
 	store.Save(ctx, []Event{event2}, 0)
 
 	loadedAgg, err := repo.Load(ctx, TestAggregateType, otherAggregateID)
@@ -141,7 +144,8 @@ func TestEventSourcingRepository_SaveEvents(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	event1 := agg.StoreEvent(TestEventType, &TestEventData{"event"})
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event1 := agg.StoreEvent(TestEventType, &TestEventData{"event"}, timestamp)
 	err = repo.Save(ctx, agg)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -169,7 +173,7 @@ func TestEventSourcingRepository_SaveEvents(t *testing.T) {
 	}
 
 	// Store error.
-	event1 = agg.StoreEvent(TestEventType, &TestEventData{"event"})
+	event1 = agg.StoreEvent(TestEventType, &TestEventData{"event"}, timestamp)
 	store.err = errors.New("aggregate error")
 	err = repo.Save(ctx, agg)
 	if err == nil || err.Error() != "aggregate error" {
@@ -178,7 +182,7 @@ func TestEventSourcingRepository_SaveEvents(t *testing.T) {
 	store.err = nil
 
 	// Aggregate error.
-	event1 = agg.StoreEvent(TestEventType, &TestEventData{"event"})
+	event1 = agg.StoreEvent(TestEventType, &TestEventData{"event"}, timestamp)
 	agg.err = errors.New("error")
 	err = repo.Save(ctx, agg)
 	if _, ok := err.(ApplyEventError); !ok {
@@ -187,7 +191,7 @@ func TestEventSourcingRepository_SaveEvents(t *testing.T) {
 	agg.err = nil
 
 	// Aggregate error.
-	event1 = agg.StoreEvent(TestEventType, &TestEventData{"event"})
+	event1 = agg.StoreEvent(TestEventType, &TestEventData{"event"}, timestamp)
 	bus.err = errors.New("bus error")
 	err = repo.Save(ctx, agg)
 	if err == nil || err.Error() != "bus error" {

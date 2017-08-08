@@ -116,7 +116,9 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 		t.Error("there should be no error:", err)
 	}
 	ctxVersion = eh.NewContextWithMinVersion(ctx, 4)
-	ctxVersion, _ = context.WithTimeout(ctxVersion, time.Second)
+	var cancel func()
+	ctxVersion, cancel = context.WithTimeout(ctxVersion, time.Second)
+	defer cancel()
 	model, err = repo.Find(ctxVersion, modelMinVersion.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -134,7 +136,8 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 		}
 	}()
 	ctxVersion = eh.NewContextWithMinVersion(ctx, 5)
-	ctxVersion, _ = context.WithTimeout(ctxVersion, time.Second)
+	ctxVersion, cancel = context.WithTimeout(ctxVersion, time.Second)
+	defer cancel()
 	model, err = repo.Find(ctxVersion, modelMinVersion.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -154,7 +157,8 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 		t.Error("there should be no error:", err)
 	}
 	ctxVersion = eh.NewContextWithMinVersion(ctx, 1)
-	ctxVersion, _ = context.WithTimeout(ctxVersion, time.Second)
+	ctxVersion, cancel = context.WithTimeout(ctxVersion, time.Second)
+	defer cancel()
 	// Meassure the time it takes, it should not wait > 100ms (the first retry).
 	t1 := time.Now()
 	model, err = repo.Find(ctxVersion, modelMinVersion.ID)
@@ -183,7 +187,8 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 		}
 	}()
 	ctxVersion = eh.NewContextWithMinVersion(ctx, 1)
-	ctxVersion, _ = context.WithTimeout(ctxVersion, time.Second)
+	ctxVersion, cancel = context.WithTimeout(ctxVersion, time.Second)
+	defer cancel()
 	model, err = repo.Find(ctxVersion, modelMinVersion.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -201,7 +206,8 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 		}
 	}()
 	ctxVersion = eh.NewContextWithMinVersion(ctx, 6)
-	ctxVersion, _ = context.WithTimeout(ctxVersion, 10*time.Millisecond)
+	ctxVersion, cancel = context.WithTimeout(ctxVersion, 10*time.Millisecond)
+	defer cancel()
 	model, err = repo.Find(ctxVersion, modelMinVersion.ID)
 	if err != context.DeadlineExceeded {
 		t.Error("there should be a deadline exceeded error:", err)
@@ -221,7 +227,8 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 		}
 	}()
 	ctxVersion = eh.NewContextWithMinVersion(ctx, 4)
-	ctxVersion, _ = context.WithTimeout(ctxVersion, time.Second)
+	ctxVersion, cancel = context.WithTimeout(ctxVersion, time.Second)
+	defer cancel()
 	model, err = repo.Find(ctxVersion, modelMinVersion.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)

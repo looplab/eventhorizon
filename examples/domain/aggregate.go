@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	eh "github.com/looplab/eventhorizon"
 )
@@ -65,6 +66,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 				cmd.Name,
 				cmd.Age,
 			},
+			time.Now(),
 		)
 		return nil
 
@@ -81,7 +83,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 			return nil
 		}
 
-		a.StoreEvent(InviteAcceptedEvent, nil)
+		a.StoreEvent(InviteAcceptedEvent, nil, time.Now())
 		return nil
 
 	case *DeclineInvite:
@@ -97,7 +99,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 			return nil
 		}
 
-		a.StoreEvent(InviteDeclinedEvent, nil)
+		a.StoreEvent(InviteDeclinedEvent, nil, time.Now())
 		return nil
 
 	case *ConfirmInvite:
@@ -109,7 +111,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 			return fmt.Errorf("only accepted invites can be confirmed")
 		}
 
-		a.StoreEvent(InviteConfirmedEvent, nil)
+		a.StoreEvent(InviteConfirmedEvent, nil, time.Now())
 		return nil
 
 	case *DenyInvite:
@@ -121,7 +123,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 			return fmt.Errorf("only accepted invites can be denied")
 		}
 
-		a.StoreEvent(InviteDeniedEvent, nil)
+		a.StoreEvent(InviteDeniedEvent, nil, time.Now())
 		return nil
 	}
 	return fmt.Errorf("couldn't handle command")
