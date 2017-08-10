@@ -16,31 +16,62 @@ package utils
 
 import (
 	"context"
-	"sync"
 
 	eh "github.com/looplab/eventhorizon"
 )
 
 // EventWaiter waits for certain events to match a criteria.
 type EventWaiter struct {
-	waits   map[eh.UUID]chan eh.Event
-	waitsMu sync.RWMutex
+	inbox      chan eh.Event
+	register   chan *listener
+	unregister chan *listener
+}
+
+type listener struct {
+	id    eh.UUID
+	ch    chan eh.Event
+	match func(eh.Event) bool
 }
 
 // NewEventWaiter returns a new EventWaiter.
 func NewEventWaiter() *EventWaiter {
-	return &EventWaiter{
-		waits: map[eh.UUID]chan eh.Event{},
+	w := EventWaiter{
+		inbox:      make(chan eh.Event, 1),
+		register:   make(chan *listener),
+		unregister: make(chan *listener),
+	}
+	go w.run()
+	return &w
+}
+
+func (w *EventWaiter) run() {
+	listeners := map[eh.UUID]*listener{}
+	for {
+		select {
+		case l := <-w.register:
+			listeners[l.id] = l
+		case l := <-w.unregister:
+			delete(listeners, l.id)
+		case event := <-w.inbox:
+			for _, l := range listeners {
+				if l.match(event) {
+					l.ch <- event
+					// Delete to make sure we don't cause a deadlock by matching again
+					// before unregister happens.
+					delete(listeners, l.id)
+				}
+			}
+		}
 	}
 }
 
 // Notify implements the eventhorizon.EventObserver.Notify method which forwards
 // events to the waiters so that they can match the events.
 func (w *EventWaiter) Notify(ctx context.Context, event eh.Event) error {
-	w.waitsMu.RLock()
-	defer w.waitsMu.RUnlock()
-	for _, ch := range w.waits {
-		ch <- event
+	select {
+	case w.inbox <- event:
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 
 	return nil
@@ -50,27 +81,21 @@ func (w *EventWaiter) Notify(ctx context.Context, event eh.Event) error {
 // deadline expires. The match function can be used to filter or otherwise select
 // interesting events by analysing the event data.
 func (w *EventWaiter) Wait(ctx context.Context, match func(eh.Event) bool) (eh.Event, error) {
-	id := eh.NewUUID()
-	ch := make(chan eh.Event, 1) // Use buffered chan to not block other waits.
-
-	// Add us to the in-flight waits and make sure we get removed when done.
-	w.waitsMu.Lock()
-	w.waits[id] = ch
-	w.waitsMu.Unlock()
-	defer func() {
-		w.waitsMu.Lock()
-		delete(w.waits, id)
-		w.waitsMu.Unlock()
-	}()
+	l := &listener{
+		eh.NewUUID(),
+		make(chan eh.Event, 1),
+		match,
+	}
+	// Add us to the in-flight listeners and make sure we get removed when done.
+	w.register <- l
+	defer func() { w.unregister <- l }()
 
 	// Wait for a matching event or that the context is cancelled. Use the done
 	// func to match events.
 	for {
 		select {
-		case event := <-ch:
-			if match(event) {
-				return event, nil
-			}
+		case event := <-l.ch:
+			return event, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
