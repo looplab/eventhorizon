@@ -53,9 +53,6 @@ func TestEventWaiter(t *testing.T) {
 	if !reflect.DeepEqual(event, expectedEvent) {
 		t.Error("the event should be correct:", event)
 	}
-	if len(w.waits) > 0 {
-		t.Error("there should be no open waits")
-	}
 
 	// Other events should not match.
 	otherEvent := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
@@ -80,8 +77,5 @@ func TestEventWaiter(t *testing.T) {
 	}
 	if event != nil {
 		t.Error("the event should be nil:", event)
-	}
-	if len(w.waits) > 0 {
-		t.Error("there should be no open waits")
 	}
 }
