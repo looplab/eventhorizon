@@ -23,42 +23,41 @@ import (
 // EventWaiter waits for certain events to match a criteria.
 type EventWaiter struct {
 	inbox      chan eh.Event
-	register   chan *listener
-	unregister chan *listener
-}
-
-type listener struct {
-	id    eh.UUID
-	ch    chan eh.Event
-	match func(eh.Event) bool
+	register   chan *EventListener
+	unregister chan *EventListener
 }
 
 // NewEventWaiter returns a new EventWaiter.
 func NewEventWaiter() *EventWaiter {
 	w := EventWaiter{
 		inbox:      make(chan eh.Event, 1),
-		register:   make(chan *listener),
-		unregister: make(chan *listener),
+		register:   make(chan *EventListener),
+		unregister: make(chan *EventListener),
 	}
 	go w.run()
 	return &w
 }
 
 func (w *EventWaiter) run() {
-	listeners := map[eh.UUID]*listener{}
+	listeners := map[eh.UUID]*EventListener{}
 	for {
 		select {
 		case l := <-w.register:
 			listeners[l.id] = l
 		case l := <-w.unregister:
-			delete(listeners, l.id)
+			// Check for existence to avoid closing channel twice.
+			if _, ok := listeners[l.id]; ok {
+				delete(listeners, l.id)
+				close(l.inbox)
+			}
 		case event := <-w.inbox:
 			for _, l := range listeners {
 				if l.match(event) {
-					l.ch <- event
-					// Delete to make sure we don't cause a deadlock by matching again
-					// before unregister happens.
-					delete(listeners, l.id)
+					select {
+					case l.inbox <- event:
+					default:
+						// Drop any events exceeding the listener buffer.
+					}
 				}
 			}
 		}
@@ -77,27 +76,41 @@ func (w *EventWaiter) Notify(ctx context.Context, event eh.Event) error {
 	return nil
 }
 
-// Wait waits unil the match function returns true for an event, or the context
+// Listen waits unil the match function returns true for an event, or the context
 // deadline expires. The match function can be used to filter or otherwise select
 // interesting events by analysing the event data.
-func (w *EventWaiter) Wait(ctx context.Context, match func(eh.Event) bool) (eh.Event, error) {
-	l := &listener{
-		eh.NewUUID(),
-		make(chan eh.Event, 1),
-		match,
+func (w *EventWaiter) Listen(ctx context.Context, match func(eh.Event) bool) (*EventListener, error) {
+	l := &EventListener{
+		id:         eh.NewUUID(),
+		inbox:      make(chan eh.Event, 1),
+		match:      match,
+		unregister: w.unregister,
 	}
-	// Add us to the in-flight listeners and make sure we get removed when done.
+	// Register us to the in-flight listeners.
 	w.register <- l
-	defer func() { w.unregister <- l }()
 
-	// Wait for a matching event or that the context is cancelled. Use the done
-	// func to match events.
+	return l, nil
+}
+
+// EventListener receives events from an EventWaiter.
+type EventListener struct {
+	id         eh.UUID
+	inbox      chan eh.Event
+	match      func(eh.Event) bool
+	unregister chan *EventListener
+}
+
+func (l *EventListener) Wait(ctx context.Context) (eh.Event, error) {
 	for {
 		select {
-		case event := <-l.ch:
+		case event := <-l.inbox:
 			return event, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
 	}
+}
+
+func (l *EventListener) Close() {
+	l.unregister <- l
 }
