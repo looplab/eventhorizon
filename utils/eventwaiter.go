@@ -101,13 +101,11 @@ type EventListener struct {
 }
 
 func (l *EventListener) Wait(ctx context.Context) (eh.Event, error) {
-	for {
-		select {
-		case event := <-l.inbox:
-			return event, nil
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
+	select {
+	case event := <-l.inbox:
+		return event, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 }
 
