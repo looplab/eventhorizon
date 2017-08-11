@@ -30,8 +30,9 @@ func TestEventWaiter(t *testing.T) {
 
 	// Event should match when waiting.
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	expectedEvent := eh.NewEventForAggregate(mocks.EventType, nil, timestamp,
-		mocks.AggregateType, eh.NewUUID(), 1)
+	expectedEvent := eh.NewEventForAggregate(
+		mocks.EventType, nil, timestamp, mocks.AggregateType, eh.NewUUID(), 1,
+	)
 	go func() {
 		time.Sleep(time.Millisecond)
 		if err := w.Notify(context.Background(), expectedEvent); err != nil {
@@ -41,12 +42,18 @@ func TestEventWaiter(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	event, err := w.Wait(context.Background(), func(event eh.Event) bool {
+	l, err := w.Listen(ctx, func(event eh.Event) bool {
 		if event.EventType() == mocks.EventType {
 			return true
 		}
 		return false
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+
+	event, err := l.Wait(ctx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -66,12 +73,7 @@ func TestEventWaiter(t *testing.T) {
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
-	event, err = w.Wait(ctx, func(event eh.Event) bool {
-		if event.EventType() == mocks.EventType {
-			return true
-		}
-		return false
-	})
+	event, err = l.Wait(ctx)
 	if err == nil || err.Error() != "context deadline exceeded" {
 		t.Error("there should be a context deadline exceeded error")
 	}
