@@ -46,6 +46,11 @@ In addition there is MongoDB implementations of the event store and a simple rea
 There is also experimental support for AWS DynamoDB as an event store. Support for a event bus using AWS SQS is also planned but not started.
 
 
+# Get Involved
+
+- Join our [slack channel](https://gophers.slack.com/messages/eventhorizon/) (sign up [here](https://gophersinvite.herokuapp.com/))
+
+
 # License
 
 Event Horizon is licensed under Apache License 2.0
