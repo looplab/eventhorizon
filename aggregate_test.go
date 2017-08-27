@@ -87,6 +87,8 @@ const (
 
 type TestAggregateRegister struct{ *AggregateBase }
 
+var _ = Aggregate(&TestAggregateRegister{})
+
 func (a *TestAggregateRegister) AggregateType() AggregateType {
 	return TestAggregateRegisterType
 }
@@ -99,6 +101,8 @@ func (a *TestAggregateRegister) ApplyEvent(ctx context.Context, event Event) err
 
 type TestAggregateRegisterEmpty struct{ *AggregateBase }
 
+var _ = Aggregate(&TestAggregateRegisterEmpty{})
+
 func (a *TestAggregateRegisterEmpty) AggregateType() AggregateType {
 	return TestAggregateRegisterEmptyType
 }
@@ -110,6 +114,8 @@ func (a *TestAggregateRegisterEmpty) ApplyEvent(ctx context.Context, event Event
 }
 
 type TestAggregateRegisterTwice struct{ *AggregateBase }
+
+var _ = Aggregate(&TestAggregateRegisterTwice{})
 
 func (a *TestAggregateRegisterTwice) AggregateType() AggregateType {
 	return TestAggregateRegisterTwiceType

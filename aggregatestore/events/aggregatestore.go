@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package eventhorizon
+package events
 
 import (
 	"context"
 	"errors"
+
+	eh "github.com/looplab/eventhorizon"
 )
 
 // ErrInvalidEventStore is when a dispatcher is created with a nil event store.
@@ -32,7 +34,7 @@ var ErrMismatchedEventType = errors.New("mismatched event type and aggregate typ
 // and the event that caused it.
 type ApplyEventError struct {
 	// Event is the event that caused the error.
-	Event Event
+	Event eh.Event
 	// Err is the error that happened when applying the event.
 	Err error
 }
@@ -42,26 +44,17 @@ func (a ApplyEventError) Error() string {
 	return "failed to apply event " + a.Event.String() + ": " + a.Err.Error()
 }
 
-// Repository is a repository responsible for loading and saving aggregates.
-type Repository interface {
-	// Load loads the most recent version of an aggregate with a type and id.
-	Load(context.Context, AggregateType, UUID) (Aggregate, error)
-
-	// Save saves the uncommittend events for an aggregate.
-	Save(context.Context, Aggregate) error
-}
-
-// EventSourcingRepository is an aggregate repository using event sourcing. It
+// AggregateStore is an aggregate store using event sourcing. It
 // uses an event store for loading and saving events used to build the aggregate.
-type EventSourcingRepository struct {
-	eventStore EventStore
-	eventBus   EventBus
+type AggregateStore struct {
+	store    eh.EventStore
+	eventBus eh.EventBus
 }
 
-// NewEventSourcingRepository creates a repository that will use an event store
+// NewAggregateStore creates a repository that will use an event store
 // and bus.
-func NewEventSourcingRepository(eventStore EventStore, eventBus EventBus) (*EventSourcingRepository, error) {
-	if eventStore == nil {
+func NewAggregateStore(store eh.EventStore, eventBus eh.EventBus) (*AggregateStore, error) {
+	if store == nil {
 		return nil, ErrInvalidEventStore
 	}
 
@@ -69,9 +62,9 @@ func NewEventSourcingRepository(eventStore EventStore, eventBus EventBus) (*Even
 		return nil, ErrInvalidEventBus
 	}
 
-	d := &EventSourcingRepository{
-		eventStore: eventStore,
-		eventBus:   eventBus,
+	d := &AggregateStore{
+		store:    store,
+		eventBus: eventBus,
 	}
 	return d, nil
 }
@@ -79,15 +72,15 @@ func NewEventSourcingRepository(eventStore EventStore, eventBus EventBus) (*Even
 // Load loads an aggregate from the event store. It does so by creating a new
 // aggregate of the type with the ID and then applies all events to it, thus
 // making it the most current version of the aggregate.
-func (r *EventSourcingRepository) Load(ctx context.Context, aggregateType AggregateType, id UUID) (Aggregate, error) {
+func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
 	// Create the aggregate.
-	aggregate, err := CreateAggregate(aggregateType, id)
+	aggregate, err := eh.CreateAggregate(aggregateType, id)
 	if err != nil {
 		return nil, err
 	}
 
 	// Load aggregate events.
-	events, err := r.eventStore.Load(ctx, aggregate.AggregateID())
+	events, err := r.store.Load(ctx, aggregate.AggregateID())
 	if err != nil {
 		return nil, err
 	}
@@ -101,14 +94,14 @@ func (r *EventSourcingRepository) Load(ctx context.Context, aggregateType Aggreg
 }
 
 // Save saves all uncommitted events from an aggregate to the event store.
-func (r *EventSourcingRepository) Save(ctx context.Context, aggregate Aggregate) error {
+func (r *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error {
 	uncommittedEvents := aggregate.UncommittedEvents()
 	if len(uncommittedEvents) < 1 {
 		return nil
 	}
 
 	// Store events, check for error after publishing on the bus.
-	if err := r.eventStore.Save(ctx, uncommittedEvents, aggregate.Version()); err != nil {
+	if err := r.store.Save(ctx, uncommittedEvents, aggregate.Version()); err != nil {
 		return err
 	}
 
@@ -131,7 +124,7 @@ func (r *EventSourcingRepository) Save(ctx context.Context, aggregate Aggregate)
 }
 
 // applyEvents is a helper to apply events to an aggregate.
-func (r *EventSourcingRepository) applyEvents(ctx context.Context, aggregate Aggregate, events []Event) error {
+func (r *AggregateStore) applyEvents(ctx context.Context, aggregate eh.Aggregate, events []eh.Event) error {
 	for _, event := range events {
 		if event.AggregateType() != aggregate.AggregateType() {
 			return ErrMismatchedEventType

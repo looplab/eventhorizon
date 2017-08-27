@@ -72,14 +72,14 @@ func TestCreateEventData(t *testing.T) {
 	}
 
 	RegisterEventData(TestEventRegisterType, func() EventData {
-		return &TestEventRegister{}
+		return &TestEventRegisterData{}
 	})
 
 	data, err = CreateEventData(TestEventRegisterType)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if _, ok := data.(*TestEventRegister); !ok {
+	if _, ok := data.(*TestEventRegisterData); !ok {
 		t.Errorf("the event type should be correct: %T", data)
 	}
 
@@ -93,7 +93,7 @@ func TestRegisterEventEmptyName(t *testing.T) {
 		}
 	}()
 	RegisterEventData(TestEventRegisterEmptyType, func() EventData {
-		return &TestEventRegisterEmpty{}
+		return &TestEventRegisterEmptyData{}
 	})
 }
 
@@ -104,10 +104,10 @@ func TestRegisterEventTwice(t *testing.T) {
 		}
 	}()
 	RegisterEventData(TestEventRegisterTwiceType, func() EventData {
-		return &TestEventRegisterTwice{}
+		return &TestEventRegisterTwiceData{}
 	})
 	RegisterEventData(TestEventRegisterTwiceType, func() EventData {
-		return &TestEventRegisterTwice{}
+		return &TestEventRegisterTwiceData{}
 	})
 }
 
@@ -127,13 +127,14 @@ func TestUnregisterEventTwice(t *testing.T) {
 		}
 	}()
 	RegisterEventData(TestEventUnregisterTwiceType, func() EventData {
-		return &TestEventUnregisterTwice{}
+		return &TestEventUnregisterTwiceData{}
 	})
 	UnregisterEventData(TestEventUnregisterTwiceType)
 	UnregisterEventData(TestEventUnregisterTwiceType)
 }
 
 const (
+	TestEventType                EventType = "TestEvent"
 	TestEventRegisterType        EventType = "TestEventRegister"
 	TestEventRegisterEmptyType   EventType = ""
 	TestEventRegisterTwiceType   EventType = "TestEventRegisterTwice"
@@ -141,10 +142,10 @@ const (
 	TestEventUnregisterTwiceType EventType = "TestEventUnregisterTwice"
 )
 
-type TestEventRegister struct{}
+type TestEventRegisterData struct{}
 
-type TestEventRegisterEmpty struct{}
+type TestEventRegisterEmptyData struct{}
 
-type TestEventRegisterTwice struct{}
+type TestEventRegisterTwiceData struct{}
 
-type TestEventUnregisterTwice struct{}
+type TestEventUnregisterTwiceData struct{}
