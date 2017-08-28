@@ -22,6 +22,12 @@ run_services:
 	-docker run -d --name dynamodb -p 8000:8000 peopleperhour/dynamodb:latest
 	-docker run -d --name gpubsub -p 8793:8793 google/cloud-sdk:latest gcloud beta emulators pubsub start --host-port=0.0.0.0:8793
 
+update_services:
+	docker pull mongo:latest
+	docker pull redis:latest
+	docker pull peopleperhour/dynamodb:latest
+	docker pull google/cloud-sdk:latest
+
 clean:
 	-find . -name \.coverprofile -type f -delete
 	-rm gover.coverprofile

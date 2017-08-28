@@ -1,0 +1,139 @@
+// Copyright (c) 2017 - Max Ekman <max@looplab.se>
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package model
+
+import (
+	"context"
+	"errors"
+	"reflect"
+	"testing"
+
+	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/mocks"
+)
+
+func TestNewAggregateStore(t *testing.T) {
+	repo := &mocks.Repo{}
+
+	store, err := NewAggregateStore(nil)
+	if err != ErrInvalidRepo {
+		t.Error("there should be a ErrInvalidRepo error:", err)
+	}
+	if store != nil {
+		t.Error("there should be no store:", store)
+	}
+
+	store, err = NewAggregateStore(repo)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if store == nil {
+		t.Error("there should be a store")
+	}
+}
+
+func TestAggregateStore_LoadNotFound(t *testing.T) {
+	store, repo := createStore(t)
+
+	ctx := context.Background()
+
+	id := eh.NewUUID()
+	repo.LoadErr = eh.ErrModelNotFound
+	agg, err := store.Load(ctx, mocks.AggregateType, id)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	if agg.AggregateID() != id {
+		t.Error("the aggregate ID should be correct: ", agg.AggregateID(), id)
+	}
+	if agg.Version() != 0 {
+		t.Error("the version should be 0:", agg.Version())
+	}
+}
+
+func TestAggregateStore_Load(t *testing.T) {
+	store, repo := createStore(t)
+
+	ctx := context.Background()
+
+	id := eh.NewUUID()
+	agg := mocks.NewAggregate(id)
+	repo.Item = agg
+	loadedAgg, err := store.Load(ctx, mocks.AggregateType, id)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	if !reflect.DeepEqual(loadedAgg, agg) {
+		t.Error("the aggregate should be correct:", loadedAgg)
+	}
+
+	// Store error.
+	repo.LoadErr = errors.New("error")
+	_, err = store.Load(ctx, mocks.AggregateType, id)
+	if err == nil || err.Error() != "error" {
+		t.Error("there should be an error named 'error':", err)
+	}
+	repo.LoadErr = nil
+}
+
+func TestAggregateStore_Load_InvalidAggregate(t *testing.T) {
+	store, repo := createStore(t)
+
+	ctx := context.Background()
+
+	id := eh.NewUUID()
+	repo.Save(ctx, id, "test")
+
+	loadedAgg, err := store.Load(ctx, mocks.AggregateType, id)
+	if err != ErrInvalidAggregate {
+		t.Fatal("there should be a ErrInvalidAggregate error:", err)
+	}
+	if loadedAgg != nil {
+		t.Error("the aggregate should be nil")
+	}
+}
+
+func TestAggregateStore_Save(t *testing.T) {
+	store, repo := createStore(t)
+
+	ctx := context.Background()
+
+	id := eh.NewUUID()
+	agg := mocks.NewAggregateOther(id)
+	err := store.Save(ctx, agg)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	// Store error.
+	repo.SaveErr = errors.New("aggregate error")
+	err = store.Save(ctx, agg)
+	if err == nil || err.Error() != "aggregate error" {
+		t.Error("there should be an error named 'error':", err)
+	}
+	repo.SaveErr = nil
+}
+
+func createStore(t *testing.T) (*AggregateStore, *mocks.Repo) {
+	repo := &mocks.Repo{}
+	store, err := NewAggregateStore(repo)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	if store == nil {
+		t.Fatal("there should be a store")
+	}
+	return store, repo
+}

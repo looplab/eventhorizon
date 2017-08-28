@@ -22,6 +22,9 @@ import (
 	"time"
 )
 
+// ErrAggregateNotFound is when no aggregate can be found.
+var ErrAggregateNotFound = errors.New("aggregate not found")
+
 // AggregateType is the type of an aggregate.
 type AggregateType string
 
@@ -59,6 +62,15 @@ type Aggregate interface {
 	// If there are no errors the version should be incremented by calling
 	// IncrementVersion.
 	ApplyEvent(context.Context, Event) error
+}
+
+// AggregateStore is responsible for loading and saving aggregates.
+type AggregateStore interface {
+	// Load loads the most recent version of an aggregate with a type and id.
+	Load(context.Context, AggregateType, UUID) (Aggregate, error)
+
+	// Save saves the uncommittend events for an aggregate.
+	Save(context.Context, Aggregate) error
 }
 
 var aggregates = make(map[AggregateType]func(UUID) Aggregate)

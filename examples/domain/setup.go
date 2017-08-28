@@ -18,6 +18,8 @@ import (
 	"log"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/aggregatestore/events"
+	"github.com/looplab/eventhorizon/commandhandler/aggregate"
 	"github.com/looplab/eventhorizon/eventhandler/projector"
 	"github.com/looplab/eventhorizon/eventhandler/saga"
 )
@@ -35,13 +37,13 @@ func Setup(
 	eventPublisher.AddObserver(&Logger{})
 
 	// Create the aggregate repository.
-	repository, err := eh.NewEventSourcingRepository(eventStore, eventBus)
+	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)
 	if err != nil {
-		log.Fatalf("could not create repository: %s", err)
+		log.Fatalf("could not create aggregate store: %s", err)
 	}
 
 	// Create the aggregate command handler.
-	handler, err := eh.NewAggregateCommandHandler(repository)
+	handler, err := aggregate.NewCommandHandler(aggregateStore)
 	if err != nil {
 		log.Fatalf("could not create command handler: %s", err)
 	}

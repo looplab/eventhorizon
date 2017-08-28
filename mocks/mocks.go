@@ -26,6 +26,9 @@ func init() {
 	eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
 		return NewAggregate(id)
 	})
+	eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
+		return NewAggregateOther(id)
+	})
 
 	eh.RegisterEventData(EventType, func() eh.EventData { return &EventData{} })
 }
@@ -33,6 +36,8 @@ func init() {
 const (
 	// AggregateType is the type for Aggregate.
 	AggregateType eh.AggregateType = "Aggregate"
+	// AggregateOtherType is the type for Aggregate.
+	AggregateOtherType eh.AggregateType = "AggregateOther"
 
 	// EventType is a the type for Event.
 	EventType eh.EventType = "Event"
@@ -60,6 +65,8 @@ type Aggregate struct {
 	// Used to simulate errors in HandleCommand.
 	Err error
 }
+
+var _ = eh.Aggregate(&Aggregate{})
 
 // NewAggregate returns a new Aggregate.
 func NewAggregate(id eh.UUID) *Aggregate {
@@ -90,6 +97,47 @@ func (a *Aggregate) ApplyEvent(ctx context.Context, event eh.Event) error {
 	return nil
 }
 
+// AggregateOther is a mocked eventhorizon.Aggregate, useful in testing.
+type AggregateOther struct {
+	*eh.AggregateBase
+	Commands []eh.Command
+	Events   []eh.Event
+	Context  context.Context
+	// Used to simulate errors in HandleCommand.
+	Err error
+}
+
+var _ = eh.Aggregate(&AggregateOther{})
+
+// NewAggregateOther returns a new Aggregate.
+func NewAggregateOther(id eh.UUID) *AggregateOther {
+	return &AggregateOther{
+		AggregateBase: eh.NewAggregateBase(AggregateOtherType, id),
+		Commands:      []eh.Command{},
+		Events:        []eh.Event{},
+	}
+}
+
+// HandleCommand implements the HandleCommand method of the eventhorizon.Aggregate interface.
+func (a *AggregateOther) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	if a.Err != nil {
+		return a.Err
+	}
+	a.Commands = append(a.Commands, cmd)
+	a.Context = ctx
+	return nil
+}
+
+// ApplyEvent implements the ApplyEvent method of the eventhorizon.Aggregate interface.
+func (a *AggregateOther) ApplyEvent(ctx context.Context, event eh.Event) error {
+	if a.Err != nil {
+		return a.Err
+	}
+	a.Events = append(a.Events, event)
+	a.Context = ctx
+	return nil
+}
+
 // EventData is a mocked event data, useful in testing.
 type EventData struct {
 	Content string
@@ -101,6 +149,8 @@ type Command struct {
 	Content string
 }
 
+var _ = eh.Command(Command{})
+
 func (t Command) AggregateID() eh.UUID            { return t.ID }
 func (t Command) AggregateType() eh.AggregateType { return AggregateType }
 func (t Command) CommandType() eh.CommandType     { return CommandType }
@@ -111,6 +161,8 @@ type CommandOther struct {
 	Content string
 }
 
+var _ = eh.Command(CommandOther{})
+
 func (t CommandOther) AggregateID() eh.UUID            { return t.ID }
 func (t CommandOther) AggregateType() eh.AggregateType { return AggregateType }
 func (t CommandOther) CommandType() eh.CommandType     { return CommandOtherType }
@@ -120,6 +172,8 @@ type CommandOther2 struct {
 	ID      eh.UUID
 	Content string
 }
+
+var _ = eh.Command(CommandOther2{})
 
 func (t CommandOther2) AggregateID() eh.UUID            { return t.ID }
 func (t CommandOther2) AggregateType() eh.AggregateType { return AggregateType }
@@ -132,6 +186,8 @@ type Model struct {
 	Content   string    `json:"content"    bson:"content"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 }
+
+var _ = eh.Versionable(&Model{})
 
 // AggregateVersion implements the AggregateVersion method of the eventhorizon.Versionable interface.
 func (m *Model) AggregateVersion() int {
@@ -151,6 +207,8 @@ type CommandHandler struct {
 	// Used to simulate errors when handling.
 	Err error
 }
+
+var _ = eh.CommandHandler(&CommandHandler{})
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.CommandHandler interface.
 func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
@@ -172,6 +230,8 @@ type EventHandler struct {
 	// Used to simulate errors when publishing.
 	Err error
 }
+
+var _ = eh.EventHandler(&EventHandler{})
 
 // NewEventHandler creates a new EventHandler.
 func NewEventHandler(handlerType eh.EventHandlerType) *EventHandler {
@@ -210,6 +270,8 @@ func (m *EventHandler) WaitForEvent() error {
 		return errors.New("timeout")
 	}
 }
+
+var _ = eh.EventPublisher(&EventPublisher{})
 
 // EventPublisher is a mocked eventhorizon.EventPublisher, useful in testing.
 type EventPublisher struct {
@@ -271,6 +333,8 @@ type EventObserver struct {
 	Err error
 }
 
+var _ = eh.EventObserver(&EventObserver{})
+
 // NewEventObserver creates a new EventObserver.
 func NewEventObserver() *EventObserver {
 	return &EventObserver{
@@ -302,20 +366,30 @@ func (m *EventObserver) WaitForEvent() error {
 	}
 }
 
-// Repository is a mocked Repository, useful in testing.
-type Repository struct {
+// AggregateStore is a mocked AggregateStore, useful in testing.
+type AggregateStore struct {
 	Aggregates map[eh.UUID]eh.Aggregate
 	Context    context.Context
+	// Used to simulate errors in HandleCommand.
+	Err error
 }
 
-// Load implements the Load method of the eventhorizon.Repository interface.
-func (m *Repository) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
+var _ = eh.AggregateStore(&AggregateStore{})
+
+// Load implements the Load method of the eventhorizon.AggregateStore interface.
+func (m *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
 	m.Context = ctx
 	return m.Aggregates[id], nil
 }
 
-// Save implements the Save method of the eventhorizon.Repository interface.
-func (m *Repository) Save(ctx context.Context, aggregate eh.Aggregate) error {
+// Save implements the Save method of the eventhorizon.AggregateStore interface.
+func (m *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error {
+	if m.Err != nil {
+		return m.Err
+	}
 	m.Context = ctx
 	m.Aggregates[aggregate.AggregateID()] = aggregate
 	return nil
@@ -329,6 +403,8 @@ type EventStore struct {
 	// Used to simulate errors in the store.
 	Err error
 }
+
+var _ = eh.EventStore(&EventStore{})
 
 // Save implements the Save method of the eventhorizon.EventStore interface.
 func (m *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
@@ -370,6 +446,8 @@ type EventBus struct {
 	Err error
 }
 
+var _ = eh.EventBus(&EventBus{})
+
 // HandlerType implements the HandlerType method of the eventhorizon.EventBus interface.
 func (m *EventBus) HandlerType() eh.EventHandlerType {
 	return eh.EventHandlerType("MockEventBus")
@@ -404,6 +482,8 @@ type Repo struct {
 	// Used to simulate errors in the store.
 	LoadErr, SaveErr error
 }
+
+var _ = eh.ReadWriteRepo(&Repo{})
 
 // Parent implements the Parent method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Parent() eh.ReadRepo {
