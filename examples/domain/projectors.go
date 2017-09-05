@@ -26,10 +26,25 @@ import (
 
 // Invitation is a read model object for an invitation.
 type Invitation struct {
-	ID     eh.UUID
-	Name   string
-	Age    int
-	Status string
+	ID      eh.UUID `bson:"_id"`
+	Version int
+	Name    string
+	Age     int
+	Status  string
+}
+
+var _ = eh.Entity(&Invitation{})
+var _ = eh.Versionable(&Invitation{})
+
+// EntityID implements the EntityID method of the eventhorizon.Entity interface.
+func (i *Invitation) EntityID() eh.UUID {
+	return i.ID
+}
+
+// AggregateVersion implements the AggregateVersion method of the
+// eventhorizon.Versionable interface.
+func (i *Invitation) AggregateVersion() int {
+	return i.Version
 }
 
 // InvitationProjector is a projector that updates the invitations.
@@ -46,8 +61,8 @@ func (p *InvitationProjector) ProjectorType() projector.Type {
 }
 
 // Project implements the Project method of the Projector interface.
-func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, model interface{}) (interface{}, error) {
-	i, ok := model.(*Invitation)
+func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, entity eh.Entity) (eh.Entity, error) {
+	i, ok := entity.(*Invitation)
 	if !ok {
 		return nil, errors.New("model is of incorrect type")
 	}
@@ -59,6 +74,7 @@ func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, model
 		if !ok {
 			return nil, fmt.Errorf("projector: invalid event data type: %v", event.Data())
 		}
+		i.ID = event.AggregateID()
 		i.Name = data.Name
 		i.Age = data.Age
 
@@ -78,17 +94,25 @@ func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, model
 		return nil, errors.New("could not handle event: " + event.String())
 	}
 
+	i.Version++
 	return i, nil
 }
 
 // GuestList is a read model object for the guest list.
 type GuestList struct {
-	ID           eh.UUID
+	ID           eh.UUID `bson:"_id"`
 	NumGuests    int
 	NumAccepted  int
 	NumDeclined  int
 	NumConfirmed int
 	NumDenied    int
+}
+
+var _ = eh.Entity(&Invitation{})
+
+// EntityID implements the EntityID method of the eventhorizon.Entity interface.
+func (g *GuestList) EntityID() eh.UUID {
+	return g.ID
 }
 
 // GuestListProjector is a projector that updates the guest list. It is
@@ -122,7 +146,7 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 	// Load or create the guest list.
 	var g *GuestList
 	m, err := p.repo.Find(ctx, p.eventID)
-	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrModelNotFound {
+	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
 		g = &GuestList{
 			ID: p.eventID,
 		}
@@ -132,7 +156,7 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 		var ok bool
 		g, ok = m.(*GuestList)
 		if !ok {
-			return errors.New("projector: incorrect model type")
+			return errors.New("projector: incorrect entity type")
 		}
 	}
 
@@ -156,7 +180,7 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 		return errors.New("could not handle event: " + event.String())
 	}
 
-	if err := p.repo.Save(ctx, p.eventID, g); err != nil {
+	if err := p.repo.Save(ctx, g); err != nil {
 		return errors.New("projector: could not save: " + err.Error())
 	}
 

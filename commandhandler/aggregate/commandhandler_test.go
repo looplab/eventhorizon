@@ -51,7 +51,7 @@ func TestCommandHandler(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "testkey", "testval")
 
 	cmd := &mocks.Command{
-		ID:      aggregate.AggregateID(),
+		ID:      aggregate.EntityID(),
 		Content: "command1",
 	}
 	err := handler.HandleCommand(ctx, cmd)
@@ -93,7 +93,7 @@ func TestCommandHandler_ErrorInHandler(t *testing.T) {
 
 	aggregate.Err = errors.New("command error")
 	cmd := &mocks.Command{
-		ID:      aggregate.AggregateID(),
+		ID:      aggregate.EntityID(),
 		Content: "command1",
 	}
 	err := handler.HandleCommand(context.Background(), cmd)
@@ -110,7 +110,7 @@ func TestCommandHandler_ErrorWhenSaving(t *testing.T) {
 
 	store.Err = errors.New("save error")
 	cmd := &mocks.Command{
-		ID:      aggregate.AggregateID(),
+		ID:      aggregate.EntityID(),
 		Content: "command1",
 	}
 	err := handler.HandleCommand(context.Background(), cmd)
@@ -145,7 +145,7 @@ func BenchmarkCommandHandler(b *testing.B) {
 	aggregate := mocks.NewAggregate(eh.NewUUID())
 	store := &mocks.AggregateStore{
 		Aggregates: map[eh.UUID]eh.Aggregate{
-			aggregate.AggregateID(): aggregate,
+			aggregate.EntityID(): aggregate,
 		},
 	}
 	handler, err := NewCommandHandler(store)
@@ -160,7 +160,7 @@ func BenchmarkCommandHandler(b *testing.B) {
 	ctx := context.WithValue(context.Background(), "testkey", "testval")
 
 	cmd := &mocks.Command{
-		ID:      aggregate.AggregateID(),
+		ID:      aggregate.EntityID(),
 		Content: "command1",
 	}
 	for i := 0; i < b.N; i++ {
@@ -175,7 +175,7 @@ func createAggregateAndHandler(t *testing.T) (*mocks.Aggregate, *CommandHandler,
 	aggregate := mocks.NewAggregate(eh.NewUUID())
 	store := &mocks.AggregateStore{
 		Aggregates: map[eh.UUID]eh.Aggregate{
-			aggregate.AggregateID(): aggregate,
+			aggregate.EntityID(): aggregate,
 		},
 	}
 	handler, err := NewCommandHandler(store)

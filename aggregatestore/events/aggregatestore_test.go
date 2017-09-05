@@ -68,8 +68,8 @@ func TestAggregateStore_LoadNoEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	if agg.AggregateID() != id {
-		t.Error("the aggregate ID should be correct: ", agg.AggregateID(), id)
+	if agg.EntityID() != id {
+		t.Error("the aggregate ID should be correct: ", agg.EntityID(), id)
 	}
 	if agg.Version() != 0 {
 		t.Error("the version should be 0:", agg.Version())
@@ -91,8 +91,8 @@ func TestAggregateStore_LoadEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	if loadedAgg.AggregateID() != id {
-		t.Error("the aggregate ID should be correct: ", loadedAgg.AggregateID(), id)
+	if loadedAgg.EntityID() != id {
+		t.Error("the aggregate ID should be correct: ", loadedAgg.EntityID(), id)
 	}
 	if loadedAgg.Version() != 1 {
 		t.Error("the version should be 1:", loadedAgg.Version())

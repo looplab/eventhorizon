@@ -52,8 +52,8 @@ import "time"
 // See the examples folder for a complete use case.
 //
 type AggregateBase struct {
-	aggregateType     AggregateType
 	id                UUID
+	aggregateType     AggregateType
 	version           int
 	uncommittedEvents []Event
 }
@@ -61,20 +61,20 @@ type AggregateBase struct {
 // NewAggregateBase creates an aggregate.
 func NewAggregateBase(aggregateType AggregateType, id UUID) *AggregateBase {
 	return &AggregateBase{
-		aggregateType:     aggregateType,
 		id:                id,
+		aggregateType:     aggregateType,
 		uncommittedEvents: []Event{},
 	}
+}
+
+// EntityID implements the EntityID method of the Entity and Aggregate interface.
+func (a *AggregateBase) EntityID() UUID {
+	return a.id
 }
 
 // AggregateType implements the AggregateType method of the Aggregate interface.
 func (a *AggregateBase) AggregateType() AggregateType {
 	return a.aggregateType
-}
-
-// AggregateID implements the AggregateID method of the Aggregate interface.
-func (a *AggregateBase) AggregateID() UUID {
-	return a.id
 }
 
 // Version implements the Version method of the Aggregate interface.
@@ -92,7 +92,7 @@ func (a *AggregateBase) IncrementVersion() {
 func (a *AggregateBase) StoreEvent(eventType EventType, data EventData, timestamp time.Time) Event {
 	version := a.Version() + len(a.uncommittedEvents) + 1
 	e := NewEventForAggregate(eventType, data, timestamp,
-		a.AggregateType(), a.AggregateID(), version)
+		a.AggregateType(), a.EntityID(), version)
 
 	a.uncommittedEvents = append(a.uncommittedEvents, e)
 

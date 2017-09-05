@@ -44,7 +44,7 @@ func (r *Repo) Parent() eh.ReadRepo {
 // return an item if its version is at least min version. If a timeout or
 // deadline is set on the context it will repetedly try to get the item until
 // either the version matches or the deadline is reached.
-func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
+func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
 	// If there is no min version set just return the item as normally.
 	minVersion, ok := eh.MinVersionFromContext(ctx)
 	if !ok || minVersion < 1 {
@@ -56,21 +56,21 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	delay := &backoff.Backoff{}
 	_, hasDeadline := ctx.Deadline()
 	for {
-		model, err := r.findMinVersion(ctx, id, minVersion)
+		entity, err := r.findMinVersion(ctx, id, minVersion)
 		if rrErr, ok := err.(eh.RepoError); ok &&
-			(rrErr.Err == eh.ErrIncorrectModelVersion || rrErr.Err == eh.ErrModelNotFound) {
-			// Try again for incorrect version or if the model was not found.
+			(rrErr.Err == eh.ErrIncorrectEntityVersion || rrErr.Err == eh.ErrEntityNotFound) {
+			// Try again for incorrect version or if the entity was not found.
 		} else if err != nil {
 			// Return any real error.
 			return nil, err
 		} else {
-			// Return the model.
-			return model, nil
+			// Return the entity.
+			return entity, nil
 		}
 
 		// If there is no deadline, return whatever we have at this point.
 		if !hasDeadline {
-			return model, err
+			return entity, err
 		}
 
 		select {
@@ -82,28 +82,28 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 }
 
 // findMinVersion finds an item if it has a version and it is at least minVersion.
-func (r *Repo) findMinVersion(ctx context.Context, id eh.UUID, minVersion int) (interface{}, error) {
-	model, err := r.ReadWriteRepo.Find(ctx, id)
+func (r *Repo) findMinVersion(ctx context.Context, id eh.UUID, minVersion int) (eh.Entity, error) {
+	entity, err := r.ReadWriteRepo.Find(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	versionable, ok := model.(eh.Versionable)
+	versionable, ok := entity.(eh.Versionable)
 	if !ok {
 		return nil, eh.RepoError{
-			Err:       eh.ErrModelHasNoVersion,
+			Err:       eh.ErrEntityHasNoVersion,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
 	if versionable.AggregateVersion() < minVersion {
 		return nil, eh.RepoError{
-			Err:       eh.ErrIncorrectModelVersion,
+			Err:       eh.ErrIncorrectEntityVersion,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
-	return model, nil
+	return entity, nil
 }
 
 // Repository returns a parent ReadRepo if there is one.

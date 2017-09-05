@@ -50,13 +50,13 @@ func TestAggregateStore_LoadNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	id := eh.NewUUID()
-	repo.LoadErr = eh.ErrModelNotFound
+	repo.LoadErr = eh.ErrEntityNotFound
 	agg, err := store.Load(ctx, mocks.AggregateType, id)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	if agg.AggregateID() != id {
-		t.Error("the aggregate ID should be correct: ", agg.AggregateID(), id)
+	if agg.EntityID() != id {
+		t.Error("the aggregate ID should be correct: ", agg.EntityID(), id)
 	}
 	if agg.Version() != 0 {
 		t.Error("the version should be 0:", agg.Version())
@@ -70,7 +70,7 @@ func TestAggregateStore_Load(t *testing.T) {
 
 	id := eh.NewUUID()
 	agg := mocks.NewAggregate(id)
-	repo.Item = agg
+	repo.Entity = agg
 	loadedAgg, err := store.Load(ctx, mocks.AggregateType, id)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
@@ -94,7 +94,12 @@ func TestAggregateStore_Load_InvalidAggregate(t *testing.T) {
 	ctx := context.Background()
 
 	id := eh.NewUUID()
-	repo.Save(ctx, id, "test")
+	err := repo.Save(ctx, &mocks.Model{
+		ID: id,
+	})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
 
 	loadedAgg, err := store.Load(ctx, mocks.AggregateType, id)
 	if err != ErrInvalidAggregate {

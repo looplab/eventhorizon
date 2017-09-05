@@ -66,7 +66,7 @@ func Setup(
 	// Create and register a read model for individual invitations.
 	invitationProjector := projector.NewEventHandler(
 		NewInvitationProjector(), invitationRepo)
-	invitationProjector.SetModel(func() interface{} { return &Invitation{} })
+	invitationProjector.SetEntityFactory(func() eh.Entity { return &Invitation{} })
 	eventBus.AddHandler(invitationProjector, InviteCreatedEvent)
 	eventBus.AddHandler(invitationProjector, InviteAcceptedEvent)
 	eventBus.AddHandler(invitationProjector, InviteDeclinedEvent)
@@ -75,7 +75,6 @@ func Setup(
 
 	// Create and register a read model for a guest list.
 	guestListProjector := NewGuestListProjector(guestListRepo, eventID)
-	eventBus.AddHandler(guestListProjector, InviteCreatedEvent)
 	eventBus.AddHandler(guestListProjector, InviteAcceptedEvent)
 	eventBus.AddHandler(guestListProjector, InviteDeclinedEvent)
 	eventBus.AddHandler(guestListProjector, InviteConfirmedEvent)

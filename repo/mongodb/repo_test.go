@@ -47,7 +47,7 @@ func TestReadRepo(t *testing.T) {
 		t.Error("there should be a repository")
 	}
 	defer repo.Close()
-	repo.SetModel(func() interface{} {
+	repo.SetEntityFactory(func() eh.Entity {
 		return &mocks.Model{}
 	})
 	if repo.Parent() != nil {
@@ -84,7 +84,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 		Content:   "modelCustom",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	if err := repo.Save(ctx, modelCustom.ID, modelCustom); err != nil {
+	if err := repo.Save(ctx, modelCustom); err != nil {
 		t.Error("there should be no error:", err)
 	}
 

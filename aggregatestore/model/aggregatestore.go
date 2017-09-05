@@ -48,7 +48,7 @@ func NewAggregateStore(repo eh.ReadWriteRepo) (*AggregateStore, error) {
 // Load implements the Load method of the eventhorizon.AggregateStore interface.
 func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
 	item, err := r.repo.Find(ctx, id)
-	if err == eh.ErrModelNotFound {
+	if err == eh.ErrEntityNotFound {
 		// Create the aggregate.
 		if item, err = eh.CreateAggregate(aggregateType, id); err != nil {
 			return nil, err
@@ -67,5 +67,5 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 
 // Save implements the Save method of the eventhorizon.AggregateStore interface.
 func (r *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error {
-	return r.repo.Save(ctx, aggregate.AggregateID(), aggregate)
+	return r.repo.Save(ctx, aggregate)
 }

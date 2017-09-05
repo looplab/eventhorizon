@@ -38,12 +38,12 @@ var ErrModelNotSet = errors.New("model not set")
 // ErrInvalidQuery is when a query was not returned from the callback to FindCustom.
 var ErrInvalidQuery = errors.New("invalid query")
 
-// Repo implements an MongoDB repository of read models.
+// Repo implements an MongoDB repository for entities.
 type Repo struct {
 	session    *mgo.Session
 	dbPrefix   string
 	collection string
-	factory    func() interface{}
+	factoryFn  func() eh.Entity
 }
 
 // NewRepo creates a new Repo.
@@ -80,28 +80,57 @@ func (r *Repo) Parent() eh.ReadRepo {
 }
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
+func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
 
-	if r.factory == nil {
+	if r.factoryFn == nil {
 		return nil, eh.RepoError{
 			Err:       ErrModelNotSet,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
-	model := r.factory()
-	err := sess.DB(r.dbName(ctx)).C(r.collection).FindId(id).One(model)
+	entity := r.factoryFn()
+	err := sess.DB(r.dbName(ctx)).C(r.collection).FindId(id).One(entity)
 	if err != nil {
 		return nil, eh.RepoError{
-			Err:       eh.ErrModelNotFound,
+			Err:       eh.ErrEntityNotFound,
 			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
-	return model, nil
+	return entity, nil
+}
+
+// FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
+func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
+	sess := r.session.Copy()
+	defer sess.Close()
+
+	if r.factoryFn == nil {
+		return nil, eh.RepoError{
+			Err:       ErrModelNotSet,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	iter := sess.DB(r.dbName(ctx)).C(r.collection).Find(nil).Iter()
+	result := []eh.Entity{}
+	entity := r.factoryFn()
+	for iter.Next(entity) {
+		result = append(result, entity)
+		entity = r.factoryFn()
+	}
+	if err := iter.Close(); err != nil {
+		return nil, eh.RepoError{
+			Err:       err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	return result, nil
 }
 
 // FindCustom uses a callback to specify a custom query for returning models.
@@ -113,7 +142,7 @@ func (r *Repo) FindCustom(ctx context.Context, callback func(*mgo.Collection) *m
 	sess := r.session.Copy()
 	defer sess.Close()
 
-	if r.factory == nil {
+	if r.factoryFn == nil {
 		return nil, eh.RepoError{
 			Err:       ErrModelNotSet,
 			Namespace: eh.NamespaceFromContext(ctx),
@@ -131,39 +160,10 @@ func (r *Repo) FindCustom(ctx context.Context, callback func(*mgo.Collection) *m
 
 	iter := query.Iter()
 	result := []interface{}{}
-	model := r.factory()
-	for iter.Next(model) {
-		result = append(result, model)
-		model = r.factory()
-	}
-	if err := iter.Close(); err != nil {
-		return nil, eh.RepoError{
-			Err:       err,
-			Namespace: eh.NamespaceFromContext(ctx),
-		}
-	}
-
-	return result, nil
-}
-
-// FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
-func (r *Repo) FindAll(ctx context.Context) ([]interface{}, error) {
-	sess := r.session.Copy()
-	defer sess.Close()
-
-	if r.factory == nil {
-		return nil, eh.RepoError{
-			Err:       ErrModelNotSet,
-			Namespace: eh.NamespaceFromContext(ctx),
-		}
-	}
-
-	iter := sess.DB(r.dbName(ctx)).C(r.collection).Find(nil).Iter()
-	result := []interface{}{}
-	model := r.factory()
-	for iter.Next(model) {
-		result = append(result, model)
-		model = r.factory()
+	entity := r.factoryFn()
+	for iter.Next(entity) {
+		result = append(result, entity)
+		entity = r.factoryFn()
 	}
 	if err := iter.Close(); err != nil {
 		return nil, eh.RepoError{
@@ -176,13 +176,22 @@ func (r *Repo) FindAll(ctx context.Context) ([]interface{}, error) {
 }
 
 // Save implements the Save method of the eventhorizon.WriteRepo interface.
-func (r *Repo) Save(ctx context.Context, id eh.UUID, model interface{}) error {
+func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 
-	if _, err := sess.DB(r.dbName(ctx)).C(r.collection).UpsertId(id, model); err != nil {
+	if entity.EntityID() == eh.UUID("") {
 		return eh.RepoError{
-			Err:       eh.ErrCouldNotSaveModel,
+			Err:       eh.ErrCouldNotSaveEntity,
+			BaseErr:   eh.ErrMissingEntityID,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	if _, err := sess.DB(r.dbName(ctx)).C(r.collection).UpsertId(
+		entity.EntityID(), entity); err != nil {
+		return eh.RepoError{
+			Err:       eh.ErrCouldNotSaveEntity,
 			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
@@ -198,7 +207,7 @@ func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
 	err := sess.DB(r.dbName(ctx)).C(r.collection).RemoveId(id)
 	if err != nil {
 		return eh.RepoError{
-			Err:       eh.ErrModelNotFound,
+			Err:       eh.ErrEntityNotFound,
 			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
@@ -223,9 +232,9 @@ func (r *Repo) Collection(ctx context.Context, f func(*mgo.Collection) error) er
 	return nil
 }
 
-// SetModel sets a factory function that creates concrete model types.
-func (r *Repo) SetModel(factory func() interface{}) {
-	r.factory = factory
+// SetEntityFactory sets a factory function that creates concrete entity types.
+func (r *Repo) SetEntityFactory(f func() eh.Entity) {
+	r.factoryFn = f
 }
 
 // Clear clears the read model database.
