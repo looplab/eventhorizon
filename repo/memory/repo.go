@@ -24,7 +24,7 @@ import (
 // Repo implements an in memory repository of read models.
 type Repo struct {
 	// The outer map is with namespace as key, the inner with aggregate ID.
-	db   map[string]map[eh.UUID]interface{}
+	db   map[string]map[eh.UUID]eh.Entity
 	dbMu sync.RWMutex
 
 	// A list of all item ids, only the order is used.
@@ -36,7 +36,7 @@ type Repo struct {
 func NewRepo() *Repo {
 	r := &Repo{
 		ids: map[string][]eh.UUID{},
-		db:  map[string]map[eh.UUID]interface{}{},
+		db:  map[string]map[eh.UUID]eh.Entity{},
 	}
 	return r
 }
@@ -47,7 +47,7 @@ func (r *Repo) Parent() eh.ReadRepo {
 }
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
+func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
 	ns := r.namespace(ctx)
 
 	r.dbMu.RLock()
@@ -56,7 +56,7 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 	model, ok := r.db[ns][id]
 	if !ok {
 		return nil, eh.RepoError{
-			Err:       eh.ErrModelNotFound,
+			Err:       eh.ErrEntityNotFound,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
@@ -65,13 +65,13 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
 }
 
 // FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
-func (r *Repo) FindAll(ctx context.Context) ([]interface{}, error) {
+func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	ns := r.namespace(ctx)
 
 	r.dbMu.RLock()
 	defer r.dbMu.RUnlock()
 
-	all := []interface{}{}
+	all := []eh.Entity{}
 	for _, id := range r.ids[ns] {
 		if m, ok := r.db[ns][id]; ok {
 			all = append(all, m)
@@ -82,17 +82,25 @@ func (r *Repo) FindAll(ctx context.Context) ([]interface{}, error) {
 }
 
 // Save implements the Save method of the eventhorizon.WriteRepo interface.
-func (r *Repo) Save(ctx context.Context, id eh.UUID, model interface{}) error {
+func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	ns := r.namespace(ctx)
+
+	if entity.EntityID() == eh.UUID("") {
+		return eh.RepoError{
+			Err:       eh.ErrCouldNotSaveEntity,
+			BaseErr:   eh.ErrMissingEntityID,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
 
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
 
+	id := entity.EntityID()
 	if _, ok := r.db[ns][id]; !ok {
 		r.ids[ns] = append(r.ids[ns], id)
 	}
-
-	r.db[ns][id] = model
+	r.db[ns][id] = entity
 
 	return nil
 }
@@ -120,7 +128,7 @@ func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
 	}
 
 	return eh.RepoError{
-		Err:       eh.ErrModelNotFound,
+		Err:       eh.ErrEntityNotFound,
 		Namespace: eh.NamespaceFromContext(ctx),
 	}
 }
@@ -131,7 +139,7 @@ func (r *Repo) namespace(ctx context.Context) string {
 	defer r.dbMu.Unlock()
 	ns := eh.NamespaceFromContext(ctx)
 	if _, ok := r.db[ns]; !ok {
-		r.db[ns] = map[eh.UUID]interface{}{}
+		r.db[ns] = map[eh.UUID]eh.Entity{}
 		r.ids[ns] = []eh.UUID{}
 	}
 	return ns

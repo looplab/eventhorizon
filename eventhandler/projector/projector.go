@@ -47,7 +47,7 @@ var ErrModelNotSet = errors.New("model not set")
 type Projector interface {
 	// Project projects an event onto a model and returns the updated model or
 	// an error.
-	Project(context.Context, eh.Event, interface{}) (interface{}, error)
+	Project(context.Context, eh.Event, eh.Entity) (eh.Entity, error)
 
 	// ProjectorType returns the type of the projector.
 	ProjectorType() Type
@@ -60,7 +60,7 @@ type Type string
 type EventHandler struct {
 	projector Projector
 	repo      eh.ReadWriteRepo
-	factory   func() interface{}
+	factoryFn func() eh.Entity
 }
 
 // NewEventHandler creates a new EventHandler.
@@ -78,15 +78,15 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	// if the underlying repo supports it.
 	findCtx, cancel := eh.NewContextWithMinVersionWait(ctx, event.Version()-1)
 	defer cancel()
-	model, err := h.repo.Find(findCtx, event.AggregateID())
-	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrModelNotFound {
-		if h.factory == nil {
+	entity, err := h.repo.Find(findCtx, event.AggregateID())
+	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
+		if h.factoryFn == nil {
 			return Error{
 				Err:       ErrModelNotSet,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
-		model = h.factory()
+		entity = h.factoryFn()
 	} else if err != nil {
 		return Error{
 			Err:       err,
@@ -94,18 +94,18 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		}
 	}
 
-	// The model should be one version behind the event.
-	if model, ok := model.(eh.Versionable); ok {
-		if model.AggregateVersion()+1 != event.Version() {
+	// The entity should be one version behind the event.
+	if entity, ok := entity.(eh.Versionable); ok {
+		if entity.AggregateVersion()+1 != event.Version() {
 			return Error{
-				Err:       eh.ErrIncorrectModelVersion,
+				Err:       eh.ErrIncorrectEntityVersion,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 	}
 
 	// Run the projection, which will possibly increment the version.
-	newModel, err := h.projector.Project(ctx, event, model)
+	newEntity, err := h.projector.Project(ctx, event, entity)
 	if err != nil {
 		return Error{
 			Err:       err,
@@ -114,18 +114,18 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	}
 
 	// The model should now be at the same version as the event.
-	if newModel, ok := newModel.(eh.Versionable); ok {
-		if newModel.AggregateVersion() != event.Version() {
+	if newEntity, ok := newEntity.(eh.Versionable); ok {
+		if newEntity.AggregateVersion() != event.Version() {
 			return Error{
-				Err:       eh.ErrIncorrectModelVersion,
+				Err:       eh.ErrIncorrectEntityVersion,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
 	}
 
 	// Update or remove the model.
-	if newModel != nil {
-		if err := h.repo.Save(ctx, event.AggregateID(), newModel); err != nil {
+	if newEntity != nil {
+		if err := h.repo.Save(ctx, newEntity); err != nil {
 			return Error{
 				Err:       err,
 				Namespace: eh.NamespaceFromContext(ctx),
@@ -148,7 +148,7 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 	return eh.EventHandlerType(h.projector.ProjectorType())
 }
 
-// SetModel sets a factory function that creates concrete model types.
-func (h *EventHandler) SetModel(factory func() interface{}) {
-	h.factory = factory
+// SetEntityFactory sets a factory function that creates concrete entity types.
+func (h *EventHandler) SetEntityFactory(f func() eh.Entity) {
+	h.factoryFn = f
 }

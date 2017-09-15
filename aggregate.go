@@ -35,11 +35,12 @@ type AggregateType string
 // Dispatcher. A domain specific aggregate can either implement the full interface,
 // or more commonly embed *AggregateBase to take care of the common methods.
 type Aggregate interface {
+	// Entity provides the ID of the aggregate.
+	Entity
+
 	// AggregateType returns the type name of the aggregate.
 	// AggregateType() string
 	AggregateType() AggregateType
-	// AggregateID returns the id of the aggregate.
-	AggregateID() UUID
 
 	// Version returns the version of the aggregate.
 	Version() int

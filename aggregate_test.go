@@ -27,7 +27,9 @@ func TestCreateAggregate(t *testing.T) {
 	}
 
 	RegisterAggregate(func(id UUID) Aggregate {
-		return &TestAggregateRegister{AggregateBase: NewAggregateBase(TestAggregateType, id)}
+		return &TestAggregateRegister{
+			AggregateBase: NewAggregateBase(TestAggregateType, id),
+		}
 	})
 
 	aggregate, err = CreateAggregate(TestAggregateRegisterType, id)
@@ -38,8 +40,8 @@ func TestCreateAggregate(t *testing.T) {
 	if aggregate.AggregateType() != TestAggregateRegisterType {
 		t.Error("the aggregate type should be correct:", aggregate.AggregateType())
 	}
-	if aggregate.AggregateID() != id {
-		t.Error("the ID should be correct:", aggregate.AggregateID())
+	if aggregate.EntityID() != id {
+		t.Error("the ID should be correct:", aggregate.EntityID())
 	}
 }
 
@@ -72,10 +74,14 @@ func TestRegisterAggregateTwice(t *testing.T) {
 		}
 	}()
 	RegisterAggregate(func(id UUID) Aggregate {
-		return &TestAggregateRegisterTwice{AggregateBase: NewAggregateBase(TestAggregateType, id)}
+		return &TestAggregateRegisterTwice{
+			AggregateBase: NewAggregateBase(TestAggregateType, id),
+		}
 	})
 	RegisterAggregate(func(id UUID) Aggregate {
-		return &TestAggregateRegisterTwice{AggregateBase: NewAggregateBase(TestAggregateType, id)}
+		return &TestAggregateRegisterTwice{
+			AggregateBase: NewAggregateBase(TestAggregateType, id),
+		}
 	})
 }
 

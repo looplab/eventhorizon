@@ -187,7 +187,13 @@ type Model struct {
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 }
 
+var _ = eh.Entity(&Model{})
 var _ = eh.Versionable(&Model{})
+
+// EntityID implements the EntityID method of the eventhorizon.Entity interface.
+func (m *Model) EntityID() eh.UUID {
+	return m.ID
+}
 
 // AggregateVersion implements the AggregateVersion method of the eventhorizon.Versionable interface.
 func (m *Model) AggregateVersion() int {
@@ -198,6 +204,13 @@ func (m *Model) AggregateVersion() int {
 type SimpleModel struct {
 	ID      eh.UUID `json:"id"         bson:"_id"`
 	Content string  `json:"content"    bson:"content"`
+}
+
+var _ = eh.Entity(&SimpleModel{})
+
+// EntityID implements the EntityID method of the eventhorizon.Entity interface.
+func (m *SimpleModel) EntityID() eh.UUID {
+	return m.ID
 }
 
 // CommandHandler is a mocked eventhorizon.CommandHandler, useful in testing.
@@ -391,7 +404,7 @@ func (m *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error
 		return m.Err
 	}
 	m.Context = ctx
-	m.Aggregates[aggregate.AggregateID()] = aggregate
+	m.Aggregates[aggregate.EntityID()] = aggregate
 	return nil
 }
 
@@ -477,8 +490,8 @@ func (m *EventBus) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {}
 // Repo is a mocked eventhorizon.ReadRepo, useful in testing.
 type Repo struct {
 	ParentRepo eh.ReadWriteRepo
-	Item       interface{}
-	Items      []interface{}
+	Entity     eh.Entity
+	Entities   []eh.Entity
 	// Used to simulate errors in the store.
 	LoadErr, SaveErr error
 }
@@ -491,27 +504,27 @@ func (r *Repo) Parent() eh.ReadRepo {
 }
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Find(ctx context.Context, id eh.UUID) (interface{}, error) {
+func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
 	if r.LoadErr != nil {
 		return nil, r.LoadErr
 	}
-	return r.Item, nil
+	return r.Entity, nil
 }
 
 // FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
-func (r *Repo) FindAll(ctx context.Context) ([]interface{}, error) {
+func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	if r.LoadErr != nil {
 		return nil, r.LoadErr
 	}
-	return r.Items, nil
+	return r.Entities, nil
 }
 
 // Save implements the Save method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Save(ctx context.Context, id eh.UUID, item interface{}) error {
+func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	if r.SaveErr != nil {
 		return r.SaveErr
 	}
-	r.Item = item
+	r.Entity = entity
 	return nil
 }
 
@@ -520,7 +533,7 @@ func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
 	if r.SaveErr != nil {
 		return r.SaveErr
 	}
-	r.Item = nil
+	r.Entity = nil
 	return nil
 }
 

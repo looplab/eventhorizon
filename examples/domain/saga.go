@@ -61,7 +61,7 @@ func (s *ResponseSaga) RunSaga(ctx context.Context, event eh.Event) []eh.Command
 		// Deny the invite if the guest list is full.
 		if len(s.acceptedGuests) >= s.guestLimit {
 			return []eh.Command{
-				&DenyInvite{InvitationID: event.AggregateID()},
+				&DenyInvite{ID: event.AggregateID()},
 			}
 		}
 
@@ -71,7 +71,7 @@ func (s *ResponseSaga) RunSaga(ctx context.Context, event eh.Event) []eh.Command
 		s.acceptedGuestsMu.Unlock()
 
 		return []eh.Command{
-			&ConfirmInvite{InvitationID: event.AggregateID()},
+			&ConfirmInvite{ID: event.AggregateID()},
 		}
 	}
 

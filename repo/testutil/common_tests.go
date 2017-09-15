@@ -28,12 +28,12 @@ import (
 // implementations of projector drivers.
 func RepoCommonTests(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	// Find non-existing item.
-	model, err := repo.Find(ctx, eh.NewUUID())
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrModelNotFound {
-		t.Error("there should be a ErrModelNotFound error:", err)
+	entity, err := repo.Find(ctx, eh.NewUUID())
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {
+		t.Error("there should be a ErrEntityNotFound error:", err)
 	}
-	if model != nil {
-		t.Error("there should be no model:", model)
+	if entity != nil {
+		t.Error("there should be no entity:", entity)
 	}
 
 	// FindAll with no items.
@@ -45,21 +45,31 @@ func RepoCommonTests(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 		t.Error("there should be no items:", len(result))
 	}
 
-	// Save and find one item.
-	model1 := &mocks.Model{
-		ID:        eh.NewUUID(),
-		Content:   "model1",
+	// Save model without ID.
+	entityMissingID := &mocks.Model{
+		Content:   "entity1",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	if err = repo.Save(ctx, model1.ID, model1); err != nil {
+	err = repo.Save(ctx, entityMissingID)
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.BaseErr != eh.ErrMissingEntityID {
+		t.Error("there should be a ErrMissingEntityID error:", err)
+	}
+
+	// Save and find one item.
+	entity1 := &mocks.Model{
+		ID:        eh.NewUUID(),
+		Content:   "entity1",
+		CreatedAt: time.Now().Round(time.Millisecond),
+	}
+	if err = repo.Save(ctx, entity1); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	model, err = repo.Find(ctx, model1.ID)
+	entity, err = repo.Find(ctx, entity1.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(model, model1) {
-		t.Error("the item should be correct:", model)
+	if !reflect.DeepEqual(entity, entity1) {
+		t.Error("the item should be correct:", entity)
 	}
 
 	// FindAll with one item.
@@ -70,42 +80,42 @@ func RepoCommonTests(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	if len(result) != 1 {
 		t.Error("there should be one item:", len(result))
 	}
-	if !reflect.DeepEqual(result, []interface{}{model1}) {
-		t.Error("the item should be correct:", model1)
+	if !reflect.DeepEqual(result, []eh.Entity{entity1}) {
+		t.Error("the item should be correct:", entity1)
 	}
 
 	// Save and overwrite with same ID.
-	model1Alt := &mocks.Model{
-		ID:        model1.ID,
-		Content:   "model1Alt",
+	entity1Alt := &mocks.Model{
+		ID:        entity1.ID,
+		Content:   "entity1Alt",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	if err = repo.Save(ctx, model1Alt.ID, model1Alt); err != nil {
+	if err = repo.Save(ctx, entity1Alt); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	model, err = repo.Find(ctx, model1Alt.ID)
+	entity, err = repo.Find(ctx, entity1Alt.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(model, model1Alt) {
-		t.Error("the item should be correct:", model)
+	if !reflect.DeepEqual(entity, entity1Alt) {
+		t.Error("the item should be correct:", entity)
 	}
 
 	// Save with another ID.
-	model2 := &mocks.Model{
+	entity2 := &mocks.Model{
 		ID:        eh.NewUUID(),
-		Content:   "model2",
+		Content:   "entity2",
 		CreatedAt: time.Now().Round(time.Millisecond),
 	}
-	if err = repo.Save(ctx, model2.ID, model2); err != nil {
+	if err = repo.Save(ctx, entity2); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	model, err = repo.Find(ctx, model2.ID)
+	entity, err = repo.Find(ctx, entity2.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(model, model2) {
-		t.Error("the item should be correct:", model)
+	if !reflect.DeepEqual(entity, entity2) {
+		t.Error("the item should be correct:", entity)
 	}
 
 	// FindAll with two items, order should be preserved from insert.
@@ -116,25 +126,25 @@ func RepoCommonTests(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	if len(result) != 2 {
 		t.Error("there should be two items:", len(result))
 	}
-	if !reflect.DeepEqual(result, []interface{}{model1Alt, model2}) {
+	if !reflect.DeepEqual(result, []eh.Entity{entity1Alt, entity2}) {
 		t.Error("the items should be correct:", result)
 	}
 
 	// Remove item.
-	if err := repo.Remove(ctx, model1Alt.ID); err != nil {
+	if err := repo.Remove(ctx, entity1Alt.ID); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	model, err = repo.Find(ctx, model1Alt.ID)
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrModelNotFound {
-		t.Error("there should be a ErrModelNotFound error:", err)
+	entity, err = repo.Find(ctx, entity1Alt.ID)
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {
+		t.Error("there should be a ErrEntityNotFound error:", err)
 	}
-	if model != nil {
-		t.Error("there should be no model:", model)
+	if entity != nil {
+		t.Error("there should be no entity:", entity)
 	}
 
 	// Remove non-existing item.
-	err = repo.Remove(ctx, model1Alt.ID)
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrModelNotFound {
-		t.Error("there should be a ErrModelNotFound error:", err)
+	err = repo.Remove(ctx, entity1Alt.ID)
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {
+		t.Error("there should be a ErrEntityNotFound error:", err)
 	}
 }

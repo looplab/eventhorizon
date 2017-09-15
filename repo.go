@@ -38,31 +38,34 @@ func (e RepoError) Error() string {
 	return errStr + " (" + e.Namespace + ")"
 }
 
-// ErrModelNotFound is when a model could not be found.
-var ErrModelNotFound = errors.New("could not find model")
+// ErrEntityNotFound is when a entity could not be found.
+var ErrEntityNotFound = errors.New("could not find entity")
 
-// ErrCouldNotSaveModel is when a model could not be saved.
-var ErrCouldNotSaveModel = errors.New("could not save model")
+// ErrCouldNotSaveEntity is when a entity could not be saved.
+var ErrCouldNotSaveEntity = errors.New("could not save entity")
 
-// ReadRepo is a storage for read models.
+// ErrMissingEntityID is when a entity has no ID.
+var ErrMissingEntityID = errors.New("missing entity ID")
+
+// ReadRepo is a read repository for entities.
 type ReadRepo interface {
 	// Parent returns the parent read repository, if there is one.
 	// Useful for iterating a wrapped set of repositories to get a specific one.
 	Parent() ReadRepo
 
-	// Find returns a read model with an id.
-	Find(context.Context, UUID) (interface{}, error)
+	// Find returns an entity for an ID.
+	Find(context.Context, UUID) (Entity, error)
 
-	// FindAll returns all read models in the repository.
-	FindAll(context.Context) ([]interface{}, error)
+	// FindAll returns all entities in the repository.
+	FindAll(context.Context) ([]Entity, error)
 }
 
-// WriteRepo is a write repo for a matching ReadRepo, used in projectors.
+// WriteRepo is a write repository for entities.
 type WriteRepo interface {
-	// Save saves a model in the storage.
-	Save(context.Context, UUID, interface{}) error
+	// Save saves a entity in the storage.
+	Save(context.Context, Entity) error
 
-	// Remove removes a model from the storage.
+	// Remove removes a entity by ID from the storage.
 	Remove(context.Context, UUID) error
 }
 
@@ -72,15 +75,15 @@ type ReadWriteRepo interface {
 	WriteRepo
 }
 
-// ErrModelHasNoVersion is when a model has no version number.
-var ErrModelHasNoVersion = errors.New("model has no version")
+// ErrEntityHasNoVersion is when an entity has no version number.
+var ErrEntityHasNoVersion = errors.New("entity has no version")
 
-// ErrIncorrectModelVersion is when a model has an incorrect version.
-var ErrIncorrectModelVersion = errors.New("incorrect model version")
+// ErrIncorrectEntityVersion is when an entity has an incorrect version.
+var ErrIncorrectEntityVersion = errors.New("incorrect entity version")
 
-// Versionable is a read model that has a version number saved, used by
-// version.ReadRepo.FindMinVersion().
+// Versionable is an item that has a version number,
+// used by version.ReadRepo.FindMinVersion().
 type Versionable interface {
-	// AggregateVersion returns the aggregate version that a read model represents.
+	// AggregateVersion returns the version of the item.
 	AggregateVersion() int
 }

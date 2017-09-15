@@ -30,36 +30,36 @@ func TestEventHandler_CreateModel(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}
 	handler := NewEventHandler(projector, repo)
-	handler.SetModel(func() interface{} {
+	handler.SetEntityFactory(func() eh.Entity {
 		return &mocks.SimpleModel{}
 	})
 
 	ctx := context.Background()
 
-	// Driver creates item.
+	// Driver creates entity.
 	id := eh.NewUUID()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
 		mocks.AggregateType, id, 1)
-	item := &mocks.SimpleModel{
+	entity := &mocks.SimpleModel{
 		ID: id,
 	}
 	repo.LoadErr = eh.RepoError{
-		Err: eh.ErrModelNotFound,
+		Err: eh.ErrEntityNotFound,
 	}
-	projector.newModel = item
+	projector.newEntity = entity
 	if err := handler.HandleEvent(ctx, event); err != nil {
 		t.Error("there shoud be no error:", err)
 	}
 	if projector.event != event {
 		t.Error("the handled event should be correct:", projector.event)
 	}
-	if !reflect.DeepEqual(projector.model, &mocks.SimpleModel{}) {
-		t.Error("the model should be correct:", projector.model)
+	if !reflect.DeepEqual(projector.entity, &mocks.SimpleModel{}) {
+		t.Error("the entity should be correct:", projector.entity)
 	}
-	if repo.Item != projector.newModel {
-		t.Error("the new model should be correct:", repo.Item)
+	if repo.Entity != projector.newEntity {
+		t.Error("the new entity should be correct:", repo.Entity)
 	}
 }
 
@@ -67,7 +67,7 @@ func TestEventHandler_UpdateModel(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}
 	handler := NewEventHandler(projector, repo)
-	handler.SetModel(func() interface{} {
+	handler.SetEntityFactory(func() eh.Entity {
 		return &mocks.SimpleModel{}
 	})
 
@@ -78,11 +78,11 @@ func TestEventHandler_UpdateModel(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
 		mocks.AggregateType, id, 1)
-	item := &mocks.SimpleModel{
+	entity := &mocks.SimpleModel{
 		ID: id,
 	}
-	repo.Item = item
-	projector.newModel = &mocks.SimpleModel{
+	repo.Entity = entity
+	projector.newEntity = &mocks.SimpleModel{
 		ID:      id,
 		Content: "updated",
 	}
@@ -92,11 +92,11 @@ func TestEventHandler_UpdateModel(t *testing.T) {
 	if projector.event != event {
 		t.Error("the handled event should be correct:", projector.event)
 	}
-	if projector.model != item {
-		t.Error("the model should be correct:", projector.model)
+	if projector.entity != entity {
+		t.Error("the entity should be correct:", projector.entity)
 	}
-	if repo.Item != projector.newModel {
-		t.Error("the new model should be correct:", repo.Item)
+	if repo.Entity != projector.newEntity {
+		t.Error("the new entity should be correct:", repo.Entity)
 	}
 }
 
@@ -104,7 +104,7 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}
 	handler := NewEventHandler(projector, repo)
-	handler.SetModel(func() interface{} {
+	handler.SetEntityFactory(func() eh.Entity {
 		return &mocks.Model{}
 	})
 
@@ -115,11 +115,11 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
 		mocks.AggregateType, id, 1)
-	item := &mocks.Model{
+	entity := &mocks.Model{
 		ID: id,
 	}
-	repo.Item = item
-	projector.newModel = &mocks.Model{
+	repo.Entity = entity
+	projector.newEntity = &mocks.Model{
 		ID:      id,
 		Version: 1,
 		Content: "version 1",
@@ -130,11 +130,11 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 	if projector.event != event {
 		t.Error("the handled event should be correct:", projector.event)
 	}
-	if projector.model != item {
-		t.Error("the model should be correct:", projector.model)
+	if projector.entity != entity {
+		t.Error("the entity should be correct:", projector.entity)
 	}
-	if repo.Item != projector.newModel {
-		t.Error("the new model should be correct:", repo.Item)
+	if repo.Entity != projector.newEntity {
+		t.Error("the new entity should be correct:", repo.Entity)
 	}
 }
 
@@ -142,7 +142,7 @@ func TestEventHandler_UpdateModelWithEventsOutOfOrder(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}
 	handler := NewEventHandler(projector, version.NewRepo(repo))
-	handler.SetModel(func() interface{} {
+	handler.SetEntityFactory(func() eh.Entity {
 		return &mocks.Model{}
 	})
 
@@ -153,25 +153,25 @@ func TestEventHandler_UpdateModelWithEventsOutOfOrder(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
 		mocks.AggregateType, id, 3)
-	item := &mocks.Model{
+	entity := &mocks.Model{
 		ID:      id,
 		Version: 1,
 		Content: "version 1",
 	}
-	newItem := &mocks.Model{
+	newEntity := &mocks.Model{
 		ID:      id,
 		Version: 2,
 		Content: "version 2",
 	}
-	repo.Item = item
-	projector.newModel = &mocks.Model{
+	repo.Entity = entity
+	projector.newEntity = &mocks.Model{
 		ID:      id,
 		Version: 3,
 		Content: "version 3",
 	}
 	go func() {
 		<-time.After(100 * time.Millisecond)
-		repo.Item = newItem
+		repo.Entity = newEntity
 	}()
 	if err := handler.HandleEvent(ctx, event); err != nil {
 		t.Error("there shoud be no error:", err)
@@ -179,11 +179,11 @@ func TestEventHandler_UpdateModelWithEventsOutOfOrder(t *testing.T) {
 	if projector.event != event {
 		t.Error("the handled event should be correct:", projector.event)
 	}
-	if projector.model != newItem {
-		t.Error("the model should be correct:", projector.model)
+	if projector.entity != newEntity {
+		t.Error("the entity should be correct:", projector.entity)
 	}
-	if repo.Item != projector.newModel {
-		t.Error("the new model should be correct:", repo.Item)
+	if repo.Entity != projector.newEntity {
+		t.Error("the new entity should be correct:", repo.Entity)
 	}
 }
 
@@ -191,7 +191,7 @@ func TestEventHandler_DeleteModel(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}
 	handler := NewEventHandler(projector, repo)
-	handler.SetModel(func() interface{} {
+	handler.SetEntityFactory(func() eh.Entity {
 		return &mocks.SimpleModel{}
 	})
 
@@ -202,22 +202,22 @@ func TestEventHandler_DeleteModel(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
 		mocks.AggregateType, id, 1)
-	item := &mocks.SimpleModel{
+	entity := &mocks.SimpleModel{
 		ID: id,
 	}
-	repo.Item = item
-	projector.newModel = nil
+	repo.Entity = entity
+	projector.newEntity = nil
 	if err := handler.HandleEvent(ctx, event); err != nil {
 		t.Error("there shoud be no error:", err)
 	}
 	if projector.event != event {
 		t.Error("the handled event should be correct:", projector.event)
 	}
-	if projector.model != item {
-		t.Error("the model should be correct:", projector.model)
+	if projector.entity != entity {
+		t.Error("the entity should be correct:", projector.entity)
 	}
-	if repo.Item != projector.newModel {
-		t.Error("the new model should be correct:", repo.Item)
+	if repo.Entity != projector.newEntity {
+		t.Error("the new entity should be correct:", repo.Entity)
 	}
 }
 
@@ -225,13 +225,13 @@ func TestEventHandler_LoadError(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}
 	handler := NewEventHandler(projector, repo)
-	handler.SetModel(func() interface{} {
+	handler.SetEntityFactory(func() eh.Entity {
 		return &mocks.SimpleModel{}
 	})
 
 	ctx := context.Background()
 
-	// Driver creates item.
+	// Driver creates entity.
 	id := eh.NewUUID()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
@@ -252,13 +252,13 @@ func TestEventHandler_SaveError(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}
 	handler := NewEventHandler(projector, repo)
-	handler.SetModel(func() interface{} {
+	handler.SetEntityFactory(func() eh.Entity {
 		return &mocks.SimpleModel{}
 	})
 
 	ctx := context.Background()
 
-	// Driver creates item.
+	// Driver creates entity.
 	id := eh.NewUUID()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
@@ -279,13 +279,13 @@ func TestEventHandler_ProjectError(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}
 	handler := NewEventHandler(projector, repo)
-	handler.SetModel(func() interface{} {
+	handler.SetEntityFactory(func() eh.Entity {
 		return &mocks.SimpleModel{}
 	})
 
 	ctx := context.Background()
 
-	// Driver creates item.
+	// Driver creates entity.
 	id := eh.NewUUID()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
@@ -307,9 +307,9 @@ const (
 )
 
 type TestProjector struct {
-	event           eh.Event
-	context         context.Context
-	model, newModel interface{}
+	event             eh.Event
+	context           context.Context
+	entity, newEntity eh.Entity
 	// Used to simulate errors in the store.
 	err error
 }
@@ -318,12 +318,12 @@ func (m *TestProjector) ProjectorType() Type {
 	return TestProjectorType
 }
 
-func (m *TestProjector) Project(ctx context.Context, event eh.Event, model interface{}) (interface{}, error) {
+func (m *TestProjector) Project(ctx context.Context, event eh.Event, entity eh.Entity) (eh.Entity, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	m.context = ctx
 	m.event = event
-	m.model = model
-	return m.newModel, nil
+	m.entity = entity
+	return m.newEntity, nil
 }

@@ -31,8 +31,8 @@ func TestNewAggregateBase(t *testing.T) {
 	if agg.AggregateType() != TestAggregateType {
 		t.Error("the aggregate type should be correct: ", agg.AggregateType(), TestAggregateType)
 	}
-	if agg.AggregateID() != id {
-		t.Error("the aggregate ID should be correct: ", agg.AggregateID(), id)
+	if agg.EntityID() != id {
+		t.Error("the entity ID should be correct: ", agg.EntityID(), id)
 	}
 	if agg.Version() != 0 {
 		t.Error("the version should be 0:", agg.Version())

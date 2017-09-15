@@ -80,7 +80,7 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 	}
 
 	// Load aggregate events.
-	events, err := r.store.Load(ctx, aggregate.AggregateID())
+	events, err := r.store.Load(ctx, aggregate.EntityID())
 	if err != nil {
 		return nil, err
 	}

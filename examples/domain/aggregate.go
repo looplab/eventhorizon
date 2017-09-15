@@ -50,6 +50,8 @@ type InvitationAggregate struct {
 	denied    bool
 }
 
+var _ = eh.Aggregate(&InvitationAggregate{})
+
 // NewInvitationAggregate creates a new InvitationAggregate with an ID.
 func NewInvitationAggregate(id eh.UUID) *InvitationAggregate {
 	return &InvitationAggregate{
