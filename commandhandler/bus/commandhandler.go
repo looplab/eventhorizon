@@ -12,51 +12,57 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package bus
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
 )
 
-// CommandBus is a command bus that handles commands with the
-// registered CommandHandlers
-type CommandBus struct {
+// ErrHandlerAlreadySet is when a handler is already registered for a command.
+var ErrHandlerAlreadySet = errors.New("handler is already set")
+
+// ErrHandlerNotFound is when no handler can be found.
+var ErrHandlerNotFound = errors.New("no handlers for command")
+
+// CommandHandler is a command handler that handles commands by routing to the
+// registered CommandHandlers.
+type CommandHandler struct {
 	handlers   map[eh.CommandType]eh.CommandHandler
 	handlersMu sync.RWMutex
 }
 
-// NewCommandBus creates a CommandBus.
-func NewCommandBus() *CommandBus {
-	b := &CommandBus{
+// NewCommandHandler creates a CommandHandler.
+func NewCommandHandler() *CommandHandler {
+	return &CommandHandler{
 		handlers: make(map[eh.CommandType]eh.CommandHandler),
 	}
-	return b
 }
 
 // HandleCommand handles a command with a handler capable of handling it.
-func (b *CommandBus) HandleCommand(ctx context.Context, cmd eh.Command) error {
-	b.handlersMu.RLock()
-	defer b.handlersMu.RUnlock()
+func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	h.handlersMu.RLock()
+	defer h.handlersMu.RUnlock()
 
-	if handler, ok := b.handlers[cmd.CommandType()]; ok {
+	if handler, ok := h.handlers[cmd.CommandType()]; ok {
 		return handler.HandleCommand(ctx, cmd)
 	}
 
-	return eh.ErrHandlerNotFound
+	return ErrHandlerNotFound
 }
 
 // SetHandler adds a handler for a specific command.
-func (b *CommandBus) SetHandler(handler eh.CommandHandler, cmdType eh.CommandType) error {
-	b.handlersMu.Lock()
-	defer b.handlersMu.Unlock()
+func (h *CommandHandler) SetHandler(handler eh.CommandHandler, cmdType eh.CommandType) error {
+	h.handlersMu.Lock()
+	defer h.handlersMu.Unlock()
 
-	if _, ok := b.handlers[cmdType]; ok {
-		return eh.ErrHandlerAlreadySet
+	if _, ok := h.handlers[cmdType]; ok {
+		return ErrHandlerAlreadySet
 	}
 
-	b.handlers[cmdType] = handler
+	h.handlers[cmdType] = handler
 	return nil
 }

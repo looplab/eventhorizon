@@ -23,7 +23,7 @@ import (
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
-	commandbus "github.com/looplab/eventhorizon/commandbus/local"
+	"github.com/looplab/eventhorizon/commandhandler/bus"
 	eventbus "github.com/looplab/eventhorizon/eventbus/local"
 	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
 	eventpublisher "github.com/looplab/eventhorizon/publisher/local"
@@ -55,7 +55,7 @@ func Example() {
 	eventBus.SetPublisher(eventPublisher)
 
 	// Create the command bus.
-	commandBus := commandbus.NewCommandBus()
+	commandBus := bus.NewCommandHandler()
 
 	// Create the read repositories.
 	invitationRepo, err := repo.NewRepo(url, "demo", "invitations")

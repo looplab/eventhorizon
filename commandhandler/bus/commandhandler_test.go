@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package bus
 
 import (
 	"context"
@@ -23,8 +23,8 @@ import (
 	"github.com/looplab/eventhorizon/mocks"
 )
 
-func TestCommandBus(t *testing.T) {
-	bus := NewCommandBus()
+func TestCommandHandler(t *testing.T) {
+	bus := NewCommandHandler()
 	if bus == nil {
 		t.Fatal("there should be a bus")
 	}
@@ -34,7 +34,7 @@ func TestCommandBus(t *testing.T) {
 	t.Log("handle with no handler")
 	cmd := &mocks.Command{ID: eh.NewUUID(), Content: "command1"}
 	err := bus.HandleCommand(ctx, cmd)
-	if err != eh.ErrHandlerNotFound {
+	if err != ErrHandlerNotFound {
 		t.Error("there should be a ErrHandlerNotFound error:", err)
 	}
 
@@ -58,7 +58,7 @@ func TestCommandBus(t *testing.T) {
 	}
 
 	err = bus.SetHandler(handler, mocks.CommandType)
-	if err != eh.ErrHandlerAlreadySet {
+	if err != ErrHandlerAlreadySet {
 		t.Error("there should be a ErrHandlerAlreadySet error:", err)
 	}
 }

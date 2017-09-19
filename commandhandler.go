@@ -16,25 +16,9 @@ package eventhorizon
 
 import (
 	"context"
-	"errors"
 )
-
-// ErrHandlerAlreadySet is when a handler is already registered for a command.
-var ErrHandlerAlreadySet = errors.New("handler is already set")
-
-// ErrHandlerNotFound is when no handler can be found.
-var ErrHandlerNotFound = errors.New("no handlers for command")
 
 // CommandHandler is an interface that all handlers of commands should implement.
 type CommandHandler interface {
 	HandleCommand(context.Context, Command) error
-}
-
-// CommandBus is a command handler that delegates command handling to other
-// handlers based on the command type.
-type CommandBus interface {
-	CommandHandler
-
-	// SetHandler registers a handler for a command.
-	SetHandler(CommandHandler, CommandType) error
 }
