@@ -160,6 +160,8 @@ const (
 	TestCommandRegisterTwiceType   CommandType = "TestCommandRegisterTwice"
 	TestCommandUnregisterEmptyType CommandType = ""
 	TestCommandUnregisterTwiceType CommandType = "TestCommandUnregisterTwice"
+
+	TestAggregateType AggregateType = "TestAggregate"
 )
 
 type TestCommandRegister struct{}

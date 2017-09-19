@@ -26,9 +26,6 @@ func init() {
 	eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
 		return NewAggregate(id)
 	})
-	eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
-		return NewAggregateOther(id)
-	})
 
 	eh.RegisterEventData(EventType, func() eh.EventData { return &EventData{} })
 }
@@ -36,8 +33,6 @@ func init() {
 const (
 	// AggregateType is the type for Aggregate.
 	AggregateType eh.AggregateType = "Aggregate"
-	// AggregateOtherType is the type for Aggregate.
-	AggregateOtherType eh.AggregateType = "AggregateOther"
 
 	// EventType is a the type for Event.
 	EventType eh.EventType = "Event"
@@ -58,9 +53,8 @@ type EmptyAggregate struct {
 
 // Aggregate is a mocked eventhorizon.Aggregate, useful in testing.
 type Aggregate struct {
-	*eh.AggregateBase
+	ID       eh.UUID
 	Commands []eh.Command
-	Events   []eh.Event
 	Context  context.Context
 	// Used to simulate errors in HandleCommand.
 	Err error
@@ -71,10 +65,21 @@ var _ = eh.Aggregate(&Aggregate{})
 // NewAggregate returns a new Aggregate.
 func NewAggregate(id eh.UUID) *Aggregate {
 	return &Aggregate{
-		AggregateBase: eh.NewAggregateBase(AggregateType, id),
-		Commands:      []eh.Command{},
-		Events:        []eh.Event{},
+		ID:       id,
+		Commands: []eh.Command{},
 	}
+}
+
+// EntityID implements the EntityID method of the eventhorizon.Entity and
+// eventhorizon.Aggregate interface.
+func (a *Aggregate) EntityID() eh.UUID {
+	return a.ID
+}
+
+// AggregateType implements the AggregateType method of the
+// eventhorizon.Aggregate interface.
+func (a *Aggregate) AggregateType() eh.AggregateType {
+	return AggregateType
 }
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.Aggregate interface.
@@ -83,57 +88,6 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 		return a.Err
 	}
 	a.Commands = append(a.Commands, cmd)
-	a.Context = ctx
-	return nil
-}
-
-// ApplyEvent implements the ApplyEvent method of the eventhorizon.Aggregate interface.
-func (a *Aggregate) ApplyEvent(ctx context.Context, event eh.Event) error {
-	if a.Err != nil {
-		return a.Err
-	}
-	a.Events = append(a.Events, event)
-	a.Context = ctx
-	return nil
-}
-
-// AggregateOther is a mocked eventhorizon.Aggregate, useful in testing.
-type AggregateOther struct {
-	*eh.AggregateBase
-	Commands []eh.Command
-	Events   []eh.Event
-	Context  context.Context
-	// Used to simulate errors in HandleCommand.
-	Err error
-}
-
-var _ = eh.Aggregate(&AggregateOther{})
-
-// NewAggregateOther returns a new Aggregate.
-func NewAggregateOther(id eh.UUID) *AggregateOther {
-	return &AggregateOther{
-		AggregateBase: eh.NewAggregateBase(AggregateOtherType, id),
-		Commands:      []eh.Command{},
-		Events:        []eh.Event{},
-	}
-}
-
-// HandleCommand implements the HandleCommand method of the eventhorizon.Aggregate interface.
-func (a *AggregateOther) HandleCommand(ctx context.Context, cmd eh.Command) error {
-	if a.Err != nil {
-		return a.Err
-	}
-	a.Commands = append(a.Commands, cmd)
-	a.Context = ctx
-	return nil
-}
-
-// ApplyEvent implements the ApplyEvent method of the eventhorizon.Aggregate interface.
-func (a *AggregateOther) ApplyEvent(ctx context.Context, event eh.Event) error {
-	if a.Err != nil {
-		return a.Err
-	}
-	a.Events = append(a.Events, event)
 	a.Context = ctx
 	return nil
 }

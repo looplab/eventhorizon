@@ -142,6 +142,10 @@ const (
 	TestEventUnregisterTwiceType EventType = "TestEventUnregisterTwice"
 )
 
+type TestEventData struct {
+	Content string
+}
+
 type TestEventRegisterData struct{}
 
 type TestEventRegisterEmptyData struct{}

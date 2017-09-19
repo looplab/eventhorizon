@@ -1,8 +1,6 @@
 package: github.com/looplab/eventhorizon
 import:
-- package: cloud.google.com/go
-  subpackages:
-  - pubsub
+- package: cloud.google.com/go/pubsub
 - package: github.com/aws/aws-sdk-go
   subpackages:
   - aws
@@ -13,6 +11,7 @@ import:
 - package: github.com/garyburd/redigo
   subpackages:
   - redis
+- package: github.com/gorhill/cronexpr
 - package: github.com/jpillora/backoff
 - package: golang.org/x/net
   subpackages:
@@ -20,4 +19,3 @@ import:
 - package: gopkg.in/mgo.v2
   subpackages:
   - bson
-- package: github.com/gorhill/cronexpr
