@@ -51,15 +51,12 @@ func TestAggregateStore_LoadNotFound(t *testing.T) {
 
 	id := eh.NewUUID()
 	repo.LoadErr = eh.ErrEntityNotFound
-	agg, err := store.Load(ctx, mocks.AggregateType, id)
+	agg, err := store.Load(ctx, AggregateType, id)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 	if agg.EntityID() != id {
 		t.Error("the aggregate ID should be correct: ", agg.EntityID(), id)
-	}
-	if agg.Version() != 0 {
-		t.Error("the version should be 0:", agg.Version())
 	}
 }
 
@@ -69,9 +66,9 @@ func TestAggregateStore_Load(t *testing.T) {
 	ctx := context.Background()
 
 	id := eh.NewUUID()
-	agg := mocks.NewAggregate(id)
+	agg := NewAggregate(id)
 	repo.Entity = agg
-	loadedAgg, err := store.Load(ctx, mocks.AggregateType, id)
+	loadedAgg, err := store.Load(ctx, AggregateType, id)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -81,7 +78,7 @@ func TestAggregateStore_Load(t *testing.T) {
 
 	// Store error.
 	repo.LoadErr = errors.New("error")
-	_, err = store.Load(ctx, mocks.AggregateType, id)
+	_, err = store.Load(ctx, AggregateType, id)
 	if err == nil || err.Error() != "error" {
 		t.Error("there should be an error named 'error':", err)
 	}
@@ -94,14 +91,14 @@ func TestAggregateStore_Load_InvalidAggregate(t *testing.T) {
 	ctx := context.Background()
 
 	id := eh.NewUUID()
-	err := repo.Save(ctx, &mocks.Model{
+	err := repo.Save(ctx, &Model{
 		ID: id,
 	})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 
-	loadedAgg, err := store.Load(ctx, mocks.AggregateType, id)
+	loadedAgg, err := store.Load(ctx, AggregateType, id)
 	if err != ErrInvalidAggregate {
 		t.Fatal("there should be a ErrInvalidAggregate error:", err)
 	}
@@ -116,7 +113,7 @@ func TestAggregateStore_Save(t *testing.T) {
 	ctx := context.Background()
 
 	id := eh.NewUUID()
-	agg := mocks.NewAggregateOther(id)
+	agg := NewAggregateOther(id)
 	err := store.Save(ctx, agg)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -141,4 +138,105 @@ func createStore(t *testing.T) (*AggregateStore, *mocks.Repo) {
 		t.Fatal("there should be a store")
 	}
 	return store, repo
+}
+
+const (
+	// AggregateType is the type for Aggregate.
+	AggregateType eh.AggregateType = "Aggregate"
+	// AggregateOtherType is the type for Aggregate.
+	AggregateOtherType eh.AggregateType = "AggregateOther"
+)
+
+// Aggregate is a mocked eventhorizon.Aggregate, useful in testing.
+type Aggregate struct {
+	ID       eh.UUID
+	Commands []eh.Command
+	Context  context.Context
+	// Used to simulate errors in HandleCommand.
+	Err error
+}
+
+var _ = eh.Aggregate(&Aggregate{})
+
+// NewAggregate returns a new Aggregate.
+func NewAggregate(id eh.UUID) *Aggregate {
+	return &Aggregate{
+		ID:       id,
+		Commands: []eh.Command{},
+	}
+}
+
+// EntityID implements the EntityID method of the eventhorizon.Entity and
+// eventhorizon.Aggregate interface.
+func (a *Aggregate) EntityID() eh.UUID {
+	return a.ID
+}
+
+// AggregateType implements the AggregateType method of the
+// eventhorizon.Aggregate interface.
+func (a *Aggregate) AggregateType() eh.AggregateType {
+	return AggregateType
+}
+
+// HandleCommand implements the HandleCommand method of the eventhorizon.Aggregate interface.
+func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	if a.Err != nil {
+		return a.Err
+	}
+	a.Commands = append(a.Commands, cmd)
+	a.Context = ctx
+	return nil
+}
+
+// AggregateOther is a mocked eventhorizon.Aggregate, useful in testing.
+type AggregateOther struct {
+	ID       eh.UUID
+	Commands []eh.Command
+	Context  context.Context
+	// Used to simulate errors in HandleCommand.
+	Err error
+}
+
+var _ = eh.Aggregate(&AggregateOther{})
+
+// NewAggregate returns a new AggregateOther.
+func NewAggregateOther(id eh.UUID) *AggregateOther {
+	return &AggregateOther{
+		ID:       id,
+		Commands: []eh.Command{},
+	}
+}
+
+// EntityID implements the EntityID method of the eventhorizon.Entity and
+// eventhorizon.Aggregate interface.
+func (a *AggregateOther) EntityID() eh.UUID {
+	return a.ID
+}
+
+// AggregateType implements the AggregateType method of the
+// eventhorizon.Aggregate interface.
+func (a *AggregateOther) AggregateType() eh.AggregateType {
+	return AggregateType
+}
+
+// HandleCommand implements the HandleCommand method of the eventhorizon.Aggregate interface.
+func (a *AggregateOther) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	if a.Err != nil {
+		return a.Err
+	}
+	a.Commands = append(a.Commands, cmd)
+	a.Context = ctx
+	return nil
+}
+
+// Model is a mocked read model.
+type Model struct {
+	ID eh.UUID
+}
+
+var _ = eh.Entity(&Model{})
+
+// EntityID implements the EntityID method of the eventhorizon.Entity interface.
+func (m *Model) EntityID() eh.UUID {
+	return m.ID
 }

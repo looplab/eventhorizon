@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package eventhorizon
+package events
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"testing"
 	"time"
+
+	eh "github.com/looplab/eventhorizon"
 )
 
 func TestNewAggregateBase(t *testing.T) {
-	id := NewUUID()
+	id := eh.NewUUID()
 	agg := NewAggregateBase(TestAggregateType, id)
 	if agg == nil {
 		t.Fatal("there should be an aggregate")
@@ -40,7 +41,7 @@ func TestNewAggregateBase(t *testing.T) {
 }
 
 func TestAggregateVersion(t *testing.T) {
-	agg := NewAggregateBase(TestAggregateType, NewUUID())
+	agg := NewAggregateBase(TestAggregateType, eh.NewUUID())
 	if agg.Version() != 0 {
 		t.Error("the version should be 0:", agg.Version())
 	}
@@ -52,7 +53,7 @@ func TestAggregateVersion(t *testing.T) {
 }
 
 func TestAggregateEvents(t *testing.T) {
-	id := NewUUID()
+	id := eh.NewUUID()
 	agg := NewTestAggregate(id)
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := agg.StoreEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
@@ -77,7 +78,7 @@ func TestAggregateEvents(t *testing.T) {
 	if event1.String() != "TestAggregateEvent@1" {
 		t.Error("the string representation should be correct:", event1.String())
 	}
-	events := agg.UncommittedEvents()
+	events := agg.Events()
 	if len(events) != 1 {
 		t.Fatal("there should be one event stored:", len(events))
 	}
@@ -90,8 +91,8 @@ func TestAggregateEvents(t *testing.T) {
 		t.Error("the version should be 2:", event2.Version())
 	}
 
-	agg.ClearUncommittedEvents()
-	events = agg.UncommittedEvents()
+	agg.ClearEvents()
+	events = agg.Events()
 	if len(events) != 0 {
 		t.Error("there should be no events stored:", len(events))
 	}
@@ -100,10 +101,10 @@ func TestAggregateEvents(t *testing.T) {
 		t.Error("the version should be 1 after clearing uncommitted events (without applying any):", event3.Version())
 	}
 
-	agg = NewTestAggregate(NewUUID())
+	agg = NewTestAggregate(eh.NewUUID())
 	event1 = agg.StoreEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
 	event2 = agg.StoreEvent(TestAggregateEventType, &TestEventData{"event2"}, timestamp)
-	events = agg.UncommittedEvents()
+	events = agg.Events()
 	if len(events) != 2 {
 		t.Fatal("there should be 2 events stored:", len(events))
 	}
@@ -116,29 +117,29 @@ func TestAggregateEvents(t *testing.T) {
 }
 
 func init() {
-	RegisterAggregate(func(id UUID) Aggregate {
+	eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
 		return NewTestAggregate(id)
 	})
 
-	RegisterEventData(TestAggregateEventType, func() EventData { return &TestEventData{} })
+	eh.RegisterEventData(TestAggregateEventType, func() eh.EventData { return &TestEventData{} })
 }
 
 const (
-	TestAggregateType        AggregateType = "TestAggregate"
-	TestAggregateEventType   EventType     = "TestAggregateEvent"
-	TestAggregateCommandType CommandType   = "TestAggregateCommand"
+	TestAggregateType        eh.AggregateType = "TestAggregate"
+	TestAggregateEventType   eh.EventType     = "TestAggregateEvent"
+	TestAggregateCommandType eh.CommandType   = "TestAggregateCommand"
 )
 
 type TestAggregateCommand struct {
-	TestID  UUID
+	TestID  eh.UUID
 	Content string
 }
 
-var _ = Command(TestAggregateCommand{})
+var _ = eh.Command(TestAggregateCommand{})
 
-func (t TestAggregateCommand) AggregateID() UUID            { return t.TestID }
-func (t TestAggregateCommand) AggregateType() AggregateType { return TestAggregateType }
-func (t TestAggregateCommand) CommandType() CommandType     { return TestAggregateCommandType }
+func (t TestAggregateCommand) AggregateID() eh.UUID            { return t.TestID }
+func (t TestAggregateCommand) AggregateType() eh.AggregateType { return TestAggregateType }
+func (t TestAggregateCommand) CommandType() eh.CommandType     { return TestAggregateCommandType }
 
 type TestEventData struct {
 	Content string
@@ -146,43 +147,22 @@ type TestEventData struct {
 
 type TestAggregate struct {
 	*AggregateBase
-
-	dispatchedCommand Command
-	context           context.Context
-	appliedEvent      Event
-	numHandled        int
-
-	err error
+	event eh.Event
 }
 
 var _ = Aggregate(&TestAggregate{})
 
-func NewTestAggregate(id UUID) *TestAggregate {
+func NewTestAggregate(id eh.UUID) *TestAggregate {
 	return &TestAggregate{
 		AggregateBase: NewAggregateBase(TestAggregateType, id),
 	}
 }
 
-func (a *TestAggregate) HandleCommand(ctx context.Context, cmd Command) error {
-	a.dispatchedCommand = cmd
-	a.context = ctx
-	a.numHandled++
-	if a.err != nil {
-		return a.err
-	}
-	switch cmd := cmd.(type) {
-	case *TestAggregateCommand:
-		a.StoreEvent(TestAggregateEventType, &TestEventData{cmd.Content}, time.Now())
-		return nil
-	}
-	return errors.New("couldn't handle command")
+func (a *TestAggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	return nil
 }
 
-func (a *TestAggregate) ApplyEvent(ctx context.Context, event Event) error {
-	a.appliedEvent = event
-	a.context = ctx
-	if a.err != nil {
-		return a.err
-	}
+func (a *TestAggregate) ApplyEvent(ctx context.Context, event eh.Event) error {
+	a.event = event
 	return nil
 }

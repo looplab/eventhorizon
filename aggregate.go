@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 )
 
 // ErrAggregateNotFound is when no aggregate can be found.
@@ -42,27 +41,8 @@ type Aggregate interface {
 	// AggregateType() string
 	AggregateType() AggregateType
 
-	// Version returns the version of the aggregate.
-	Version() int
-	// Increment version increments the version of the aggregate. It should be
-	// called after an event has been successfully applied.
-	IncrementVersion()
-
 	// CommandHandler is used to handle commands.
 	CommandHandler
-
-	// StoreEvent creates and stores a new event as uncommitted for the aggregate.
-	StoreEvent(EventType, EventData, time.Time) Event
-	// UncommittedEvents gets all uncommitted events to commit to the store.
-	UncommittedEvents() []Event
-	// ClearUncommittedEvents clears all uncommitted events after committing to
-	// the store.
-	ClearUncommittedEvents()
-
-	// ApplyEvent applies an event on the aggregate by setting its values.
-	// If there are no errors the version should be incremented by calling
-	// IncrementVersion.
-	ApplyEvent(context.Context, Event) error
 }
 
 // AggregateStore is responsible for loading and saving aggregates.

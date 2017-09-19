@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package eventhorizon
+package events
 
-import "time"
+import (
+	"time"
 
-// AggregateBase is a CQRS aggregate base to embed in domain specific aggregates.
+	eh "github.com/looplab/eventhorizon"
+)
+
+// AggregateBase is a event sourced aggregate base to embed in a domain aggregate.
 //
-// A typical aggregate example:
+// A typical example:
 //   type UserAggregate struct {
-//       *eventhorizon.AggregateBase
+//       *events.AggregateBase
 //
 //       name string
 //   }
@@ -29,7 +33,7 @@ import "time"
 // aggregate base is recommended:
 //   func NewUserAggregate(id eh.UUID) *InvitationAggregate {
 //       return &UserAggregate{
-//           AggregateBase: eh.NewAggregateBase(UserAggregateType, id),
+//           AggregateBase: events.NewAggregateBase(UserAggregateType, id),
 //       }
 //   }
 //
@@ -52,59 +56,56 @@ import "time"
 // See the examples folder for a complete use case.
 //
 type AggregateBase struct {
-	id                UUID
-	aggregateType     AggregateType
-	version           int
-	uncommittedEvents []Event
+	id     eh.UUID
+	t      eh.AggregateType
+	v      int
+	events []eh.Event
 }
 
 // NewAggregateBase creates an aggregate.
-func NewAggregateBase(aggregateType AggregateType, id UUID) *AggregateBase {
+func NewAggregateBase(t eh.AggregateType, id eh.UUID) *AggregateBase {
 	return &AggregateBase{
-		id:                id,
-		aggregateType:     aggregateType,
-		uncommittedEvents: []Event{},
+		id: id,
+		t:  t,
 	}
 }
 
 // EntityID implements the EntityID method of the Entity and Aggregate interface.
-func (a *AggregateBase) EntityID() UUID {
+func (a *AggregateBase) EntityID() eh.UUID {
 	return a.id
 }
 
 // AggregateType implements the AggregateType method of the Aggregate interface.
-func (a *AggregateBase) AggregateType() AggregateType {
-	return a.aggregateType
+func (a *AggregateBase) AggregateType() eh.AggregateType {
+	return a.t
 }
 
 // Version implements the Version method of the Aggregate interface.
 func (a *AggregateBase) Version() int {
-	return a.version
+	return a.v
 }
 
-// IncrementVersion increments the version of the aggregate and should be called
+// IncrementVersion increments the v of the aggregate and should be called
 // after an event has been applied successfully in ApplyEvent.
 func (a *AggregateBase) IncrementVersion() {
-	a.version++
+	a.v++
 }
 
-// StoreEvent implements the StoreEvent method of the Aggregate interface.
-func (a *AggregateBase) StoreEvent(eventType EventType, data EventData, timestamp time.Time) Event {
-	version := a.Version() + len(a.uncommittedEvents) + 1
-	e := NewEventForAggregate(eventType, data, timestamp,
-		a.AggregateType(), a.EntityID(), version)
+// Events implements the Events method of the Aggregate interface.
+func (a *AggregateBase) Events() []eh.Event {
+	return a.events
+}
 
-	a.uncommittedEvents = append(a.uncommittedEvents, e)
+// ClearEvents implements the ClearEvents method of the Aggregate interface.
+func (a *AggregateBase) ClearEvents() {
+	a.events = nil
+}
 
+// StoreEvent stores an event for later retrieval by Events().
+func (a *AggregateBase) StoreEvent(t eh.EventType, data eh.EventData, timestamp time.Time) eh.Event {
+	e := eh.NewEventForAggregate(t, data, timestamp,
+		a.AggregateType(), a.EntityID(),
+		a.Version()+len(a.events)+1)
+	a.events = append(a.events, e)
 	return e
-}
-
-// UncommittedEvents implements the UncommittedEvents method of the Aggregate interface.
-func (a *AggregateBase) UncommittedEvents() []Event {
-	return a.uncommittedEvents
-}
-
-// ClearUncommittedEvents implements the ClearUncommittedEvents method of the Aggregate interface.
-func (a *AggregateBase) ClearUncommittedEvents() {
-	a.uncommittedEvents = []Event{}
 }

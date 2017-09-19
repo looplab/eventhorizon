@@ -21,6 +21,7 @@ import (
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/aggregatestore/events"
 )
 
 func init() {
@@ -38,7 +39,7 @@ const InvitationAggregateType eh.AggregateType = "Invitation"
 // declined, but not both.
 type InvitationAggregate struct {
 	// AggregateBase implements most of the eventhorizon.Aggregate interface.
-	*eh.AggregateBase
+	*events.AggregateBase
 
 	name string
 	age  int
@@ -55,7 +56,7 @@ var _ = eh.Aggregate(&InvitationAggregate{})
 // NewInvitationAggregate creates a new InvitationAggregate with an ID.
 func NewInvitationAggregate(id eh.UUID) *InvitationAggregate {
 	return &InvitationAggregate{
-		AggregateBase: eh.NewAggregateBase(InvitationAggregateType, id),
+		AggregateBase: events.NewAggregateBase(InvitationAggregateType, id),
 	}
 }
 
