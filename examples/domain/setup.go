@@ -20,6 +20,7 @@ import (
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/aggregatestore/events"
 	"github.com/looplab/eventhorizon/commandhandler/aggregate"
+	"github.com/looplab/eventhorizon/commandhandler/bus"
 	"github.com/looplab/eventhorizon/eventhandler/projector"
 	"github.com/looplab/eventhorizon/eventhandler/saga"
 )
@@ -29,7 +30,7 @@ func Setup(
 	eventStore eh.EventStore,
 	eventBus eh.EventBus,
 	eventPublisher eh.EventPublisher,
-	commandBus eh.CommandBus,
+	commandBus *bus.CommandHandler,
 	invitationRepo, guestListRepo eh.ReadWriteRepo,
 	eventID eh.UUID) {
 
