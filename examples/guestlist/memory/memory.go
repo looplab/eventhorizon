@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package simple contains a simple runnable example of a CQRS/ES app.
-package simple
+// Package memory contains an example of a CQRS/ES app using memory as DB.
+package memory

@@ -52,7 +52,7 @@ func Setup(
 
 	// Create a tiny logging middleware for the command handler.
 	loggingHandler := eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
-		log.Printf("running command: %s", cmd)
+		log.Printf("command: %#v", cmd)
 		return invitationHandler.HandleCommand(ctx, cmd)
 	})
 

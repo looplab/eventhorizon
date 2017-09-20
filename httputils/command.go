@@ -17,7 +17,6 @@ package httputils
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -59,6 +58,6 @@ func CommandHandler(commandHandler eh.CommandHandler, commandType eh.CommandType
 			return
 		}
 
-		fmt.Fprintf(w, "OK")
+		w.WriteHeader(http.StatusOK)
 	})
 }

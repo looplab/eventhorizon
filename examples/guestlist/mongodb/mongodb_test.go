@@ -12,28 +12,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package simple
+package mongodb
 
 import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/commandhandler/bus"
 	eventbus "github.com/looplab/eventhorizon/eventbus/local"
-	eventstore "github.com/looplab/eventhorizon/eventstore/memory"
+	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
 	eventpublisher "github.com/looplab/eventhorizon/publisher/local"
-	repo "github.com/looplab/eventhorizon/repo/memory"
+	repo "github.com/looplab/eventhorizon/repo/mongodb"
+	"github.com/looplab/eventhorizon/repo/version"
 
-	"github.com/looplab/eventhorizon/examples/domain"
+	"github.com/looplab/eventhorizon/examples/guestlist/domain"
 )
 
 func Example() {
+	// Support Wercker testing with MongoDB.
+	host := os.Getenv("MONGO_PORT_27017_TCP_ADDR")
+	port := os.Getenv("MONGO_PORT_27017_TCP_PORT")
+
+	url := "localhost"
+	if host != "" && port != "" {
+		url = host + ":" + port
+	}
+
 	// Create the event store.
-	eventStore := eventstore.NewEventStore()
+	eventStore, err := eventstore.NewEventStore(url, "demo")
+	if err != nil {
+		log.Fatalf("could not create event store: %s", err)
+	}
 
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
@@ -44,8 +58,18 @@ func Example() {
 	commandBus := bus.NewCommandHandler()
 
 	// Create the read repositories.
-	invitationRepo := repo.NewRepo()
-	guestListRepo := repo.NewRepo()
+	invitationRepo, err := repo.NewRepo(url, "demo", "invitations")
+	if err != nil {
+		log.Fatalf("could not create invitation repository: %s", err)
+	}
+	invitationRepo.SetEntityFactory(func() eh.Entity { return &domain.Invitation{} })
+	// A version repo is needed for the projector to handle eventual consistency.
+	invitationVersionRepo := version.NewRepo(invitationRepo)
+	guestListRepo, err := repo.NewRepo(url, "demo", "guest_lists")
+	if err != nil {
+		log.Fatalf("could not create guest list repository: %s", err)
+	}
+	guestListRepo.SetEntityFactory(func() eh.Entity { return &domain.GuestList{} })
 
 	// Setup the domain.
 	eventID := eh.NewUUID()
@@ -54,12 +78,17 @@ func Example() {
 		eventBus,
 		eventPublisher,
 		commandBus,
-		invitationRepo, guestListRepo,
+		invitationVersionRepo, guestListRepo,
 		eventID,
 	)
 
 	// Set the namespace to use.
-	ctx := eh.NewContextWithNamespace(context.Background(), "simple")
+	ctx := eh.NewContextWithNamespace(context.Background(), "mongodb")
+
+	// Clear DB collections.
+	eventStore.Clear(ctx)
+	invitationRepo.Clear(ctx)
+	guestListRepo.Clear(ctx)
 
 	// --- Execute commands on the domain --------------------------------------
 
@@ -91,9 +120,9 @@ func Example() {
 	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{ID: athenaID}); err != nil {
 		log.Println("error:", err)
 	}
-	if err := commandBus.HandleCommand(ctx, &domain.DeclineInvite{ID: athenaID}); err != nil {
+	if err = commandBus.HandleCommand(ctx, &domain.DeclineInvite{ID: athenaID}); err != nil {
 		// NOTE: This error is supposed to be printed!
-		log.Printf("error: %s\n", err)
+		log.Println("error:", err)
 	}
 	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{ID: hadesID}); err != nil {
 		log.Println("error:", err)
@@ -104,13 +133,13 @@ func Example() {
 
 	// Poseidon is a bit late to the party...
 	// TODO: Remove sleeps.
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{ID: poseidonID}); err != nil {
 		log.Println("error:", err)
 	}
 
 	// Wait for simulated eventual consistency before reading.
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	// Read all invites.
 	invitationStrs := []string{}
@@ -132,11 +161,11 @@ func Example() {
 	}
 
 	// Read the guest list.
-	guestList, err := guestListRepo.Find(ctx, eventID)
+	l, err := guestListRepo.Find(ctx, eventID)
 	if err != nil {
 		log.Println("error:", err)
 	}
-	if l, ok := guestList.(*domain.GuestList); ok {
+	if l, ok := l.(*domain.GuestList); ok {
 		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 		fmt.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",

@@ -1,6 +1,8 @@
 package: github.com/looplab/eventhorizon
 import:
-- package: cloud.google.com/go/pubsub
+- package: cloud.google.com/go
+  subpackages:
+  - pubsub
 - package: github.com/aws/aws-sdk-go
   subpackages:
   - aws
@@ -19,4 +21,5 @@ import:
 - package: gopkg.in/mgo.v2
   subpackages:
   - bson
+- package: github.com/kr/pretty
 - package: github.com/gorilla/websocket
