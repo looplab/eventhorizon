@@ -45,20 +45,15 @@ func Setup(
 	}
 
 	// Create the aggregate command handler and register the commands it handles.
-	handler, err := aggregate.NewCommandHandler(aggregateStore)
+	invitationHandler, err := aggregate.NewCommandHandler(InvitationAggregateType, aggregateStore)
 	if err != nil {
 		log.Fatalf("could not create command handler: %s", err)
 	}
-	handler.SetAggregate(InvitationAggregateType, CreateInviteCommand)
-	handler.SetAggregate(InvitationAggregateType, AcceptInviteCommand)
-	handler.SetAggregate(InvitationAggregateType, DeclineInviteCommand)
-	handler.SetAggregate(InvitationAggregateType, ConfirmInviteCommand)
-	handler.SetAggregate(InvitationAggregateType, DenyInviteCommand)
 
 	// Create a tiny logging middleware for the command handler.
 	loggingHandler := eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
 		log.Printf("running command: %s", cmd)
-		return handler.HandleCommand(ctx, cmd)
+		return invitationHandler.HandleCommand(ctx, cmd)
 	})
 
 	// Create the command bus and register the handler for the commands.

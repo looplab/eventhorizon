@@ -24,10 +24,7 @@ import (
 // ErrNilAggregateStore is when a dispatcher is created with a nil aggregate store.
 var ErrNilAggregateStore = errors.New("aggregate store is nil")
 
-// ErrAggregateAlreadySet is when an aggregate is already registered for a command.
-var ErrAggregateAlreadySet = errors.New("aggregate is already set")
-
-// CommandHandler dispatches commands to registered aggregates.
+// CommandHandler dispatches commands to an aggregate.
 //
 // The dispatch process is as follows:
 // 1. The handler receives a command.
@@ -37,34 +34,21 @@ var ErrAggregateAlreadySet = errors.New("aggregate is already set")
 // 5. The new events are stored in the event store.
 // 6. The events are published on the event bus after a successful store.
 type CommandHandler struct {
-	store      eh.AggregateStore
-	aggregates map[eh.CommandType]eh.AggregateType
+	t     eh.AggregateType
+	store eh.AggregateStore
 }
 
-// NewCommandHandler creates a new CommandHandler.
-func NewCommandHandler(store eh.AggregateStore) (*CommandHandler, error) {
+// NewCommandHandler creates a new CommandHandler for an aggregate type.
+func NewCommandHandler(t eh.AggregateType, store eh.AggregateStore) (*CommandHandler, error) {
 	if store == nil {
 		return nil, ErrNilAggregateStore
 	}
 
 	h := &CommandHandler{
-		store:      store,
-		aggregates: make(map[eh.CommandType]eh.AggregateType),
+		t:     t,
+		store: store,
 	}
 	return h, nil
-}
-
-// SetAggregate sets an aggregate as handler for a command.
-func (h *CommandHandler) SetAggregate(aggregateType eh.AggregateType, cmdType eh.CommandType) error {
-	// Check for already existing handler.
-	if _, ok := h.aggregates[cmdType]; ok {
-		return ErrAggregateAlreadySet
-	}
-
-	// Add aggregate type to command type.
-	h.aggregates[cmdType] = aggregateType
-
-	return nil
 }
 
 // HandleCommand handles a command with the registered aggregate.
@@ -75,23 +59,18 @@ func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) erro
 		return err
 	}
 
-	aggregateType, ok := h.aggregates[cmd.CommandType()]
-	if !ok {
-		return eh.ErrAggregateNotFound
-	}
-
-	aggregate, err := h.store.Load(ctx, aggregateType, cmd.AggregateID())
+	a, err := h.store.Load(ctx, h.t, cmd.AggregateID())
 	if err != nil {
 		return err
-	} else if aggregate == nil {
+	} else if a == nil {
 		return eh.ErrAggregateNotFound
 	}
 
-	if err = aggregate.HandleCommand(ctx, cmd); err != nil {
+	if err = a.HandleCommand(ctx, cmd); err != nil {
 		return err
 	}
 
-	if err = h.store.Save(ctx, aggregate); err != nil {
+	if err = h.store.Save(ctx, a); err != nil {
 		return err
 	}
 
