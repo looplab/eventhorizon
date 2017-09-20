@@ -15,6 +15,7 @@
 package domain
 
 import (
+	"context"
 	"log"
 
 	eh "github.com/looplab/eventhorizon"
@@ -43,26 +44,29 @@ func Setup(
 		log.Fatalf("could not create aggregate store: %s", err)
 	}
 
-	// Create the aggregate command handler.
+	// Create the aggregate command handler and register the commands it handles.
 	handler, err := aggregate.NewCommandHandler(aggregateStore)
 	if err != nil {
 		log.Fatalf("could not create command handler: %s", err)
 	}
-
-	// Register the domain aggregates with the dispather. Remember to check for
-	// errors here in a real app!
 	handler.SetAggregate(InvitationAggregateType, CreateInviteCommand)
 	handler.SetAggregate(InvitationAggregateType, AcceptInviteCommand)
 	handler.SetAggregate(InvitationAggregateType, DeclineInviteCommand)
 	handler.SetAggregate(InvitationAggregateType, ConfirmInviteCommand)
 	handler.SetAggregate(InvitationAggregateType, DenyInviteCommand)
 
+	// Create a tiny logging middleware for the command handler.
+	loggingHandler := eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
+		log.Printf("running command: %s", cmd)
+		return handler.HandleCommand(ctx, cmd)
+	})
+
 	// Create the command bus and register the handler for the commands.
-	commandBus.SetHandler(handler, CreateInviteCommand)
-	commandBus.SetHandler(handler, AcceptInviteCommand)
-	commandBus.SetHandler(handler, DeclineInviteCommand)
-	commandBus.SetHandler(handler, ConfirmInviteCommand)
-	commandBus.SetHandler(handler, DenyInviteCommand)
+	commandBus.SetHandler(loggingHandler, CreateInviteCommand)
+	commandBus.SetHandler(loggingHandler, AcceptInviteCommand)
+	commandBus.SetHandler(loggingHandler, DeclineInviteCommand)
+	commandBus.SetHandler(loggingHandler, ConfirmInviteCommand)
+	commandBus.SetHandler(loggingHandler, DenyInviteCommand)
 
 	// Create and register a read model for individual invitations.
 	invitationProjector := projector.NewEventHandler(
@@ -83,6 +87,6 @@ func Setup(
 
 	// Setup the saga that responds to the accepted guests and limits the total
 	// amount of guests, responding with a confirmation or denial.
-	responseSaga := saga.NewEventHandler(NewResponseSaga(2), commandBus)
+	responseSaga := saga.NewEventHandler(NewResponseSaga(2), loggingHandler)
 	eventBus.AddHandler(responseSaga, InviteAcceptedEvent)
 }
