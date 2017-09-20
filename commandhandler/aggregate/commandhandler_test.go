@@ -28,41 +28,41 @@ func TestNewCommandHandler(t *testing.T) {
 	store := &mocks.AggregateStore{
 		Aggregates: make(map[eh.UUID]eh.Aggregate),
 	}
-	handler, err := NewCommandHandler(store)
+	h, err := NewCommandHandler(mocks.AggregateType, store)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if handler == nil {
+	if h == nil {
 		t.Error("there should be a handler")
 	}
 
-	handler, err = NewCommandHandler(nil)
+	h, err = NewCommandHandler(mocks.AggregateType, nil)
 	if err != ErrNilAggregateStore {
 		t.Error("there should be a ErrNilAggregateStore error:", err)
 	}
-	if handler != nil {
-		t.Error("there should be no handler:", handler)
+	if h != nil {
+		t.Error("there should be no handler:", h)
 	}
 }
 
 func TestCommandHandler(t *testing.T) {
-	aggregate, handler, _ := createAggregateAndHandler(t)
+	a, h, _ := createAggregateAndHandler(t)
 
 	ctx := context.WithValue(context.Background(), "testkey", "testval")
 
 	cmd := &mocks.Command{
-		ID:      aggregate.EntityID(),
+		ID:      a.EntityID(),
 		Content: "command1",
 	}
-	err := handler.HandleCommand(ctx, cmd)
+	err := h.HandleCommand(ctx, cmd)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(aggregate.Commands, []eh.Command{cmd}) {
-		t.Error("the handeled command should be correct:", aggregate.Commands)
+	if !reflect.DeepEqual(a.Commands, []eh.Command{cmd}) {
+		t.Error("the handeled command should be correct:", a.Commands)
 	}
-	if val, ok := aggregate.Context.Value("testkey").(string); !ok || val != "testval" {
-		t.Error("the context should be correct:", aggregate.Context)
+	if val, ok := a.Context.Value("testkey").(string); !ok || val != "testval" {
+		t.Error("the context should be correct:", a.Context)
 	}
 }
 
@@ -70,11 +70,11 @@ func TestCommandHandler_AggregateNotFound(t *testing.T) {
 	store := &mocks.AggregateStore{
 		Aggregates: map[eh.UUID]eh.Aggregate{},
 	}
-	handler, err := NewCommandHandler(store)
+	h, err := NewCommandHandler(mocks.AggregateType, store)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	if handler == nil {
+	if h == nil {
 		t.Fatal("there should be a handler")
 	}
 
@@ -82,77 +82,64 @@ func TestCommandHandler_AggregateNotFound(t *testing.T) {
 		ID:      eh.NewUUID(),
 		Content: "command1",
 	}
-	err = handler.HandleCommand(context.Background(), cmd)
+	err = h.HandleCommand(context.Background(), cmd)
 	if err != eh.ErrAggregateNotFound {
 		t.Error("there should be a command error:", err)
 	}
 }
 
 func TestCommandHandler_ErrorInHandler(t *testing.T) {
-	aggregate, handler, _ := createAggregateAndHandler(t)
+	a, h, _ := createAggregateAndHandler(t)
 
-	aggregate.Err = errors.New("command error")
+	a.Err = errors.New("command error")
 	cmd := &mocks.Command{
-		ID:      aggregate.EntityID(),
+		ID:      a.EntityID(),
 		Content: "command1",
 	}
-	err := handler.HandleCommand(context.Background(), cmd)
+	err := h.HandleCommand(context.Background(), cmd)
 	if err == nil || err.Error() != "command error" {
 		t.Error("there should be a command error:", err)
 	}
-	if !reflect.DeepEqual(aggregate.Commands, []eh.Command{}) {
-		t.Error("the handeled command should be correct:", aggregate.Commands)
+	if !reflect.DeepEqual(a.Commands, []eh.Command{}) {
+		t.Error("the handeled command should be correct:", a.Commands)
 	}
 }
 
 func TestCommandHandler_ErrorWhenSaving(t *testing.T) {
-	aggregate, handler, store := createAggregateAndHandler(t)
+	a, h, store := createAggregateAndHandler(t)
 
 	store.Err = errors.New("save error")
 	cmd := &mocks.Command{
-		ID:      aggregate.EntityID(),
+		ID:      a.EntityID(),
 		Content: "command1",
 	}
-	err := handler.HandleCommand(context.Background(), cmd)
+	err := h.HandleCommand(context.Background(), cmd)
 	if err == nil || err.Error() != "save error" {
 		t.Error("there should be a command error:", err)
 	}
 }
 
 func TestCommandHandler_NoHandlers(t *testing.T) {
-	_, handler, _ := createAggregateAndHandler(t)
+	_, h, _ := createAggregateAndHandler(t)
 
 	cmd := &mocks.Command{
 		ID:      eh.NewUUID(),
 		Content: "command1",
 	}
-	err := handler.HandleCommand(context.Background(), cmd)
+	err := h.HandleCommand(context.Background(), cmd)
 	if err != eh.ErrAggregateNotFound {
 		t.Error("there should be a ErrAggregateNotFound error:", nil)
 	}
 }
 
-func TestCommandHandler_SetHandlerTwice(t *testing.T) {
-	_, handler, _ := createAggregateAndHandler(t)
-
-	err := handler.SetAggregate(eh.AggregateType("other"), mocks.CommandType)
-	if err != ErrAggregateAlreadySet {
-		t.Error("there should be a ErrAggregateAlreadySet error:", err)
-	}
-}
-
 func BenchmarkCommandHandler(b *testing.B) {
-	aggregate := mocks.NewAggregate(eh.NewUUID())
+	a := mocks.NewAggregate(eh.NewUUID())
 	store := &mocks.AggregateStore{
 		Aggregates: map[eh.UUID]eh.Aggregate{
-			aggregate.EntityID(): aggregate,
+			a.EntityID(): a,
 		},
 	}
-	handler, err := NewCommandHandler(store)
-	if err != nil {
-		b.Fatal("there should be no error:", err)
-	}
-	err = handler.SetAggregate(mocks.AggregateType, mocks.CommandType)
+	h, err := NewCommandHandler(mocks.AggregateType, store)
 	if err != nil {
 		b.Fatal("there should be no error:", err)
 	}
@@ -160,34 +147,27 @@ func BenchmarkCommandHandler(b *testing.B) {
 	ctx := context.WithValue(context.Background(), "testkey", "testval")
 
 	cmd := &mocks.Command{
-		ID:      aggregate.EntityID(),
+		ID:      a.EntityID(),
 		Content: "command1",
 	}
 	for i := 0; i < b.N; i++ {
-		handler.HandleCommand(ctx, cmd)
+		h.HandleCommand(ctx, cmd)
 	}
-	if len(aggregate.Commands) != b.N {
-		b.Error("the num handled commands should be correct:", len(aggregate.Commands), b.N)
+	if len(a.Commands) != b.N {
+		b.Error("the num handled commands should be correct:", len(a.Commands), b.N)
 	}
 }
 
 func createAggregateAndHandler(t *testing.T) (*mocks.Aggregate, *CommandHandler, *mocks.AggregateStore) {
-	aggregate := mocks.NewAggregate(eh.NewUUID())
+	a := mocks.NewAggregate(eh.NewUUID())
 	store := &mocks.AggregateStore{
 		Aggregates: map[eh.UUID]eh.Aggregate{
-			aggregate.EntityID(): aggregate,
+			a.EntityID(): a,
 		},
 	}
-	handler, err := NewCommandHandler(store)
+	h, err := NewCommandHandler(mocks.AggregateType, store)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	if handler == nil {
-		t.Fatal("there should be a handler")
-	}
-	err = handler.SetAggregate(mocks.AggregateType, mocks.CommandType)
-	if err != nil {
-		t.Fatal("there should be no error:", err)
-	}
-	return aggregate, handler, store
+	return a, h, store
 }
