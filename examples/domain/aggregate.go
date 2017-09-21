@@ -24,12 +24,6 @@ import (
 	"github.com/looplab/eventhorizon/aggregatestore/events"
 )
 
-func init() {
-	eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
-		return NewInvitationAggregate(id)
-	})
-}
-
 // InvitationAggregateType is the type name of the aggregate.
 const InvitationAggregateType eh.AggregateType = "Invitation"
 
@@ -54,7 +48,7 @@ type InvitationAggregate struct {
 var _ = eh.Aggregate(&InvitationAggregate{})
 
 // NewInvitationAggregate creates a new InvitationAggregate with an ID.
-func NewInvitationAggregate(id eh.UUID) *InvitationAggregate {
+func NewInvitationAggregate(id eh.UUID) eh.Aggregate {
 	return &InvitationAggregate{
 		AggregateBase: events.NewAggregateBase(InvitationAggregateType, id),
 	}
