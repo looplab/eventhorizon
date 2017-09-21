@@ -20,8 +20,8 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/aggregatestore/events"
-	"github.com/looplab/eventhorizon/commandhandler/aggregate"
 	"github.com/looplab/eventhorizon/commandhandler/bus"
+	"github.com/looplab/eventhorizon/configure"
 	"github.com/looplab/eventhorizon/eventhandler/projector"
 	"github.com/looplab/eventhorizon/eventhandler/saga"
 )
@@ -42,26 +42,28 @@ func Setup(
 	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)
 	if err != nil {
 		log.Fatalf("could not create aggregate store: %s", err)
-	}
-
-	// Create the aggregate command handler and register the commands it handles.
-	invitationHandler, err := aggregate.NewCommandHandler(InvitationAggregateType, aggregateStore)
-	if err != nil {
-		log.Fatalf("could not create command handler: %s", err)
+		return
 	}
 
 	// Create a tiny logging middleware for the command handler.
-	loggingHandler := eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
-		log.Printf("running command: %s", cmd)
-		return invitationHandler.HandleCommand(ctx, cmd)
-	})
+	loggingHandler := func(ch eh.CommandHandler) eh.CommandHandler {
+		handle := func(ctx context.Context, cmd eh.Command) error {
+			log.Printf("running command: %s", cmd)
+			return ch.HandleCommand(ctx, cmd)
+		}
 
-	// Create the command bus and register the handler for the commands.
-	commandBus.SetHandler(loggingHandler, CreateInviteCommand)
-	commandBus.SetHandler(loggingHandler, AcceptInviteCommand)
-	commandBus.SetHandler(loggingHandler, DeclineInviteCommand)
-	commandBus.SetHandler(loggingHandler, ConfirmInviteCommand)
-	commandBus.SetHandler(loggingHandler, DenyInviteCommand)
+		return eh.CommandHandlerFunc(handle)
+	}
+
+	container := configure.NewContainer(aggregateStore, commandBus)
+	container.RegisterAggregates(
+		configure.NewAggregateConfig().
+			SetFactory(NewInvitationAggregate).
+			AddMiddleware(loggingHandler).
+			AddAggregateType(InvitationAggregateType).
+			AddCommandType(CreateInviteCommand, AcceptInviteCommand, DeclineInviteCommand).
+			AddCommandType(ConfirmInviteCommand, DenyInviteCommand),
+	)
 
 	// Create and register a read model for individual invitations.
 	invitationProjector := projector.NewEventHandler(
@@ -82,6 +84,6 @@ func Setup(
 
 	// Setup the saga that responds to the accepted guests and limits the total
 	// amount of guests, responding with a confirmation or denial.
-	responseSaga := saga.NewEventHandler(NewResponseSaga(2), loggingHandler)
+	responseSaga := saga.NewEventHandler(NewResponseSaga(2), commandBus)
 	eventBus.AddHandler(responseSaga, InviteAcceptedEvent)
 }
