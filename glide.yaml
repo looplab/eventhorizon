@@ -19,3 +19,4 @@ import:
 - package: gopkg.in/mgo.v2
   subpackages:
   - bson
+- package: github.com/gorilla/websocket
