@@ -1,0 +1,39 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Elm • TodoMVC</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+</body>
+
+<script src="/_compile/App.elm"></script> <!-- this will fail in production -->
+<script type="text/javascript" src="elm.js"></script> <!-- this will fail in development -->
+<script type="text/javascript">
+var app
+var flags = {}
+
+try {
+  var storedState = localStorage.getItem('elm-todo-save');
+  flags = storedState ? JSON.parse(storedState) : null;
+  app = Elm.App.fullscreen(flags);
+
+  /* app.ports is now available */
+  app.ports.setStorage.subscribe(function(state) {
+    localStorage.setItem('elm-todo-save', JSON.stringify(state));
+  });
+
+} catch (e) {
+  // this will run in case there are compile errors:
+  var stylesheets = document.querySelectorAll('link')
+  for (var i = 0; i < stylesheets.length; i++) {
+    stylesheets[i].parentNode.removeChild(stylesheets[i])
+  }
+  runElmProgram()
+}
+</script>
+
+</html>
