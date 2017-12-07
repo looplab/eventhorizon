@@ -140,6 +140,29 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 	if !reflect.DeepEqual(model, modelCustom2) {
 		t.Error("the item should be correct:", model)
 	}
+
+	// FindCustomIter by content.
+	iter, err := repo.FindCustomIter(ctx, func(c *mgo.Collection) *mgo.Query {
+		return c.Find(bson.M{"content": "modelCustom"})
+	})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	if iter.Next() != true {
+		t.Error("the iterator should have results")
+	}
+	if !reflect.DeepEqual(iter.Value(), modelCustom) {
+		t.Error("the item should be correct:", modelCustom)
+	}
+	if iter.Next() == true {
+		t.Error("the iterator should have no results")
+	}
+	err = iter.Close()
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
 }
 
 func TestRepository(t *testing.T) {
