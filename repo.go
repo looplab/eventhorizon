@@ -87,3 +87,14 @@ type Versionable interface {
 	// AggregateVersion returns the version of the item.
 	AggregateVersion() int
 }
+
+// Iter is a stateful iterator object that when called Next() readies the next
+// value that can be retrieved from Value(). Enables incremental object retrieval
+// from repos that support it. You must call Close() on each Iter even when
+// results were delivered without apparent error.
+type Iter interface {
+	Next() bool
+	Value() interface{}
+	// Close must be called after the last Next() to retrieve error if any
+	Close() error
+}

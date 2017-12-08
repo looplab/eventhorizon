@@ -133,6 +133,58 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	return result, nil
 }
 
+// The iterator is not thread safe.
+type iter struct {
+	session   *mgo.Session
+	iter      *mgo.Iter
+	data      eh.Entity
+	factoryFn func() eh.Entity
+}
+
+func (i *iter) Next() bool {
+	item := i.factoryFn()
+	more := i.iter.Next(item)
+	i.data = item
+	return more
+}
+
+func (i *iter) Value() interface{} {
+	return i.data
+}
+
+func (i *iter) Close() error {
+	err := i.iter.Close()
+	i.session.Close()
+	return err
+}
+
+// FindCustomIter returns a mgo cursor you can use to stream results of very large datasets
+func (r *Repo) FindCustomIter(ctx context.Context, callback func(*mgo.Collection) *mgo.Query) (eh.Iter, error) {
+	sess := r.session.Copy()
+
+	if r.factoryFn == nil {
+		return nil, eh.RepoError{
+			Err:       ErrModelNotSet,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	collection := sess.DB(r.dbName(ctx)).C(r.collection)
+	query := callback(collection)
+	if query == nil {
+		return nil, eh.RepoError{
+			Err:       ErrInvalidQuery,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	return &iter{
+		session:   sess,
+		iter:      query.Iter(),
+		factoryFn: r.factoryFn,
+	}, nil
+}
+
 // FindCustom uses a callback to specify a custom query for returning models.
 // It can also be used to do queries that does not map to the model by executing
 // the query in the callback and returning nil to block a second execution of
