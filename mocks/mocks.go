@@ -292,8 +292,6 @@ type EventObserver struct {
 	Events  []eh.Event
 	Context context.Context
 	Recv    chan eh.Event
-	// Used to simulate errors in HandleCommand.
-	Err error
 }
 
 var _ = eh.EventObserver(&EventObserver{})
@@ -308,14 +306,10 @@ func NewEventObserver() *EventObserver {
 }
 
 // Notify implements the Notify method of the eventhorizon.EventHandler interface.
-func (m *EventObserver) Notify(ctx context.Context, event eh.Event) error {
-	if m.Err != nil {
-		return m.Err
-	}
+func (m *EventObserver) Notify(ctx context.Context, event eh.Event) {
 	m.Events = append(m.Events, event)
 	m.Context = ctx
 	m.Recv <- event
-	return nil
 }
 
 // WaitForEvent is a helper to wait until an event has been notified, it timeouts

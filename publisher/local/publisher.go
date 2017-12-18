@@ -16,7 +16,6 @@ package local
 
 import (
 	"context"
-	"log"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -45,9 +44,7 @@ func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error
 
 	// Notify all observers about the event.
 	for o := range b.observers {
-		if err := o.Notify(ctx, event); err != nil {
-			log.Println("eventpublisher: error publishing:", err)
-		}
+		o.Notify(ctx, event)
 	}
 
 	return nil

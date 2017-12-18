@@ -31,13 +31,12 @@ type Observer struct {
 }
 
 // Notify implements the Notify method of the EventObserver interface.
-func (o *Observer) Notify(ctx context.Context, event eh.Event) error {
+func (o *Observer) Notify(ctx context.Context, event eh.Event) {
 	select {
 	case o.EventCh <- event:
 	default:
 		log.Println("missed event:", event)
 	}
-	return nil
 }
 
 // EventBusHandler is a Websocket handler for eventhorizon.Events. Events will

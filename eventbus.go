@@ -56,5 +56,5 @@ type EventPublisher interface {
 // All observers will receive an event.
 type EventObserver interface {
 	// Notify is notifed about an event.
-	Notify(context.Context, Event) error
+	Notify(context.Context, Event)
 }

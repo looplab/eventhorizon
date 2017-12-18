@@ -35,9 +35,7 @@ func TestEventWaiter(t *testing.T) {
 	)
 	go func() {
 		time.Sleep(time.Millisecond)
-		if err := w.Notify(context.Background(), expectedEvent); err != nil {
-			t.Error(err)
-		}
+		w.Notify(context.Background(), expectedEvent)
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -66,9 +64,7 @@ func TestEventWaiter(t *testing.T) {
 		mocks.AggregateType, eh.NewUUID(), 1)
 	go func() {
 		time.Sleep(time.Millisecond)
-		if err := w.Notify(context.Background(), otherEvent); err != nil {
-			t.Error(err)
-		}
+		w.Notify(context.Background(), otherEvent)
 	}()
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)
