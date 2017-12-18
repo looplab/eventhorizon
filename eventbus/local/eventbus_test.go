@@ -24,22 +24,9 @@ import (
 )
 
 func TestEventBus(t *testing.T) {
-	EventBusCommonTests(t, false)
-}
-
-func TestEventBusAsync(t *testing.T) {
-	EventBusCommonTests(t, true)
-}
-
-// EventBusCommonTests are test cases that are common to all implementations
-// of event busses.
-func EventBusCommonTests(t *testing.T, async bool) {
 	bus := NewEventBus()
 	if bus == nil {
 		t.Fatal("there should be a bus")
-	}
-	if async {
-		bus.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
 	}
 
 	publisher := mocks.NewEventPublisher()
@@ -135,21 +122,19 @@ func EventBusCommonTests(t *testing.T, async bool) {
 		t.Error("the context should be correct:", publisher.Context)
 	}
 
-	// Event handler order, only important for non-async mode.
-	if !async {
-		handler2 := mocks.NewEventHandler("testHandler2")
-		bus.AddHandler(handler2, mocks.EventType)
-		if err := bus.HandleEvent(ctx, event1); err != nil {
-			t.Error("there should be no error:", err)
-		}
-		if err := handler.WaitForEvent(); err != nil {
-			t.Error("did not receive event in time:", err)
-		}
-		if err := handler2.WaitForEvent(); err != nil {
-			t.Error("did not receive event in time:", err)
-		}
-		if handler2.Time.Before(handler.Time) {
-			t.Error("the first handler shoud be run first")
-		}
+	// Event handler order.
+	handler2 := mocks.NewEventHandler("testHandler2")
+	bus.AddHandler(handler2, mocks.EventType)
+	if err := bus.HandleEvent(ctx, event1); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if err := handler.WaitForEvent(); err != nil {
+		t.Error("did not receive event in time:", err)
+	}
+	if err := handler2.WaitForEvent(); err != nil {
+		t.Error("did not receive event in time:", err)
+	}
+	if handler2.Time.Before(handler.Time) {
+		t.Error("the first handler shoud be run first")
 	}
 }

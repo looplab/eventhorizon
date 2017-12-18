@@ -17,7 +17,6 @@ package local
 import (
 	"testing"
 
-	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/publisher/testutil"
 )
 
@@ -26,16 +25,6 @@ func TestEventPublisher(t *testing.T) {
 	if publisher == nil {
 		t.Fatal("there should be a publisher")
 	}
-
-	testutil.EventPublisherCommonTests(t, publisher, publisher)
-}
-
-func TestEventPublisherAsync(t *testing.T) {
-	publisher := NewEventPublisher()
-	if publisher == nil {
-		t.Fatal("there should be a publisher")
-	}
-	publisher.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
 
 	testutil.EventPublisherCommonTests(t, publisher, publisher)
 }

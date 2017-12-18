@@ -16,7 +16,6 @@ package local
 
 import (
 	"context"
-	"log"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -27,12 +26,7 @@ import (
 type EventBus struct {
 	handlers  map[eh.EventType][]eh.EventHandler
 	handlerMu sync.RWMutex
-
 	publisher eh.EventPublisher
-
-	// handlingStrategy is the strategy to use when handling event, for example
-	// to handle the asynchronously.
-	handlingStrategy eh.EventHandlingStrategy
 }
 
 // NewEventBus creates a EventBus.
@@ -51,26 +45,6 @@ func (b *EventBus) HandlerType() eh.EventHandlerType {
 func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	b.handlerMu.RLock()
 	defer b.handlerMu.RUnlock()
-
-	if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-		// Handle the event, if there are no handlers this will be a no-op.
-		for _, h := range b.handlers[event.EventType()] {
-			go func(h eh.EventHandler) {
-				if err := h.HandleEvent(ctx, event); err != nil {
-					log.Println("eventbus: error handling:", err)
-				}
-			}(h)
-		}
-
-		// Publish the event.
-		go func() {
-			if err := b.publisher.PublishEvent(ctx, event); err != nil {
-				log.Println("eventbus: error publishing:", err)
-			}
-		}()
-
-		return nil
-	}
 
 	// Handle the event, if there are no handlers this will be a no-op.
 	for _, h := range b.handlers[event.EventType()] {
@@ -101,10 +75,4 @@ func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
 // eventhorizon.EventBus interface.
 func (b *EventBus) SetPublisher(publisher eh.EventPublisher) {
 	b.publisher = publisher
-}
-
-// SetHandlingStrategy implements the SetHandlingStrategy method of the
-// eventhorizon.EventBus interface.
-func (b *EventBus) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
-	b.handlingStrategy = strategy
 }
