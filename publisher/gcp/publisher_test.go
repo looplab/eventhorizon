@@ -20,7 +20,6 @@ import (
 	"os"
 	"testing"
 
-	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/publisher/testutil"
 )
 
@@ -36,28 +35,6 @@ func TestEventBus(t *testing.T) {
 		t.Fatal("there should be no error:", err)
 	}
 	defer publisher2.Close()
-
-	// Wait for subscriptions to be ready.
-	<-publisher1.ready
-	<-publisher2.ready
-
-	testutil.EventPublisherCommonTests(t, publisher1, publisher2)
-}
-
-func TestEventBusAsync(t *testing.T) {
-	publisher1, err := setUpEventPublisher("test")
-	if err != nil {
-		t.Fatal("there should be no error:", err)
-	}
-	defer publisher1.Close()
-	publisher1.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
-
-	publisher2, err := setUpEventPublisher("test")
-	if err != nil {
-		t.Fatal("there should be no error:", err)
-	}
-	defer publisher2.Close()
-	publisher2.SetHandlingStrategy(eh.AsyncEventHandlingStrategy)
 
 	// Wait for subscriptions to be ready.
 	<-publisher1.ready

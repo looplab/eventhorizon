@@ -41,9 +41,6 @@ type EventBus interface {
 	// SetPublisher sets the publisher to use for publishing the event after all
 	// handlers have been run.
 	SetPublisher(EventPublisher)
-
-	// SetHandlingStrategy will set the strategy to use for handling events.
-	SetHandlingStrategy(EventHandlingStrategy)
 }
 
 // EventPublisher is a publisher of events to observers.
@@ -53,26 +50,11 @@ type EventPublisher interface {
 
 	// AddObserver adds an observer.
 	AddObserver(EventObserver)
-
-	// SetHandlingStrategy will set the strategy to use for handling events.
-	SetHandlingStrategy(EventHandlingStrategy)
 }
 
 // EventObserver is an observer of events.
 // All observers will receive an event.
 type EventObserver interface {
 	// Notify is notifed about an event.
-	Notify(context.Context, Event) error
+	Notify(context.Context, Event)
 }
-
-// EventHandlingStrategy is the strategy to use when handling events.
-type EventHandlingStrategy int
-
-const (
-	// SimpleEventHandlingStrategy will handle events in the same goroutine and
-	// wait for them to complete before handling the next.
-	SimpleEventHandlingStrategy EventHandlingStrategy = iota
-	// AsyncEventHandlingStrategy will handle events concurrently in their own
-	// goroutines and not wait for them to finish.
-	AsyncEventHandlingStrategy
-)

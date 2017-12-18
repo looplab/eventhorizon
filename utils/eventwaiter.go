@@ -66,14 +66,8 @@ func (w *EventWaiter) run() {
 
 // Notify implements the eventhorizon.EventObserver.Notify method which forwards
 // events to the waiters so that they can match the events.
-func (w *EventWaiter) Notify(ctx context.Context, event eh.Event) error {
-	select {
-	case w.inbox <- event:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-
-	return nil
+func (w *EventWaiter) Notify(ctx context.Context, event eh.Event) {
+	w.inbox <- event
 }
 
 // Listen waits unil the match function returns true for an event, or the context
@@ -100,6 +94,7 @@ type EventListener struct {
 	unregister chan *EventListener
 }
 
+// Wait waits for the event to arrive.
 func (l *EventListener) Wait(ctx context.Context) (eh.Event, error) {
 	select {
 	case event := <-l.inbox:
@@ -109,6 +104,7 @@ func (l *EventListener) Wait(ctx context.Context) (eh.Event, error) {
 	}
 }
 
+// Close stops listening for more events.
 func (l *EventListener) Close() {
 	l.unregister <- l
 }

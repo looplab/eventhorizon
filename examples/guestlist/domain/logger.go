@@ -25,7 +25,6 @@ import (
 type Logger struct{}
 
 // Notify implements the Notify method of the EventObserver interface.
-func (l *Logger) Notify(ctx context.Context, event eh.Event) error {
+func (l *Logger) Notify(ctx context.Context, event eh.Event) {
 	log.Println("event:", event)
-	return nil
 }

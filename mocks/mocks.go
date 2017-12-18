@@ -276,10 +276,6 @@ func (m *EventPublisher) AddObserver(o eh.EventObserver) {
 	m.Observers = append(m.Observers, o)
 }
 
-// SetHandlingStrategy implements the SetHandlingStrategy method of the
-// eventhorizon.EventBus interface.
-func (m *EventPublisher) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {}
-
 // WaitForEvent is a helper to wait until an event has been notified, it timeouts
 // after 1 second.
 func (m *EventPublisher) WaitForEvent() error {
@@ -296,8 +292,6 @@ type EventObserver struct {
 	Events  []eh.Event
 	Context context.Context
 	Recv    chan eh.Event
-	// Used to simulate errors in HandleCommand.
-	Err error
 }
 
 var _ = eh.EventObserver(&EventObserver{})
@@ -312,14 +306,10 @@ func NewEventObserver() *EventObserver {
 }
 
 // Notify implements the Notify method of the eventhorizon.EventHandler interface.
-func (m *EventObserver) Notify(ctx context.Context, event eh.Event) error {
-	if m.Err != nil {
-		return m.Err
-	}
+func (m *EventObserver) Notify(ctx context.Context, event eh.Event) {
 	m.Events = append(m.Events, event)
 	m.Context = ctx
 	m.Recv <- event
-	return nil
 }
 
 // WaitForEvent is a helper to wait until an event has been notified, it timeouts
@@ -436,10 +426,6 @@ func (m *EventBus) AddHandler(handler eh.EventHandler, event eh.EventType) {}
 // SetPublisher implements the SetPublisher method of the
 // eventhorizon.EventBus interface.
 func (m *EventBus) SetPublisher(publisher eh.EventPublisher) {}
-
-// SetHandlingStrategy implements the SetHandlingStrategy method of the
-// eventhorizon.EventBus interface.
-func (m *EventBus) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {}
 
 // Repo is a mocked eventhorizon.ReadRepo, useful in testing.
 type Repo struct {

@@ -16,7 +16,6 @@ package local
 
 import (
 	"context"
-	"log"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -27,10 +26,6 @@ import (
 type EventPublisher struct {
 	observers   map[eh.EventObserver]bool
 	observersMu sync.RWMutex
-
-	// handlingStrategy is the strategy to use when publishing event, for example
-	// to handle the asynchronously.
-	handlingStrategy eh.EventHandlingStrategy
 }
 
 // NewEventPublisher creates a EventPublisher.
@@ -47,46 +42,9 @@ func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error
 	b.observersMu.RLock()
 	defer b.observersMu.RUnlock()
 
-	// Async event publishing.
-	if b.handlingStrategy == eh.AsyncEventHandlingStrategy {
-		wg := sync.WaitGroup{}
-		errc := make(chan error)
-
-		// Notify all observers about the event.
-		for o := range b.observers {
-			wg.Add(1)
-			go func(o eh.EventObserver) {
-				defer wg.Done()
-				if err := o.Notify(ctx, event); err != nil {
-					// Try to report the error. Only the first error is
-					// taken care of.
-					select {
-					case errc <- err:
-					default:
-					}
-				}
-			}(o)
-		}
-
-		// Wait for notifying to finish, but only care about the first error.
-		go func() {
-			wg.Wait()
-			close(errc)
-		}()
-		go func() {
-			if err := <-errc; err != nil {
-				log.Println("eventpublisher: error publishing:", err)
-			}
-		}()
-
-		return nil
-	}
-
 	// Notify all observers about the event.
 	for o := range b.observers {
-		if err := o.Notify(ctx, event); err != nil {
-			log.Println("eventpublisher: error publishing:", err)
-		}
+		o.Notify(ctx, event)
 	}
 
 	return nil
@@ -98,10 +56,4 @@ func (b *EventPublisher) AddObserver(observer eh.EventObserver) {
 	b.observersMu.Lock()
 	defer b.observersMu.Unlock()
 	b.observers[observer] = true
-}
-
-// SetHandlingStrategy implements the SetHandlingStrategy method of the
-// eventhorizon.EventPublisher interface.
-func (b *EventPublisher) SetHandlingStrategy(strategy eh.EventHandlingStrategy) {
-	b.handlingStrategy = strategy
 }
