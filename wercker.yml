@@ -21,7 +21,8 @@ build:
         code: |
           cd $WERCKER_SOURCE_DIR
           go version
-          go get -t ./...
+          go get github.com/golang/dep/cmd/dep
+          dep ensure
 
     - script:
         name: go build
