@@ -434,6 +434,8 @@ type Repo struct {
 	Entities   []eh.Entity
 	// Used to simulate errors in the store.
 	LoadErr, SaveErr error
+
+	FindCalled, FindAllCalled, SaveCalled, RemoveCalled bool
 }
 
 var _ = eh.ReadWriteRepo(&Repo{})
@@ -445,6 +447,7 @@ func (r *Repo) Parent() eh.ReadRepo {
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
+	r.FindCalled = true
 	if r.LoadErr != nil {
 		return nil, r.LoadErr
 	}
@@ -453,6 +456,7 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
 
 // FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
 func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
+	r.FindAllCalled = true
 	if r.LoadErr != nil {
 		return nil, r.LoadErr
 	}
@@ -461,6 +465,7 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 
 // Save implements the Save method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
+	r.SaveCalled = true
 	if r.SaveErr != nil {
 		return r.SaveErr
 	}
@@ -470,6 +475,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 
 // Remove implements the Remove method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
+	r.RemoveCalled = true
 	if r.SaveErr != nil {
 		return r.SaveErr
 	}
