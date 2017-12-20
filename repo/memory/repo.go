@@ -21,22 +21,24 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
+type namespace string
+
 // Repo implements an in memory repository of read models.
 type Repo struct {
 	// The outer map is with namespace as key, the inner with aggregate ID.
-	db   map[string]map[eh.UUID]eh.Entity
+	db   map[namespace]map[eh.UUID]eh.Entity
 	dbMu sync.RWMutex
 
 	// A list of all item ids, only the order is used.
 	// The outer map is for the namespace.
-	ids map[string][]eh.UUID
+	ids map[namespace][]eh.UUID
 }
 
 // NewRepo creates a new Repo.
 func NewRepo() *Repo {
 	r := &Repo{
-		ids: map[string][]eh.UUID{},
-		db:  map[string]map[eh.UUID]eh.Entity{},
+		ids: map[namespace][]eh.UUID{},
+		db:  map[namespace]map[eh.UUID]eh.Entity{},
 	}
 	return r
 }
@@ -52,7 +54,6 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
 
 	r.dbMu.RLock()
 	defer r.dbMu.RUnlock()
-
 	model, ok := r.db[ns][id]
 	if !ok {
 		return nil, eh.RepoError{
@@ -70,7 +71,6 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 
 	r.dbMu.RLock()
 	defer r.dbMu.RUnlock()
-
 	all := []eh.Entity{}
 	for _, id := range r.ids[ns] {
 		if m, ok := r.db[ns][id]; ok {
@@ -95,7 +95,6 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
-
 	id := entity.EntityID()
 	if _, ok := r.db[ns][id]; !ok {
 		r.ids[ns] = append(r.ids[ns], id)
@@ -111,7 +110,6 @@ func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
 
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
-
 	if _, ok := r.db[ns][id]; ok {
 		delete(r.db[ns], id)
 
@@ -134,14 +132,16 @@ func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
 }
 
 // Helper to get the namespace and ensure that its data exists.
-func (r *Repo) namespace(ctx context.Context) string {
+func (r *Repo) namespace(ctx context.Context) namespace {
+	ns := namespace(eh.NamespaceFromContext(ctx))
+
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
-	ns := eh.NamespaceFromContext(ctx)
 	if _, ok := r.db[ns]; !ok {
 		r.db[ns] = map[eh.UUID]eh.Entity{}
 		r.ids[ns] = []eh.UUID{}
 	}
+
 	return ns
 }
 
