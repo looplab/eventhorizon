@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	contextorg "golang.org/x/net/context"
 	"gopkg.in/mgo.v2/bson"
 
 	eh "github.com/looplab/eventhorizon"
@@ -44,6 +43,7 @@ type EventPublisher struct {
 	topic  *pubsub.Topic
 	ready  chan bool // NOTE: Used for testing only
 	exit   chan bool
+	errCh  chan Error
 }
 
 // NewEventPublisher creates a EventPublisher.
@@ -65,15 +65,47 @@ func NewEventPublisher(projectID, appID string) (*EventPublisher, error) {
 		}
 	}
 
+	// Create the subscription, it should not exist as we use a new UUID as name.
+	id := "subscriber_" + eh.NewUUID().String()
+	sub, err := client.CreateSubscription(context.Background(), id,
+		pubsub.SubscriptionConfig{
+			Topic:       topic,
+			AckDeadline: 10 * time.Second,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	b := &EventPublisher{
 		EventPublisher: local.NewEventPublisher(),
 		client:         client,
 		topic:          topic,
-		ready:          make(chan bool, 1), // Buffered to not block receive loop.
+		ready:          make(chan bool, 1), // Buffered to not block receive loop. Used in testing only!
 		exit:           make(chan bool),
+		errCh:          make(chan Error, 20),
 	}
 
-	go b.recv()
+	go func() {
+		<-b.exit
+		if err := sub.Delete(context.Background()); err != nil {
+			log.Println("eventpublisher: could not delete subscription:", err)
+		}
+		close(b.exit)
+	}()
+
+	go func() {
+		// Don't block if no one is receiving and buffer is full.
+		// NOTE: Used in testing only.
+		select {
+		case b.ready <- true:
+		default:
+		}
+
+		if err := sub.Receive(context.Background(), b.handleMessage); err != context.Canceled {
+			b.errCh <- Error{Err: errors.New("could not receive: " + err.Error())}
+		}
+	}()
 
 	return b, nil
 }
@@ -137,52 +169,7 @@ func (b *EventPublisher) Close() error {
 	return b.topic.Delete(context.Background())
 }
 
-func (b *EventPublisher) recv() {
-	ctx := context.Background()
-
-	// Create the subscription, it should not exist as we use a new UUID as name.
-	id := "subscriber_" + eh.NewUUID().String()
-	sub, err := b.client.CreateSubscription(ctx, id, pubsub.SubscriptionConfig{
-		Topic:       b.topic,
-		AckDeadline: 10 * time.Second,
-	})
-	if err != nil {
-		// TODO: Handle error.
-		log.Println("eventpublisher: could not create subscription:", err)
-		return
-	}
-
-	log.Println("eventpublisher: start receiving")
-	go func() {
-		<-b.exit
-		if err := sub.Delete(ctx); err != nil {
-			log.Println("eventpublisher: could not delete subscription:", err)
-		}
-		log.Println("eventpublisher: stop receiving")
-		close(b.exit)
-	}()
-
-	// Don't block if no one is receiving and buffer is full.
-	select {
-	case b.ready <- true:
-	default:
-	}
-
-	err = sub.Receive(ctx, func(ctx contextorg.Context, m *pubsub.Message) {
-		if err := b.handleMessage(m); err != nil {
-			log.Println("eventpublisher: error publishing:", err)
-		}
-		m.Ack()
-	})
-	if err != contextorg.Canceled {
-		log.Println("eventpublisher: could not get next message:", err)
-	}
-}
-
-func (b *EventPublisher) handleMessage(msg *pubsub.Message) error {
-	// // TODO: Only ack true when event is handled correctly.
-	// defer msg.Done(true)
-
+func (b *EventPublisher) handleMessage(ctx context.Context, msg *pubsub.Message) {
 	// Manually decode the raw BSON event.
 	data := bson.Raw{
 		Kind: 3,
@@ -190,16 +177,20 @@ func (b *EventPublisher) handleMessage(msg *pubsub.Message) error {
 	}
 	var gcpEvent gcpEvent
 	if err := data.Unmarshal(&gcpEvent); err != nil {
-		// TODO: Forward the real error.
-		return ErrCouldNotUnmarshalEvent
+		msg.Nack()
+		// TODO: Also forward the real error.
+		b.errCh <- Error{Err: ErrCouldNotUnmarshalEvent}
+		return
 	}
 
 	// Create an event of the correct type.
 	if data, err := eh.CreateEventData(gcpEvent.EventType); err == nil {
 		// Manually decode the raw BSON event.
 		if err := gcpEvent.RawData.Unmarshal(data); err != nil {
-			// TODO: Forward the real error.
-			return ErrCouldNotUnmarshalEvent
+			msg.Nack()
+			// TODO: Also forward the real error.
+			b.errCh <- Error{Err: ErrCouldNotUnmarshalEvent}
+			return
 		}
 
 		// Set concrete event and zero out the decoded event.
@@ -208,10 +199,33 @@ func (b *EventPublisher) handleMessage(msg *pubsub.Message) error {
 	}
 
 	event := event{gcpEvent: gcpEvent}
-	ctx := eh.UnmarshalContext(gcpEvent.Context)
+	ctx = eh.UnmarshalContext(gcpEvent.Context)
 
 	// Notify all observers about the event.
-	return b.EventPublisher.PublishEvent(ctx, event)
+	if err := b.EventPublisher.PublishEvent(ctx, event); err != nil {
+		msg.Nack()
+		b.errCh <- Error{Ctx: ctx, Err: err, Event: event}
+		return
+	}
+
+	msg.Ack()
+}
+
+// Errors returns an error channel where async handling errors are sent.
+func (b *EventPublisher) Errors() <-chan Error {
+	return b.errCh
+}
+
+// Error is an async error containing the error and the event.
+type Error struct {
+	Err   error
+	Ctx   context.Context
+	Event eh.Event
+}
+
+// Error implements the Error method of the error interface.
+func (e Error) Error() string {
+	return fmt.Sprintf("%s: %s", e.Event.String(), e.Err.Error())
 }
 
 // gcpEvent is the internal event used with the gcp event bus.
