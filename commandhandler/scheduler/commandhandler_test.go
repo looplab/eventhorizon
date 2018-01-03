@@ -94,12 +94,12 @@ func TestCommandHandler_Errors(t *testing.T) {
 	if len(h.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", h.Commands)
 	}
-	var err error
+	var err Error
 	select {
-	case err = <-sch.Error():
+	case err = <-sch.Errors():
 	case <-time.After(10 * time.Millisecond):
 	}
-	if err != handlerErr {
+	if err.Err != handlerErr {
 		t.Error("there should be an error:", err)
 	}
 }
@@ -123,12 +123,12 @@ func TestCommandHandler_ContextCanceled(t *testing.T) {
 	if len(h.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", h.Commands)
 	}
-	var err error
+	var err Error
 	select {
-	case err = <-sch.Error():
+	case err = <-sch.Errors():
 	case <-time.After(10 * time.Millisecond):
 	}
-	if err == nil || err.Error() != "context canceled" {
+	if err.Err == nil || err.Err.Error() != "context canceled" {
 		t.Error("there should be an error:", err)
 	}
 }
@@ -152,12 +152,12 @@ func TestCommandHandler_ContextDeadline(t *testing.T) {
 	if len(h.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", h.Commands)
 	}
-	var err error
+	var err Error
 	select {
-	case err = <-sch.Error():
+	case err = <-sch.Errors():
 	case <-time.After(10 * time.Millisecond):
 	}
-	if err == nil || err.Error() != "context deadline exceeded" {
+	if err.Err == nil || err.Err.Error() != "context deadline exceeded" {
 		t.Error("there should be an error:", err)
 	}
 }
