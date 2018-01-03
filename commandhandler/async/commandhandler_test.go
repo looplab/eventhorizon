@@ -1,0 +1,73 @@
+// Copyright (c) 2018 - Max Ekman <max@looplab.se>
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package async
+
+import (
+	"context"
+	"errors"
+	"reflect"
+	"testing"
+	"time"
+
+	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/mocks"
+)
+
+func TestCommandHandler(t *testing.T) {
+	cmd := mocks.Command{
+		ID:      eh.NewUUID(),
+		Content: "content",
+	}
+
+	inner := &mocks.CommandHandler{}
+	h := NewCommandHandler(inner)
+	if err := h.HandleCommand(context.Background(), cmd); err != nil {
+		t.Error("there should never be an error:", err)
+	}
+	select {
+	case err := <-h.Errors():
+		t.Error("there should not be an error:", err)
+	case <-time.After(time.Millisecond):
+	}
+	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
+		t.Error("the command shoud have been handeled:", inner.Commands)
+	}
+
+	inner = &mocks.CommandHandler{}
+	h = NewCommandHandler(inner)
+	handlingErr := errors.New("handling error")
+	inner.Err = handlingErr
+	ctx := context.Background()
+	if err := h.HandleCommand(ctx, cmd); err != nil {
+		t.Error("there should never be an error:", err)
+	}
+	select {
+	case err := <-h.Errors():
+		if err.Err != handlingErr {
+			t.Error("the error should be correct:", err.Err)
+		}
+		if err.Ctx != ctx {
+			t.Error("the context should be correct:", err.Ctx)
+		}
+		if err.Command != cmd {
+			t.Error("the command should be correct:", err.Command)
+		}
+	case <-time.After(time.Millisecond):
+		t.Error("there should be an error")
+	}
+	if !reflect.DeepEqual(inner.Commands, []eh.Command(nil)) {
+		t.Error("the command shoud not have been handeled:", inner.Commands)
+	}
+}
