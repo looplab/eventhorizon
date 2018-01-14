@@ -276,7 +276,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 	return nil
 }
 
-// Clear clears the event storge.
+// Clear clears the event storage.
 func (s *EventStore) Clear(ctx context.Context) error {
 	if err := s.session.DB(s.dbName(ctx)).C("events").DropCollection(); err != nil {
 		return eh.EventStoreError{
