@@ -50,7 +50,7 @@ func TestAggregateStore_LoadNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	id := eh.NewUUID()
-	repo.LoadErr = eh.ErrEntityNotFound
+	repo.LoadErr = eh.RepoError{Err: eh.ErrEntityNotFound}
 	agg, err := store.Load(ctx, AggregateType, id)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
