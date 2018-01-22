@@ -104,6 +104,11 @@ func (l *EventListener) Wait(ctx context.Context) (eh.Event, error) {
 	}
 }
 
+// Inbox returns the channel that events will be delivered on so that you can integrate into your own select() if needed.
+func (l *EventListener) Inbox() (<-chan eh.Event) {
+    return l.inbox
+}
+
 // Close stops listening for more events.
 func (l *EventListener) Close() {
 	l.unregister <- l
