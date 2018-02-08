@@ -56,7 +56,15 @@ func TestNewUUID(t *testing.T) {
 func TestParseUUID(t *testing.T) {
 	id := UUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
 
-	parsed, err := ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
+	parsed, err := ParseUUID("")
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if parsed != UUID("") {
+		t.Error("the ID should be correct:", parsed)
+	}
+
+	parsed, err = ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -101,13 +109,27 @@ type jsonType struct {
 }
 
 func TestMarshalJSON(t *testing.T) {
-	id, err := ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
+	// Empty UUID.
+	id, err := ParseUUID("")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-
 	v := jsonType{ID: &id}
 	js, err := json.Marshal(&v)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if string(js) != `{"ID":""}` {
+		t.Error("the JSON should be correct:", string(js))
+	}
+
+	// Normal UUID.
+	id, err = ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	v = jsonType{ID: &id}
+	js, err = json.Marshal(&v)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -117,14 +139,29 @@ func TestMarshalJSON(t *testing.T) {
 }
 
 func TestUnmarshalJSON(t *testing.T) {
-	js := []byte(`{"ID":"a4da289d-466d-4a56-4521-1dbd455aa0cd"}`)
+	// Empty UUID.
+	js := []byte(`{"ID":""}`)
 	v := jsonType{}
 	err := json.Unmarshal(js, &v)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+	id, err := ParseUUID("")
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if *v.ID != id {
+		t.Error("the ID should be correct:", *v.ID)
+	}
 
-	id, err := ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
+	// Normal UUID.
+	js = []byte(`{"ID":"a4da289d-466d-4a56-4521-1dbd455aa0cd"}`)
+	v = jsonType{}
+	err = json.Unmarshal(js, &v)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	id, err = ParseUUID("a4da289d-466d-4a56-4521-1dbd455aa0cd")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

@@ -62,6 +62,10 @@ func NewUUID() UUID {
 //     ParseUUID("urn:uuid:6ba7b814-9dad-11d1-80b4-00c04fd430c8")
 //
 func ParseUUID(s string) (UUID, error) {
+	if s == "" {
+		return UUID(""), nil
+	}
+
 	md := re.FindStringSubmatch(s)
 	if md == nil {
 		return "", errors.New("Invalid UUID string")
