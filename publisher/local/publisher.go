@@ -57,3 +57,11 @@ func (b *EventPublisher) AddObserver(observer eh.EventObserver) {
 	defer b.observersMu.Unlock()
 	b.observers[observer] = true
 }
+
+// RemoveObserver removes the observer.
+func (b *EventPublisher) RemoveObserver(observer eh.EventObserver) {
+	b.observersMu.Lock()
+	defer b.observersMu.Unlock()
+
+	delete(b.observers, observer)
+}
