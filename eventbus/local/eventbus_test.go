@@ -138,3 +138,19 @@ func TestEventBus(t *testing.T) {
 		t.Error("the first handler shoud be run first")
 	}
 }
+
+// Although most cases will publish events to other parts
+// of a system when you're running tests you may not need
+// an event publisher for ease of setup.
+func TestEventBusWithNilPublisher(t *testing.T) {
+	eb := NewEventBus()
+	mockEvent := eh.NewEventForAggregate(
+		mocks.EventType,
+		&mocks.EventData{Content: "event1"},
+		time.Now(),
+		mocks.AggregateType,
+		eh.UUID("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756"),
+		1,
+	)
+	eb.HandleEvent(context.Background(), mockEvent)
+}

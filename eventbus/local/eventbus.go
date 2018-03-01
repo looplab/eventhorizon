@@ -53,6 +53,10 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 		}
 	}
 
+	if b.publisher == nil {
+		return nil
+	}
+
 	// Publish the event.
 	return b.publisher.PublishEvent(ctx, event)
 }
