@@ -17,6 +17,7 @@ package local
 import (
 	"testing"
 
+	"github.com/looplab/eventhorizon/mocks"
 	"github.com/looplab/eventhorizon/publisher/testutil"
 )
 
@@ -27,4 +28,21 @@ func TestEventPublisher(t *testing.T) {
 	}
 
 	testutil.EventPublisherCommonTests(t, publisher, publisher)
+}
+
+func TestEventPublisherRemoveObserver(t *testing.T) {
+	publisher := NewEventPublisher()
+	observer1 := mocks.NewEventObserver()
+
+	publisher.AddObserver(observer1)
+
+	if v := len(publisher.observers); v != 1 {
+		t.Fatalf("expected 1 observer got %d", v)
+	}
+
+	publisher.RemoveObserver(observer1)
+
+	if v := len(publisher.observers); v != 0 {
+		t.Fatalf("expected no observer got %d", v)
+	}
 }

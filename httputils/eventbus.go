@@ -55,6 +55,7 @@ func EventBusHandler(eventPublisher eh.EventPublisher) http.Handler {
 			EventCh: make(chan eh.Event, 10),
 		}
 		eventPublisher.AddObserver(observer)
+		defer eventPublisher.RemoveObserver(observer)
 
 		for event := range observer.EventCh {
 			if err := c.WriteMessage(websocket.TextMessage, []byte(event.String())); err != nil {

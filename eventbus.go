@@ -50,6 +50,9 @@ type EventPublisher interface {
 
 	// AddObserver adds an observer.
 	AddObserver(EventObserver)
+
+	// RemoveObserver removes an observer.
+	RemoveObserver(EventObserver)
 }
 
 // EventObserver is an observer of events.
