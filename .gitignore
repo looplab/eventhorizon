@@ -27,3 +27,5 @@ _testmain.go
 .wercker
 
 vendor/
+
+.idea/
