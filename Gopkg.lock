@@ -119,6 +119,39 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/looplab/eventhorizon"
+  packages = [
+    ".",
+    "aggregatestore/events",
+    "commandhandler/aggregate",
+    "commandhandler/bus",
+    "eventbus/local",
+    "eventhandler/projector",
+    "eventhandler/saga",
+    "eventstore/memory",
+    "eventstore/mongodb",
+    "eventstore/testutil",
+    "examples/guestlist/domain",
+    "examples/todomvc/internal/domain",
+    "httputils",
+    "mocks",
+    "publisher/local",
+    "publisher/testutil",
+    "repo/memory",
+    "repo/mongodb",
+    "repo/testutil",
+    "repo/version"
+  ]
+  revision = "81b302ba207917bade0c1305524f41a0a0d3634c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/streadway/amqp"
+  packages = ["."]
+  revision = "8e4aba63da9fc5571e01c6a45dc809a58cbc5a68"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -264,6 +297,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "26b24c28c62e7a25ca824e6fedda8b2f8bf1475904c21297a6f7138b92431271"
+  inputs-digest = "30b4a7b08603c22b1026db94f56dc7f98d5c8c347524876a6c6b4d8121ac2185"
   solver-name = "gps-cdcl"
   solver-version = 1
