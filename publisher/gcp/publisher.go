@@ -112,11 +112,6 @@ func NewEventPublisher(projectID, appID string) (*EventPublisher, error) {
 	return b, nil
 }
 
-// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
-func (b *EventPublisher) HandlerType() eh.EventHandlerType {
-	return "GCPEventPublisher"
-}
-
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventPublisher interface.
 func (b *EventPublisher) HandleEvent(ctx context.Context, event eh.Event) error {
 	gcpEvent := gcpEvent{

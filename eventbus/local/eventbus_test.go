@@ -42,7 +42,7 @@ func TestEventBus(t *testing.T) {
 	}
 
 	// Add handler.
-	handler := mocks.NewEventHandler("testHandler")
+	handler := mocks.NewEventHandler()
 	func() {
 		defer func() {
 			if r := recover(); r == nil {
@@ -76,7 +76,7 @@ func TestEventBus(t *testing.T) {
 	expectedEvents = []eh.Event{event1, event1}
 
 	// Two handlers for the same event.
-	handler2 := mocks.NewEventHandler("testHandler2")
+	handler2 := mocks.NewEventHandler()
 	bus.AddHandler(eh.MatchEvent(mocks.EventType), handler2)
 	handler.Reset()
 	if err := bus.PublishEvent(ctx, event1); err != nil {

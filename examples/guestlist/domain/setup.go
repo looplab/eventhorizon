@@ -15,7 +15,6 @@
 package domain
 
 import (
-	"context"
 	"log"
 
 	eh "github.com/looplab/eventhorizon"
@@ -51,19 +50,12 @@ func Setup(
 	if err != nil {
 		log.Fatalf("could not create command handler: %s", err)
 	}
-
-	// Create a tiny logging middleware for the command handler.
-	loggingHandler := eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
-		log.Printf("command: %#v", cmd)
-		return invitationHandler.HandleCommand(ctx, cmd)
-	})
-
-	// Create the command bus and register the handler for the commands.
-	commandBus.SetHandler(loggingHandler, CreateInviteCommand)
-	commandBus.SetHandler(loggingHandler, AcceptInviteCommand)
-	commandBus.SetHandler(loggingHandler, DeclineInviteCommand)
-	commandBus.SetHandler(loggingHandler, ConfirmInviteCommand)
-	commandBus.SetHandler(loggingHandler, DenyInviteCommand)
+	commandHandler := eh.UseCommandHandlerMiddleware(invitationHandler, LoggingMiddleware)
+	commandBus.SetHandler(commandHandler, CreateInviteCommand)
+	commandBus.SetHandler(commandHandler, AcceptInviteCommand)
+	commandBus.SetHandler(commandHandler, DeclineInviteCommand)
+	commandBus.SetHandler(commandHandler, ConfirmInviteCommand)
+	commandBus.SetHandler(commandHandler, DenyInviteCommand)
 
 	// Create and register a read model for individual invitations.
 	invitationProjector := projector.NewEventHandler(
@@ -88,6 +80,6 @@ func Setup(
 
 	// Setup the saga that responds to the accepted guests and limits the total
 	// amount of guests, responding with a confirmation or denial.
-	responseSaga := saga.NewEventHandler(NewResponseSaga(2), loggingHandler)
+	responseSaga := saga.NewEventHandler(NewResponseSaga(2), commandBus)
 	eventBus.AddHandler(eh.MatchEvent(InviteAcceptedEvent), responseSaga)
 }

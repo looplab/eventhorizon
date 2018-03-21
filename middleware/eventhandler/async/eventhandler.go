@@ -21,35 +21,21 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// EventHandler is an async event handler middleware. It will run the event in
-// a new go routine and report any errors to the error channel obtained by Errors().
-type EventHandler struct {
-	eh.EventHandler
-	errCh chan Error
-}
-
-// NewEventHandler creates a new EventHandler.
-func NewEventHandler(h eh.EventHandler) *EventHandler {
-	return &EventHandler{
-		EventHandler: h,
-		errCh:        make(chan Error, 20),
-	}
-}
-
-// HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
-	go func() {
-		if err := h.EventHandler.HandleEvent(ctx, event); err != nil {
-			// Always try to deliver errors.
-			h.errCh <- Error{err, ctx, event}
-		}
-	}()
-	return nil
-}
-
-// Errors returns an error channel where async handling errors are sent.
-func (h *EventHandler) Errors() <-chan Error {
-	return h.errCh
+// NewMiddleware returns a new async handling middleware that returns any errors
+// on a error channel.
+func NewMiddleware() (eh.EventHandlerMiddleware, chan Error) {
+	errCh := make(chan Error, 20)
+	return eh.EventHandlerMiddleware(func(h eh.EventHandler) eh.EventHandler {
+		return eh.EventHandlerFunc(func(ctx context.Context, event eh.Event) error {
+			go func() {
+				if err := h.HandleEvent(ctx, event); err != nil {
+					// Always try to deliver errors.
+					errCh <- Error{err, ctx, event}
+				}
+			}()
+			return nil
+		})
+	}), errCh
 }
 
 // Error is an async error containing the error and the event.

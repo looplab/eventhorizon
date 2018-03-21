@@ -189,7 +189,6 @@ func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) erro
 
 // EventHandler is a mocked eventhorizon.EventHandler, useful in testing.
 type EventHandler struct {
-	Type    eh.EventHandlerType
 	Events  []eh.Event
 	Context context.Context
 	Time    time.Time
@@ -201,18 +200,12 @@ type EventHandler struct {
 var _ = eh.EventHandler(&EventHandler{})
 
 // NewEventHandler creates a new EventHandler.
-func NewEventHandler(handlerType eh.EventHandlerType) *EventHandler {
+func NewEventHandler() *EventHandler {
 	return &EventHandler{
-		Type:    handlerType,
 		Events:  []eh.Event{},
 		Context: context.Background(),
 		Recv:    make(chan eh.Event, 10),
 	}
-}
-
-// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
-func (m *EventHandler) HandlerType() eh.EventHandlerType {
-	return m.Type
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
@@ -265,11 +258,6 @@ func NewEventPublisher() *EventPublisher {
 		Recv:      make(chan eh.Event, 10),
 		Observers: []eh.EventObserver{},
 	}
-}
-
-// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
-func (m *EventPublisher) HandlerType() eh.EventHandlerType {
-	return "MockEventPublisher"
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventPublisher interface.
