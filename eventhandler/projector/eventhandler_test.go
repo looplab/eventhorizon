@@ -171,7 +171,9 @@ func TestEventHandler_UpdateModelWithEventsOutOfOrder(t *testing.T) {
 	}
 	go func() {
 		<-time.After(100 * time.Millisecond)
+		repo.Lock()
 		repo.Entity = newEntity
+		repo.Unlock()
 	}()
 	if err := handler.HandleEvent(ctx, event); err != nil {
 		t.Error("there shoud be no error:", err)

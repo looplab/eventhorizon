@@ -43,9 +43,11 @@ func TestEventHandler(t *testing.T) {
 		t.Error("there should not be an error:", err)
 	case <-time.After(time.Millisecond):
 	}
+	inner.RLock()
 	if !reflect.DeepEqual(inner.Events, []eh.Event{event}) {
 		t.Error("the event shoud have been handeled:", inner.Events)
 	}
+	inner.RUnlock()
 
 	// Error handling.
 	inner = mocks.NewEventHandler()

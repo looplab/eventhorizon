@@ -42,7 +42,7 @@ build:
           go get -d golang.org/x/tools/cmd/cover
           go get github.com/modocache/gover
           go get github.com/mattn/goveralls
-          go list -f '{{if len .TestGoFiles}}"go test -tags integration -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
+          go list -f '{{if len .TestGoFiles}}"go test -race -tags integration -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
           gover
           goveralls -coverprofile=gover.coverprofile -service=wercker.com -repotoken=$COVERALLS_TOKEN
           rm $GOOGLE_APPLICATION_CREDENTIALS

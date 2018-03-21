@@ -4,11 +4,11 @@ lint:
 
 .PHONEY: test
 test: run_services
-	PUBSUB_EMULATOR_HOST=localhost:8793 go test $$(go list ./... | grep -v /vendor/)
+	PUBSUB_EMULATOR_HOST=localhost:8793 go test -race $$(go list ./... | grep -v /vendor/)
 
 .PHONEY: test_integration
 test_integration: run_services
-	go test -tags integration $$(go list ./... | grep -v /vendor/)
+	go test -race -tags integration $$(go list ./... | grep -v /vendor/)
 
 .PHONEY: test_wercker
 test_wercker:
