@@ -21,62 +21,51 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// EventBus is an event bus that notifies registered EventHandlers of
-// published events. It will use the SimpleEventHandlingStrategy by default.
+// EventBus is a local event bus that delegates handling of published events
+// to all matching registered handlers, in order of registration.
 type EventBus struct {
-	handlers  map[eh.EventType][]eh.EventHandler
+	handlers  []handler
 	handlerMu sync.RWMutex
-	publisher eh.EventPublisher
+}
+
+type handler struct {
+	m eh.EventMatcher
+	h eh.EventHandler
 }
 
 // NewEventBus creates a EventBus.
 func NewEventBus() *EventBus {
-	return &EventBus{
-		handlers: map[eh.EventType][]eh.EventHandler{},
-	}
+	return &EventBus{}
 }
 
-// HandlerType implements the HandlerType method of the eventhorizon.EventBus interface.
-func (b *EventBus) HandlerType() eh.EventHandlerType {
-	return eh.EventHandlerType("LocalEventBus")
-}
-
-// HandleEvent implements the HandleEvent method of the eventhorizon.EventBus interface.
-func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
+// PublishEvent implements the PublishEvent method of the eventhorizon.EventBus interface.
+func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) error {
 	b.handlerMu.RLock()
 	defer b.handlerMu.RUnlock()
 
-	// Handle the event, if there are no handlers this will be a no-op.
-	for _, h := range b.handlers[event.EventType()] {
-		if err := h.HandleEvent(ctx, event); err != nil {
+	for _, h := range b.handlers {
+		if !h.m(event) {
+			// Ignore events that does not match.
+			continue
+		}
+		if err := h.h.HandleEvent(ctx, event); err != nil {
 			return err
 		}
 	}
 
-	if b.publisher == nil {
-		return nil
-	}
-
-	// Publish the event.
-	return b.publisher.PublishEvent(ctx, event)
+	return nil
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(handler eh.EventHandler, eventType eh.EventType) {
+func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) {
+	if m == nil {
+		panic("eventhorizon: matcher can't be nil")
+	}
+	if h == nil {
+		panic("eventhorizon: handler can't be nil")
+	}
+
 	b.handlerMu.Lock()
 	defer b.handlerMu.Unlock()
-
-	// Add the handler for the event type (if not added).
-	for _, h := range b.handlers[eventType] {
-		if handler == h {
-			return
-		}
-	}
-	b.handlers[eventType] = append(b.handlers[eventType], handler)
-}
-
-// SetPublisher implements the SetPublisher method of the
-// eventhorizon.EventBus interface.
-func (b *EventBus) SetPublisher(publisher eh.EventPublisher) {
-	b.publisher = publisher
+	b.handlers = append(b.handlers, handler{m, h})
 }

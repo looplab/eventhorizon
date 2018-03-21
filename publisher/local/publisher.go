@@ -21,6 +21,8 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
+var _ = eh.EventPublisher(&EventPublisher{})
+
 // EventPublisher is an event publisher that notifies registered EventHandlers
 // of published events. It will use the SimpleEventHandlingStrategy by default.
 type EventPublisher struct {
@@ -36,9 +38,14 @@ func NewEventPublisher() *EventPublisher {
 	return b
 }
 
-// PublishEvent implements the PublishEvent method of the eventhorizon.EventPublisher
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (b *EventPublisher) HandlerType() eh.EventHandlerType {
+	return "LocalEventPublisher"
+}
+
+// HandleEvent implements the HandleEvent method of the eventhorizon.EventPublisher
 // interface.
-func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error {
+func (b *EventPublisher) HandleEvent(ctx context.Context, event eh.Event) error {
 	b.observersMu.RLock()
 	defer b.observersMu.RUnlock()
 

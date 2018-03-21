@@ -1,4 +1,4 @@
-// Copyright (c) 2017 - Max Ekman <max@looplab.se>
+// Copyright (c) 2014 - Max Ekman <max@looplab.se>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mocks
+package eventhorizon
 
-import (
-	"context"
-	"testing"
+import "context"
 
-	eh "github.com/looplab/eventhorizon"
-)
+// EventPublisher is a publisher of events to observers.
+type EventPublisher interface {
+	EventHandler
 
-func TestMockContext(t *testing.T) {
-	ctx := WithContextOne(context.Background(), "string")
-	if val, ok := ContextOne(ctx); !ok || val != "string" {
-		t.Error("the context value should exist")
-	}
-	vals := eh.MarshalContext(ctx)
-	ctx = eh.UnmarshalContext(vals)
-	if val, ok := ContextOne(ctx); !ok || val != "string" {
-		t.Error("the context marshalling should work")
-	}
+	// AddObserver adds an observer.
+	AddObserver(EventObserver)
+}
+
+// EventObserver is an observer of events.
+// All observers will receive an event.
+type EventObserver interface {
+	// Notify is notifed about an event.
+	Notify(context.Context, Event)
 }

@@ -24,19 +24,21 @@ import (
 	"github.com/looplab/eventhorizon/commandhandler/bus"
 	"github.com/looplab/eventhorizon/eventhandler/projector"
 	"github.com/looplab/eventhorizon/eventhandler/saga"
+	eventpublisher "github.com/looplab/eventhorizon/publisher/local"
 )
 
 // Setup configures the domain.
 func Setup(
 	eventStore eh.EventStore,
 	eventBus eh.EventBus,
-	eventPublisher eh.EventPublisher,
 	commandBus *bus.CommandHandler,
 	invitationRepo, guestListRepo eh.ReadWriteRepo,
 	eventID eh.UUID) {
 
 	// Add the logger as an observer.
+	eventPublisher := eventpublisher.NewEventPublisher()
 	eventPublisher.AddObserver(&Logger{})
+	eventBus.AddHandler(eh.MatchAny(), eventPublisher)
 
 	// Create the aggregate repository.
 	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)
@@ -67,21 +69,25 @@ func Setup(
 	invitationProjector := projector.NewEventHandler(
 		NewInvitationProjector(), invitationRepo)
 	invitationProjector.SetEntityFactory(func() eh.Entity { return &Invitation{} })
-	eventBus.AddHandler(invitationProjector, InviteCreatedEvent)
-	eventBus.AddHandler(invitationProjector, InviteAcceptedEvent)
-	eventBus.AddHandler(invitationProjector, InviteDeclinedEvent)
-	eventBus.AddHandler(invitationProjector, InviteConfirmedEvent)
-	eventBus.AddHandler(invitationProjector, InviteDeniedEvent)
+	eventBus.AddHandler(eh.MatchAnyEventOf(
+		InviteCreatedEvent,
+		InviteAcceptedEvent,
+		InviteDeclinedEvent,
+		InviteConfirmedEvent,
+		InviteDeniedEvent,
+	), invitationProjector)
 
 	// Create and register a read model for a guest list.
 	guestListProjector := NewGuestListProjector(guestListRepo, eventID)
-	eventBus.AddHandler(guestListProjector, InviteAcceptedEvent)
-	eventBus.AddHandler(guestListProjector, InviteDeclinedEvent)
-	eventBus.AddHandler(guestListProjector, InviteConfirmedEvent)
-	eventBus.AddHandler(guestListProjector, InviteDeniedEvent)
+	eventBus.AddHandler(eh.MatchAnyEventOf(
+		InviteAcceptedEvent,
+		InviteDeclinedEvent,
+		InviteConfirmedEvent,
+		InviteDeniedEvent,
+	), guestListProjector)
 
 	// Setup the saga that responds to the accepted guests and limits the total
 	// amount of guests, responding with a confirmation or denial.
 	responseSaga := saga.NewEventHandler(NewResponseSaga(2), loggingHandler)
-	eventBus.AddHandler(responseSaga, InviteAcceptedEvent)
+	eventBus.AddHandler(eh.MatchEvent(InviteAcceptedEvent), responseSaga)
 }

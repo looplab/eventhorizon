@@ -73,9 +73,11 @@ func NewHandler() (*Handler, error) {
 
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
+
+	// Create an event publisher for the websocket even bus.
 	eventPublisher := eventpublisher.NewEventPublisher()
 	eventPublisher.AddObserver(&Logger{})
-	eventBus.SetPublisher(eventPublisher)
+	eventBus.AddHandler(eh.MatchAny(), eventPublisher)
 
 	// Create the aggregate repository.
 	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)
@@ -106,12 +108,14 @@ func NewHandler() (*Handler, error) {
 	// Create the read model projector.
 	projector := projector.NewEventHandler(&domain.Projector{}, todoRepo)
 	projector.SetEntityFactory(func() eh.Entity { return &domain.TodoList{} })
-	eventBus.AddHandler(projector, domain.Created)
-	eventBus.AddHandler(projector, domain.Deleted)
-	eventBus.AddHandler(projector, domain.ItemAdded)
-	eventBus.AddHandler(projector, domain.ItemRemoved)
-	eventBus.AddHandler(projector, domain.ItemDescriptionSet)
-	eventBus.AddHandler(projector, domain.ItemChecked)
+	eventBus.AddHandler(eh.MatchAnyEventOf(
+		domain.Created,
+		domain.Deleted,
+		domain.ItemAdded,
+		domain.ItemRemoved,
+		domain.ItemDescriptionSet,
+		domain.ItemChecked,
+	), projector)
 
 	// Handle the API.
 	h := http.NewServeMux()

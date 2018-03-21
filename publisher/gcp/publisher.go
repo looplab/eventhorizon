@@ -34,6 +34,8 @@ var ErrCouldNotMarshalEvent = errors.New("could not marshal event")
 // ErrCouldNotUnmarshalEvent is when an event could not be unmarshaled into a concrete type.
 var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
 
+var _ = eh.EventPublisher(&EventPublisher{})
+
 // EventPublisher is an event bus that notifies registered EventHandlers of
 // published events. It will use the SimpleEventHandlingStrategy by default.
 type EventPublisher struct {
@@ -110,8 +112,13 @@ func NewEventPublisher(projectID, appID string) (*EventPublisher, error) {
 	return b, nil
 }
 
-// PublishEvent implements the PublishEvent method of the eventhorizon.EventPublisher interface.
-func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error {
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (b *EventPublisher) HandlerType() eh.EventHandlerType {
+	return "GCPEventPublisher"
+}
+
+// HandleEvent implements the HandleEvent method of the eventhorizon.EventPublisher interface.
+func (b *EventPublisher) HandleEvent(ctx context.Context, event eh.Event) error {
 	gcpEvent := gcpEvent{
 		AggregateID:   event.AggregateID(),
 		AggregateType: event.AggregateType(),
@@ -202,7 +209,7 @@ func (b *EventPublisher) handleMessage(ctx context.Context, msg *pubsub.Message)
 	ctx = eh.UnmarshalContext(gcpEvent.Context)
 
 	// Notify all observers about the event.
-	if err := b.EventPublisher.PublishEvent(ctx, event); err != nil {
+	if err := b.EventPublisher.HandleEvent(ctx, event); err != nil {
 		msg.Nack()
 		b.errCh <- Error{Ctx: ctx, Err: err, Event: event}
 		return
