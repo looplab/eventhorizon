@@ -36,6 +36,8 @@ var ErrCouldNotMarshalEvent = errors.New("could not marshal event")
 // ErrCouldNotUnmarshalEvent is when an event could not be unmarshaled into a concrete type.
 var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
 
+var _ = eh.EventPublisher(&EventPublisher{})
+
 // EventPublisher is an event bus that notifies registered EventHandlers of
 // published events. It will use the SimpleEventHandlingStrategy by default.
 type EventPublisher struct {
@@ -109,8 +111,14 @@ func NewEventPublisherWithPool(appID string, pool *redis.Pool) (*EventPublisher,
 	return b, nil
 }
 
-// PublishEvent publishes an event to all handlers capable of handling it.
-func (b *EventPublisher) PublishEvent(ctx context.Context, event eh.Event) error {
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (b *EventPublisher) HandlerType() eh.EventHandlerType {
+	return "RedisEventPublisher"
+}
+
+// HandleEvent implements the HandleEvent method of the eventhorizon.EventPublisher
+// interface.
+func (b *EventPublisher) HandleEvent(ctx context.Context, event eh.Event) error {
 	conn := b.pool.Get()
 	defer conn.Close()
 
@@ -248,7 +256,7 @@ func (b *EventPublisher) handleMessage(msg redis.PMessage) error {
 	ctx := eh.UnmarshalContext(redisEvent.Context)
 
 	// Notify all observers about the event.
-	return b.EventPublisher.PublishEvent(ctx, event)
+	return b.EventPublisher.HandleEvent(ctx, event)
 }
 
 // redisEvent is the internal event used with the Redis event bus.

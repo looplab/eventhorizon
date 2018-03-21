@@ -150,7 +150,7 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 	}
 
 	for _, e := range events {
-		if err := r.bus.HandleEvent(ctx, e); err != nil {
+		if err := r.bus.PublishEvent(ctx, e); err != nil {
 			return err
 		}
 	}

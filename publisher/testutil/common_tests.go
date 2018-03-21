@@ -40,7 +40,7 @@ func EventPublisherCommonTests(t *testing.T, publisher1, publisher2 eh.EventPubl
 	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
 		timestamp,
 		mocks.AggregateType, id, 1)
-	if err := publisher1.PublishEvent(ctx, event1); err != nil {
+	if err := publisher1.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
 	}
 	expectedEvents := []eh.Event{event1}
@@ -70,7 +70,7 @@ func EventPublisherCommonTests(t *testing.T, publisher1, publisher2 eh.EventPubl
 	t.Log("publish another event")
 	event2 := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
 		mocks.AggregateType, id, 2)
-	if err := publisher1.PublishEvent(ctx, event2); err != nil {
+	if err := publisher1.HandleEvent(ctx, event2); err != nil {
 		t.Error("there should be no error:", err)
 	}
 	expectedEvents = []eh.Event{event1, event2}

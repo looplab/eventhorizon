@@ -14,7 +14,9 @@
 
 package eventhorizon
 
-import "context"
+import (
+	"context"
+)
 
 // EventHandler is a handler of events.
 // Only one handler of the same type will receive an event.
@@ -33,28 +35,9 @@ type EventHandlerType string
 // EventBus is an event handler that handles events with the correct subhandlers
 // after which it publishes the event using the publisher.
 type EventBus interface {
-	EventHandler
-
-	// AddHandler adds a handler for an event.
-	AddHandler(EventHandler, EventType)
-
-	// SetPublisher sets the publisher to use for publishing the event after all
-	// handlers have been run.
-	SetPublisher(EventPublisher)
-}
-
-// EventPublisher is a publisher of events to observers.
-type EventPublisher interface {
-	// PublishEvent publishes the event to all observers.
 	PublishEvent(context.Context, Event) error
 
-	// AddObserver adds an observer.
-	AddObserver(EventObserver)
-}
-
-// EventObserver is an observer of events.
-// All observers will receive an event.
-type EventObserver interface {
-	// Notify is notifed about an event.
-	Notify(context.Context, Event)
+	// AddHandler adds a handler for an event. Panics if either the matcher
+	// or handler is nil.
+	AddHandler(EventMatcher, EventHandler)
 }

@@ -26,7 +26,6 @@ import (
 	"github.com/looplab/eventhorizon/commandhandler/bus"
 	eventbus "github.com/looplab/eventhorizon/eventbus/local"
 	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
-	eventpublisher "github.com/looplab/eventhorizon/publisher/local"
 	repo "github.com/looplab/eventhorizon/repo/mongodb"
 	"github.com/looplab/eventhorizon/repo/version"
 
@@ -51,8 +50,6 @@ func Example() {
 
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
-	eventPublisher := eventpublisher.NewEventPublisher()
-	eventBus.SetPublisher(eventPublisher)
 
 	// Create the command bus.
 	commandBus := bus.NewCommandHandler()
@@ -76,7 +73,6 @@ func Example() {
 	domain.Setup(
 		eventStore,
 		eventBus,
-		eventPublisher,
 		commandBus,
 		invitationVersionRepo, guestListRepo,
 		eventID,
