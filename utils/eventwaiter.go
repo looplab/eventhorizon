@@ -1,4 +1,4 @@
-// Copyright (c) 2017 - Max Ekman <max@looplab.se>
+// Copyright (c) 2017 - The Event Horizon authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,8 +105,8 @@ func (l *EventListener) Wait(ctx context.Context) (eh.Event, error) {
 }
 
 // Inbox returns the channel that events will be delivered on so that you can integrate into your own select() if needed.
-func (l *EventListener) Inbox() (<-chan eh.Event) {
-    return l.inbox
+func (l *EventListener) Inbox() <-chan eh.Event {
+	return l.inbox
 }
 
 // Close stops listening for more events.
