@@ -1,4 +1,4 @@
-[![wercker status](https://app.wercker.com/status/a696ceaee4d3fc70f9cc505d002d633d/s "wercker status")](https://app.wercker.com/project/bykey/a696ceaee4d3fc70f9cc505d002d633d)
+[![wercker status](https://app.wercker.com/status/a696ceaee4d3fc70f9cc505d002d633d/s/master "wercker status")](https://app.wercker.com/project/byKey/a696ceaee4d3fc70f9cc505d002d633d)
 [![Coverage Status](https://img.shields.io/coveralls/looplab/eventhorizon.svg)](https://coveralls.io/r/looplab/eventhorizon)
 [![GoDoc](https://godoc.org/github.com/looplab/eventhorizon?status.svg)](https://godoc.org/github.com/looplab/eventhorizon)
 [![Go Report Card](https://goreportcard.com/badge/looplab/eventhorizon)](https://goreportcard.com/report/looplab/eventhorizon)
