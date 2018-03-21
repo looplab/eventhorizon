@@ -46,7 +46,7 @@ func TestStaticFiles(t *testing.T) {
 
 func TestGetAll(t *testing.T) {
 	domain.TimeNow = func() time.Time {
-		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
+		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
 	h, err := NewHandler()
@@ -96,7 +96,7 @@ func TestGetAll(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	domain.TimeNow = func() time.Time {
-		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
+		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
 	h, err := NewHandler()
@@ -146,7 +146,7 @@ func TestCreate(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	domain.TimeNow = func() time.Time {
-		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
+		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
 	h, err := NewHandler()
@@ -187,7 +187,7 @@ func TestDelete(t *testing.T) {
 
 func TestAddItem(t *testing.T) {
 	domain.TimeNow = func() time.Time {
-		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
+		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
 	h, err := NewHandler()
@@ -248,7 +248,7 @@ func TestAddItem(t *testing.T) {
 
 func TestRemoveItem(t *testing.T) {
 	domain.TimeNow = func() time.Time {
-		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
+		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
 	h, err := NewHandler()
@@ -310,7 +310,7 @@ func TestRemoveItem(t *testing.T) {
 
 func TestRemoveCompleted(t *testing.T) {
 	domain.TimeNow = func() time.Time {
-		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
+		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
 	h, err := NewHandler()
@@ -390,7 +390,7 @@ func TestRemoveCompleted(t *testing.T) {
 
 func TestSetItemDesc(t *testing.T) {
 	domain.TimeNow = func() time.Time {
-		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
+		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
 	h, err := NewHandler()
@@ -457,7 +457,7 @@ func TestSetItemDesc(t *testing.T) {
 
 func TestCheckItem(t *testing.T) {
 	domain.TimeNow = func() time.Time {
-		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
+		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
 	h, err := NewHandler()
@@ -535,7 +535,7 @@ func TestCheckItem(t *testing.T) {
 
 func TestCheckAllItems(t *testing.T) {
 	domain.TimeNow = func() time.Time {
-		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
+		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
 	h, err := NewHandler()
