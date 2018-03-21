@@ -3,12 +3,11 @@
 [![GoDoc](https://godoc.org/github.com/looplab/eventhorizon?status.svg)](https://godoc.org/github.com/looplab/eventhorizon)
 [![Go Report Card](https://goreportcard.com/badge/looplab/eventhorizon)](https://goreportcard.com/report/looplab/eventhorizon)
 
-
 # Event Horizon
 
 Event Horizon is a CQRS/ES toolkit for Go.
 
-**Event Horizon is used in at least one production system but may not be considered stable just yet!**
+**NOTE: Event Horizon is used in production systems but the API is not final!**
 
 CQRS stands for Command Query Responsibility Segregation and is a technique where object access (the Query part) and modification (the Command part) are separated from each other. This helps in designing complex data models where the actions can be totally independent from the data output.
 
@@ -18,38 +17,59 @@ Read more about CQRS/ES from one of the major authors/contributors on the subjec
 
 Other material on CQRS/ES:
 
-- http://martinfowler.com/bliki/CQRS.html
-- http://cqrs.nu
-- https://groups.google.com/forum/#!forum/dddcqrs
+* http://martinfowler.com/bliki/CQRS.html
+* http://cqrs.nu
+* https://groups.google.com/forum/#!forum/dddcqrs
 
 Inspired by the following libraries/examples:
 
-- https://github.com/edumentab/cqrs-starter-kit
-- https://github.com/pjvds/go-cqrs
-- http://www.codeproject.com/Articles/555855/Introduction-to-CQRS
-- https://github.com/qandidate-labs/broadway
+* https://github.com/edumentab/cqrs-starter-kit
+* https://github.com/pjvds/go-cqrs
+* http://www.codeproject.com/Articles/555855/Introduction-to-CQRS
+* https://github.com/qandidate-labs/broadway
 
 Suggestions are welcome!
 
-
 # Usage
 
-See the example folder for a basic usage example to get you started.
+See the example folder for a few examples to get you started.
 
+# Storage drivers
 
-# Storage and messaging implementations
+These are the drivers for storage of events and entities.
 
-There are simple in memory implementations of all components in the toolkit (event store, read repository, event bus, command bus). Most of these are meant for testing and development, the command bus (and in some cases the event bus) could however fulfill the needs of a production system.
+### Local / in memory
 
-In addition there is MongoDB implementations of the event store and a simple read repository, and a Redis implementation of the event bus.
+There are simple in memory implementations of an event store and entity repo. These are meant for testing/experimentation.
 
-There is also experimental support for AWS DynamoDB as an event store. Support for a event bus using AWS SQS is also planned but not started.
+### MongoDB
 
+Fairly mature, used in production.
+
+### AWS DynamoDB
+
+Experimental support for AWS DynamoDB as an event store. Not actively developed.
+
+# Messaging drivers
+
+These are the drivers for messaging, currently only publishers.
+
+### Local / in memory
+
+Fully synchrounos. Useful for testing/experimentation.
+
+### Redis
+
+Fairly mature, used in production.
+
+### GCP Cloud Pub/Sub
+
+Experimental driver.
 
 # Get Involved
 
-- Join our [slack channel](https://gophers.slack.com/messages/eventhorizon/) (sign up [here](https://gophersinvite.herokuapp.com/))
-
+* Join our [slack channel](https://gophers.slack.com/messages/eventhorizon/) (sign up [here](https://gophersinvite.herokuapp.com/))
+* Check out the [contribution guidelines](CONTRIBUTING.md)
 
 # License
 
