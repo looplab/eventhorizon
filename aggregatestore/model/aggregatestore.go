@@ -31,16 +31,18 @@ var ErrInvalidAggregate = errors.New("invalid aggregate")
 // loading and saving aggregates.
 type AggregateStore struct {
 	repo eh.ReadWriteRepo
+	bus  eh.EventBus
 }
 
 // NewAggregateStore creates an aggregate store with a read write repo.
-func NewAggregateStore(repo eh.ReadWriteRepo) (*AggregateStore, error) {
+func NewAggregateStore(repo eh.ReadWriteRepo, bus eh.EventBus) (*AggregateStore, error) {
 	if repo == nil {
 		return nil, ErrInvalidRepo
 	}
 
 	d := &AggregateStore{
 		repo: repo,
+		bus:  bus,
 	}
 	return d, nil
 }
@@ -48,7 +50,7 @@ func NewAggregateStore(repo eh.ReadWriteRepo) (*AggregateStore, error) {
 // Load implements the Load method of the eventhorizon.AggregateStore interface.
 func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
 	item, err := r.repo.Find(ctx, id)
-    if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
+	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
 		// Create the aggregate.
 		if item, err = eh.CreateAggregate(aggregateType, id); err != nil {
 			return nil, err
@@ -67,5 +69,18 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 
 // Save implements the Save method of the eventhorizon.AggregateStore interface.
 func (r *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error {
-	return r.repo.Save(ctx, aggregate)
+	if err := r.repo.Save(ctx, aggregate); err != nil {
+		return err
+	}
+
+	// Publish events if supported by the aggregate.
+	if publisher, ok := aggregate.(EventPublisher); ok && r.bus != nil {
+		for _, e := range publisher.EventsToPublish() {
+			if err := r.bus.PublishEvent(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

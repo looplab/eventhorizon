@@ -208,7 +208,7 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 	}
 	agg.err = nil
 
-	// Aggregate error.
+	// Bus error.
 	event1 = agg.StoreEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
 	bus.Err = errors.New("bus error")
 	err = store.Save(ctx, agg)
