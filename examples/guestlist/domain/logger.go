@@ -21,7 +21,15 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// Logger is a simple event handler for logging all events.
+// LoggingMiddleware is a tiny command handle middleware for logging.
+func LoggingMiddleware(h eh.CommandHandler) eh.CommandHandler {
+	return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
+		log.Printf("command: %#v", cmd)
+		return h.HandleCommand(ctx, cmd)
+	})
+}
+
+// Logger is a simple event observer for logging all events.
 type Logger struct{}
 
 // Notify implements the Notify method of the EventObserver interface.

@@ -21,36 +21,21 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// CommandHandler handles commands for different entities in goroutines.
-type CommandHandler struct {
-	eh.CommandHandler
-
-	errCh chan Error
-}
-
-// NewCommandHandler creates a CommandHandler.
-func NewCommandHandler(handler eh.CommandHandler) *CommandHandler {
-	return &CommandHandler{
-		CommandHandler: handler,
-		errCh:          make(chan Error, 20),
-	}
-}
-
-// Errors returns the error channel.
-func (h *CommandHandler) Errors() <-chan Error {
-	return h.errCh
-}
-
-// HandleCommand implements the HandleCommand method of the
-// eventhorizon.CommandHandler interface.
-func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
-	go func() {
-		if err := h.CommandHandler.HandleCommand(ctx, cmd); err != nil {
-			// Always try to deliver errors.
-			h.errCh <- Error{err, ctx, cmd}
-		}
-	}()
-	return nil
+// NewMiddleware returns a new async handling middleware that returns any errors
+// on a error channel.
+func NewMiddleware() (eh.CommandHandlerMiddleware, chan Error) {
+	errCh := make(chan Error, 20)
+	return eh.CommandHandlerMiddleware(func(h eh.CommandHandler) eh.CommandHandler {
+		return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
+			go func() {
+				if err := h.HandleCommand(ctx, cmd); err != nil {
+					// Always try to deliver errors.
+					errCh <- Error{err, ctx, cmd}
+				}
+			}()
+			return nil
+		})
+	}), errCh
 }
 
 // Error is an error containing the error and the command.

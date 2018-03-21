@@ -27,76 +27,80 @@ import (
 )
 
 func TestCommandHandler_Immediate(t *testing.T) {
-	h := &mocks.CommandHandler{}
-	sch := NewCommandHandler(h)
+	inner := &mocks.CommandHandler{}
+	m, _ := NewMiddleware()
+	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
 		ID:      eh.NewUUID(),
 		Content: "content",
 	}
-	if err := sch.HandleCommand(context.Background(), cmd); err != nil {
+	if err := h.HandleCommand(context.Background(), cmd); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(h.Commands, []eh.Command{cmd}) {
-		t.Error("the command should have been handled:", h.Commands)
+	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
+		t.Error("the command should have been handled:", inner.Commands)
 	}
 }
 
 func TestCommandHandler_Delayed(t *testing.T) {
-	h := &mocks.CommandHandler{}
-	sch := NewCommandHandler(h)
+	inner := &mocks.CommandHandler{}
+	m, _ := NewMiddleware()
+	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
 		ID:      eh.NewUUID(),
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
-	if err := sch.HandleCommand(context.Background(), c); err != nil {
+	if err := h.HandleCommand(context.Background(), c); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if len(h.Commands) != 0 {
-		t.Error("the command should not have been handled yet:", h.Commands)
+	if len(inner.Commands) != 0 {
+		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
 	time.Sleep(10 * time.Millisecond)
-	if !reflect.DeepEqual(h.Commands, []eh.Command{c}) {
-		t.Error("the command should have been handled:", h.Commands)
+	if !reflect.DeepEqual(inner.Commands, []eh.Command{c}) {
+		t.Error("the command should have been handled:", inner.Commands)
 	}
 }
 
 func TestCommandHandler_ZeroTime(t *testing.T) {
-	h := &mocks.CommandHandler{}
-	sch := NewCommandHandler(h)
+	inner := &mocks.CommandHandler{}
+	m, _ := NewMiddleware()
+	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
 		ID:      eh.NewUUID(),
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Time{})
-	if err := sch.HandleCommand(context.Background(), c); err != nil {
+	if err := h.HandleCommand(context.Background(), c); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(h.Commands, []eh.Command{c}) {
-		t.Error("the command should have been handled:", h.Commands)
+	if !reflect.DeepEqual(inner.Commands, []eh.Command{c}) {
+		t.Error("the command should have been handled:", inner.Commands)
 	}
 }
 
 func TestCommandHandler_Errors(t *testing.T) {
 	handlerErr := errors.New("handler error")
-	h := &mocks.CommandHandler{
+	inner := &mocks.CommandHandler{
 		Err: handlerErr,
 	}
-	sch := NewCommandHandler(h)
+	m, errCh := NewMiddleware()
+	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
 		ID:      eh.NewUUID(),
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
-	if err := sch.HandleCommand(context.Background(), c); err != nil {
+	if err := h.HandleCommand(context.Background(), c); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if len(h.Commands) != 0 {
-		t.Error("the command should not have been handled yet:", h.Commands)
+	if len(inner.Commands) != 0 {
+		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
 	var err Error
 	select {
-	case err = <-sch.Errors():
+	case err = <-errCh:
 	case <-time.After(10 * time.Millisecond):
 	}
 	if err.Err != handlerErr {
@@ -106,10 +110,11 @@ func TestCommandHandler_Errors(t *testing.T) {
 
 func TestCommandHandler_ContextCanceled(t *testing.T) {
 	handlerErr := errors.New("handler error")
-	h := &mocks.CommandHandler{
+	inner := &mocks.CommandHandler{
 		Err: handlerErr,
 	}
-	sch := NewCommandHandler(h)
+	m, errCh := NewMiddleware()
+	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
 		ID:      eh.NewUUID(),
 		Content: "content",
@@ -117,15 +122,15 @@ func TestCommandHandler_ContextCanceled(t *testing.T) {
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if err := sch.HandleCommand(ctx, c); err != nil {
+	if err := h.HandleCommand(ctx, c); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if len(h.Commands) != 0 {
-		t.Error("the command should not have been handled yet:", h.Commands)
+	if len(inner.Commands) != 0 {
+		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
 	var err Error
 	select {
-	case err = <-sch.Errors():
+	case err = <-errCh:
 	case <-time.After(10 * time.Millisecond):
 	}
 	if err.Err == nil || err.Err.Error() != "context canceled" {
@@ -135,10 +140,11 @@ func TestCommandHandler_ContextCanceled(t *testing.T) {
 
 func TestCommandHandler_ContextDeadline(t *testing.T) {
 	handlerErr := errors.New("handler error")
-	h := &mocks.CommandHandler{
+	inner := &mocks.CommandHandler{
 		Err: handlerErr,
 	}
-	sch := NewCommandHandler(h)
+	m, errCh := NewMiddleware()
+	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
 		ID:      eh.NewUUID(),
 		Content: "content",
@@ -146,15 +152,15 @@ func TestCommandHandler_ContextDeadline(t *testing.T) {
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 	defer cancel()
-	if err := sch.HandleCommand(ctx, c); err != nil {
+	if err := h.HandleCommand(ctx, c); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if len(h.Commands) != 0 {
-		t.Error("the command should not have been handled yet:", h.Commands)
+	if len(inner.Commands) != 0 {
+		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
 	var err Error
 	select {
-	case err = <-sch.Errors():
+	case err = <-errCh:
 	case <-time.After(10 * time.Millisecond):
 	}
 	if err.Err == nil || err.Err.Error() != "context deadline exceeded" {

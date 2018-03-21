@@ -1,4 +1,4 @@
-// Copyright (c) 2018 - Max Ekman <max@looplab.se>
+// Copyright (c) 2017 - Max Ekman <max@looplab.se>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,49 +25,53 @@ import (
 	"github.com/looplab/eventhorizon/mocks"
 )
 
-func TestCommandHandler(t *testing.T) {
-	cmd := mocks.Command{
-		ID:      eh.NewUUID(),
-		Content: "content",
-	}
+func TestEventHandler(t *testing.T) {
+	id := eh.NewUUID()
+	eventData := &mocks.EventData{Content: "event1"}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
+		mocks.AggregateType, id, 1)
 
-	inner := &mocks.CommandHandler{}
-	h := NewCommandHandler(inner)
-	if err := h.HandleCommand(context.Background(), cmd); err != nil {
+	inner := mocks.NewEventHandler()
+	m, errCh := NewMiddleware()
+	h := eh.UseEventHandlerMiddleware(inner, m)
+	if err := h.HandleEvent(context.Background(), event); err != nil {
 		t.Error("there should never be an error:", err)
 	}
 	select {
-	case err := <-h.Errors():
+	case err := <-errCh:
 		t.Error("there should not be an error:", err)
 	case <-time.After(time.Millisecond):
 	}
-	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
-		t.Error("the command shoud have been handeled:", inner.Commands)
+	if !reflect.DeepEqual(inner.Events, []eh.Event{event}) {
+		t.Error("the event shoud have been handeled:", inner.Events)
 	}
 
-	inner = &mocks.CommandHandler{}
-	h = NewCommandHandler(inner)
+	// Error handling.
+	inner = mocks.NewEventHandler()
+	m, errCh = NewMiddleware()
+	h = eh.UseEventHandlerMiddleware(inner, m)
 	handlingErr := errors.New("handling error")
 	inner.Err = handlingErr
 	ctx := context.Background()
-	if err := h.HandleCommand(ctx, cmd); err != nil {
+	if err := h.HandleEvent(ctx, event); err != nil {
 		t.Error("there should never be an error:", err)
 	}
 	select {
-	case err := <-h.Errors():
+	case err := <-errCh:
 		if err.Err != handlingErr {
 			t.Error("the error should be correct:", err.Err)
 		}
 		if err.Ctx != ctx {
 			t.Error("the context should be correct:", err.Ctx)
 		}
-		if err.Command != cmd {
-			t.Error("the command should be correct:", err.Command)
+		if err.Event != event {
+			t.Error("the event should be correct:", err.Event)
 		}
 	case <-time.After(time.Millisecond):
 		t.Error("there should be an error")
 	}
-	if !reflect.DeepEqual(inner.Commands, []eh.Command(nil)) {
-		t.Error("the command shoud not have been handeled:", inner.Commands)
+	if !reflect.DeepEqual(inner.Events, []eh.Event{}) {
+		t.Error("the event shoud not have been handeled:", inner.Events)
 	}
 }

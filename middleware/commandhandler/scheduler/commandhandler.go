@@ -22,53 +22,38 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// CommandHandler handles commands either directly or with a delay on a schedule.
-type CommandHandler struct {
-	eh.CommandHandler
+// NewMiddleware returns a new async handling middleware that returns any errors
+// on a error channel.
+func NewMiddleware() (eh.CommandHandlerMiddleware, chan Error) {
+	errCh := make(chan Error, 20)
+	return eh.CommandHandlerMiddleware(func(h eh.CommandHandler) eh.CommandHandler {
+		return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
+			// Delayed command execution if there is time set.
+			if c, ok := cmd.(Command); ok && !c.ExecuteAt().IsZero() {
+				go func() {
+					t := time.NewTimer(c.ExecuteAt().Sub(time.Now()))
+					defer t.Stop()
 
-	errCh chan Error
-}
+					var err error
+					select {
+					case <-ctx.Done():
+						err = ctx.Err()
+					case <-t.C:
+						err = h.HandleCommand(ctx, cmd)
+					}
 
-// NewCommandHandler creates a CommandHandler.
-func NewCommandHandler(handler eh.CommandHandler) *CommandHandler {
-	return &CommandHandler{
-		CommandHandler: handler,
-		errCh:          make(chan Error, 20),
-	}
-}
-
-// Errors returns the error channel.
-func (h *CommandHandler) Errors() <-chan Error {
-	return h.errCh
-}
-
-// HandleCommand implements the HandleCommand method of the
-// eventhorizon.CommandHandler interface.
-func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
-	// Delayed command execution if there is time set.
-	if c, ok := cmd.(Command); ok && !c.ExecuteAt().IsZero() {
-		go func() {
-			t := time.NewTimer(c.ExecuteAt().Sub(time.Now()))
-			defer t.Stop()
-
-			var err error
-			select {
-			case <-ctx.Done():
-				err = ctx.Err()
-			case <-t.C:
-				err = h.CommandHandler.HandleCommand(ctx, cmd)
+					if err != nil {
+						// Always try to deliver errors.
+						errCh <- Error{err, ctx, cmd}
+					}
+				}()
+				return nil
 			}
 
-			if err != nil {
-				// Always try to deliver errors.
-				h.errCh <- Error{err, ctx, cmd}
-			}
-		}()
-		return nil
-	}
-
-	// Immediate command execution.
-	return h.CommandHandler.HandleCommand(ctx, cmd)
+			// Immediate command execution.
+			return h.HandleCommand(ctx, cmd)
+		})
+	}), errCh
 }
 
 // Command is a scheduled command with an execution time.

@@ -18,20 +18,6 @@ import (
 	"context"
 )
 
-// EventHandler is a handler of events.
-// Only one handler of the same type will receive an event.
-type EventHandler interface {
-	// HandleEvent handles an event.
-	HandleEvent(context.Context, Event) error
-
-	// HandlerType returns the type of the handler.
-	HandlerType() EventHandlerType
-}
-
-// EventHandlerType is the type of an event handler. Used to serve only handle
-// an event by one handler of each type.
-type EventHandlerType string
-
 // EventBus is an event handler that handles events with the correct subhandlers
 // after which it publishes the event using the publisher.
 type EventBus interface {

@@ -65,9 +65,3 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 
 	return nil
 }
-
-// HandlerType implements the HandlerType method of the EventHandler
-// interface.
-func (h *EventHandler) HandlerType() eh.EventHandlerType {
-	return eh.EventHandlerType(h.saga.SagaType())
-}
