@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/garyburd/redigo/redis"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gomodule/redigo/redis"
 	"github.com/jpillora/backoff"
 
 	eh "github.com/looplab/eventhorizon"
@@ -188,7 +188,7 @@ func (b *EventPublisher) recv(delay *backoff.Backoff) error {
 
 	for {
 		switch m := pubSubConn.Receive().(type) {
-		case redis.PMessage:
+		case redis.Message:
 			if err := b.handleMessage(m); err != nil {
 				log.Println("eventpublisher: error publishing:", err)
 			}
@@ -216,7 +216,7 @@ func (b *EventPublisher) recv(delay *backoff.Backoff) error {
 	}
 }
 
-func (b *EventPublisher) handleMessage(msg redis.PMessage) error {
+func (b *EventPublisher) handleMessage(msg redis.Message) error {
 	// Manually decode the raw BSON event.
 	data := bson.Raw{
 		Kind: 3,
