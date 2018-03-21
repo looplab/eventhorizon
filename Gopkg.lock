@@ -57,6 +57,18 @@
   version = "v1.6.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/globalsign/mgo"
+  packages = [
+    ".",
+    "bson",
+    "internal/json",
+    "internal/sasl",
+    "internal/scram"
+  ]
+  revision = "baa28fcb8e7d5dfab92026c0920cb6c9ae72faa2"
+
+[[projects]]
   name = "github.com/go-ini/ini"
   packages = ["."]
   revision = "32e4c1e6bc4e7d0d8451aa6b75200d19e37a536a"
@@ -249,21 +261,9 @@
   revision = "e687fa4e6424368ece6e4fe727cea2c806a0fcb4"
   version = "v1.8.2"
 
-[[projects]]
-  branch = "v2"
-  name = "gopkg.in/mgo.v2"
-  packages = [
-    ".",
-    "bson",
-    "internal/json",
-    "internal/sasl",
-    "internal/scram"
-  ]
-  revision = "3f83fa5005286a7fe593b055f0d7771a7dce4655"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "26b24c28c62e7a25ca824e6fedda8b2f8bf1475904c21297a6f7138b92431271"
+  inputs-digest = "9fdd3c3ded4443f813738b1bc38c8f2e391c6a3a0e106c449d18ad321b188087"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 
-	"gopkg.in/mgo.v2"
+	"github.com/globalsign/mgo"
 
 	eh "github.com/looplab/eventhorizon"
 )

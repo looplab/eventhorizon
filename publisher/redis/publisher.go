@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/globalsign/mgo/bson"
 	"github.com/jpillora/backoff"
-	"gopkg.in/mgo.v2/bson"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/publisher/local"

@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
@@ -82,7 +82,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 	modelCustom := &mocks.Model{
 		ID:        eh.NewUUID(),
 		Content:   "modelCustom",
-		CreatedAt: time.Now().Round(time.Millisecond),
+		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
 	if err := repo.Save(ctx, modelCustom); err != nil {
 		t.Error("there should be no error:", err)

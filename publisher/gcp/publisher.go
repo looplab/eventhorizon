@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/publisher/local"

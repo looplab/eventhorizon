@@ -54,5 +54,5 @@
   name = "golang.org/x/net"
 
 [[constraint]]
-  branch = "v2"
-  name = "gopkg.in/mgo.v2"
+  branch = "master"
+  name = "github.com/globalsign/mgo"
