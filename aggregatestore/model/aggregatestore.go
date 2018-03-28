@@ -75,7 +75,9 @@ func (r *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error
 
 	// Publish events if supported by the aggregate.
 	if publisher, ok := aggregate.(EventPublisher); ok && r.bus != nil {
-		for _, e := range publisher.EventsToPublish() {
+		events := publisher.EventsToPublish()
+		publisher.ClearEvents()
+		for _, e := range events {
 			if err := r.bus.PublishEvent(ctx, e); err != nil {
 				return err
 			}

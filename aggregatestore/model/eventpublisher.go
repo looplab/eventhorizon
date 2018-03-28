@@ -23,6 +23,8 @@ import (
 type EventPublisher interface {
 	// EventsToPublish returns all events to publish.
 	EventsToPublish() []eh.Event
+	// ClearEvents clears all events after a publish.
+	ClearEvents()
 }
 
 // SliceEventPublisher is an EventPublisher using a slice to store events.
@@ -37,4 +39,9 @@ func (a *SliceEventPublisher) PublishEvent(e eh.Event) {
 // EventsToPublish implements the EventsToPublish method of the EventPublisher interface.
 func (a *SliceEventPublisher) EventsToPublish() []eh.Event {
 	return *a
+}
+
+// ClearEvents implements the ClearEvents method of the EventPublisher interface.
+func (a *SliceEventPublisher) ClearEvents() {
+	*a = nil
 }
