@@ -42,10 +42,17 @@
     "private/protocol/xml/xmlutil",
     "service/dynamodb",
     "service/dynamodb/dynamodbattribute",
+    "service/dynamodb/dynamodbiface",
     "service/sts"
   ]
   revision = "ab772a0ae5d958feb51cba2a65eca3911882d791"
   version = "v1.12.49"
+
+[[projects]]
+  name = "github.com/cenkalti/backoff"
+  packages = ["."]
+  revision = "2ea60e5f094469f9e65adb9cd103795b73ae743e"
+  version = "v2.0.0"
 
 [[projects]]
   branch = "master"
@@ -107,6 +114,15 @@
   version = "v1.2.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/guregu/dynamo"
+  packages = [
+    ".",
+    "internal/exprs"
+  ]
+  revision = "e38c48c566f44b8dbaa18ec7c429e43194f7233a"
+
+[[projects]]
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
   revision = "0b12d6b5"
@@ -128,6 +144,33 @@
   name = "github.com/kr/text"
   packages = ["."]
   revision = "7cafcd837844e784b526369c9bce262804aebc60"
+
+[[projects]]
+  name = "github.com/looplab/eventhorizon"
+  packages = [
+    ".",
+    "aggregatestore/events",
+    "commandhandler/aggregate",
+    "commandhandler/bus",
+    "eventbus/local",
+    "eventhandler/projector",
+    "eventhandler/saga",
+    "eventstore/memory",
+    "eventstore/mongodb",
+    "eventstore/testutil",
+    "examples/guestlist/domain",
+    "examples/todomvc/internal/domain",
+    "httputils",
+    "mocks",
+    "publisher/local",
+    "publisher/testutil",
+    "repo/memory",
+    "repo/mongodb",
+    "repo/testutil",
+    "repo/version"
+  ]
+  revision = "f2ab4f859d38b0e7db54255f1a797d2583c87c82"
+  version = "v0.2.0"
 
 [[projects]]
   branch = "master"
@@ -264,6 +307,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d32ce59a7520539566be1b1b0928d65378136c8ba41873d8f85d85afa1db956e"
+  inputs-digest = "0d278b769722bf0d17611621c779b89a040d6d4d1e92e347263aac55d99b0d5e"
   solver-name = "gps-cdcl"
   solver-version = 1

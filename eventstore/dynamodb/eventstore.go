@@ -18,8 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
-	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -27,7 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-
+	"github.com/guregu/dynamo"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -62,9 +60,9 @@ func (c *EventStoreConfig) provideDefaults() {
 	}
 }
 
-// EventStore implements an EventStore for MongoDB.
+// EventStore implements an EventStore for DynamoDB.
 type EventStore struct {
-	service *dynamodb.DynamoDB
+	service *dynamo.DB
 	config  *EventStoreConfig
 }
 
@@ -76,14 +74,15 @@ func NewEventStore(config *EventStoreConfig) (*EventStore, error) {
 		Region:   aws.String(config.Region),
 		Endpoint: aws.String(config.Endpoint),
 	}
-	service := dynamodb.New(session.New(), awsConfig)
 
+	session, err := session.NewSession(awsConfig)
+	db := dynamo.New(session)
 	s := &EventStore{
-		service: service,
+		service: db,
 		config:  config,
 	}
 
-	return s, nil
+	return s, err
 }
 
 // Save implements the Save method of the eventhorizon.EventStore interface.
@@ -97,10 +96,10 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 	// Build all event records, with incrementing versions starting from the
 	// original aggregate version.
-	dbEvents := make([]dbEvent, len(events))
 	aggregateID := events[0].AggregateID()
 	version := originalVersion
-	for i, event := range events {
+	table := s.service.Table(s.tableName(ctx))
+	for _, event := range events {
 		// Only accept events belonging to the same aggregate.
 		if event.AggregateID() != aggregateID {
 			return eh.EventStoreError{
@@ -122,30 +121,13 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if err != nil {
 			return err
 		}
-		dbEvents[i] = *e
 		version++
-	}
 
-	// TODO: Implement atomic version counter for the aggregate.
-	// TODO: Batch write all events.
-	// TODO: Support translating not found to not be an error but an
-	// empty list.
-	for _, dbEvent := range dbEvents {
-		// Marshal and store the event record.
-		item, err := dynamodbattribute.MarshalMap(dbEvent)
-		if err != nil {
-			return eh.EventStoreError{
-				BaseErr:   err,
-				Err:       err,
-				Namespace: eh.NamespaceFromContext(ctx),
-			}
-		}
-		putParams := &dynamodb.PutItemInput{
-			TableName:           aws.String(s.tableName(ctx)),
-			ConditionExpression: aws.String("attribute_not_exists(AggregateID) AND attribute_not_exists(Version)"),
-			Item:                item,
-		}
-		if _, err = s.service.PutItem(putParams); err != nil {
+		// TODO: Implement atomic version counter for the aggregate.
+		// TODO: Batch write all events.
+		// TODO: Support translating not found to not be an error but an
+		// empty list.
+		if err := table.Put(e).If("attribute_not_exists(AggregateID) AND attribute_not_exists(Version)").Run(); err != nil {
 			if err, ok := err.(awserr.RequestFailure); ok && err.Code() == "ConditionalCheckFailedException" {
 				return eh.EventStoreError{
 					BaseErr:   err,
@@ -166,16 +148,13 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
 func (s *EventStore) Load(ctx context.Context, id eh.UUID) ([]eh.Event, error) {
-	params := &dynamodb.QueryInput{
-		TableName:              aws.String(s.tableName(ctx)),
-		KeyConditionExpression: aws.String("AggregateID = :id"),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":id": {S: aws.String(id.String())},
-		},
-		ConsistentRead: aws.Bool(true),
-	}
-	resp, err := s.service.Query(params)
-	if err != nil {
+	table := s.service.Table(s.tableName(ctx))
+
+	var dbEvents []dbEvent
+	err := table.Get("AggregateID", id.String()).Consistent(true).All(&dbEvents)
+	if err, ok := err.(awserr.RequestFailure); ok && err.Code() == "ResourceNotFoundException" {
+		return []eh.Event{}, nil
+	} else if err != nil {
 		return nil, eh.EventStoreError{
 			BaseErr:   err,
 			Err:       err,
@@ -183,38 +162,11 @@ func (s *EventStore) Load(ctx context.Context, id eh.UUID) ([]eh.Event, error) {
 		}
 	}
 
-	if len(resp.Items) == 0 {
-		return []eh.Event{}, nil
-	}
-
-	dbEvents := make([]dbEvent, len(resp.Items))
-	for i, item := range resp.Items {
-		dbEvent := dbEvent{}
-		if err := dynamodbattribute.UnmarshalMap(item, &dbEvent); err != nil {
-			return nil, eh.EventStoreError{
-				BaseErr:   err,
-				Err:       err,
-				Namespace: eh.NamespaceFromContext(ctx),
-			}
-		}
-		dbEvents[i] = dbEvent
-	}
-
 	events := make([]eh.Event, len(dbEvents))
 	for i, dbEvent := range dbEvents {
-		// The UUID is currently stored as a full text representation in the DB.
-		id, err := eh.ParseUUID(dbEvent.AggregateID)
-		if err != nil {
-			return nil, eh.EventStoreError{
-				BaseErr:   err,
-				Err:       err,
-				Namespace: eh.NamespaceFromContext(ctx),
-			}
-		}
-		dbEvent.AggregateID = string(id)
-
 		// Create an event of the correct type.
 		if data, err := eh.CreateEventData(dbEvent.EventType); err == nil {
+			// Manually decode the raw event.
 			if err := dynamodbattribute.UnmarshalMap(dbEvent.RawData, data); err != nil {
 				return nil, eh.EventStoreError{
 					BaseErr:   err,
@@ -223,7 +175,7 @@ func (s *EventStore) Load(ctx context.Context, id eh.UUID) ([]eh.Event, error) {
 				}
 			}
 
-			// Set conrcete event and zero out the decoded event.
+			// Set concrete event and zero out the decoded event.
 			dbEvent.data = data
 			dbEvent.RawData = nil
 		}
@@ -236,25 +188,16 @@ func (s *EventStore) Load(ctx context.Context, id eh.UUID) ([]eh.Event, error) {
 
 // Replace implements the Replace method of the eventhorizon.EventStore interface.
 func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
-	// TODO: Use a more efficient query.
-	params := &dynamodb.QueryInput{
-		TableName:              aws.String(s.tableName(ctx)),
-		KeyConditionExpression: aws.String("AggregateID = :id"),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":id": {S: aws.String(event.AggregateID().String())},
-		},
-		ConsistentRead: aws.Bool(true),
-	}
-	resp, err := s.service.Query(params)
+	table := s.service.Table(s.tableName(ctx))
+
+	count, err := table.Get("AggregateID", event.AggregateID().String()).Consistent(true).Count()
 	if err != nil {
 		return eh.EventStoreError{
 			BaseErr:   err,
 			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
-	}
-
-	if len(resp.Items) == 0 {
+	} else if count == 0 {
 		return eh.ErrAggregateNotFound
 	}
 
@@ -264,21 +207,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 		return err
 	}
 
-	// Marshal and store the event record.
-	item, err := dynamodbattribute.MarshalMap(e)
-	if err != nil {
-		return eh.EventStoreError{
-			BaseErr:   err,
-			Err:       err,
-			Namespace: eh.NamespaceFromContext(ctx),
-		}
-	}
-	putParams := &dynamodb.PutItemInput{
-		TableName:           aws.String(s.tableName(ctx)),
-		ConditionExpression: aws.String("attribute_exists(AggregateID) AND attribute_exists(Version)"),
-		Item:                item,
-	}
-	if _, err = s.service.PutItem(putParams); err != nil {
+	if err := table.Put(e).If("attribute_exists(AggregateID) AND attribute_exists(Version)").Run(); err != nil {
 		if err, ok := err.(awserr.RequestFailure); ok && err.Code() == "ConditionalCheckFailedException" {
 			return eh.ErrInvalidEvent
 		}
@@ -294,16 +223,10 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 
 // RenameEvent implements the RenameEvent method of the eventhorizon.EventStore interface.
 func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) error {
-	// We need to do a full scan to query for non-key values.
-	scanParams := &dynamodb.ScanInput{
-		TableName:        aws.String(s.tableName(ctx)),
-		FilterExpression: aws.String("EventType = :eventType"),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":eventType": {S: aws.String(string(from))},
-		},
-		ConsistentRead: aws.Bool(true),
-	}
-	result, err := s.service.Scan(scanParams)
+	table := s.service.Table(s.tableName(ctx))
+
+	var dbEvents []dbEvent
+	err := table.Scan().Filter("EventType = ?", from).Consistent(true).All(&dbEvents)
 	if err != nil {
 		return eh.EventStoreError{
 			BaseErr:   err,
@@ -312,34 +235,8 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 		}
 	}
 
-	for _, item := range result.Items {
-		dbEvent := dbEvent{}
-		if err := dynamodbattribute.UnmarshalMap(item, &dbEvent); err != nil {
-			return eh.EventStoreError{
-				BaseErr:   err,
-				Err:       err,
-				Namespace: eh.NamespaceFromContext(ctx),
-			}
-		}
-
-		updateParams := &dynamodb.UpdateItemInput{
-			TableName: aws.String(s.tableName(ctx)),
-			Key: map[string]*dynamodb.AttributeValue{
-				"AggregateID": {
-					S: aws.String(dbEvent.AggregateID),
-				},
-				"Version": {
-					N: aws.String(strconv.Itoa(dbEvent.Version)),
-				},
-			},
-			ConditionExpression: aws.String("EventType = :from"),
-			UpdateExpression:    aws.String("set EventType = :to"),
-			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-				":from": {S: aws.String(string(from))},
-				":to":   {S: aws.String(string(to))},
-			},
-		}
-		if _, err := s.service.UpdateItem(updateParams); err != nil {
+	for _, dbEvent := range dbEvents {
+		if err := table.Update("AggregateID", dbEvent.AggregateID).Range("Version", dbEvent.Version).If("EventType = ?", from).Set("EventType", to).Run(); err != nil {
 			return eh.EventStoreError{
 				BaseErr:   err,
 				Err:       err,
@@ -351,60 +248,9 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 	return nil
 }
 
-// CreateTable creates the table if it is not allready existing and correct.
+// CreateTable creates the table if it is not already existing and correct.
 func (s *EventStore) CreateTable(ctx context.Context) error {
-	attributeDefinitions := []*dynamodb.AttributeDefinition{{
-		AttributeName: aws.String("AggregateID"),
-		AttributeType: aws.String("S"),
-	}, {
-		AttributeName: aws.String("Version"),
-		AttributeType: aws.String("N"),
-	}}
-
-	keySchema := []*dynamodb.KeySchemaElement{{
-		AttributeName: aws.String("AggregateID"),
-		KeyType:       aws.String("HASH"),
-	}, {
-		AttributeName: aws.String("Version"),
-		KeyType:       aws.String("RANGE"),
-	}}
-
-	describeParams := &dynamodb.DescribeTableInput{
-		TableName: aws.String(s.tableName(ctx)),
-	}
-	if resp, err := s.service.DescribeTable(describeParams); err != nil {
-		if err, ok := err.(awserr.RequestFailure); !ok || err.Code() != "ResourceNotFoundException" {
-			return err
-		}
-		// Table does not exist, create below.
-	} else {
-		if aws.StringValue(resp.Table.TableStatus) != "ACTIVE" {
-			return errors.New("table is not active")
-		}
-		if !reflect.DeepEqual(resp.Table.AttributeDefinitions, attributeDefinitions) {
-			return errors.New("incorrect attribute definitions")
-		}
-		if !reflect.DeepEqual(resp.Table.KeySchema, keySchema) {
-			return errors.New("incorrect key schema")
-		}
-		// Table exists and is correct.
-		return nil
-	}
-
-	createParams := &dynamodb.CreateTableInput{
-		TableName:            aws.String(s.tableName(ctx)),
-		AttributeDefinitions: attributeDefinitions,
-		KeySchema:            keySchema,
-		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  aws.Int64(1),
-			WriteCapacityUnits: aws.Int64(1),
-		},
-	}
-	if _, err := s.service.CreateTable(createParams); err != nil {
-		return err
-	}
-
-	if err := s.service.WaitUntilTableExists(describeParams); err != nil {
+	if err := s.service.CreateTable(s.tableName(ctx), dbEvent{}).Run(); err != nil {
 		return err
 	}
 
@@ -413,23 +259,13 @@ func (s *EventStore) CreateTable(ctx context.Context) error {
 
 // DeleteTable deletes the event table.
 func (s *EventStore) DeleteTable(ctx context.Context) error {
-	params := &dynamodb.DeleteTableInput{
-		TableName: aws.String(s.tableName(ctx)),
-	}
-	_, err := s.service.DeleteTable(params)
+	table := s.service.Table(s.tableName(ctx))
+	err := table.DeleteTable().Run()
 	if err != nil {
 		if err, ok := err.(awserr.RequestFailure); ok && err.Code() == "ResourceNotFoundException" {
 			return nil
 		}
-		// return ErrCouldNotClearDB
-		return err
-	}
-
-	describeParams := &dynamodb.DescribeTableInput{
-		TableName: aws.String(s.tableName(ctx)),
-	}
-	if err := s.service.WaitUntilTableNotExists(describeParams); err != nil {
-		return err
+		return ErrCouldNotClearDB
 	}
 
 	return nil
@@ -442,27 +278,17 @@ func (s *EventStore) tableName(ctx context.Context) string {
 	return s.config.TablePrefix + "_" + ns
 }
 
-// aggregateRecord is the DB representation of an aggregate.
-// TODO: Implement as atomic counter.
-// NOTE: Currently not used.
-type aggregateRecord struct {
-	AggregateID string
-	Version     int
-	Events      []dbEvent
-	// AggregateType        string
-	// Snapshot    bson.Raw
-}
-
 // dbEvent is the internal event record for the DynamoDB event store used
 // to save and load events from the DB.
 type dbEvent struct {
+	AggregateID eh.UUID `dynamo:",hash"`
+	Version     int     `dynamo:",range"`
+
 	EventType     eh.EventType
 	RawData       map[string]*dynamodb.AttributeValue
 	data          eh.EventData
 	Timestamp     time.Time
 	AggregateType eh.AggregateType
-	AggregateID   string
-	Version       int
 }
 
 // newDBEvent returns a new dbEvent for an event.
@@ -486,7 +312,7 @@ func newDBEvent(ctx context.Context, event eh.Event) (*dbEvent, error) {
 		RawData:       rawData,
 		Timestamp:     event.Timestamp(),
 		AggregateType: event.AggregateType(),
-		AggregateID:   event.AggregateID().String(),
+		AggregateID:   event.AggregateID(),
 		Version:       event.Version(),
 	}, nil
 }
@@ -517,7 +343,7 @@ func (e event) AggregateType() eh.AggregateType {
 	return e.dbEvent.AggregateType
 }
 
-// AggrgateID implements the AggrgateID method of the eventhorizon.Event interface.
+// AggregateID implements the AggregateID method of the eventhorizon.Event interface.
 func (e event) AggregateID() eh.UUID {
 	return eh.UUID(e.dbEvent.AggregateID)
 }
