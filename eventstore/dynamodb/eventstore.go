@@ -254,6 +254,13 @@ func (s *EventStore) CreateTable(ctx context.Context) error {
 		return err
 	}
 
+	describeParams := &dynamodb.DescribeTableInput{
+		TableName: aws.String(s.tableName(ctx)),
+	}
+	if err := s.service.Client().WaitUntilTableExists(describeParams); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -266,6 +273,13 @@ func (s *EventStore) DeleteTable(ctx context.Context) error {
 			return nil
 		}
 		return ErrCouldNotClearDB
+	}
+
+	describeParams := &dynamodb.DescribeTableInput{
+		TableName: aws.String(s.tableName(ctx)),
+	}
+	if err := s.service.Client().WaitUntilTableNotExists(describeParams); err != nil {
+		return err
 	}
 
 	return nil
