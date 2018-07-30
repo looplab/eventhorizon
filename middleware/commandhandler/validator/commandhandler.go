@@ -46,3 +46,19 @@ type Command interface {
 	// Validate returns the error when validating the command.
 	Validate() error
 }
+
+// CommandWithValidation returns a wrapped command with a validation method.
+func CommandWithValidation(cmd eh.Command, v func() error) Command {
+	return &command{Command: cmd, validate: v}
+}
+
+// private implementation to wrap ordinary commands and add a validation method.
+type command struct {
+	eh.Command
+	validate func() error
+}
+
+// Validate implements the Validate method of the Command interface
+func (c *command) Validate() error {
+	return c.validate()
+}
