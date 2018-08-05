@@ -20,8 +20,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/apterf/eventhorizon/mocks"
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/mocks"
 )
 
 func TestCommandHandler_Immediate(t *testing.T) {
