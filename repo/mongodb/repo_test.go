@@ -30,13 +30,12 @@ import (
 )
 
 func TestReadRepo(t *testing.T) {
-	// Support Wercker testing with MongoDB.
-	host := os.Getenv("MONGO_PORT_27017_TCP_ADDR")
-	port := os.Getenv("MONGO_PORT_27017_TCP_PORT")
+	// Local Mongo testing with Docker
+	url := os.Getenv("MONGO_HOST")
 
-	url := "localhost"
-	if host != "" && port != "" {
-		url = host + ":" + port
+	if url == "" {
+		// Default to localhost
+		url = "localhost:27017"
 	}
 
 	repo, err := NewRepo(url, "test", "mocks.Model")
@@ -175,13 +174,12 @@ func TestRepository(t *testing.T) {
 		t.Error("the parent repository should be nil:", r)
 	}
 
-	// Support Wercker testing with MongoDB.
-	host := os.Getenv("MONGO_PORT_27017_TCP_ADDR")
-	port := os.Getenv("MONGO_PORT_27017_TCP_PORT")
+	// Local Mongo testing with Docker
+	url := os.Getenv("MONGO_HOST")
 
-	url := "localhost"
-	if host != "" && port != "" {
-		url = host + ":" + port
+	if url == "" {
+		// Default to localhost
+		url = "localhost:27017"
 	}
 
 	repo, err := NewRepo(url, "test", "mocks.Model")

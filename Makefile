@@ -1,33 +1,72 @@
-.PHONEY: cover clean
+PERM_ID ?= `id -u`
 
-test: run_services
-	PUBSUB_EMULATOR_HOST=localhost:8793 go test $$(go list ./... | grep -v /vendor/)
+MKFILE_DIR = $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
+COMPOSE_RUN_GOLANG = docker-compose run --rm golang
+COMPOSE_UP = docker-compose up -d
+COMPOSE_DOWN = docker-compose down
+COMPOSE_PULL = docker-compose pull
 
-test_integration: run_services
-	go test -tags integration $$(go list ./... | grep -v /vendor/)
+deps: dotenv
+	$(COMPOSE_RUN_GOLANG) make _deps
+.PHONY: deps
 
-test_wercker:
-	wercker build
+test: dotenv
+	$(COMPOSE_RUN_GOLANG) make _test
+.PHONY: test
 
-test_cover: clean run_services
-	go list -f '{{if len .TestGoFiles}}"PUBSUB_EMULATOR_HOST=localhost:8793 go test -v -covermode=count -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' $$(go list ./... | grep -v /vendor/) | xargs -L 1 sh -c
+cover: dotenv
+	$(COMPOSE_RUN_GOLANG) make _cover
+.PHONY: cover
+
+dev: dotenv deps
+	$(COMPOSE_PULL)
+	$(COMPOSE_UP)
+.PHONY: dev
+
+clean: dotenv
+	$(COMPOSE_DOWN)
+	@rm -rf .env
+	@find . -name \.coverprofile -type f -delete
+	@rm -f gover.coverprofile
+.PHONY: clean
+
+# replaces .env with DOTENV if the variable is specified
+dotenv:
+ifdef DOTENV
+	cp -f $(DOTENV) .env
+else
+	$(MAKE) .env
+endif
+
+# creates .env from .env.template if it doesn't exist already
+.env:
+	cp -f .env.template .env
+	@echo "PERM_ID=$(PERM_ID)" >> .env
+
+# Helpers
+shellGo: dotenv
+	$(COMPOSE_RUN_GOLANG) /bin/bash
+.PHONY: shellGo
+
+####################################################
+# Internal targets
+####################################################
+
+_deps:
+	dep ensure -v -vendor-only
+	$(call fixPermissions)
+
+_test:
+	go list -f '{{if len .TestGoFiles}}"GOCACHE=off go test -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
+
+_cover:
+	go get -d golang.org/x/tools/cmd/cover
+	go get github.com/modocache/gover
+	go get github.com/mattn/goveralls
 	gover
+	@goveralls -coverprofile=gover.coverprofile -service=travis-ci -repotoken=$(COVERALLS_TOKEN)
 
-cover:
-	go tool cover -html=gover.coverprofile
-
-run_services:
-	-docker run -d --name mongo -p 27017:27017 mongo:latest
-	-docker run -d --name redis -p 6379:6379 redis:latest
-	-docker run -d --name dynamodb -p 8000:8000 peopleperhour/dynamodb:latest
-	-docker run -d --name gpubsub -p 8793:8793 google/cloud-sdk:latest gcloud beta emulators pubsub start --host-port=0.0.0.0:8793
-
-update_services:
-	docker pull mongo:latest
-	docker pull redis:latest
-	docker pull peopleperhour/dynamodb:latest
-	docker pull google/cloud-sdk:latest
-
-clean:
-	-find . -name \.coverprofile -type f -delete
-	-rm gover.coverprofile
+define fixPermissions
+	chown -R $(PERM_ID) $(MKFILE_DIR)
+	chown -R $(PERM_ID) ${GOPATH}/pkg/dep
+endef
