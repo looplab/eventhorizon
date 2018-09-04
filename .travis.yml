@@ -1,0 +1,24 @@
+sudo: required
+
+language: go
+
+services:
+  - docker
+
+cache:
+  directories:
+    - ${GOPATH}/pkg/dep
+
+jobs:
+  include:
+    - stage: test
+      if: branch != master
+      script:
+        - make deps
+        - make test
+    - stage: cover
+      if: branch = master
+      script:
+        - make deps
+        - make test
+        - make cover

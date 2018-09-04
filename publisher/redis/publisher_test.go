@@ -22,13 +22,12 @@ import (
 )
 
 func TestEventPublisher(t *testing.T) {
-	// Support Wercker testing with MongoDB.
-	host := os.Getenv("REDIS_PORT_6379_TCP_ADDR")
-	port := os.Getenv("REDIS_PORT_6379_TCP_PORT")
+	// Local Redis testing with Docker
+	url := os.Getenv("REDIS_HOST")
 
-	url := ":6379"
-	if host != "" && port != "" {
-		url = host + ":" + port
+	if url == "" {
+		// Default to localhost
+		url = "localhost:6379"
 	}
 
 	publisher1, err := NewEventPublisher("test", url, "")
