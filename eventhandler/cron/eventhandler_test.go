@@ -15,11 +15,10 @@
 package cron
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
