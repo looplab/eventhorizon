@@ -1,42 +1,45 @@
-version: '3.4'
+version: "3.4"
+
 services:
   golang:
-    image: flemay/golang:1-stretch
-    env_file: .env
+    image: golang:stretch
     depends_on:
       - mongo
       - redis
       - dynamodb
       - gpubsub
     environment:
-      MONGO_HOST: 'mongo:27017'
-      REDIS_HOST: 'redis:6379'
-      DYNAMODB_HOST: 'dynamodb:8000'
-      PUBSUB_EMULATOR_HOST: 'gpubsub:8793'
+      MONGO_HOST: "mongo:27017"
+      REDIS_HOST: "redis:6379"
+      DYNAMODB_HOST: "dynamodb:8000"
+      PUBSUB_EMULATOR_HOST: "gpubsub:8793"
     volumes:
-    - .:/go/src/github.com/looplab/eventhorizon
-    - ${GOPATH}/pkg/dep:/go/pkg/dep # share cache
-    working_dir: /go/src/github.com/looplab/eventhorizon
+      - .:/eventhorizon
+    working_dir: /eventhorizon
+
   mongo:
     image: mongo:latest
     ports:
-      - '27017:27017'
+      - "27017:27017"
+
   redis:
     image: redis:latest
     ports:
-      - '6379:6379'
+      - "6379:6379"
+
   dynamodb:
     image: peopleperhour/dynamodb:latest
     ports:
-      - '8000:8000'
+      - "8000:8000"
+
   gpubsub:
     image: google/cloud-sdk:latest
     ports:
-      - '8793:8793'
+      - "8793:8793"
     entrypoint:
       - gcloud
       - beta
       - emulators
       - pubsub
       - start
-      - '--host-port=0.0.0.0:8793'
+      - "--host-port=0.0.0.0:8793"

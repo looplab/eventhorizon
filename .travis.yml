@@ -1,24 +1,26 @@
-sudo: required
-
 language: go
+
+go:
+  - "1.11"
 
 services:
   - docker
 
 cache:
   directories:
-    - ${GOPATH}/pkg/dep
+    - ${GOPATH}/pkg/mod
 
 jobs:
   include:
     - stage: test
-      if: branch != master
       script:
-        - make deps
         - make test
+      env:
+        - GO111MODULE=on
+
     - stage: cover
-      if: branch = master
+      if: type != pull_request
       script:
-        - make deps
-        - make test
         - make cover
+      env:
+        - GO111MODULE=on

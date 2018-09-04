@@ -66,6 +66,33 @@ Fairly mature, used in production.
 
 Experimental driver.
 
+## Development
+
+To develop Event Horizon you need to have Docker and Docker Compose installed.
+
+To start all needed services and run all tests, simply run make:
+
+```bash
+make
+```
+
+To manualy run the services and stop them:
+
+```bash
+make services
+make stop
+```
+
+When the services are running testing can be done either locally or with Docker:
+
+```bash
+make test
+make test_docker
+go test ./...
+```
+
+The difference between `make test` and `go test ./...` is that `make test` also prints coverage info.
+
 # Get Involved
 
 - Join our [slack channel](https://gophers.slack.com/messages/eventhorizon/) (sign up [here](https://gophersinvite.herokuapp.com/))
