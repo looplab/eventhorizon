@@ -13,6 +13,7 @@ cover: test
 .PHONY: cover
 
 services:
+	docker-compose pull mongo redis dynamodb gpubsub
 	docker-compose up -d mongo redis dynamodb gpubsub
 .PHONY: services
 
