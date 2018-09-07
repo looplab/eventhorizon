@@ -132,6 +132,11 @@ func NewGuestListProjector(repo eh.ReadWriteRepo, eventID eh.UUID) *GuestListPro
 	return p
 }
 
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (p *GuestListProjector) HandlerType() eh.EventHandlerType {
+	return eh.EventHandlerType("GuestListProjector")
+}
+
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
 func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) error {
 	// NOTE: Temp fix because we need to count the guests atomically.

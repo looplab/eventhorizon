@@ -32,7 +32,13 @@ func LoggingMiddleware(h eh.CommandHandler) eh.CommandHandler {
 // Logger is a simple event observer for logging all events.
 type Logger struct{}
 
-// Notify implements the Notify method of the EventObserver interface.
-func (l *Logger) Notify(ctx context.Context, event eh.Event) {
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (l *Logger) HandlerType() eh.EventHandlerType {
+	return "logger"
+}
+
+// HandleEvent implements the HandleEvent method of the EventHandler interface.
+func (l *Logger) HandleEvent(ctx context.Context, event eh.Event) error {
 	log.Println("event:", event)
+	return nil
 }

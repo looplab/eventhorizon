@@ -21,6 +21,14 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
+// EventHandler is a CQRS saga handler to run a Saga implementation.
+type EventHandler struct {
+	saga           Saga
+	commandHandler eh.CommandHandler
+}
+
+var _ = eh.EventHandler(&EventHandler{})
+
 // Saga is an interface for a CQRS saga that listens to events and generate
 // commands. It is used for any long lived transaction and can be used to react
 // on multiple events.
@@ -35,12 +43,6 @@ type Saga interface {
 // Type is the type of a saga, used as its unique identifier.
 type Type string
 
-// EventHandler is a CQRS saga handler to run a Saga implementation.
-type EventHandler struct {
-	saga           Saga
-	commandHandler eh.CommandHandler
-}
-
 // NewEventHandler creates a new EventHandler.
 func NewEventHandler(saga Saga, commandHandler eh.CommandHandler) *EventHandler {
 	return &EventHandler{
@@ -49,7 +51,12 @@ func NewEventHandler(saga Saga, commandHandler eh.CommandHandler) *EventHandler 
 	}
 }
 
-// HandleEvent implements the HandleEvent method of the EventHandler interface.
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (h *EventHandler) HandlerType() eh.EventHandlerType {
+	return eh.EventHandlerType("saga_" + h.saga.SagaType())
+}
+
+// HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	// Run the saga and collect commands.
 	cmds := h.saga.RunSaga(ctx, event)

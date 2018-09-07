@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package waiter
 
 import (
 	"context"
@@ -25,8 +25,8 @@ import (
 	"github.com/looplab/eventhorizon/mocks"
 )
 
-func TestEventWaiter(t *testing.T) {
-	w := NewEventWaiter()
+func TestEventHandler(t *testing.T) {
+	h := NewEventHandler()
 
 	// Event should match when waiting.
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
@@ -35,22 +35,19 @@ func TestEventWaiter(t *testing.T) {
 	)
 	go func() {
 		time.Sleep(time.Millisecond)
-		w.Notify(context.Background(), expectedEvent)
+		h.HandleEvent(context.Background(), expectedEvent)
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	l, err := w.Listen(ctx, func(event eh.Event) bool {
+	l := h.Listen(func(event eh.Event) bool {
 		if event.EventType() == mocks.EventType {
 			return true
 		}
 		return false
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	defer l.Close()
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 	event, err := l.Wait(ctx)
 	if err != nil {
 		t.Error(err)
@@ -64,7 +61,7 @@ func TestEventWaiter(t *testing.T) {
 		mocks.AggregateType, eh.NewUUID(), 1)
 	go func() {
 		time.Sleep(time.Millisecond)
-		w.Notify(context.Background(), otherEvent)
+		h.HandleEvent(context.Background(), otherEvent)
 	}()
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)

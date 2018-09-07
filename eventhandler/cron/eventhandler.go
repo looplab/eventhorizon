@@ -32,6 +32,8 @@ type EventHandler struct {
 	errCh    chan error
 }
 
+var _ = eh.EventHandler(&EventHandler{})
+
 // NewEventHandler creates a new EventHandler.
 func NewEventHandler(eventHandler eh.EventHandler) *EventHandler {
 	h := &EventHandler{

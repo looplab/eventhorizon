@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package waiter
 
 import (
 	"context"
@@ -20,73 +20,55 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// EventWaiter waits for certain events to match a criteria.
-type EventWaiter struct {
+// EventHandler waits for certain events to match a criteria.
+type EventHandler struct {
 	inbox      chan eh.Event
 	register   chan *EventListener
 	unregister chan *EventListener
 }
 
-// NewEventWaiter returns a new EventWaiter.
-func NewEventWaiter() *EventWaiter {
-	w := EventWaiter{
+var _ = eh.EventHandler(&EventHandler{})
+
+// NewEventHandler returns a new EventHandler.
+func NewEventHandler() *EventHandler {
+	h := EventHandler{
 		inbox:      make(chan eh.Event, 1),
 		register:   make(chan *EventListener),
 		unregister: make(chan *EventListener),
 	}
-	go w.run()
-	return &w
+	go h.run()
+	return &h
 }
 
-func (w *EventWaiter) run() {
-	listeners := map[eh.UUID]*EventListener{}
-	for {
-		select {
-		case l := <-w.register:
-			listeners[l.id] = l
-		case l := <-w.unregister:
-			// Check for existence to avoid closing channel twice.
-			if _, ok := listeners[l.id]; ok {
-				delete(listeners, l.id)
-				close(l.inbox)
-			}
-		case event := <-w.inbox:
-			for _, l := range listeners {
-				if l.match(event) {
-					select {
-					case l.inbox <- event:
-					default:
-						// Drop any events exceeding the listener buffer.
-					}
-				}
-			}
-		}
-	}
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (h *EventHandler) HandlerType() eh.EventHandlerType {
+	return eh.EventHandlerType("waiter")
 }
 
-// Notify implements the eventhorizon.EventObserver.Notify method which forwards
-// events to the waiters so that they can match the events.
-func (w *EventWaiter) Notify(ctx context.Context, event eh.Event) {
-	w.inbox <- event
+// HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
+// It forwards events to the waiters so that they can match the events.
+func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
+	h.inbox <- event
+	return nil
 }
 
 // Listen waits unil the match function returns true for an event, or the context
 // deadline expires. The match function can be used to filter or otherwise select
 // interesting events by analysing the event data.
-func (w *EventWaiter) Listen(ctx context.Context, match func(eh.Event) bool) (*EventListener, error) {
+func (h *EventHandler) Listen(match func(eh.Event) bool) *EventListener {
 	l := &EventListener{
 		id:         eh.NewUUID(),
 		inbox:      make(chan eh.Event, 1),
 		match:      match,
-		unregister: w.unregister,
+		unregister: h.unregister,
 	}
 	// Register us to the in-flight listeners.
-	w.register <- l
+	h.register <- l
 
-	return l, nil
+	return l
 }
 
-// EventListener receives events from an EventWaiter.
+// EventListener receives events from an EventHandler.
 type EventListener struct {
 	id         eh.UUID
 	inbox      chan eh.Event
@@ -94,7 +76,7 @@ type EventListener struct {
 	unregister chan *EventListener
 }
 
-// Wait waits for the event to arrive.
+// Wait waits for the event to arrive or the context to be cancelled.
 func (l *EventListener) Wait(ctx context.Context) (eh.Event, error) {
 	select {
 	case event := <-l.inbox:
@@ -112,4 +94,30 @@ func (l *EventListener) Inbox() <-chan eh.Event {
 // Close stops listening for more events.
 func (l *EventListener) Close() {
 	l.unregister <- l
+}
+
+func (h *EventHandler) run() {
+	listeners := map[eh.UUID]*EventListener{}
+	for {
+		select {
+		case l := <-h.register:
+			listeners[l.id] = l
+		case l := <-h.unregister:
+			// Check for existence to avoid closing channel twice.
+			if _, ok := listeners[l.id]; ok {
+				delete(listeners, l.id)
+				close(l.inbox)
+			}
+		case event := <-h.inbox:
+			for _, l := range listeners {
+				if l.match == nil || l.match(event) {
+					select {
+					case l.inbox <- event:
+					default:
+						// Drop any events exceeding the listener buffer.
+					}
+				}
+			}
+		}
+	}
 }

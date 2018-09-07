@@ -16,11 +16,19 @@ package eventhorizon
 
 import (
 	"context"
+	"fmt"
 )
 
-// EventHandler is a handler of events.
-// Only one handler of the same type will receive an event.
+// EventHandlerType is the type of an event handler, used as its unique identifier.
+type EventHandlerType string
+
+// EventHandler is a handler of events. If registered on a bus as a handler only
+// one handler of the same type will receive each event. If registered on a bus
+// as an observer all handlers of the same type will receive each event.
 type EventHandler interface {
+	// HandlerType is the type of the handler.
+	HandlerType() EventHandlerType
+
 	// HandleEvent handles an event.
 	HandleEvent(context.Context, Event) error
 }
@@ -31,6 +39,12 @@ type EventHandlerFunc func(context.Context, Event) error
 // HandleEvent implements the HandleEvent method of the EventHandler.
 func (h EventHandlerFunc) HandleEvent(ctx context.Context, e Event) error {
 	return h(ctx, e)
+}
+
+// HandlerType implements the HandlerType method of the EventHandler.
+func (h EventHandlerFunc) HandlerType() EventHandlerType {
+	// Using the memory address as handler type, i.e "handler-func-0x11351a0".
+	return EventHandlerType(fmt.Sprintf("handler-func-%v", h))
 }
 
 // EventHandlerMiddleware is a function that middlewares can implement to be

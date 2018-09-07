@@ -16,6 +16,7 @@ package httputils
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -25,24 +26,31 @@ import (
 
 var upgrader = websocket.Upgrader{} // use default options
 
-// Observer is a simple event handler for observing events.
-type Observer struct {
-	EventCh chan eh.Event
+// EventHandler is a simple event handler for observing events.
+type handler struct {
+	id string
+	ch chan eh.Event
 }
 
-// Notify implements the Notify method of the EventObserver interface.
-func (o *Observer) Notify(ctx context.Context, event eh.Event) {
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (h *handler) HandlerType() eh.EventHandlerType {
+	return eh.EventHandlerType("websocket_" + h.id)
+}
+
+// HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
+func (h *handler) HandleEvent(ctx context.Context, event eh.Event) error {
 	select {
-	case o.EventCh <- event:
+	case h.ch <- event:
 	default:
-		log.Println("missed event:", event)
+		return fmt.Errorf("missed event: %s", event)
 	}
+	return nil
 }
 
 // EventBusHandler is a Websocket handler for eventhorizon.Events. Events will
 // be forwarded to all requests that have been upgraded to websockets.
 // TODO: Send events as JSON.
-func EventBusHandler(eventPublisher eh.EventPublisher) http.Handler {
+func EventBusHandler(eventBus eh.EventBus, m eh.EventMatcher, id string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -51,12 +59,13 @@ func EventBusHandler(eventPublisher eh.EventPublisher) http.Handler {
 		}
 		defer c.Close()
 
-		observer := &Observer{
-			EventCh: make(chan eh.Event, 10),
+		h := &handler{
+			id: id,
+			ch: make(chan eh.Event, 10),
 		}
-		eventPublisher.AddObserver(observer)
+		eventBus.AddObserver(m, h)
 
-		for event := range observer.EventCh {
+		for event := range h.ch {
 			if err := c.WriteMessage(websocket.TextMessage, []byte(event.String())); err != nil {
 				log.Println("write:", err)
 				break

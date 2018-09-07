@@ -30,7 +30,6 @@ import (
 	"github.com/looplab/eventhorizon/eventhandler/projector"
 	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
 	"github.com/looplab/eventhorizon/httputils"
-	eventpublisher "github.com/looplab/eventhorizon/publisher/local"
 	repo "github.com/looplab/eventhorizon/repo/mongodb"
 	"github.com/looplab/eventhorizon/repo/version"
 
@@ -41,6 +40,7 @@ import (
 type Handler struct {
 	http.Handler
 
+	EventBus       eh.EventBus
 	CommandHandler eh.CommandHandler
 	Repo           eh.ReadWriteRepo
 }
@@ -48,9 +48,15 @@ type Handler struct {
 // Logger is a simple event handler for logging all events.
 type Logger struct{}
 
-// Notify implements the Notify method of the EventObserver interface.
-func (l *Logger) Notify(ctx context.Context, event eh.Event) {
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (l *Logger) HandlerType() eh.EventHandlerType {
+	return "logger"
+}
+
+// HandleEvent implements the HandleEvent method of the EventHandler interface.
+func (l *Logger) HandleEvent(ctx context.Context, event eh.Event) error {
 	log.Printf("EVENT %s", event)
+	return nil
 }
 
 // NewHandler sets up the full Event Horizon domain for the TodoMVC app and
@@ -71,12 +77,15 @@ func NewHandler() (*Handler, error) {
 	}
 
 	// Create the event bus that distributes events.
-	eventBus := eventbus.NewEventBus()
+	eventBus := eventbus.NewEventBus(nil)
+	go func() {
+		for e := range eventBus.Errors() {
+			log.Printf("eventbus: %s", e.Error())
+		}
+	}()
 
-	// Create an event publisher for the websocket even bus.
-	eventPublisher := eventpublisher.NewEventPublisher()
-	eventPublisher.AddObserver(&Logger{})
-	eventBus.AddHandler(eh.MatchAny(), eventPublisher)
+	// Add a logger as an observer.
+	eventBus.AddObserver(eh.MatchAny(), &Logger{})
 
 	// Create the aggregate repository.
 	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)
@@ -85,16 +94,19 @@ func NewHandler() (*Handler, error) {
 	}
 
 	// Create the aggregate command handler.
-	commandHandler, err := aggregate.NewCommandHandler(domain.AggregateType, aggregateStore)
+	aggregateCommandHandler, err := aggregate.NewCommandHandler(domain.AggregateType, aggregateStore)
 	if err != nil {
 		return nil, fmt.Errorf("could not create command handler: %s", err)
 	}
 
 	// Create a tiny logging middleware for the command handler.
-	loggingHandler := eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
-		log.Printf("CMD %#v", cmd)
-		return commandHandler.HandleCommand(ctx, cmd)
-	})
+	commandHandlerLogger := func(h eh.CommandHandler) eh.CommandHandler {
+		return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
+			log.Printf("CMD %#v", cmd)
+			return h.HandleCommand(ctx, cmd)
+		})
+	}
+	commandHandler := eh.UseCommandHandlerMiddleware(aggregateCommandHandler, commandHandlerLogger)
 
 	// Create the repository and wrap in a version repository.
 	repo, err := repo.NewRepo(dbURL, "todomvc", "todos")
@@ -118,16 +130,16 @@ func NewHandler() (*Handler, error) {
 
 	// Handle the API.
 	h := http.NewServeMux()
-	h.Handle("/api/events/", httputils.EventBusHandler(eventPublisher))
+	h.Handle("/api/events/", httputils.EventBusHandler(eventBus, eh.MatchAny(), "any"))
 	h.Handle("/api/todos/", httputils.QueryHandler(todoRepo))
-	h.Handle("/api/todos/create", httputils.CommandHandler(loggingHandler, domain.CreateCommand))
-	h.Handle("/api/todos/delete", httputils.CommandHandler(loggingHandler, domain.DeleteCommand))
-	h.Handle("/api/todos/add_item", httputils.CommandHandler(loggingHandler, domain.AddItemCommand))
-	h.Handle("/api/todos/remove_item", httputils.CommandHandler(loggingHandler, domain.RemoveItemCommand))
-	h.Handle("/api/todos/remove_completed", httputils.CommandHandler(loggingHandler, domain.RemoveCompletedItemsCommand))
-	h.Handle("/api/todos/set_item_desc", httputils.CommandHandler(loggingHandler, domain.SetItemDescriptionCommand))
-	h.Handle("/api/todos/check_item", httputils.CommandHandler(loggingHandler, domain.CheckItemCommand))
-	h.Handle("/api/todos/check_all_items", httputils.CommandHandler(loggingHandler, domain.CheckAllItemsCommand))
+	h.Handle("/api/todos/create", httputils.CommandHandler(commandHandler, domain.CreateCommand))
+	h.Handle("/api/todos/delete", httputils.CommandHandler(commandHandler, domain.DeleteCommand))
+	h.Handle("/api/todos/add_item", httputils.CommandHandler(commandHandler, domain.AddItemCommand))
+	h.Handle("/api/todos/remove_item", httputils.CommandHandler(commandHandler, domain.RemoveItemCommand))
+	h.Handle("/api/todos/remove_completed", httputils.CommandHandler(commandHandler, domain.RemoveCompletedItemsCommand))
+	h.Handle("/api/todos/set_item_desc", httputils.CommandHandler(commandHandler, domain.SetItemDescriptionCommand))
+	h.Handle("/api/todos/check_item", httputils.CommandHandler(commandHandler, domain.CheckItemCommand))
+	h.Handle("/api/todos/check_all_items", httputils.CommandHandler(commandHandler, domain.CheckAllItemsCommand))
 
 	// Proxy to elm-reactor, which must be running. For development.
 	elmReactorURL, err := url.Parse("http://localhost:8000")
@@ -146,15 +158,16 @@ func NewHandler() (*Handler, error) {
 		}
 	})
 
-	// Simple HTTP request logging.
-	logger := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Simple HTTP request logging middleware as final handler.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println(r.Method, r.URL)
 		h.ServeHTTP(w, r)
 	})
 
 	return &Handler{
-		Handler:        logger,
-		CommandHandler: loggingHandler,
+		Handler:        handler,
+		EventBus:       eventBus,
+		CommandHandler: commandHandler,
 		Repo:           todoRepo,
 	}, nil
 }
