@@ -20,24 +20,24 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/repo/testutil"
+	"github.com/looplab/eventhorizon/repo"
 )
 
 func TestReadRepo(t *testing.T) {
-	repo := NewRepo()
-	if repo == nil {
+	r := NewRepo()
+	if r == nil {
 		t.Error("there should be a repository")
 	}
-	if repo.Parent() != nil {
+	if r.Parent() != nil {
 		t.Error("the parent repo should be nil")
 	}
 
 	// Repo with default namespace.
-	testutil.RepoCommonTests(t, context.Background(), repo)
+	repo.AcceptanceTest(t, context.Background(), r)
 
 	// Repo with other namespace
 	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
-	testutil.RepoCommonTests(t, ctx, repo)
+	repo.AcceptanceTest(t, ctx, r)
 
 }
 

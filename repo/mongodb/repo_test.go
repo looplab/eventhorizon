@@ -26,7 +26,7 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/repo/testutil"
+	"github.com/looplab/eventhorizon/repo"
 )
 
 func TestReadRepo(t *testing.T) {
@@ -38,57 +38,57 @@ func TestReadRepo(t *testing.T) {
 		url = "localhost:27017"
 	}
 
-	repo, err := NewRepo(url, "test", "mocks.Model")
+	r, err := NewRepo(url, "test", "mocks.Model")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if repo == nil {
+	if r == nil {
 		t.Error("there should be a repository")
 	}
-	defer repo.Close()
-	repo.SetEntityFactory(func() eh.Entity {
+	defer r.Close()
+	r.SetEntityFactory(func() eh.Entity {
 		return &mocks.Model{}
 	})
-	if repo.Parent() != nil {
+	if r.Parent() != nil {
 		t.Error("the parent repo should be nil")
 	}
 
 	// Repo with default namespace.
 	defer func() {
 		t.Log("clearing default db")
-		if err = repo.Clear(context.Background()); err != nil {
+		if err = r.Clear(context.Background()); err != nil {
 			t.Fatal("there should be no error:", err)
 		}
 	}()
-	testutil.RepoCommonTests(t, context.Background(), repo)
-	extraRepoTests(t, context.Background(), repo)
+	repo.AcceptanceTest(t, context.Background(), r)
+	extraRepoTests(t, context.Background(), r)
 
 	// Repo with other namespace.
 	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
 	defer func() {
 		t.Log("clearing ns db")
-		if err = repo.Clear(ctx); err != nil {
+		if err = r.Clear(ctx); err != nil {
 			t.Fatal("there should be no error:", err)
 		}
 	}()
-	testutil.RepoCommonTests(t, ctx, repo)
-	extraRepoTests(t, ctx, repo)
+	repo.AcceptanceTest(t, ctx, r)
+	extraRepoTests(t, ctx, r)
 
 }
 
-func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
+func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 	// Insert a custom item.
 	modelCustom := &mocks.Model{
 		ID:        eh.NewUUID(),
 		Content:   "modelCustom",
 		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
-	if err := repo.Save(ctx, modelCustom); err != nil {
+	if err := r.Save(ctx, modelCustom); err != nil {
 		t.Error("there should be no error:", err)
 	}
 
 	// FindCustom by content.
-	result, err := repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
+	result, err := r.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		return c.Find(bson.M{"content": "modelCustom"})
 	})
 	if len(result) != 1 {
@@ -99,7 +99,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 	}
 
 	// FindCustom with no query.
-	result, err = repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
+	result, err = r.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		return nil
 	})
 	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != ErrInvalidQuery {
@@ -108,7 +108,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 
 	count := 0
 	// FindCustom with query execution in the callback.
-	_, err = repo.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
+	_, err = r.FindCustom(ctx, func(c *mgo.Collection) *mgo.Query {
 		if count, err = c.Count(); err != nil {
 			t.Error("there should be no error:", err)
 		}
@@ -127,12 +127,12 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 		ID:      eh.NewUUID(),
 		Content: "modelCustom2",
 	}
-	if err := repo.Collection(ctx, func(c *mgo.Collection) error {
+	if err := r.Collection(ctx, func(c *mgo.Collection) error {
 		return c.Insert(modelCustom2)
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	model, err := repo.Find(ctx, modelCustom2.ID)
+	model, err := r.Find(ctx, modelCustom2.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -141,7 +141,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, repo *Repo) {
 	}
 
 	// FindCustomIter by content.
-	iter, err := repo.FindCustomIter(ctx, func(c *mgo.Collection) *mgo.Query {
+	iter, err := r.FindCustomIter(ctx, func(c *mgo.Collection) *mgo.Query {
 		return c.Find(bson.M{"content": "modelCustom"})
 	})
 	if err != nil {

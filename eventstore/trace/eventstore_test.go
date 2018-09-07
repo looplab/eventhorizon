@@ -21,8 +21,8 @@ import (
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/eventstore"
 	"github.com/looplab/eventhorizon/eventstore/memory"
-	"github.com/looplab/eventhorizon/eventstore/testutil"
 	"github.com/looplab/eventhorizon/mocks"
 )
 
@@ -35,7 +35,7 @@ func TestEventStore(t *testing.T) {
 
 	// Run the actual test suite.
 	store.StartTracing()
-	savedEvents := testutil.EventStoreCommonTests(t, context.Background(), store)
+	savedEvents := eventstore.AcceptanceTest(t, context.Background(), store)
 	store.StopTracing()
 
 	trace := store.GetTrace()
