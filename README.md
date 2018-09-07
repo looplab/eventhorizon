@@ -1,4 +1,4 @@
-[![wercker status](https://app.wercker.com/status/a696ceaee4d3fc70f9cc505d002d633d/s/master "wercker status")](https://app.wercker.com/project/byKey/a696ceaee4d3fc70f9cc505d002d633d)
+[![Build Status](https://travis-ci.com/looplab/eventhorizon.svg?branch=master)](https://travis-ci.com/looplab/eventhorizon)
 [![Coverage Status](https://img.shields.io/coveralls/looplab/eventhorizon.svg)](https://coveralls.io/r/looplab/eventhorizon)
 [![GoDoc](https://godoc.org/github.com/looplab/eventhorizon?status.svg)](https://godoc.org/github.com/looplab/eventhorizon)
 [![Go Report Card](https://goreportcard.com/badge/looplab/eventhorizon)](https://goreportcard.com/report/looplab/eventhorizon)
@@ -17,16 +17,16 @@ Read more about CQRS/ES from one of the major authors/contributors on the subjec
 
 Other material on CQRS/ES:
 
-* http://martinfowler.com/bliki/CQRS.html
-* http://cqrs.nu
-* https://groups.google.com/forum/#!forum/dddcqrs
+- http://martinfowler.com/bliki/CQRS.html
+- http://cqrs.nu
+- https://groups.google.com/forum/#!forum/dddcqrs
 
 Inspired by the following libraries/examples:
 
-* https://github.com/edumentab/cqrs-starter-kit
-* https://github.com/pjvds/go-cqrs
-* http://www.codeproject.com/Articles/555855/Introduction-to-CQRS
-* https://github.com/qandidate-labs/broadway
+- https://github.com/edumentab/cqrs-starter-kit
+- https://github.com/pjvds/go-cqrs
+- http://www.codeproject.com/Articles/555855/Introduction-to-CQRS
+- https://github.com/qandidate-labs/broadway
 
 Suggestions are welcome!
 
@@ -66,10 +66,37 @@ Fairly mature, used in production.
 
 Experimental driver.
 
+## Development
+
+To develop Event Horizon you need to have Docker and Docker Compose installed.
+
+To start all needed services and run all tests, simply run make:
+
+```bash
+make
+```
+
+To manualy run the services and stop them:
+
+```bash
+make services
+make stop
+```
+
+When the services are running testing can be done either locally or with Docker:
+
+```bash
+make test
+make test_docker
+go test ./...
+```
+
+The difference between `make test` and `go test ./...` is that `make test` also prints coverage info.
+
 # Get Involved
 
-* Join our [slack channel](https://gophers.slack.com/messages/eventhorizon/) (sign up [here](https://gophersinvite.herokuapp.com/))
-* Check out the [contribution guidelines](CONTRIBUTING.md)
+- Join our [slack channel](https://gophers.slack.com/messages/eventhorizon/) (sign up [here](https://gophersinvite.herokuapp.com/))
+- Check out the [contribution guidelines](CONTRIBUTING.md)
 
 # License
 

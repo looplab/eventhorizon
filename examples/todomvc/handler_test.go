@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -22,11 +23,9 @@ import (
 	"testing"
 	"time"
 
+	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/repo/mongodb"
 
-	"golang.org/x/net/context"
-
-	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/examples/todomvc/internal/domain"
 )
 
