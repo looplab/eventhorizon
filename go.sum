@@ -4,6 +4,8 @@ contrib.go.opencensus.io/exporter/stackdriver v0.6.0 h1:U0FQWsZU3aO8W+BrZc88T8fd
 contrib.go.opencensus.io/exporter/stackdriver v0.6.0/go.mod h1:QeFzMJDAw8TXt5+aRaSuE8l5BwaMIOIlaVkBOPRuMuw=
 github.com/aws/aws-sdk-go v1.15.26 h1:p9fZ5yY1JnB3T0iLQQsLrFY70Pyfft6WcNANHtGOyYc=
 github.com/aws/aws-sdk-go v1.15.26/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZoCYDt7FT0=
+github.com/cenkalti/backoff v2.0.0+incompatible h1:5IIPUHhlnUZbcHQsQou5k1Tn58nJkeJL9U+ig5CHJbY=
+github.com/cenkalti/backoff v2.0.0+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/globalsign/mgo v0.0.0-20180828104044-6f9f54af1356 h1:5bNaeqHyuxTGYlx42mevVN+R0TGdOrwj8MQl0yo1260=
@@ -26,6 +28,10 @@ github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75 h1:f0n1xnMSmBLzVf
 github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75/go.mod h1:g2644b03hfBX9Ov0ZBDgXXens4rxSxmqFBbhvKv2yVA=
 github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=
 github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
+github.com/guregu/dynamo v1.0.0 h1:N/z3OK/SmaUynhSsySZu0s45hvGWIjp4IX2r5Pbgk1Y=
+github.com/guregu/dynamo v1.0.0/go.mod h1:VmV4PHy8bHJm8xhMD00CdejubOf3wVQxXyLLl2NLC9M=
+github.com/guregu/toki v0.0.0-20150128062511-84b1fe56f646 h1:IwycDXXkpJn1uAtjK2FQPbBwbQFdm370+w10yQlV+vQ=
+github.com/guregu/toki v0.0.0-20150128062511-84b1fe56f646/go.mod h1:E0yj9ygA+BGUu2o89xVxH4NOh3kPDgCT6P3MhfN/PVY=
 github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8 h1:12VvqtR6Aowv3l/EQUlocDHW2Cp4G9WJVH7uyH8QFJE=
 github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
 github.com/jpillora/backoff v0.0.0-20170918002102-8eab2debe79d h1:ix3WmphUvN0GDd0DO9MH0v6/5xTv+Xm1bPN+1UJn58k=
