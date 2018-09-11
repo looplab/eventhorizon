@@ -15,39 +15,37 @@
 package gcp
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"testing"
 
-	"github.com/looplab/eventhorizon/publisher/testutil"
+	"github.com/looplab/eventhorizon/eventbus"
 )
 
 func TestEventBus(t *testing.T) {
-	publisher1, err := setUpEventPublisher("test")
-	if err != nil {
-		t.Fatal("there should be no error:", err)
-	}
-	defer publisher1.Close()
-
-	publisher2, err := setUpEventPublisher("test")
-	if err != nil {
-		t.Fatal("there should be no error:", err)
-	}
-	defer publisher2.Close()
-
-	// Wait for subscriptions to be ready.
-	<-publisher1.ready
-	<-publisher2.ready
-
-	testutil.EventPublisherCommonTests(t, publisher1, publisher2)
-}
-
-// setUpEventPublisher is a helper that creates a new GCP publisher for @appID
-func setUpEventPublisher(appID string) (*EventPublisher, error) {
-
 	// Connect to localhost if not running inside docker
 	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
 		os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8793")
 	}
 
-	return NewEventPublisher("test", appID)
+	// Get a random app ID.
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	appID := "app-" + hex.EncodeToString(b)
+
+	bus1, err := NewEventBus("project_id", appID)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	bus2, err := NewEventBus("project_id", appID)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	eventbus.AcceptanceTest(t, bus1, bus2)
+
 }

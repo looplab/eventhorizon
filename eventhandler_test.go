@@ -16,10 +16,29 @@ package eventhorizon
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
 )
+
+func TestEventHandlerFunc(t *testing.T) {
+	events := []Event{}
+	h := EventHandlerFunc(func(ctx context.Context, e Event) error {
+		events = append(events, e)
+		return nil
+	})
+	if h.HandlerType() != EventHandlerType(fmt.Sprintf("handler-func-%v", h)) {
+		t.Error("the handler type should be correct:", h.HandlerType())
+	}
+
+	e := NewEvent("test", nil, time.Now())
+	h.HandleEvent(context.Background(), e)
+	if !reflect.DeepEqual(events, []Event{e}) {
+		t.Error("the events should be correct")
+		t.Log(events)
+	}
+}
 
 func TestEventHandlerMiddleware(t *testing.T) {
 	order := []string{}

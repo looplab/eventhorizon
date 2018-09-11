@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/eventstore/testutil"
+	"github.com/looplab/eventhorizon/eventstore"
 )
 
 func TestEventStore(t *testing.T) {
@@ -77,11 +77,11 @@ func TestEventStore(t *testing.T) {
 	// Run the actual test suite.
 
 	t.Log("event store with default namespace")
-	testutil.EventStoreCommonTests(t, context.Background(), store)
+	eventstore.AcceptanceTest(t, context.Background(), store)
 
 	t.Log("event store with other namespace")
-	testutil.EventStoreCommonTests(t, ctx, store)
+	eventstore.AcceptanceTest(t, ctx, store)
 
 	t.Log("event store maintainer")
-	testutil.EventStoreMaintainerCommonTests(t, context.Background(), store)
+	eventstore.MaintainerAcceptanceTest(t, context.Background(), store)
 }

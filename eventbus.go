@@ -18,12 +18,20 @@ import (
 	"context"
 )
 
-// EventBus is an event handler that handles events with the correct subhandlers
-// after which it publishes the event using the publisher.
+// EventBus sends published events to one of each handler type and all observers.
+// That means that if the same handler is registered on multiple nodes only one
+// of them will receive the event. In contrast all observers registered on multiple
+// nodes will receive the event. Events are not garantued to be handeled or observed
+// in order.
 type EventBus interface {
+	// PublishEvent publishes the event on the bus.
 	PublishEvent(context.Context, Event) error
 
 	// AddHandler adds a handler for an event. Panics if either the matcher
-	// or handler is nil.
+	// or handler is nil or the handler is already added.
 	AddHandler(EventMatcher, EventHandler)
+
+	// AddObserver adds an observer. Panics if the observer is nil or the observer
+	// is already added.
+	AddObserver(EventMatcher, EventHandler)
 }

@@ -22,27 +22,27 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
+	"github.com/looplab/eventhorizon/repo"
 	"github.com/looplab/eventhorizon/repo/memory"
-	"github.com/looplab/eventhorizon/repo/testutil"
 )
 
 func TestReadRepo(t *testing.T) {
 	baseRepo := memory.NewRepo()
-	repo := NewRepo(baseRepo)
-	if repo == nil {
+	r := NewRepo(baseRepo)
+	if r == nil {
 		t.Error("there should be a repository")
 	}
-	if parent := repo.Parent(); parent != baseRepo {
+	if parent := r.Parent(); parent != baseRepo {
 		t.Error("the parent repo should be correct:", parent)
 	}
 
 	// Read repository with default namespace.
-	testutil.RepoCommonTests(t, context.Background(), repo)
+	repo.AcceptanceTest(t, context.Background(), r)
 	extraRepoTests(t, context.Background())
 
 	// Read repository with other namespace.
 	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
-	testutil.RepoCommonTests(t, ctx, repo)
+	repo.AcceptanceTest(t, ctx, r)
 	extraRepoTests(t, ctx)
 
 }
@@ -57,8 +57,8 @@ func extraRepoTests(t *testing.T, ctx context.Context) {
 	baseRepo := &mocks.Repo{
 		Entity: simpleModel,
 	}
-	repo := NewRepo(baseRepo)
-	entity, err := repo.Find(ctx, simpleModel.ID)
+	r := NewRepo(baseRepo)
+	entity, err := r.Find(ctx, simpleModel.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -69,7 +69,7 @@ func extraRepoTests(t *testing.T, ctx context.Context) {
 		t.Error("the item should have been read from the store")
 	}
 	baseRepo.FindCalled = false
-	entity, err = repo.Find(ctx, simpleModel.ID)
+	entity, err = r.Find(ctx, simpleModel.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -84,8 +84,8 @@ func extraRepoTests(t *testing.T, ctx context.Context) {
 	baseRepo = &mocks.Repo{
 		Entities: []eh.Entity{simpleModel},
 	}
-	repo = NewRepo(baseRepo)
-	entities, err := repo.FindAll(ctx)
+	r = NewRepo(baseRepo)
+	entities, err := r.FindAll(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -96,7 +96,7 @@ func extraRepoTests(t *testing.T, ctx context.Context) {
 		t.Error("the item should have been read from the store")
 	}
 	baseRepo.FindCalled = false
-	entity, err = repo.Find(ctx, simpleModel.ID)
+	entity, err = r.Find(ctx, simpleModel.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -111,8 +111,8 @@ func extraRepoTests(t *testing.T, ctx context.Context) {
 	baseRepo = &mocks.Repo{
 		Entity: simpleModel,
 	}
-	repo = NewRepo(baseRepo)
-	entity, err = repo.Find(ctx, simpleModel.ID)
+	r = NewRepo(baseRepo)
+	entity, err = r.Find(ctx, simpleModel.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -122,14 +122,14 @@ func extraRepoTests(t *testing.T, ctx context.Context) {
 	if !baseRepo.FindCalled {
 		t.Error("the item should have been read from the store")
 	}
-	if err := repo.Save(ctx, simpleModel); err != nil {
+	if err := r.Save(ctx, simpleModel); err != nil {
 		t.Error("there should be no error:", err)
 	}
 	if baseRepo.Entity != simpleModel {
 		t.Error("the item should be saved")
 	}
 	baseRepo.FindCalled = false
-	entity, err = repo.Find(ctx, simpleModel.ID)
+	entity, err = r.Find(ctx, simpleModel.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -144,8 +144,8 @@ func extraRepoTests(t *testing.T, ctx context.Context) {
 	baseRepo = &mocks.Repo{
 		Entity: simpleModel,
 	}
-	repo = NewRepo(baseRepo)
-	entity, err = repo.Find(ctx, simpleModel.ID)
+	r = NewRepo(baseRepo)
+	entity, err = r.Find(ctx, simpleModel.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -155,11 +155,11 @@ func extraRepoTests(t *testing.T, ctx context.Context) {
 	if !baseRepo.FindCalled {
 		t.Error("the item should have been read from the store")
 	}
-	if err := repo.Remove(ctx, simpleModel.ID); err != nil {
+	if err := r.Remove(ctx, simpleModel.ID); err != nil {
 		t.Error("there should be no error:", err)
 	}
 	baseRepo.FindCalled = false
-	entity, err = repo.Find(ctx, simpleModel.ID)
+	entity, err = r.Find(ctx, simpleModel.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -174,12 +174,12 @@ func extraRepoTests(t *testing.T, ctx context.Context) {
 	baseRepo = &mocks.Repo{
 		Entity: simpleModel,
 	}
-	repo = NewRepo(baseRepo)
+	r = NewRepo(baseRepo)
 	event := eh.NewEventForAggregate(mocks.EventType, nil,
 		time.Now(), mocks.AggregateType, simpleModel.EntityID(), 1)
-	repo.Notify(ctx, event)
+	r.Notify(ctx, event)
 	baseRepo.FindCalled = false
-	entity, err = repo.Find(ctx, simpleModel.ID)
+	entity, err = r.Find(ctx, simpleModel.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -201,9 +201,9 @@ func TestRepository(t *testing.T) {
 		t.Error("the parent repository should be nil:", r)
 	}
 
-	repo := NewRepo(inner)
-	outer := &mocks.Repo{ParentRepo: repo}
-	if r := Repository(outer); r != repo {
+	r := NewRepo(inner)
+	outer := &mocks.Repo{ParentRepo: r}
+	if r := Repository(outer); r != r {
 		t.Error("the parent repository should be correct:", r)
 	}
 }

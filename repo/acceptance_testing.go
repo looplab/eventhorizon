@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package testutil
+package repo
 
 import (
 	"context"
@@ -24,9 +24,17 @@ import (
 	"github.com/looplab/eventhorizon/mocks"
 )
 
-// RepoCommonTests are test cases that are common to all
-// implementations of projector drivers.
-func RepoCommonTests(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
+// AcceptanceTest is the acceptance test that all implementations of Repo
+// should pass. It should manually be called from a test case in each
+// implementation:
+//
+//   func TestRepo(t *testing.T) {
+//       ctx := context.Background() // Or other when testing namespaces.
+//       store := NewRepo()
+//       repo.AcceptanceTest(t, ctx, store)
+//   }
+//
+func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	// Find non-existing item.
 	entity, err := repo.Find(ctx, eh.NewUUID())
 	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {

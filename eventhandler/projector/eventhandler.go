@@ -21,6 +21,28 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
+// EventHandler is a CQRS projection handler to run a Projector implementation.
+type EventHandler struct {
+	projector Projector
+	repo      eh.ReadWriteRepo
+	factoryFn func() eh.Entity
+}
+
+var _ = eh.EventHandler(&EventHandler{})
+
+// Projector is a projector of events onto models.
+type Projector interface {
+	// Project projects an event onto a model and returns the updated model or
+	// an error.
+	Project(context.Context, eh.Event, eh.Entity) (eh.Entity, error)
+
+	// ProjectorType returns the type of the projector.
+	ProjectorType() Type
+}
+
+// Type is the type of a projector, used as its unique identifier.
+type Type string
+
 // Error is an error in the projector, with the namespace.
 type Error struct {
 	// Err is the error.
@@ -43,26 +65,6 @@ func (e Error) Error() string {
 // ErrModelNotSet is when a model factory is not set on the EventHandler.
 var ErrModelNotSet = errors.New("model not set")
 
-// Projector is a projector of events onto models.
-type Projector interface {
-	// Project projects an event onto a model and returns the updated model or
-	// an error.
-	Project(context.Context, eh.Event, eh.Entity) (eh.Entity, error)
-
-	// ProjectorType returns the type of the projector.
-	ProjectorType() Type
-}
-
-// Type is the type of a projector, used as its unique identifier.
-type Type string
-
-// EventHandler is a CQRS projection handler to run a Projector implementation.
-type EventHandler struct {
-	projector Projector
-	repo      eh.ReadWriteRepo
-	factoryFn func() eh.Entity
-}
-
 // NewEventHandler creates a new EventHandler.
 func NewEventHandler(projector Projector, repo eh.ReadWriteRepo) *EventHandler {
 	return &EventHandler{
@@ -71,7 +73,12 @@ func NewEventHandler(projector Projector, repo eh.ReadWriteRepo) *EventHandler {
 	}
 }
 
-// HandleEvent implements the HandleEvent method of the EventHandler interface.
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (h *EventHandler) HandlerType() eh.EventHandlerType {
+	return eh.EventHandlerType("projector_" + h.projector.ProjectorType())
+}
+
+// HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 // It will try to find the correct version of the model, waiting for it if needed.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	// Get or create the model, trying to use a waiting find with a min version

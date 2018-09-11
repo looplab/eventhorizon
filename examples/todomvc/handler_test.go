@@ -24,6 +24,7 @@ import (
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/eventhandler/waiter"
 	"github.com/looplab/eventhorizon/repo/mongodb"
 
 	"github.com/looplab/eventhorizon/examples/todomvc/internal/domain"
@@ -83,6 +84,13 @@ func TestGetAll(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
+	waiter := waiter.NewEventHandler()
+	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemAdded), waiter)
+	l := waiter.Listen(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	l.Wait(ctx)
+
 	w = httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
@@ -121,6 +129,13 @@ func TestCreate(t *testing.T) {
 	if string(w.Body.Bytes()) != `` {
 		t.Error("the body should be correct:", string(w.Body.Bytes()))
 	}
+
+	waiter := waiter.NewEventHandler()
+	h.EventBus.AddObserver(eh.MatchEvent(domain.Created), waiter)
+	l := waiter.Listen(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	l.Wait(ctx)
 
 	m, err := h.Repo.Find(context.Background(), id)
 	if err != nil {
@@ -219,6 +234,13 @@ func TestAddItem(t *testing.T) {
 		t.Error("the body should be correct:", string(w.Body.Bytes()))
 	}
 
+	waiter := waiter.NewEventHandler()
+	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemAdded), waiter)
+	l := waiter.Listen(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	l.Wait(ctx)
+
 	m, err := h.Repo.Find(context.Background(), id)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -285,6 +307,13 @@ func TestRemoveItem(t *testing.T) {
 	if string(w.Body.Bytes()) != `` {
 		t.Error("the body should be correct:", string(w.Body.Bytes()))
 	}
+
+	waiter := waiter.NewEventHandler()
+	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemRemoved), waiter)
+	l := waiter.Listen(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	l.Wait(ctx)
 
 	m, err := h.Repo.Find(context.Background(), id)
 	if err != nil {
@@ -361,6 +390,15 @@ func TestRemoveCompleted(t *testing.T) {
 		t.Error("the body should be correct:", string(w.Body.Bytes()))
 	}
 
+	waiter := waiter.NewEventHandler()
+	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemRemoved), waiter)
+	l := waiter.Listen(func(e eh.Event) bool {
+		return e.Version() == 5
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	l.Wait(ctx)
+
 	m, err := h.Repo.Find(context.Background(), id)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -427,6 +465,13 @@ func TestSetItemDesc(t *testing.T) {
 	if string(w.Body.Bytes()) != `` {
 		t.Error("the body should be correct:", string(w.Body.Bytes()))
 	}
+
+	waiter := waiter.NewEventHandler()
+	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemDescriptionSet), waiter)
+	l := waiter.Listen(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	l.Wait(ctx)
 
 	m, err := h.Repo.Find(context.Background(), id)
 	if err != nil {
@@ -500,6 +545,13 @@ func TestCheckItem(t *testing.T) {
 	if string(w.Body.Bytes()) != `` {
 		t.Error("the body should be correct:", string(w.Body.Bytes()))
 	}
+
+	waiter := waiter.NewEventHandler()
+	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemChecked), waiter)
+	l := waiter.Listen(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	l.Wait(ctx)
 
 	m, err := h.Repo.Find(context.Background(), id)
 	if err != nil {
@@ -578,6 +630,15 @@ func TestCheckAllItems(t *testing.T) {
 	if string(w.Body.Bytes()) != `` {
 		t.Error("the body should be correct:", string(w.Body.Bytes()))
 	}
+
+	waiter := waiter.NewEventHandler()
+	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemRemoved), waiter)
+	l := waiter.Listen(func(e eh.Event) bool {
+		return e.Version() == 5
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	l.Wait(ctx)
 
 	m, err := h.Repo.Find(context.Background(), id)
 	if err != nil {

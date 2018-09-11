@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package testutil
+package eventstore
 
 import (
 	"context"
@@ -24,9 +24,17 @@ import (
 	"github.com/looplab/eventhorizon/mocks"
 )
 
-// EventStoreCommonTests are test cases that are common to all implementations
-// of event stores.
-func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStore) []eh.Event {
+// AcceptanceTest is the acceptance test that all implementations of EventStore
+// should pass. It should manually be called from a test case in each
+// implementation:
+//
+//   func TestEventStore(t *testing.T) {
+//       ctx := context.Background() // Or other when testing namespaces.
+//       store := NewEventStore()
+//       eventstore.AcceptanceTest(t, ctx, store)
+//   }
+//
+func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh.Event {
 	savedEvents := []eh.Event{}
 
 	ctx = context.WithValue(ctx, "testkey", "testval")
@@ -145,9 +153,17 @@ func EventStoreCommonTests(t *testing.T, ctx context.Context, store eh.EventStor
 	return savedEvents
 }
 
-// EventStoreMaintainerCommonTests are test cases that are common to all implementations
-// of event stores.
-func EventStoreMaintainerCommonTests(t *testing.T, ctx context.Context, store eh.EventStoreMaintainer) {
+// MaintainerAcceptanceTest is the acceptance test that all implementations of
+// EventStoreMaintainer should pass. It should manually be called from a test
+// case in each implementation:
+//
+//   func TestEventStore(t *testing.T) {
+//       ctx := context.Background() // Or other when testing namespaces.
+//       store := NewEventStore()
+//       eventstore.AcceptanceTest(t, ctx, store)
+//   }
+//
+func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStoreMaintainer) {
 	ctx = context.WithValue(ctx, "testkey", "testval")
 
 	t.Log("save some events")

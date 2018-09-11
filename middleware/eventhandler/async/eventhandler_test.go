@@ -32,7 +32,7 @@ func TestEventHandler(t *testing.T) {
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
 		mocks.AggregateType, id, 1)
 
-	inner := mocks.NewEventHandler()
+	inner := mocks.NewEventHandler("test")
 	m, errCh := NewMiddleware()
 	h := eh.UseEventHandlerMiddleware(inner, m)
 	if err := h.HandleEvent(context.Background(), event); err != nil {
@@ -48,7 +48,7 @@ func TestEventHandler(t *testing.T) {
 	}
 
 	// Error handling.
-	inner = mocks.NewEventHandler()
+	inner = mocks.NewEventHandler("test")
 	m, errCh = NewMiddleware()
 	h = eh.UseEventHandlerMiddleware(inner, m)
 	handlingErr := errors.New("handling error")

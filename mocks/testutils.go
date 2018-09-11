@@ -37,3 +37,34 @@ func CompareEvents(e1, e2 eh.Event) error {
 	}
 	return nil
 }
+
+// EqualEvents compares two slices of events.
+func EqualEvents(evts1, evts2 []eh.Event) bool {
+	if len(evts1) != len(evts2) {
+		return false
+	}
+	for i, e1 := range evts1 {
+		e2 := evts2[i]
+
+		if e1.EventType() != e2.EventType() {
+			return false
+		}
+		if !reflect.DeepEqual(e1.Data(), e2.Data()) {
+			return false
+		}
+		if e1.Timestamp() != e2.Timestamp() {
+			return false
+		}
+		if e1.AggregateID() != e2.AggregateID() {
+			return false
+		}
+		if e1.AggregateType() != e2.AggregateType() {
+			return false
+		}
+		if e1.Version() != e2.Version() {
+			return false
+		}
+	}
+
+	return true
+}

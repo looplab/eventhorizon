@@ -48,7 +48,12 @@ func Example() {
 	}
 
 	// Create the event bus that distributes events.
-	eventBus := eventbus.NewEventBus()
+	eventBus := eventbus.NewEventBus(nil)
+	go func() {
+		for e := range eventBus.Errors() {
+			log.Printf("eventbus: %s", e.Error())
+		}
+	}()
 
 	// Create the command bus.
 	commandBus := bus.NewCommandHandler()
