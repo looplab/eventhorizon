@@ -58,10 +58,6 @@ These are the drivers for messaging, currently only publishers.
 
 Fully synchrounos. Useful for testing/experimentation.
 
-### Redis
-
-Fairly mature, used in production.
-
 ### GCP Cloud Pub/Sub
 
 Experimental driver.
