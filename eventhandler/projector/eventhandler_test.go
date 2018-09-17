@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 	"github.com/looplab/eventhorizon/repo/version"
@@ -37,7 +39,7 @@ func TestEventHandler_CreateModel(t *testing.T) {
 	ctx := context.Background()
 
 	// Driver creates entity.
-	id := eh.NewUUID()
+	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
@@ -73,7 +75,7 @@ func TestEventHandler_UpdateModel(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := eh.NewUUID()
+	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
@@ -110,7 +112,7 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := eh.NewUUID()
+	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
@@ -148,7 +150,7 @@ func TestEventHandler_UpdateModelWithEventsOutOfOrder(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := eh.NewUUID()
+	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
@@ -197,7 +199,7 @@ func TestEventHandler_DeleteModel(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := eh.NewUUID()
+	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
@@ -232,7 +234,7 @@ func TestEventHandler_LoadError(t *testing.T) {
 	ctx := context.Background()
 
 	// Driver creates entity.
-	id := eh.NewUUID()
+	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
@@ -259,7 +261,7 @@ func TestEventHandler_SaveError(t *testing.T) {
 	ctx := context.Background()
 
 	// Driver creates entity.
-	id := eh.NewUUID()
+	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
@@ -286,7 +288,7 @@ func TestEventHandler_ProjectError(t *testing.T) {
 	ctx := context.Background()
 
 	// Driver creates entity.
-	id := eh.NewUUID()
+	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,

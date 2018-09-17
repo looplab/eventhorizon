@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/jpillora/backoff"
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -44,7 +45,7 @@ func (r *Repo) Parent() eh.ReadRepo {
 // return an item if its version is at least min version. If a timeout or
 // deadline is set on the context it will repetedly try to get the item until
 // either the version matches or the deadline is reached.
-func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
+func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	// If there is no min version set just return the item as normally.
 	minVersion, ok := eh.MinVersionFromContext(ctx)
 	if !ok || minVersion < 1 {
@@ -82,7 +83,7 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
 }
 
 // findMinVersion finds an item if it has a version and it is at least minVersion.
-func (r *Repo) findMinVersion(ctx context.Context, id eh.UUID, minVersion int) (eh.Entity, error) {
+func (r *Repo) findMinVersion(ctx context.Context, id uuid.UUID, minVersion int) (eh.Entity, error) {
 	entity, err := r.ReadWriteRepo.Find(ctx, id)
 	if err != nil {
 		return nil, err

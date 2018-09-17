@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/kr/pretty"
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -30,7 +31,7 @@ func TestProjector(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
 	}
 
-	id := eh.NewUUID()
+	id := uuid.New()
 	cases := map[string]struct {
 		model         eh.Entity
 		event         eh.Event

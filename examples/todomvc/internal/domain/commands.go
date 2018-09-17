@@ -15,6 +15,7 @@
 package domain
 
 import (
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -62,79 +63,79 @@ var _ = eh.Command(&CheckAllItems{})
 
 // Create creates a new todo list.
 type Create struct {
-	ID eh.UUID `json:"id"`
+	ID uuid.UUID `json:"id"`
 }
 
 func (c *Create) AggregateType() eh.AggregateType { return AggregateType }
-func (c *Create) AggregateID() eh.UUID            { return c.ID }
+func (c *Create) AggregateID() uuid.UUID          { return c.ID }
 func (c *Create) CommandType() eh.CommandType     { return CreateCommand }
 
 // Delete deletes a todo list.
 type Delete struct {
-	ID eh.UUID `json:"id"`
+	ID uuid.UUID `json:"id"`
 }
 
 func (c *Delete) AggregateType() eh.AggregateType { return AggregateType }
-func (c *Delete) AggregateID() eh.UUID            { return c.ID }
+func (c *Delete) AggregateID() uuid.UUID          { return c.ID }
 func (c *Delete) CommandType() eh.CommandType     { return DeleteCommand }
 
 // AddItem adds a todo item.
 type AddItem struct {
-	ID          eh.UUID `json:"id"`
-	Description string  `json:"desc"`
+	ID          uuid.UUID `json:"id"`
+	Description string    `json:"desc"`
 }
 
 func (c *AddItem) AggregateType() eh.AggregateType { return AggregateType }
-func (c *AddItem) AggregateID() eh.UUID            { return c.ID }
+func (c *AddItem) AggregateID() uuid.UUID          { return c.ID }
 func (c *AddItem) CommandType() eh.CommandType     { return AddItemCommand }
 
 // RemoveItem removes a todo item.
 type RemoveItem struct {
-	ID     eh.UUID `json:"id"`
-	ItemID int     `json:"item_id"`
+	ID     uuid.UUID `json:"id"`
+	ItemID int       `json:"item_id"`
 }
 
 func (c *RemoveItem) AggregateType() eh.AggregateType { return AggregateType }
-func (c *RemoveItem) AggregateID() eh.UUID            { return c.ID }
+func (c *RemoveItem) AggregateID() uuid.UUID          { return c.ID }
 func (c *RemoveItem) CommandType() eh.CommandType     { return RemoveItemCommand }
 
 // RemoveCompletedItems removes all completed todo items.
 type RemoveCompletedItems struct {
-	ID eh.UUID `json:"id"`
+	ID uuid.UUID `json:"id"`
 }
 
 func (c *RemoveCompletedItems) AggregateType() eh.AggregateType { return AggregateType }
-func (c *RemoveCompletedItems) AggregateID() eh.UUID            { return c.ID }
+func (c *RemoveCompletedItems) AggregateID() uuid.UUID          { return c.ID }
 func (c *RemoveCompletedItems) CommandType() eh.CommandType     { return RemoveCompletedItemsCommand }
 
 // SetItemDescription sets the description of a todo item.
 type SetItemDescription struct {
-	ID          eh.UUID `json:"id"`
-	ItemID      int     `json:"item_id"`
-	Description string  `json:"desc"`
+	ID          uuid.UUID `json:"id"`
+	ItemID      int       `json:"item_id"`
+	Description string    `json:"desc"`
 }
 
 func (c *SetItemDescription) AggregateType() eh.AggregateType { return AggregateType }
-func (c *SetItemDescription) AggregateID() eh.UUID            { return c.ID }
+func (c *SetItemDescription) AggregateID() uuid.UUID          { return c.ID }
 func (c *SetItemDescription) CommandType() eh.CommandType     { return SetItemDescriptionCommand }
 
 // CheckItem sets the checked status of a todo item.
 type CheckItem struct {
-	ID      eh.UUID `json:"id"`
-	ItemID  int     `json:"item_id"`
-	Checked bool    `json:"checked"`
+	ID      uuid.UUID `json:"id"`
+	ItemID  int       `json:"item_id"`
+	Checked bool      `json:"checked"`
 }
 
 func (c *CheckItem) AggregateType() eh.AggregateType { return AggregateType }
-func (c *CheckItem) AggregateID() eh.UUID            { return c.ID }
+func (c *CheckItem) AggregateID() uuid.UUID          { return c.ID }
 func (c *CheckItem) CommandType() eh.CommandType     { return CheckItemCommand }
 
 // CheckAllItems sets the checked status of all todo items.
 type CheckAllItems struct {
-	ID      eh.UUID `json:"id"`
-	Checked bool    `json:"checked"`
+	ID      uuid.UUID `json:"id"`
+	Checked bool      `json:"checked"`
 }
 
 func (c *CheckAllItems) AggregateType() eh.AggregateType { return AggregateType }
-func (c *CheckAllItems) AggregateID() eh.UUID            { return c.ID }
+func (c *CheckAllItems) AggregateID() uuid.UUID          { return c.ID }
 func (c *CheckAllItems) CommandType() eh.CommandType     { return CheckAllItemsCommand }

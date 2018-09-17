@@ -17,6 +17,7 @@ package domain
 import (
 	"log"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/aggregatestore/events"
 	"github.com/looplab/eventhorizon/commandhandler/aggregate"
@@ -31,7 +32,7 @@ func Setup(
 	eventBus eh.EventBus,
 	commandBus *bus.CommandHandler,
 	invitationRepo, guestListRepo eh.ReadWriteRepo,
-	eventID eh.UUID) {
+	eventID uuid.UUID) {
 
 	// Add a logger as an observer.
 	eventBus.AddObserver(eh.MatchAny(), &Logger{})

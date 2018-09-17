@@ -19,6 +19,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/uuid"
+
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 )
@@ -32,7 +34,7 @@ func TestCommandHandler(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "testkey", "testval")
 
 	t.Log("handle with no handler")
-	cmd := &mocks.Command{ID: eh.NewUUID(), Content: "command1"}
+	cmd := &mocks.Command{ID: uuid.New(), Content: "command1"}
 	err := bus.HandleCommand(ctx, cmd)
 	if err != ErrHandlerNotFound {
 		t.Error("there should be a ErrHandlerNotFound error:", err)

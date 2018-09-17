@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/google/uuid"
 	"github.com/looplab/eventhorizon/eventhandler/saga"
 )
 
@@ -28,7 +29,7 @@ const ResponseSagaType saga.Type = "ResponseSaga"
 // ResponseSaga is a saga that confirmes all accepted invites until a guest
 // limit has been reached.
 type ResponseSaga struct {
-	acceptedGuests   map[eh.UUID]bool
+	acceptedGuests   map[uuid.UUID]bool
 	acceptedGuestsMu sync.RWMutex
 	guestLimit       int
 }
@@ -36,7 +37,7 @@ type ResponseSaga struct {
 // NewResponseSaga returns a new ResponseSage with a guest limit.
 func NewResponseSaga(guestLimit int) *ResponseSaga {
 	return &ResponseSaga{
-		acceptedGuests: map[eh.UUID]bool{},
+		acceptedGuests: map[uuid.UUID]bool{},
 		guestLimit:     guestLimit,
 	}
 }

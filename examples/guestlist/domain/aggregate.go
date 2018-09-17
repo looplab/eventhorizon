@@ -21,11 +21,12 @@ import (
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/google/uuid"
 	"github.com/looplab/eventhorizon/aggregatestore/events"
 )
 
 func init() {
-	eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
+	eh.RegisterAggregate(func(id uuid.UUID) eh.Aggregate {
 		return NewInvitationAggregate(id)
 	})
 }
@@ -54,7 +55,7 @@ type InvitationAggregate struct {
 var _ = eh.Aggregate(&InvitationAggregate{})
 
 // NewInvitationAggregate creates a new InvitationAggregate with an ID.
-func NewInvitationAggregate(id eh.UUID) *InvitationAggregate {
+func NewInvitationAggregate(id uuid.UUID) *InvitationAggregate {
 	return &InvitationAggregate{
 		AggregateBase: events.NewAggregateBase(InvitationAggregateType, id),
 	}

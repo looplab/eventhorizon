@@ -18,6 +18,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -26,19 +27,19 @@ type namespace string
 // Repo implements an in memory repository of read models.
 type Repo struct {
 	// The outer map is with namespace as key, the inner with aggregate ID.
-	db   map[namespace]map[eh.UUID]eh.Entity
+	db   map[namespace]map[uuid.UUID]eh.Entity
 	dbMu sync.RWMutex
 
 	// A list of all item ids, only the order is used.
 	// The outer map is for the namespace.
-	ids map[namespace][]eh.UUID
+	ids map[namespace][]uuid.UUID
 }
 
 // NewRepo creates a new Repo.
 func NewRepo() *Repo {
 	r := &Repo{
-		ids: map[namespace][]eh.UUID{},
-		db:  map[namespace]map[eh.UUID]eh.Entity{},
+		ids: map[namespace][]uuid.UUID{},
+		db:  map[namespace]map[uuid.UUID]eh.Entity{},
 	}
 	return r
 }
@@ -49,7 +50,7 @@ func (r *Repo) Parent() eh.ReadRepo {
 }
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
+func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	ns := r.namespace(ctx)
 
 	r.dbMu.RLock()
@@ -85,7 +86,7 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	ns := r.namespace(ctx)
 
-	if entity.EntityID() == eh.UUID("") {
+	if entity.EntityID() == uuid.Nil {
 		return eh.RepoError{
 			Err:       eh.ErrCouldNotSaveEntity,
 			BaseErr:   eh.ErrMissingEntityID,
@@ -105,7 +106,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 }
 
 // Remove implements the Remove method of the eventhorizon.WriteRepo interface.
-func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
+func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 	ns := r.namespace(ctx)
 
 	r.dbMu.Lock()
@@ -138,8 +139,8 @@ func (r *Repo) namespace(ctx context.Context) namespace {
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
 	if _, ok := r.db[ns]; !ok {
-		r.db[ns] = map[eh.UUID]eh.Entity{}
-		r.ids[ns] = []eh.UUID{}
+		r.db[ns] = map[uuid.UUID]eh.Entity{}
+		r.ids[ns] = []uuid.UUID{}
 	}
 
 	return ns

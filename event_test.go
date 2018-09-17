@@ -18,6 +18,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func TestNewEvent(t *testing.T) {
@@ -39,7 +41,7 @@ func TestNewEvent(t *testing.T) {
 		t.Error("the string representation should be correct:", event.String())
 	}
 
-	id := NewUUID()
+	id := uuid.New()
 	event = NewEventForAggregate(TestEventType, &TestEventData{"event1"}, timestamp,
 		TestAggregateType, id, 3)
 	if event.EventType() != TestEventType {

@@ -20,13 +20,15 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/uuid"
+
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 )
 
 func TestNewCommandHandler(t *testing.T) {
 	store := &mocks.AggregateStore{
-		Aggregates: make(map[eh.UUID]eh.Aggregate),
+		Aggregates: make(map[uuid.UUID]eh.Aggregate),
 	}
 	h, err := NewCommandHandler(mocks.AggregateType, store)
 	if err != nil {
@@ -68,7 +70,7 @@ func TestCommandHandler(t *testing.T) {
 
 func TestCommandHandler_AggregateNotFound(t *testing.T) {
 	store := &mocks.AggregateStore{
-		Aggregates: map[eh.UUID]eh.Aggregate{},
+		Aggregates: map[uuid.UUID]eh.Aggregate{},
 	}
 	h, err := NewCommandHandler(mocks.AggregateType, store)
 	if err != nil {
@@ -79,7 +81,7 @@ func TestCommandHandler_AggregateNotFound(t *testing.T) {
 	}
 
 	cmd := &mocks.Command{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "command1",
 	}
 	err = h.HandleCommand(context.Background(), cmd)
@@ -123,7 +125,7 @@ func TestCommandHandler_NoHandlers(t *testing.T) {
 	_, h, _ := createAggregateAndHandler(t)
 
 	cmd := &mocks.Command{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "command1",
 	}
 	err := h.HandleCommand(context.Background(), cmd)
@@ -133,9 +135,9 @@ func TestCommandHandler_NoHandlers(t *testing.T) {
 }
 
 func BenchmarkCommandHandler(b *testing.B) {
-	a := mocks.NewAggregate(eh.NewUUID())
+	a := mocks.NewAggregate(uuid.New())
 	store := &mocks.AggregateStore{
-		Aggregates: map[eh.UUID]eh.Aggregate{
+		Aggregates: map[uuid.UUID]eh.Aggregate{
 			a.EntityID(): a,
 		},
 	}
@@ -159,9 +161,9 @@ func BenchmarkCommandHandler(b *testing.B) {
 }
 
 func createAggregateAndHandler(t *testing.T) (*mocks.Aggregate, *CommandHandler, *mocks.AggregateStore) {
-	a := mocks.NewAggregate(eh.NewUUID())
+	a := mocks.NewAggregate(uuid.New())
 	store := &mocks.AggregateStore{
-		Aggregates: map[eh.UUID]eh.Aggregate{
+		Aggregates: map[uuid.UUID]eh.Aggregate{
 			a.EntityID(): a,
 		},
 	}
