@@ -35,7 +35,7 @@ import (
 //       eventbus.AcceptanceTest(t, bus1, bus2)
 //   }
 //
-func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus) {
+func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration) {
 	// Panic on nil matcher.
 	func() {
 		defer func() {
@@ -101,7 +101,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus) {
 
 	// Check for correct event in handler 1 or 2.
 	expectedEvents := []eh.Event{event1}
-	if !(handlerBus1.Wait(time.Second) || handlerBus2.Wait(time.Second)) {
+	if !(handlerBus1.Wait(timeout) || handlerBus2.Wait(timeout)) {
 		t.Error("did not receive event in time")
 	}
 	if !(mocks.EqualEvents(handlerBus1.Events, expectedEvents) ||
@@ -133,7 +133,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus) {
 	}
 
 	// Check the other handler.
-	if !anotherHandlerBus2.Wait(time.Second) {
+	if !anotherHandlerBus2.Wait(timeout) {
 		t.Error("did not receive event in time")
 	}
 	if !mocks.EqualEvents(anotherHandlerBus2.Events, expectedEvents) {
@@ -145,7 +145,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus) {
 	}
 
 	// Check observer 1.
-	if !observerBus1.Wait(time.Second) {
+	if !observerBus1.Wait(timeout) {
 		t.Error("did not receive event in time")
 	}
 	for i, event := range observerBus1.Events {
@@ -158,7 +158,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus) {
 	}
 
 	// Check observer 2.
-	if !observerBus2.Wait(time.Second) {
+	if !observerBus2.Wait(timeout) {
 		t.Error("did not receive event in time")
 	}
 	for i, event := range observerBus2.Events {

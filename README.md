@@ -62,6 +62,10 @@ Fully synchrounos. Useful for testing/experimentation.
 
 Experimental driver.
 
+### Kafka
+
+https://github.com/Kistler-Group/eh-kafka
+
 ## Development
 
 To develop Event Horizon you need to have Docker and Docker Compose installed.
