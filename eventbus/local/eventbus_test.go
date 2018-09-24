@@ -16,6 +16,7 @@ package local
 
 import (
 	"testing"
+	"time"
 
 	"github.com/looplab/eventhorizon/eventbus"
 )
@@ -36,6 +37,6 @@ func TestEventBus(t *testing.T) {
 		t.Fatal("there should be a bus")
 	}
 
-	eventbus.AcceptanceTest(t, bus1, bus2)
+	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
 
 }
