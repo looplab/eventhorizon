@@ -144,8 +144,15 @@ func isZero(v reflect.Value) bool {
 		// Types that are not allowed at all.
 		// NOTE: Would be better with its own error for this.
 		return true
-	case reflect.Map, reflect.Array, reflect.Slice:
+	case reflect.Map, reflect.Slice:
 		return v.IsNil()
+	case reflect.Array:
+		for i := 0; i < v.Len(); i++ {
+			if !isZero(v.Index(i)) {
+				return false
+			}
+		}
+		return true
 	case reflect.Interface, reflect.String:
 		z := reflect.Zero(v.Type())
 		return v.Interface() == z.Interface()

@@ -150,6 +150,18 @@ func TestCheckCommand(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
+	// Check all array fields.
+	err = CheckCommand(&TestCommandArray{NewUUID(), [1]string{"string"}, [1]int{0}, [1]struct{ Test string }{struct{ Test string }{"struct"}}})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	// Empty array field.
+	err = CheckCommand(&TestCommandArray{NewUUID(), [1]string{""}, [1]int{0}, [1]struct{ Test string }{struct{ Test string }{"struct"}}})
+	if err == nil || err.Error() != "missing field: StringArray" {
+		t.Error("there should be a missing field error:", err)
+	}
 }
 
 // Mocks for Register/Unregister.
@@ -332,3 +344,18 @@ var _ = Command(TestCommandPrivate{})
 func (t TestCommandPrivate) AggregateID() UUID            { return t.TestID }
 func (t TestCommandPrivate) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandPrivate) CommandType() CommandType     { return CommandType("TestCommandPrivate") }
+
+type TestCommandArray struct {
+	TestID      UUID
+	StringArray [1]string
+	IntArray    [1]int
+	StructArray [1]struct {
+		Test string
+	}
+}
+
+var _ = Command(TestCommandArray{})
+
+func (t TestCommandArray) AggregateID() UUID            { return t.TestID }
+func (t TestCommandArray) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandArray) CommandType() CommandType     { return CommandType("TestCommandArray") }
