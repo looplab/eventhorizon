@@ -182,4 +182,5 @@ func (g *Group) Close() {
 	for _, ch := range g.bus {
 		close(ch)
 	}
+	g.bus = nil
 }
