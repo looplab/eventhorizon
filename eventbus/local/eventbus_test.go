@@ -38,4 +38,8 @@ func TestEventBus(t *testing.T) {
 
 	eventbus.AcceptanceTest(t, bus1, bus2)
 
+	bus1.Close()
+	bus2.Close()
+	bus1.Wait()
+	bus2.Wait()
 }
