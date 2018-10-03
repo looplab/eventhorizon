@@ -6,12 +6,10 @@ services:
     depends_on:
       - mongo
       - redis
-      - dynamodb
       - gpubsub
     environment:
       MONGO_HOST: "mongo:27017"
       REDIS_HOST: "redis:6379"
-      DYNAMODB_HOST: "dynamodb:8000"
       PUBSUB_EMULATOR_HOST: "gpubsub:8793"
     volumes:
       - .:/eventhorizon
@@ -26,11 +24,6 @@ services:
     image: redis:latest
     ports:
       - "6379:6379"
-
-  dynamodb:
-    image: peopleperhour/dynamodb:latest
-    ports:
-      - "8000:8000"
 
   gpubsub:
     image: google/cloud-sdk:latest

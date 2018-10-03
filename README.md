@@ -48,7 +48,7 @@ Fairly mature, used in production.
 
 ### AWS DynamoDB
 
-Experimental support for AWS DynamoDB as an event store. Not actively developed.
+https://github.com/seedboxtech/eh-dynamo
 
 # Messaging drivers
 
