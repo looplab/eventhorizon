@@ -66,6 +66,10 @@ Experimental driver.
 
 https://github.com/Kistler-Group/eh-kafka
 
+### NATS Streaming
+
+https://github.com/v0id3r/eh-nats
+
 ## Development
 
 To develop Event Horizon you need to have Docker and Docker Compose installed.
