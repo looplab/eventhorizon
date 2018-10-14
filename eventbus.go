@@ -34,4 +34,7 @@ type EventBus interface {
 	// AddObserver adds an observer. Panics if the observer is nil or the observer
 	// is already added.
 	AddObserver(EventMatcher, EventHandler)
+
+	// Errors returns an error channel where async handling errors are sent.
+	Errors() <-chan error
 }

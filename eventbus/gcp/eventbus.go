@@ -38,7 +38,7 @@ type EventBus struct {
 	topic        *pubsub.Topic
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
-	errCh        chan Error
+	errCh        chan error
 }
 
 // Error is an async error containing the error and the event.
@@ -77,7 +77,7 @@ func NewEventBus(projectID, appID string) (*EventBus, error) {
 		client:     client,
 		topic:      topic,
 		registered: map[eh.EventHandlerType]struct{}{},
-		errCh:      make(chan Error, 100),
+		errCh:      make(chan error, 100),
 	}, nil
 }
 
@@ -133,7 +133,7 @@ func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) {
 }
 
 // Errors returns an error channel where async handling errors are sent.
-func (b *EventBus) Errors() <-chan Error {
+func (b *EventBus) Errors() <-chan error {
 	return b.errCh
 }
 
