@@ -181,9 +181,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	select {
 	case <-time.After(time.Second):
 		t.Error("there should be an async error")
-	case err := <-bus1.Errors():
-		if err == nil {
-			t.Error("there should have been a non-nil async error")
-		}
+	case <-bus1.Errors():
+		// Good case.
 	}
 }

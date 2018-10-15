@@ -31,19 +31,7 @@ type EventBus struct {
 	group        *Group
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
-	errCh        chan error
-}
-
-// Error is an async error containing the error and the event.
-type Error struct {
-	Err   error
-	Ctx   context.Context
-	Event eh.Event
-}
-
-// Error implements the Error method of the error interface.
-func (e Error) Error() string {
-	return fmt.Sprintf("%s: (%s)", e.Err, e.Event.String())
+	errCh        chan eh.EventBusError
 }
 
 // NewEventBus creates a EventBus.
@@ -54,7 +42,7 @@ func NewEventBus(g *Group) *EventBus {
 	return &EventBus{
 		group:      g,
 		registered: map[eh.EventHandlerType]struct{}{},
-		errCh:      make(chan error, 100),
+		errCh:      make(chan eh.EventBusError, 100),
 	}
 }
 
@@ -77,7 +65,7 @@ func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) {
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.
-func (b *EventBus) Errors() <-chan error {
+func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return b.errCh
 }
 
@@ -89,7 +77,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan evt) {
 		}
 		if err := h.HandleEvent(e.ctx, e.event); err != nil {
 			select {
-			case b.errCh <- Error{Err: fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error()), Ctx: e.ctx, Event: e.event}:
+			case b.errCh <- eh.EventBusError{Err: fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error()), Ctx: e.ctx, Event: e.event}:
 			default:
 			}
 		}

@@ -321,7 +321,7 @@ var _ = eh.EventBus(&EventBus{})
 type EventBus struct {
 	Events  []eh.Event
 	Context context.Context
-	// Used to simulate errors in HandleCommand.
+	// Used to simulate errors in PublishEvent.
 	Err error
 }
 
@@ -342,8 +342,8 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) {}
 func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) {}
 
 // Errors implements the Error method of the eventhorizon.EventBus interface.
-func (b *EventBus) Errors() <-chan error {
-	return make(chan error)
+func (b *EventBus) Errors() <-chan eh.EventBusError {
+	return make(chan eh.EventBusError)
 }
 
 // Repo is a mocked eventhorizon.ReadRepo, useful in testing.
