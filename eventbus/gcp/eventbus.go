@@ -132,7 +132,7 @@ func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) {
 	go b.handle(m, h, sub)
 }
 
-// Errors returns an error channel where async handling errors are sent.
+// Errors implements the Errors method of the eventhorizon.EventBus interface.
 func (b *EventBus) Errors() <-chan error {
 	return b.errCh
 }

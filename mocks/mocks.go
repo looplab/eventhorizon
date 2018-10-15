@@ -341,6 +341,11 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) {}
 // AddObserver implements the AddObserver method of the eventhorizon.EventBus interface.
 func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) {}
 
+// Errors implements the Error method of the eventhorizon.EventBus interface.
+func (b *EventBus) Errors() <-chan error {
+	return make(chan error)
+}
+
 // Repo is a mocked eventhorizon.ReadRepo, useful in testing.
 type Repo struct {
 	ParentRepo eh.ReadWriteRepo
