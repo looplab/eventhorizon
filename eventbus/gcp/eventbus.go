@@ -54,7 +54,7 @@ func (e Error) Error() string {
 	return fmt.Sprintf("%s: (%s)", e.Err, e.Event.String())
 }
 
-// NewEventBus creates a EventBus.
+// NewEventBus creates an EventBus.
 func NewEventBus(projectID, appID string, opts ...option.ClientOption) (*EventBus, error) {
 	ctx := context.Background()
 	client, err := pubsub.NewClient(ctx, projectID, opts...)
