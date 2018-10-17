@@ -115,7 +115,6 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 		}
 		if len(handlerBus2.Events) == 1 {
 			t.Log(pretty.Sprint(handlerBus2.Events[0]))
-			// t.Logf("%#v", handlerBus2.Events[0])
 		}
 	}
 	if mocks.EqualEvents(handlerBus1.Events, handlerBus2.Events) {

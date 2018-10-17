@@ -32,6 +32,7 @@ type EventBus struct {
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
+	wg           sync.WaitGroup
 }
 
 // NewEventBus creates a EventBus.
@@ -71,6 +72,9 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 
 // Handles all events coming in on the channel.
 func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan evt) {
+	b.wg.Add(1)
+	defer b.wg.Done()
+
 	for e := range ch {
 		if !m(e.event) {
 			continue
@@ -105,6 +109,16 @@ func (b *EventBus) channel(m eh.EventMatcher, h eh.EventHandler, observer bool) 
 		id = fmt.Sprintf("%s-%s", id, eh.NewUUID())
 	}
 	return b.group.channel(id)
+}
+
+// Close all the channels in the events bus group
+func (b *EventBus) Close() {
+	b.group.Close()
+}
+
+// Wait for all channels to close in the event bus group
+func (b *EventBus) Wait() {
+	b.wg.Wait()
 }
 
 // Group is a publishing group shared by multiple event busses locally, if needed.
@@ -149,4 +163,12 @@ func (g *Group) publish(ctx context.Context, event eh.Event) {
 			// TODO: Maybe log here because queue is full.
 		}
 	}
+}
+
+// Close all the open channels
+func (g *Group) Close() {
+	for _, ch := range g.bus {
+		close(ch)
+	}
+	g.bus = nil
 }
