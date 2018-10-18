@@ -23,6 +23,7 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/globalsign/mgo/bson"
+	"google.golang.org/api/option"
 
 	eh "github.com/looplab/eventhorizon"
 )
@@ -41,10 +42,10 @@ type EventBus struct {
 	errCh        chan eh.EventBusError
 }
 
-// NewEventBus creates a EventBus.
-func NewEventBus(projectID, appID string) (*EventBus, error) {
+// NewEventBus creates an EventBus, with optional GCP connection settings.
+func NewEventBus(projectID, appID string, opts ...option.ClientOption) (*EventBus, error) {
 	ctx := context.Background()
-	client, err := pubsub.NewClient(ctx, projectID)
+	client, err := pubsub.NewClient(ctx, projectID, opts...)
 	if err != nil {
 		return nil, err
 	}
