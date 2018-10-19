@@ -90,11 +90,26 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	anotherHandlerBus2 := mocks.NewEventHandler("another_handler")
 	observerBus1 := mocks.NewEventHandler(observerName)
 	observerBus2 := mocks.NewEventHandler(observerName)
-	bus1.AddHandler(eh.MatchAny(), handlerBus1)
-	bus2.AddHandler(eh.MatchAny(), handlerBus2)
-	bus2.AddHandler(eh.MatchAny(), anotherHandlerBus2)
-	bus1.AddObserver(eh.MatchAny(), observerBus1)
-	bus2.AddObserver(eh.MatchAny(), observerBus2)
+	err := bus1.AddHandler(eh.MatchAny(), handlerBus1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = bus2.AddHandler(eh.MatchAny(), handlerBus2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = bus2.AddHandler(eh.MatchAny(), anotherHandlerBus2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = bus1.AddObserver(eh.MatchAny(), observerBus1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = bus2.AddObserver(eh.MatchAny(), observerBus2)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if err := bus1.PublishEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
@@ -173,7 +188,10 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	// Test async errors from handlers.
 	errorHandler := mocks.NewEventHandler("error_handler")
 	errorHandler.Err = errors.New("handler error")
-	bus1.AddHandler(eh.MatchAny(), errorHandler)
+	err = bus1.AddHandler(eh.MatchAny(), errorHandler)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := bus1.PublishEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
 	}

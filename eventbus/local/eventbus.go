@@ -54,15 +54,17 @@ func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) error {
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) {
+func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 	ch := b.channel(m, h, false)
 	go b.handle(m, h, ch)
+	return nil
 }
 
 // AddObserver implements the AddObserver method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) {
+func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) error {
 	ch := b.channel(m, h, true)
 	go b.handle(m, h, ch)
+	return nil
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.

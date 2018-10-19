@@ -110,15 +110,23 @@ func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) error {
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) {
-	sub := b.subscription(m, h, false)
+func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
+	sub, err := b.subscription(m, h, false)
+	if err != nil {
+		return err
+	}
 	go b.handle(m, h, sub)
+	return nil
 }
 
 // AddObserver implements the AddObserver method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) {
-	sub := b.subscription(m, h, true)
+func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) error {
+	sub, err := b.subscription(m, h, true)
+	if err != nil {
+		return err
+	}
 	go b.handle(m, h, sub)
+	return nil
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.
@@ -127,7 +135,7 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 }
 
 // Checks the matcher and handler and gets the event subscription.
-func (b *EventBus) subscription(m eh.EventMatcher, h eh.EventHandler, observer bool) *pubsub.Subscription {
+func (b *EventBus) subscription(m eh.EventMatcher, h eh.EventHandler, observer bool) (*pubsub.Subscription, error) {
 	b.registeredMu.Lock()
 	defer b.registeredMu.Unlock()
 
@@ -153,7 +161,7 @@ func (b *EventBus) subscription(m eh.EventMatcher, h eh.EventHandler, observer b
 	subscriptionID := b.appID + "_" + id
 	sub := b.client.Subscription(subscriptionID)
 	if ok, err := sub.Exists(ctx); err != nil {
-		panic("could not check subscription: " + err.Error())
+		return nil, fmt.Errorf("could not check subscription: %v", err)
 	} else if !ok {
 		if sub, err = b.client.CreateSubscription(ctx, subscriptionID,
 			pubsub.SubscriptionConfig{
@@ -161,11 +169,11 @@ func (b *EventBus) subscription(m eh.EventMatcher, h eh.EventHandler, observer b
 				AckDeadline: 60 * time.Second,
 			},
 		); err != nil {
-			panic("could not create subscription: " + err.Error())
+			return nil, fmt.Errorf("could not create subscription: %v", err)
 		}
 	}
 
-	return sub
+	return sub, nil
 }
 
 // Handles all events coming in on the channel.

@@ -42,12 +42,14 @@ type EventBus interface {
 	PublishEvent(context.Context, Event) error
 
 	// AddHandler adds a handler for an event. Panics if either the matcher
-	// or handler is nil or the handler is already added.
-	AddHandler(EventMatcher, EventHandler)
+	// or handler is nil or the handler is already added. Returns an error if
+	// there was some other error adding the handler.
+	AddHandler(EventMatcher, EventHandler) error
 
 	// AddObserver adds an observer. Panics if the observer is nil or the observer
-	// is already added.
-	AddObserver(EventMatcher, EventHandler)
+	// is already added. Returns an error if there was some other error adding
+	// the observer.
+	AddObserver(EventMatcher, EventHandler) error
 
 	// Errors returns an error channel where async handling errors are sent.
 	Errors() <-chan EventBusError
