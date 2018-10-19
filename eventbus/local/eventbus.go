@@ -1,4 +1,4 @@
-// Copyright (c) 2014 - The Event Horizon authors.
+// Copyright (c) 2018 - The Event Horizon authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,19 +31,8 @@ type EventBus struct {
 	group        *Group
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
-	errCh        chan Error
-}
-
-// Error is an async error containing the error and the event.
-type Error struct {
-	Err   error
-	Ctx   context.Context
-	Event eh.Event
-}
-
-// Error implements the Error method of the error interface.
-func (e Error) Error() string {
-	return fmt.Sprintf("%s: (%s)", e.Err, e.Event.String())
+	errCh        chan eh.EventBusError
+	wg           sync.WaitGroup
 }
 
 // NewEventBus creates a EventBus.
@@ -54,7 +43,7 @@ func NewEventBus(g *Group) *EventBus {
 	return &EventBus{
 		group:      g,
 		registered: map[eh.EventHandlerType]struct{}{},
-		errCh:      make(chan Error, 100),
+		errCh:      make(chan eh.EventBusError, 100),
 	}
 }
 
@@ -76,20 +65,23 @@ func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) {
 	go b.handle(m, h, ch)
 }
 
-// Errors returns an error channel where async handling errors are sent.
-func (b *EventBus) Errors() <-chan Error {
+// Errors implements the Errors method of the eventhorizon.EventBus interface.
+func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return b.errCh
 }
 
 // Handles all events coming in on the channel.
 func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan evt) {
+	b.wg.Add(1)
+	defer b.wg.Done()
+
 	for e := range ch {
 		if !m(e.event) {
 			continue
 		}
 		if err := h.HandleEvent(e.ctx, e.event); err != nil {
 			select {
-			case b.errCh <- Error{Err: fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error()), Ctx: e.ctx, Event: e.event}:
+			case b.errCh <- eh.EventBusError{Err: fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error()), Ctx: e.ctx, Event: e.event}:
 			default:
 			}
 		}
@@ -117,6 +109,16 @@ func (b *EventBus) channel(m eh.EventMatcher, h eh.EventHandler, observer bool) 
 		id = fmt.Sprintf("%s-%s", id, eh.NewUUID())
 	}
 	return b.group.channel(id)
+}
+
+// Close all the channels in the events bus group
+func (b *EventBus) Close() {
+	b.group.Close()
+}
+
+// Wait for all channels to close in the event bus group
+func (b *EventBus) Wait() {
+	b.wg.Wait()
 }
 
 // Group is a publishing group shared by multiple event busses locally, if needed.
@@ -161,4 +163,12 @@ func (g *Group) publish(ctx context.Context, event eh.Event) {
 			// TODO: Maybe log here because queue is full.
 		}
 	}
+}
+
+// Close all the open channels
+func (g *Group) Close() {
+	for _, ch := range g.bus {
+		close(ch)
+	}
+	g.bus = nil
 }

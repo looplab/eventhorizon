@@ -1,4 +1,4 @@
-// Copyright (c) 2014 - The Event Horizon authors.
+// Copyright (c) 2018 - The Event Horizon authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,4 +39,8 @@ func TestEventBus(t *testing.T) {
 
 	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
 
+	bus1.Close()
+	bus2.Close()
+	bus1.Wait()
+	bus2.Wait()
 }

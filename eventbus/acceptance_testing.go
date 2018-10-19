@@ -16,6 +16,7 @@ package eventbus
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -114,7 +115,6 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 		}
 		if len(handlerBus2.Events) == 1 {
 			t.Log(pretty.Sprint(handlerBus2.Events[0]))
-			// t.Logf("%#v", handlerBus2.Events[0])
 		}
 	}
 	if mocks.EqualEvents(handlerBus1.Events, handlerBus2.Events) {
@@ -168,5 +168,19 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	}
 	if val, ok := mocks.ContextOne(observerBus2.Context); !ok || val != "testval" {
 		t.Error("the context should be correct:", observerBus2.Context)
+	}
+
+	// Test async errors from handlers.
+	errorHandler := mocks.NewEventHandler("error_handler")
+	errorHandler.Err = errors.New("handler error")
+	bus1.AddHandler(eh.MatchAny(), errorHandler)
+	if err := bus1.PublishEvent(ctx, event1); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	select {
+	case <-time.After(time.Second):
+		t.Error("there should be an async error")
+	case <-bus1.Errors():
+		// Good case.
 	}
 }
