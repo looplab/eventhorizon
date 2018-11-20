@@ -104,35 +104,6 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
 	return entity, nil
 }
 
-// FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
-func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
-	sess := r.session.Copy()
-	defer sess.Close()
-
-	if r.factoryFn == nil {
-		return nil, eh.RepoError{
-			Err:       ErrModelNotSet,
-			Namespace: eh.NamespaceFromContext(ctx),
-		}
-	}
-
-	iter := sess.DB(r.dbName(ctx)).C(r.collection).Find(nil).Iter()
-	result := []eh.Entity{}
-	entity := r.factoryFn()
-	for iter.Next(entity) {
-		result = append(result, entity)
-		entity = r.factoryFn()
-	}
-	if err := iter.Close(); err != nil {
-		return nil, eh.RepoError{
-			Err:       err,
-			Namespace: eh.NamespaceFromContext(ctx),
-		}
-	}
-
-	return result, nil
-}
-
 // The iterator is not thread safe.
 type iter struct {
 	session   *mgo.Session

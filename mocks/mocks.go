@@ -373,15 +373,6 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
 	return r.Entity, nil
 }
 
-// FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
-func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
-	r.FindAllCalled = true
-	if r.LoadErr != nil {
-		return nil, r.LoadErr
-	}
-	return r.Entities, nil
-}
-
 // Save implements the Save method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	r.SaveCalled = true

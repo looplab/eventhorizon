@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sort"
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
@@ -112,25 +111,6 @@ func Example() {
 
 	// Wait for simulated eventual consistency before reading.
 	time.Sleep(10 * time.Millisecond)
-
-	// Read all invites.
-	invitationStrs := []string{}
-	invitations, err := invitationRepo.FindAll(ctx)
-	if err != nil {
-		log.Println("error:", err)
-	}
-	for _, i := range invitations {
-		if i, ok := i.(*domain.Invitation); ok {
-			invitationStrs = append(invitationStrs, fmt.Sprintf("%s - %s", i.Name, i.Status))
-		}
-	}
-
-	// Sort the output to be able to compare test results.
-	sort.Strings(invitationStrs)
-	for _, s := range invitationStrs {
-		log.Printf("invitation: %s\n", s)
-		fmt.Printf("invitation: %s\n", s)
-	}
 
 	// Read the guest list.
 	guestList, err := guestListRepo.Find(ctx, eventID)
