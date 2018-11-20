@@ -44,15 +44,6 @@ func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 		t.Error("there should be no entity:", entity)
 	}
 
-	// FindAll with no items.
-	result, err := repo.FindAll(ctx)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if len(result) != 0 {
-		t.Error("there should be no items:", len(result))
-	}
-
 	// Save model without ID.
 	entityMissingID := &mocks.Model{
 		Content:   "entity1",
@@ -78,18 +69,6 @@ func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	}
 	if !reflect.DeepEqual(entity, entity1) {
 		t.Error("the item should be correct:", entity)
-	}
-
-	// FindAll with one item.
-	result, err = repo.FindAll(ctx)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if len(result) != 1 {
-		t.Error("there should be one item:", len(result))
-	}
-	if !reflect.DeepEqual(result, []eh.Entity{entity1}) {
-		t.Error("the item should be correct:", entity1)
 	}
 
 	// Save and overwrite with same ID.
@@ -124,18 +103,6 @@ func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	}
 	if !reflect.DeepEqual(entity, entity2) {
 		t.Error("the item should be correct:", entity)
-	}
-
-	// FindAll with two items, order should be preserved from insert.
-	result, err = repo.FindAll(ctx)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if len(result) != 2 {
-		t.Error("there should be two items:", len(result))
-	}
-	if !reflect.DeepEqual(result, []eh.Entity{entity1Alt, entity2}) {
-		t.Error("the items should be correct:", result)
 	}
 
 	// Remove item.

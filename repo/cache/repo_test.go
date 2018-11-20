@@ -16,7 +16,6 @@ package version
 
 import (
 	"context"
-	"reflect"
 	"testing"
 	"time"
 
@@ -85,16 +84,6 @@ func extraRepoTests(t *testing.T, ctx context.Context) {
 		Entities: []eh.Entity{simpleModel},
 	}
 	r = NewRepo(baseRepo)
-	entities, err := r.FindAll(ctx)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
-	if !reflect.DeepEqual(entities, []eh.Entity{simpleModel}) {
-		t.Error("the items should be correct")
-	}
-	if !baseRepo.FindAllCalled {
-		t.Error("the item should have been read from the store")
-	}
 	baseRepo.FindCalled = false
 	entity, err = r.Find(ctx, simpleModel.ID)
 	if err != nil {

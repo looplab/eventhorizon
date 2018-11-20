@@ -65,22 +65,6 @@ func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
 	return model, nil
 }
 
-// FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
-func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
-	ns := r.namespace(ctx)
-
-	r.dbMu.RLock()
-	defer r.dbMu.RUnlock()
-	all := []eh.Entity{}
-	for _, id := range r.ids[ns] {
-		if m, ok := r.db[ns][id]; ok {
-			all = append(all, m)
-		}
-	}
-
-	return all, nil
-}
-
 // Save implements the Save method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	ns := r.namespace(ctx)
