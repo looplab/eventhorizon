@@ -132,6 +132,15 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		}
 
 		if err := sess.DB(s.dbName(ctx)).C("events").Insert(aggregate); err != nil {
+			//doc was created by another aggregate
+			if mgo.IsDup(err) {
+				return eh.EventStoreError{
+					BaseErr:   err,
+					Err:       eh.ErrConcurrentException,
+					Namespace: eh.NamespaceFromContext(ctx),
+				}
+			}
+
 			return eh.EventStoreError{
 				BaseErr:   err,
 				Err:       ErrCouldNotSaveAggregate,
@@ -152,6 +161,15 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 				"$inc":  bson.M{"version": len(dbEvents)},
 			},
 		); err != nil {
+			if err == mgo.ErrNotFound {
+				//doc was updated by another aggregate
+				return eh.EventStoreError{
+					BaseErr:   err,
+					Err:       eh.ErrConcurrentException,
+					Namespace: eh.NamespaceFromContext(ctx),
+				}
+			}
+
 			return eh.EventStoreError{
 				BaseErr:   err,
 				Err:       ErrCouldNotSaveAggregate,

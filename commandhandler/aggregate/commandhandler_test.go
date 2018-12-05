@@ -171,3 +171,17 @@ func createAggregateAndHandler(t *testing.T) (*mocks.Aggregate, *CommandHandler,
 	}
 	return a, h, store
 }
+
+func TestCommandHandler_ErrorErrConcurrentException(t *testing.T) {
+	a, h, store := createAggregateAndHandler(t)
+
+	store.Err = eh.ErrConcurrentException
+	cmd := &mocks.Command{
+		ID:      a.EntityID(),
+		Content: "command1",
+	}
+	err := h.handle(context.Background(), cmd)
+	if err == nil || err.Error() != eh.ErrConcurrentException.Error() {
+		t.Error("there should be a command error:", err)
+	}
+}

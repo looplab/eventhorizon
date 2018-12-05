@@ -54,6 +54,15 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
+	t.Log("try to insert second time event - concurrent exception 1")
+	eventConcExcep1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "eventConcExcep1"},
+		timestamp, mocks.AggregateType, id, 1)
+	err = store.Save(ctx, []eh.Event{eventConcExcep1}, 0)
+	if esErr, ok := err.(eh.EventStoreError); !ok || esErr.Err != eh.ErrConcurrentException {
+		t.Error("there should be error:", err)
+	}
+
 	savedEvents = append(savedEvents, event1)
 	// if val, ok := agg.Context.Value("testkey").(string); !ok || val != "testval" {
 	// 	t.Error("the context should be correct:", agg.Context)
@@ -72,7 +81,16 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	savedEvents = append(savedEvents, event2)
+
+	t.Log("try to insert second time event - concurrent exception 2")
+	eventConcExcep2 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "eventConcExcep2"},
+		timestamp, mocks.AggregateType, id, 2)
+	err = store.Save(ctx, []eh.Event{eventConcExcep2}, 1)
+	if esErr, ok := err.(eh.EventStoreError); !ok || esErr.Err != eh.ErrConcurrentException {
+		t.Error("there should be error:", err)
+	}
 
 	t.Log("save event without data, version 3")
 	event3 := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,

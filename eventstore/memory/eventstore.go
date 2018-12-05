@@ -90,8 +90,14 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			Version:     len(dbEvents),
 			Events:      dbEvents,
 		}
-
-		s.db[ns][aggregateID] = aggregate
+		if _, ok := s.db[ns][aggregateID]; !ok {
+			s.db[ns][aggregateID] = aggregate
+		} else {
+			return eh.EventStoreError{
+				Err:       eh.ErrConcurrentException,
+				Namespace: eh.NamespaceFromContext(ctx),
+			}
+		}
 	} else {
 		// Increment aggregate version on insert of new event record, and
 		// only insert if version of aggregate is matching (ie not changed
@@ -99,7 +105,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if aggregate, ok := s.db[ns][aggregateID]; ok {
 			if aggregate.Version != originalVersion {
 				return eh.EventStoreError{
-					Err:       ErrCouldNotSaveAggregate,
+					Err:       eh.ErrConcurrentException,
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
