@@ -34,6 +34,8 @@ var re = regexp.MustCompile(hexPattern)
 // bytes long.
 type UUID string
 
+var ZeroID = UUID("")
+
 // NewUUID creates a new UUID of type v4.
 func NewUUID() UUID {
 	var u [16]byte
