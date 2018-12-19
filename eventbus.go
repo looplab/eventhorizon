@@ -29,7 +29,7 @@ type EventBusError struct {
 
 // Error implements the Error method of the error interface.
 func (e EventBusError) Error() string {
-	return fmt.Sprintf("%s: (%s)", e.Err, e.Event.String())
+	return fmt.Sprintf("%s: (%s)", e.Err, e.Event)
 }
 
 // EventBus sends published events to one of each handler type and all observers.

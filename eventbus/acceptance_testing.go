@@ -180,7 +180,10 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	select {
 	case <-time.After(time.Second):
 		t.Error("there should be an async error")
-	case <-bus1.Errors():
+	case err := <-bus1.Errors():
 		// Good case.
+		if err.Error() != "could not handle event (error_handler): handler error: (Event@1)" {
+			t.Error(err, "wrong error sent on event bus")
+		}
 	}
 }
