@@ -74,7 +74,7 @@ func (c ConfirmInvite) AggregateID() eh.UUID            { return c.ID }
 func (c ConfirmInvite) AggregateType() eh.AggregateType { return InvitationAggregateType }
 func (c ConfirmInvite) CommandType() eh.CommandType     { return ConfirmInviteCommand }
 
-// DenyInvite is a command for confirming invites.
+// DenyInvite is a command for denying invites.
 type DenyInvite struct {
 	ID eh.UUID
 }
