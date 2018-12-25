@@ -47,6 +47,9 @@ var ErrInvalidEvent = errors.New("invalid event")
 // ErrIncorrectEventVersion is when an event is for an other version of the aggregate.
 var ErrIncorrectEventVersion = errors.New("mismatching event version")
 
+// ErrConcurrentException is when an event has old version because other event was stored before it
+var ErrConcurrentException = errors.New("other event was stored before the event")
+
 // EventStore is an interface for an event sourcing event store.
 type EventStore interface {
 	// Save appends all events in the event stream to the store.

@@ -51,14 +51,7 @@ func NewCommandHandler(t eh.AggregateType, store eh.AggregateStore) (*CommandHan
 	return h, nil
 }
 
-// HandleCommand handles a command with the registered aggregate.
-// Returns ErrAggregateNotFound if no aggregate could be found.
-func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
-	err := eh.CheckCommand(cmd)
-	if err != nil {
-		return err
-	}
-
+func (h *CommandHandler) handle(ctx context.Context, cmd eh.Command) error {
 	a, err := h.store.Load(ctx, h.t, cmd.AggregateID())
 	if err != nil {
 		return err
@@ -71,4 +64,21 @@ func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) erro
 	}
 
 	return h.store.Save(ctx, a)
+}
+
+// HandleCommand handles a command with the registered aggregate.
+// Returns ErrAggregateNotFound if no aggregate could be found.
+func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	err := eh.CheckCommand(cmd)
+	if err != nil {
+		return err
+	}
+
+	for {
+		err = h.handle(ctx, cmd)
+		if err != eh.ErrConcurrentException {
+			break
+		}
+	}
+	return err
 }
