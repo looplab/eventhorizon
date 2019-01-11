@@ -318,7 +318,7 @@ type dbEvent struct {
 	data          eh.EventData     `bson:"-"`
 	Timestamp     time.Time        `bson:"timestamp"`
 	AggregateType eh.AggregateType `bson:"aggregate_type"`
-	AggregateID   uuid.UUID        `bson:"_id"`
+	AggregateID   string           `bson:"_id"`
 	Version       int              `bson:"version"`
 }
 
@@ -343,7 +343,7 @@ func newDBEvent(ctx context.Context, event eh.Event) (*dbEvent, error) {
 		RawData:       rawData,
 		Timestamp:     event.Timestamp(),
 		AggregateType: event.AggregateType(),
-		AggregateID:   event.AggregateID(),
+		AggregateID:   event.AggregateID().String(),
 		Version:       event.Version(),
 	}, nil
 }
@@ -356,7 +356,11 @@ type event struct {
 
 // AggrgateID implements the AggrgateID method of the eventhorizon.Event interface.
 func (e event) AggregateID() uuid.UUID {
-	return e.dbEvent.AggregateID
+	id, err := uuid.Parse(e.dbEvent.AggregateID)
+	if err != nil {
+		panic(fmt.Errorf("eventstore: %s", err))
+	}
+	return id
 }
 
 // AggregateType implements the AggregateType method of the eventhorizon.Event interface.
