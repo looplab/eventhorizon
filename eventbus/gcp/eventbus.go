@@ -281,7 +281,7 @@ func (e event) AggregateType() eh.AggregateType {
 func (e event) AggregateID() uuid.UUID {
 	id, err := uuid.Parse(e.evt.AggregateID)
 	if err != nil {
-		panic(fmt.Errorf("eventbus: %s", err))
+		return uuid.Nil
 	}
 	return id
 }

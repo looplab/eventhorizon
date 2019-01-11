@@ -358,7 +358,7 @@ type event struct {
 func (e event) AggregateID() uuid.UUID {
 	id, err := uuid.Parse(e.dbEvent.AggregateID)
 	if err != nil {
-		panic(fmt.Errorf("eventstore: %s", err))
+		return uuid.Nil
 	}
 	return id
 }
