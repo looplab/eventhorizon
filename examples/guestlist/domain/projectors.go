@@ -20,13 +20,14 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventhandler/projector"
 )
 
 // Invitation is a read model object for an invitation.
 type Invitation struct {
-	ID      eh.UUID `bson:"_id"`
+	ID      uuid.UUID `bson:"_id"`
 	Version int
 	Name    string
 	Age     int
@@ -37,7 +38,7 @@ var _ = eh.Entity(&Invitation{})
 var _ = eh.Versionable(&Invitation{})
 
 // EntityID implements the EntityID method of the eventhorizon.Entity interface.
-func (i *Invitation) EntityID() eh.UUID {
+func (i *Invitation) EntityID() uuid.UUID {
 	return i.ID
 }
 
@@ -100,7 +101,7 @@ func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, entit
 
 // GuestList is a read model object for the guest list.
 type GuestList struct {
-	ID           eh.UUID `bson:"_id"`
+	ID           uuid.UUID `bson:"_id"`
 	NumGuests    int
 	NumAccepted  int
 	NumDeclined  int
@@ -111,7 +112,7 @@ type GuestList struct {
 var _ = eh.Entity(&Invitation{})
 
 // EntityID implements the EntityID method of the eventhorizon.Entity interface.
-func (g *GuestList) EntityID() eh.UUID {
+func (g *GuestList) EntityID() uuid.UUID {
 	return g.ID
 }
 
@@ -120,11 +121,11 @@ func (g *GuestList) EntityID() eh.UUID {
 type GuestListProjector struct {
 	repo    eh.ReadWriteRepo
 	repoMu  sync.Mutex
-	eventID eh.UUID
+	eventID uuid.UUID
 }
 
 // NewGuestListProjector creates a new GuestListProjector.
-func NewGuestListProjector(repo eh.ReadWriteRepo, eventID eh.UUID) *GuestListProjector {
+func NewGuestListProjector(repo eh.ReadWriteRepo, eventID uuid.UUID) *GuestListProjector {
 	p := &GuestListProjector{
 		repo:    repo,
 		eventID: eventID,

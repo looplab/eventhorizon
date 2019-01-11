@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 	"github.com/looplab/eventhorizon/repo"
@@ -50,7 +51,7 @@ func TestReadRepo(t *testing.T) {
 func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 	// Insert a non-versioned item.
 	simpleModel := &mocks.SimpleModel{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "simpleModel",
 	}
 	if err := r.Save(ctx, simpleModel); err != nil {
@@ -66,7 +67,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 
 	// Insert a versioned item.
 	modelMinVersion := &mocks.Model{
-		ID:        eh.NewUUID(),
+		ID:        uuid.New(),
 		Version:   1,
 		Content:   "modelMinVersion",
 		CreatedAt: time.Now().Round(time.Millisecond),
@@ -148,7 +149,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 
 	// Find with min version, with timeout, data available immediately.
 	modelMinVersion = &mocks.Model{
-		ID:        eh.NewUUID(),
+		ID:        uuid.New(),
 		Version:   1,
 		Content:   "modelMinVersion",
 		CreatedAt: time.Now().Round(time.Millisecond),
@@ -175,7 +176,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 
 	// Find with min version, with timeout, created data available on retry.
 	modelMinVersion = &mocks.Model{
-		ID:        eh.NewUUID(),
+		ID:        uuid.New(),
 		Version:   1,
 		Content:   "modelMinVersion",
 		CreatedAt: time.Now().Round(time.Millisecond),
@@ -215,7 +216,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 
 	// Find with min version, with timeout, created data available on retry.
 	modelMinVersion = &mocks.Model{
-		ID:        eh.NewUUID(),
+		ID:        uuid.New(),
 		Version:   4,
 		Content:   "modelMinVersion",
 		CreatedAt: time.Now().Round(time.Millisecond),

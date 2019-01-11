@@ -23,6 +23,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"github.com/google/uuid"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
@@ -79,7 +80,7 @@ func TestReadRepo(t *testing.T) {
 func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 	// Insert a custom item.
 	modelCustom := &mocks.Model{
-		ID:        eh.NewUUID(),
+		ID:        uuid.New(),
 		Content:   "modelCustom",
 		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
@@ -124,7 +125,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 	}
 
 	modelCustom2 := &mocks.Model{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "modelCustom2",
 	}
 	if err := r.Collection(ctx, func(c *mgo.Collection) error {

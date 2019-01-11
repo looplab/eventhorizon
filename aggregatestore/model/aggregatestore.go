@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -48,7 +49,7 @@ func NewAggregateStore(repo eh.ReadWriteRepo, bus eh.EventBus) (*AggregateStore,
 }
 
 // Load implements the Load method of the eventhorizon.AggregateStore interface.
-func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id eh.UUID) (eh.Aggregate, error) {
+func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id uuid.UUID) (eh.Aggregate, error) {
 	item, err := r.repo.Find(ctx, id)
 	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
 		// Create the aggregate.

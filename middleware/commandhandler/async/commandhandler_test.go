@@ -21,13 +21,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 )
 
 func TestCommandHandler(t *testing.T) {
 	cmd := mocks.Command{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "content",
 	}
 

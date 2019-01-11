@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 )
@@ -30,7 +31,7 @@ func TestCommandHandler_Immediate(t *testing.T) {
 	m, _ := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "content",
 	}
 	if err := h.HandleCommand(context.Background(), cmd); err != nil {
@@ -46,7 +47,7 @@ func TestCommandHandler_Delayed(t *testing.T) {
 	m, _ := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
@@ -67,7 +68,7 @@ func TestCommandHandler_ZeroTime(t *testing.T) {
 	m, _ := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Time{})
@@ -87,7 +88,7 @@ func TestCommandHandler_Errors(t *testing.T) {
 	m, errCh := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
@@ -115,7 +116,7 @@ func TestCommandHandler_ContextCanceled(t *testing.T) {
 	m, errCh := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
@@ -145,7 +146,7 @@ func TestCommandHandler_ContextDeadline(t *testing.T) {
 	m, errCh := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))

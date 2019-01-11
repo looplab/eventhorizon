@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // EventType is the type of an event, used as its unique identifier.
@@ -48,7 +50,7 @@ type Event interface {
 	AggregateType() AggregateType
 	// AggregateID returns the ID of the aggregate that the event should be
 	// applied to.
-	AggregateID() UUID
+	AggregateID() uuid.UUID
 	// Version of the aggregate for this event (after it has been applied).
 	Version() int
 
@@ -68,7 +70,7 @@ func NewEvent(eventType EventType, data EventData, timestamp time.Time) Event {
 // NewEventForAggregate creates a new event with a type and data, setting its
 // timestamp. It also sets the aggregate data on it.
 func NewEventForAggregate(eventType EventType, data EventData, timestamp time.Time,
-	aggregateType AggregateType, aggregateID UUID, version int) Event {
+	aggregateType AggregateType, aggregateID uuid.UUID, version int) Event {
 	return event{
 		eventType:     eventType,
 		data:          data,
@@ -87,7 +89,7 @@ type event struct {
 	data          EventData
 	timestamp     time.Time
 	aggregateType AggregateType
-	aggregateID   UUID
+	aggregateID   uuid.UUID
 	version       int
 }
 
@@ -112,7 +114,7 @@ func (e event) AggregateType() AggregateType {
 }
 
 // AggrgateID implements the AggrgateID method of the Event interface.
-func (e event) AggregateID() UUID {
+func (e event) AggregateID() uuid.UUID {
 	return e.aggregateID
 }
 

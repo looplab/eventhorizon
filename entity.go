@@ -15,6 +15,8 @@
 // Package eventhorizon is a CQRS/ES toolkit.
 package eventhorizon
 
+import "github.com/google/uuid"
+
 // Entity is an item which is identified by an ID.
 //
 // From http://cqrs.nu/Faq:
@@ -24,5 +26,5 @@ package eventhorizon
 // equivalent in all their attributes, but will still be distinct."
 type Entity interface {
 	// EntityID returns the ID of the entity.
-	EntityID() UUID
+	EntityID() uuid.UUID
 }

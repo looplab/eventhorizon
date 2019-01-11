@@ -19,7 +19,7 @@ import (
 	"log"
 	"net/http"
 
-	eh "github.com/looplab/eventhorizon"
+	"github.com/google/uuid"
 	"github.com/looplab/eventhorizon/examples/todomvc/internal/domain"
 	"github.com/looplab/eventhorizon/repo/mongodb"
 )
@@ -38,7 +38,7 @@ func main() {
 		log.Println("could not clear DB:", err)
 	}
 
-	id := eh.NewUUID()
+	id := uuid.New()
 	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.Create{
 		ID: id,
 	}); err != nil {

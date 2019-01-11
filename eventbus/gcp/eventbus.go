@@ -23,6 +23,7 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/globalsign/mgo/bson"
+	"github.com/google/uuid"
 	"google.golang.org/api/option"
 
 	eh "github.com/looplab/eventhorizon"
@@ -144,7 +145,7 @@ func (b *EventBus) subscription(m eh.EventMatcher, h eh.EventHandler, observer b
 
 	id := string(h.HandlerType())
 	if observer { // Generate unique ID for each observer.
-		id = fmt.Sprintf("%s-%s", id, eh.NewUUID())
+		id = fmt.Sprintf("%s-%s", id, uuid.New())
 	}
 
 	ctx := context.Background()
@@ -245,7 +246,7 @@ type evt struct {
 	data          eh.EventData           `bson:"-"`
 	Timestamp     time.Time              `bson:"timestamp"`
 	AggregateType eh.AggregateType       `bson:"aggregate_type"`
-	AggregateID   eh.UUID                `bson:"_id"`
+	AggregateID   uuid.UUID              `bson:"_id"`
 	Version       int                    `bson:"version"`
 	Context       map[string]interface{} `bson:"context"`
 }
@@ -277,7 +278,7 @@ func (e event) AggregateType() eh.AggregateType {
 }
 
 // AggrgateID implements the AggrgateID method of the eventhorizon.Event interface.
-func (e event) AggregateID() eh.UUID {
+func (e event) AggregateID() uuid.UUID {
 	return e.evt.AggregateID
 }
 
