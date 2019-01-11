@@ -183,8 +183,6 @@ func TestDelete(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	time.Sleep(time.Second)
-
 	r := httptest.NewRequest("POST", "/api/todos/delete",
 		strings.NewReader(`{"id":"`+id.String()+`"}`))
 	w := httptest.NewRecorder()
@@ -195,6 +193,13 @@ func TestDelete(t *testing.T) {
 	if string(w.Body.Bytes()) != `` {
 		t.Error("the body should be correct:", string(w.Body.Bytes()))
 	}
+
+	waiter := waiter.NewEventHandler()
+	h.EventBus.AddObserver(eh.MatchEvent(domain.Deleted), waiter)
+	l := waiter.Listen(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	l.Wait(ctx)
 
 	if _, err := h.Repo.Find(context.Background(), id); err == nil ||
 		err.Error() != "could not find entity: not found (default)" {
