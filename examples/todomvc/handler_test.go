@@ -183,6 +183,8 @@ func TestDelete(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
+	time.Sleep(time.Second)
+
 	r := httptest.NewRequest("POST", "/api/todos/delete",
 		strings.NewReader(`{"id":"`+id.String()+`"}`))
 	w := httptest.NewRecorder()
