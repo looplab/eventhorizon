@@ -15,6 +15,7 @@
 package domain
 
 import (
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -38,47 +39,47 @@ const (
 
 // CreateInvite is a command for creating invites.
 type CreateInvite struct {
-	ID   eh.UUID
+	ID   uuid.UUID
 	Name string
 	Age  int `eh:"optional"`
 }
 
-func (c CreateInvite) AggregateID() eh.UUID            { return c.ID }
+func (c CreateInvite) AggregateID() uuid.UUID          { return c.ID }
 func (c CreateInvite) AggregateType() eh.AggregateType { return InvitationAggregateType }
 func (c CreateInvite) CommandType() eh.CommandType     { return CreateInviteCommand }
 
 // AcceptInvite is a command for accepting invites.
 type AcceptInvite struct {
-	ID eh.UUID
+	ID uuid.UUID
 }
 
-func (c AcceptInvite) AggregateID() eh.UUID            { return c.ID }
+func (c AcceptInvite) AggregateID() uuid.UUID          { return c.ID }
 func (c AcceptInvite) AggregateType() eh.AggregateType { return InvitationAggregateType }
 func (c AcceptInvite) CommandType() eh.CommandType     { return AcceptInviteCommand }
 
 // DeclineInvite is a command for declining invites.
 type DeclineInvite struct {
-	ID eh.UUID
+	ID uuid.UUID
 }
 
-func (c DeclineInvite) AggregateID() eh.UUID            { return c.ID }
+func (c DeclineInvite) AggregateID() uuid.UUID          { return c.ID }
 func (c DeclineInvite) AggregateType() eh.AggregateType { return InvitationAggregateType }
 func (c DeclineInvite) CommandType() eh.CommandType     { return DeclineInviteCommand }
 
 // ConfirmInvite is a command for confirming invites.
 type ConfirmInvite struct {
-	ID eh.UUID
+	ID uuid.UUID
 }
 
-func (c ConfirmInvite) AggregateID() eh.UUID            { return c.ID }
+func (c ConfirmInvite) AggregateID() uuid.UUID          { return c.ID }
 func (c ConfirmInvite) AggregateType() eh.AggregateType { return InvitationAggregateType }
 func (c ConfirmInvite) CommandType() eh.CommandType     { return ConfirmInviteCommand }
 
 // DenyInvite is a command for denying invites.
 type DenyInvite struct {
-	ID eh.UUID
+	ID uuid.UUID
 }
 
-func (c DenyInvite) AggregateID() eh.UUID            { return c.ID }
+func (c DenyInvite) AggregateID() uuid.UUID          { return c.ID }
 func (c DenyInvite) AggregateType() eh.AggregateType { return InvitationAggregateType }
 func (c DenyInvite) CommandType() eh.CommandType     { return DenyInviteCommand }
