@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 )
@@ -53,7 +54,7 @@ func TestAggregateStore_LoadNotFound(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := eh.NewUUID()
+	id := uuid.New()
 	repo.LoadErr = eh.RepoError{Err: eh.ErrEntityNotFound}
 	agg, err := store.Load(ctx, AggregateType, id)
 	if err != nil {
@@ -69,7 +70,7 @@ func TestAggregateStore_Load(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := eh.NewUUID()
+	id := uuid.New()
 	agg := NewAggregate(id)
 	repo.Entity = agg
 	loadedAgg, err := store.Load(ctx, AggregateType, id)
@@ -94,7 +95,7 @@ func TestAggregateStore_Load_InvalidAggregate(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := eh.NewUUID()
+	id := uuid.New()
 	err := repo.Save(ctx, &Model{
 		ID: id,
 	})
@@ -116,7 +117,7 @@ func TestAggregateStore_Save(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := eh.NewUUID()
+	id := uuid.New()
 	agg := NewAggregate(id)
 	err := store.Save(ctx, agg)
 	if err != nil {
@@ -139,7 +140,7 @@ func TestAggregateStore_SaveWithPublish(t *testing.T) {
 	store, repo, bus := createStore(t)
 
 	ctx := context.Background()
-	id := eh.NewUUID()
+	id := uuid.New()
 	agg := NewAggregate(id)
 	event := eh.NewEvent("test", nil, time.Now())
 
@@ -200,7 +201,7 @@ const (
 type Aggregate struct {
 	SliceEventPublisher
 
-	ID       eh.UUID
+	ID       uuid.UUID
 	Commands []eh.Command
 	Context  context.Context
 	// Used to simulate errors in HandleCommand.
@@ -210,7 +211,7 @@ type Aggregate struct {
 var _ = eh.Aggregate(&Aggregate{})
 
 // NewAggregate returns a new Aggregate.
-func NewAggregate(id eh.UUID) *Aggregate {
+func NewAggregate(id uuid.UUID) *Aggregate {
 	return &Aggregate{
 		ID:       id,
 		Commands: []eh.Command{},
@@ -219,7 +220,7 @@ func NewAggregate(id eh.UUID) *Aggregate {
 
 // EntityID implements the EntityID method of the eventhorizon.Entity and
 // eventhorizon.Aggregate interface.
-func (a *Aggregate) EntityID() eh.UUID {
+func (a *Aggregate) EntityID() uuid.UUID {
 	return a.ID
 }
 
@@ -241,7 +242,7 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 
 // AggregateOther is a mocked eventhorizon.Aggregate, useful in testing.
 type AggregateOther struct {
-	ID       eh.UUID
+	ID       uuid.UUID
 	Commands []eh.Command
 	Context  context.Context
 	// Used to simulate errors in HandleCommand.
@@ -250,12 +251,12 @@ type AggregateOther struct {
 
 // Model is a mocked read model.
 type Model struct {
-	ID eh.UUID
+	ID uuid.UUID
 }
 
 var _ = eh.Entity(&Model{})
 
 // EntityID implements the EntityID method of the eventhorizon.Entity interface.
-func (m *Model) EntityID() eh.UUID {
+func (m *Model) EntityID() uuid.UUID {
 	return m.ID
 }

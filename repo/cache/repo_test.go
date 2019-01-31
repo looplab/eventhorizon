@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 	"github.com/looplab/eventhorizon/repo"
@@ -49,7 +50,7 @@ func TestReadRepo(t *testing.T) {
 
 func extraRepoTests(t *testing.T, ctx context.Context) {
 	simpleModel := &mocks.SimpleModel{
-		ID:      eh.NewUUID(),
+		ID:      uuid.New(),
 		Content: "simpleModel",
 	}
 

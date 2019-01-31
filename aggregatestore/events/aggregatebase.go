@@ -17,6 +17,7 @@ package events
 import (
 	"time"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -31,7 +32,7 @@ import (
 //
 // Using a new function to create aggregates and setting up the
 // aggregate base is recommended:
-//   func NewUserAggregate(id eh.UUID) *InvitationAggregate {
+//   func NewUserAggregate(id uuid.UUID) *InvitationAggregate {
 //       return &UserAggregate{
 //           AggregateBase: events.NewAggregateBase(UserAggregateType, id),
 //       }
@@ -39,7 +40,7 @@ import (
 //
 // The aggregate must also be registered, in this case:
 //   func init() {
-//       eh.RegisterAggregate(func(id eh.UUID) eh.Aggregate {
+//       eh.RegisterAggregate(func(id uuid.UUID) eh.Aggregate {
 //           return NewUserAggregate(id)
 //       })
 //   }
@@ -56,14 +57,14 @@ import (
 // See the examples folder for a complete use case.
 //
 type AggregateBase struct {
-	id     eh.UUID
+	id     uuid.UUID
 	t      eh.AggregateType
 	v      int
 	events []eh.Event
 }
 
 // NewAggregateBase creates an aggregate.
-func NewAggregateBase(t eh.AggregateType, id eh.UUID) *AggregateBase {
+func NewAggregateBase(t eh.AggregateType, id uuid.UUID) *AggregateBase {
 	return &AggregateBase{
 		id: id,
 		t:  t,
@@ -71,7 +72,7 @@ func NewAggregateBase(t eh.AggregateType, id eh.UUID) *AggregateBase {
 }
 
 // EntityID implements the EntityID method of the Entity and Aggregate interface.
-func (a *AggregateBase) EntityID() eh.UUID {
+func (a *AggregateBase) EntityID() uuid.UUID {
 	return a.id
 }
 
