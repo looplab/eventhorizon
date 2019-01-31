@@ -20,6 +20,8 @@ import (
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Command is a domain command that is sent to a Dispatcher.
@@ -33,7 +35,7 @@ import (
 type Command interface {
 	// AggregateID returns the ID of the aggregate that the command should be
 	// handled by.
-	AggregateID() UUID
+	AggregateID() uuid.UUID
 
 	// AggregateType returns the type of the aggregate that the command can be
 	// handled by.

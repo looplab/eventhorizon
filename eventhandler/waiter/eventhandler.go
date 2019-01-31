@@ -17,6 +17,7 @@ package waiter
 import (
 	"context"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -57,7 +58,7 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 // interesting events by analysing the event data.
 func (h *EventHandler) Listen(match func(eh.Event) bool) *EventListener {
 	l := &EventListener{
-		id:         eh.NewUUID(),
+		id:         uuid.New(),
 		inbox:      make(chan eh.Event, 1),
 		match:      match,
 		unregister: h.unregister,
@@ -70,7 +71,7 @@ func (h *EventHandler) Listen(match func(eh.Event) bool) *EventListener {
 
 // EventListener receives events from an EventHandler.
 type EventListener struct {
-	id         eh.UUID
+	id         uuid.UUID
 	inbox      chan eh.Event
 	match      func(eh.Event) bool
 	unregister chan *EventListener
@@ -97,7 +98,7 @@ func (l *EventListener) Close() {
 }
 
 func (h *EventHandler) run() {
-	listeners := map[eh.UUID]*EventListener{}
+	listeners := map[uuid.UUID]*EventListener{}
 	for {
 		select {
 		case l := <-h.register:

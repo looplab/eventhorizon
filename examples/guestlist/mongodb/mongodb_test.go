@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/commandhandler/bus"
 	eventbus "github.com/looplab/eventhorizon/eventbus/local"
@@ -72,7 +73,7 @@ func Example() {
 	guestListRepo.SetEntityFactory(func() eh.Entity { return &domain.GuestList{} })
 
 	// Setup the domain.
-	eventID := eh.NewUUID()
+	eventID := uuid.New()
 	domain.Setup(
 		eventStore,
 		eventBus,
@@ -92,10 +93,10 @@ func Example() {
 	// --- Execute commands on the domain --------------------------------------
 
 	// IDs for all the guests.
-	athenaID := eh.NewUUID()
-	hadesID := eh.NewUUID()
-	zeusID := eh.NewUUID()
-	poseidonID := eh.NewUUID()
+	athenaID := uuid.New()
+	hadesID := uuid.New()
+	zeusID := uuid.New()
+	poseidonID := uuid.New()
 
 	// Issue some invitations and responses. Error checking omitted here.
 	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{ID: athenaID, Name: "Athena", Age: 42}); err != nil {

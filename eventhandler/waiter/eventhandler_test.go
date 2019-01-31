@@ -21,6 +21,7 @@ import (
 
 	"time"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 )
@@ -31,7 +32,7 @@ func TestEventHandler(t *testing.T) {
 	// Event should match when waiting.
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	expectedEvent := eh.NewEventForAggregate(
-		mocks.EventType, nil, timestamp, mocks.AggregateType, eh.NewUUID(), 1,
+		mocks.EventType, nil, timestamp, mocks.AggregateType, uuid.New(), 1,
 	)
 	go func() {
 		time.Sleep(time.Millisecond)
@@ -58,7 +59,7 @@ func TestEventHandler(t *testing.T) {
 
 	// Other events should not match.
 	otherEvent := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
-		mocks.AggregateType, eh.NewUUID(), 1)
+		mocks.AggregateType, uuid.New(), 1)
 	go func() {
 		time.Sleep(time.Millisecond)
 		h.HandleEvent(context.Background(), otherEvent)

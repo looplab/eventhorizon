@@ -22,6 +22,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"github.com/google/uuid"
 
 	eh "github.com/looplab/eventhorizon"
 )
@@ -182,7 +183,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (s *EventStore) Load(ctx context.Context, id eh.UUID) ([]eh.Event, error) {
+func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
 	sess := s.session.Copy()
 	defer sess.Close()
 
@@ -335,7 +336,7 @@ type dbEvent struct {
 	data          eh.EventData     `bson:"-"`
 	Timestamp     time.Time        `bson:"timestamp"`
 	AggregateType eh.AggregateType `bson:"aggregate_type"`
-	AggregateID   eh.UUID          `bson:"_id"`
+	AggregateID   string           `bson:"_id"`
 	Version       int              `bson:"version"`
 }
 
@@ -360,7 +361,7 @@ func newDBEvent(ctx context.Context, event eh.Event) (*dbEvent, error) {
 		RawData:       rawData,
 		Timestamp:     event.Timestamp(),
 		AggregateType: event.AggregateType(),
-		AggregateID:   event.AggregateID(),
+		AggregateID:   event.AggregateID().String(),
 		Version:       event.Version(),
 	}, nil
 }
@@ -372,8 +373,12 @@ type event struct {
 }
 
 // AggrgateID implements the AggrgateID method of the eventhorizon.Event interface.
-func (e event) AggregateID() eh.UUID {
-	return e.dbEvent.AggregateID
+func (e event) AggregateID() uuid.UUID {
+	id, err := uuid.Parse(e.dbEvent.AggregateID)
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
 }
 
 // AggregateType implements the AggregateType method of the eventhorizon.Event interface.

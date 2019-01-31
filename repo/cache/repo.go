@@ -18,6 +18,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -30,7 +31,7 @@ type namespace string
 type Repo struct {
 	eh.ReadWriteRepo
 
-	cache   map[namespace]map[eh.UUID]eh.Entity
+	cache   map[namespace]map[uuid.UUID]eh.Entity
 	cacheMu sync.RWMutex
 }
 
@@ -38,7 +39,7 @@ type Repo struct {
 func NewRepo(repo eh.ReadWriteRepo) *Repo {
 	return &Repo{
 		ReadWriteRepo: repo,
-		cache:         map[namespace]map[eh.UUID]eh.Entity{},
+		cache:         map[namespace]map[uuid.UUID]eh.Entity{},
 	}
 }
 
@@ -57,7 +58,7 @@ func (r *Repo) Parent() eh.ReadRepo {
 }
 
 // Find implements the Find method of the eventhorizon.ReadModel interface.
-func (r *Repo) Find(ctx context.Context, id eh.UUID) (eh.Entity, error) {
+func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	ns := r.namespace(ctx)
 
 	// First check the cache.
@@ -92,7 +93,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 }
 
 // Remove implements the Remove method of the eventhorizon.WriteRepo interface.
-func (r *Repo) Remove(ctx context.Context, id eh.UUID) error {
+func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 	// Bust the cache on remove.
 	ns := r.namespace(ctx)
 	r.cacheMu.Lock()
@@ -109,7 +110,7 @@ func (r *Repo) namespace(ctx context.Context) namespace {
 	r.cacheMu.Lock()
 	defer r.cacheMu.Unlock()
 	if _, ok := r.cache[ns]; !ok {
-		r.cache[ns] = map[eh.UUID]eh.Entity{}
+		r.cache[ns] = map[uuid.UUID]eh.Entity{}
 	}
 
 	return ns

@@ -17,6 +17,8 @@ package eventhorizon
 import (
 	"context"
 	"errors"
+
+	"github.com/google/uuid"
 )
 
 // EventStoreError is an error in the event store, with the namespace.
@@ -56,7 +58,7 @@ type EventStore interface {
 	Save(ctx context.Context, events []Event, originalVersion int) error
 
 	// Load loads all events for the aggregate id from the store.
-	Load(context.Context, UUID) ([]Event, error)
+	Load(context.Context, uuid.UUID) ([]Event, error)
 }
 
 // EventStoreMaintainer is an interface for a maintainer of an EventStore.
