@@ -114,7 +114,7 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 		return nil, ErrInvalidAggregateType
 	}
 
-	events, err := r.store.Load(ctx, a.EntityID())
+	events, err := r.store.Load(ctx, a.EntityID(), aggregateType)
 	if err != nil {
 		return nil, err
 	}

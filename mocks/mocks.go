@@ -297,7 +297,7 @@ func (m *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (m *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
+func (m *EventStore) Load(ctx context.Context, id uuid.UUID, _ eh.AggregateType) ([]eh.Event, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
