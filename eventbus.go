@@ -27,6 +27,11 @@ type EventBusError struct {
 	Event Event
 }
 
+// Cause implement errors.Cause(), return the original error to handler
+func (e EventBusError) Cause() error {
+	return e.Err
+}
+
 // Error implements the Error method of the error interface.
 func (e EventBusError) Error() string {
 	return fmt.Sprintf("%s: (%s)", e.Err, e.Event)
