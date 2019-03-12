@@ -31,6 +31,11 @@ type EventStoreError struct {
 	Namespace string
 }
 
+// Cause implement errors.Cause(), return the original error to handler
+func (e EventStoreError) Cause() error {
+	return e.Err
+}
+
 // Error implements the Error method of the errors.Error interface.
 func (e EventStoreError) Error() string {
 	errStr := e.Err.Error()
