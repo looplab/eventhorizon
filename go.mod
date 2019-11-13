@@ -1,4 +1,4 @@
-module github.com/looplab/eventhorizon
+module github.com/firawe/eventhorizon
 
 require (
 	cloud.google.com/go v0.26.0
@@ -25,3 +25,5 @@ require (
 	google.golang.org/grpc v1.14.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
+
+go 1.13

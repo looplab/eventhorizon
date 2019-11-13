@@ -30,3 +30,5 @@ vendor/
 
 # CI
 .env
+
+\.idea/
