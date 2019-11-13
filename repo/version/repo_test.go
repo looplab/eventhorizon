@@ -21,10 +21,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/repo"
-	"github.com/looplab/eventhorizon/repo/memory"
+	eh "github.com/firawe/eventhorizon"
+	"github.com/firawe/eventhorizon/mocks"
+	"github.com/firawe/eventhorizon/repo"
+	"github.com/firawe/eventhorizon/repo/memory"
 )
 
 func TestReadRepo(t *testing.T) {

@@ -21,7 +21,7 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/google/uuid"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 // ErrCouldNotDialDB is when the database could not be dialed.
@@ -93,7 +93,7 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	}
 
 	entity := r.factoryFn()
-	err := sess.DB(r.dbName(ctx)).C(r.collection).FindId(id).One(entity)
+	err := sess.DB(r.dbName(ctx)).C(r.collection).FindId(id.String()).One(entity)
 	if err != nil {
 		return nil, eh.RepoError{
 			Err:       eh.ErrEntityNotFound,
@@ -242,7 +242,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	}
 
 	if _, err := sess.DB(r.dbName(ctx)).C(r.collection).UpsertId(
-		entity.EntityID(), entity); err != nil {
+		entity.EntityID().String(), entity); err != nil {
 		return eh.RepoError{
 			Err:       eh.ErrCouldNotSaveEntity,
 			BaseErr:   err,
@@ -257,7 +257,7 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 
-	err := sess.DB(r.dbName(ctx)).C(r.collection).RemoveId(id)
+	err := sess.DB(r.dbName(ctx)).C(r.collection).RemoveId(id.String())
 	if err != nil {
 		return eh.RepoError{
 			Err:       eh.ErrEntityNotFound,

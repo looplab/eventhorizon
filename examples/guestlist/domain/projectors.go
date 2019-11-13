@@ -20,14 +20,14 @@ import (
 	"fmt"
 	"sync"
 
+	eh "github.com/firawe/eventhorizon"
+	"github.com/firawe/eventhorizon/eventhandler/projector"
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/eventhandler/projector"
 )
 
 // Invitation is a read model object for an invitation.
 type Invitation struct {
-	ID      uuid.UUID `bson:"_id"`
+	ID      string `bson:"_id"`
 	Version int
 	Name    string
 	Age     int
@@ -39,7 +39,7 @@ var _ = eh.Versionable(&Invitation{})
 
 // EntityID implements the EntityID method of the eventhorizon.Entity interface.
 func (i *Invitation) EntityID() uuid.UUID {
-	return i.ID
+	return uuid.MustParse(i.ID)
 }
 
 // AggregateVersion implements the AggregateVersion method of the
@@ -75,7 +75,7 @@ func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, entit
 		if !ok {
 			return nil, fmt.Errorf("projector: invalid event data type: %v", event.Data())
 		}
-		i.ID = event.AggregateID()
+		i.ID = event.AggregateID().String()
 		i.Name = data.Name
 		i.Age = data.Age
 
@@ -101,7 +101,7 @@ func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, entit
 
 // GuestList is a read model object for the guest list.
 type GuestList struct {
-	ID           uuid.UUID `bson:"_id"`
+	ID           string `bson:"_id"`
 	NumGuests    int
 	NumAccepted  int
 	NumDeclined  int
@@ -113,7 +113,7 @@ var _ = eh.Entity(&Invitation{})
 
 // EntityID implements the EntityID method of the eventhorizon.Entity interface.
 func (g *GuestList) EntityID() uuid.UUID {
-	return g.ID
+	return uuid.MustParse(g.ID)
 }
 
 // GuestListProjector is a projector that updates the guest list. It is
@@ -149,7 +149,7 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 	m, err := p.repo.Find(ctx, p.eventID)
 	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
 		g = &GuestList{
-			ID: p.eventID,
+			ID: p.eventID.String(),
 		}
 	} else if err != nil {
 		return err

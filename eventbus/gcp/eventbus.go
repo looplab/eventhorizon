@@ -26,7 +26,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/api/option"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 // DefaultQueueSize is the default queue size per handler for publishing events.

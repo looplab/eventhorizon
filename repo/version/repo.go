@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jpillora/backoff"
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 // Repo is a middleware that adds version checking to a read repository.

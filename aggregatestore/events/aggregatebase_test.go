@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 func TestNewAggregateBase(t *testing.T) {

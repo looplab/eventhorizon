@@ -22,15 +22,15 @@ import (
 	"sort"
 	"time"
 
+	eh "github.com/firawe/eventhorizon"
+	"github.com/firawe/eventhorizon/commandhandler/bus"
+	eventbus "github.com/firawe/eventhorizon/eventbus/local"
+	eventstore "github.com/firawe/eventhorizon/eventstore/mongodb"
+	repo "github.com/firawe/eventhorizon/repo/mongodb"
+	"github.com/firawe/eventhorizon/repo/version"
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/commandhandler/bus"
-	eventbus "github.com/looplab/eventhorizon/eventbus/local"
-	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
-	repo "github.com/looplab/eventhorizon/repo/mongodb"
-	"github.com/looplab/eventhorizon/repo/version"
 
-	"github.com/looplab/eventhorizon/examples/guestlist/domain"
+	"github.com/firawe/eventhorizon/examples/guestlist/domain"
 )
 
 func Example() {

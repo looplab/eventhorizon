@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 // NewMiddleware returns a new async handling middleware that returns any errors

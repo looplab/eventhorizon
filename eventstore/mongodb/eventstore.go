@@ -24,7 +24,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/google/uuid"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 // ErrCouldNotDialDB is when the database could not be dialed.

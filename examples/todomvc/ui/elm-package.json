@@ -1,7 +1,7 @@
 {
     "version": "1.0.0",
     "summary": "Front end for the TodoMVC example for Event Horizon",
-    "repository": "https://github.com/looplab/eventhorizon.git",
+    "repository": "https://github.com/firawe/eventhorizon.git",
     "license": "Apache-2.0",
     "source-directories": [
         "."

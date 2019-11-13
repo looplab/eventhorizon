@@ -20,7 +20,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 // DefaultQueueSize is the default queue size per handler for publishing events.
