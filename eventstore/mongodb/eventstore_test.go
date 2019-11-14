@@ -31,8 +31,14 @@ func TestEventStore(t *testing.T) {
 		// Default to localhost
 		url = "localhost:27017"
 	}
-
-	store, err := NewEventStore(url, "test")
+	optionsRepo := Options{
+		SSL:        false,
+		DBHost:     url,
+		DBName:     "",
+		DBUser:     "",
+		DBPassword: "",
+	}
+	store, err := NewEventStore(optionsRepo)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}

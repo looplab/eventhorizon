@@ -28,7 +28,7 @@ func TestMatchAny(t *testing.T) {
 		t.Error("match any should always match")
 	}
 
-	e := NewEvent("test", 1, nil, time.Now())
+	e := NewEvent("test", nil, time.Now())
 	if !m(e) {
 		t.Error("match any should always match")
 	}
@@ -41,12 +41,12 @@ func TestMatchEvent(t *testing.T) {
 		t.Error("match event should not match nil event")
 	}
 
-	e := NewEvent(et, 1, nil, time.Now())
+	e := NewEvent(et,  nil, time.Now())
 	if !m(e) {
 		t.Error("match event should match the event")
 	}
 
-	e = NewEvent("other", 1, nil, time.Now())
+	e = NewEvent("other", nil, time.Now())
 	if m(e) {
 		t.Error("match event should not match the event")
 	}
@@ -60,12 +60,12 @@ func TestMatchAggregate(t *testing.T) {
 		t.Error("match aggregate should not match nil event")
 	}
 
-	e := NewEventForAggregate("test", 1, nil, time.Now(), at, uuid.Nil, 0)
+	e := NewEventForAggregate("test", nil, time.Now(), at, uuid.Nil, 0)
 	if !m(e) {
 		t.Error("match aggregate should match the event")
 	}
 
-	e = NewEventForAggregate("test", 1, nil, time.Now(), "other", uuid.Nil, 0)
+	e = NewEventForAggregate("test", nil, time.Now(), "other", uuid.Nil, 0)
 	if m(e) {
 		t.Error("match aggregate should not match the event")
 	}
@@ -79,11 +79,11 @@ func TestMatchAnyOf(t *testing.T) {
 		MatchEvent(et2),
 	)
 
-	e := NewEvent(et1, 1, nil, time.Now())
+	e := NewEvent(et1,  nil, time.Now())
 	if !m(e) {
 		t.Error("match any of should match the first event")
 	}
-	e = NewEvent(et2, 1, nil, time.Now())
+	e = NewEvent(et2,  nil, time.Now())
 	if !m(e) {
 		t.Error("match any of should match the last event")
 	}
@@ -98,11 +98,11 @@ func TestMatchAnyEventOf(t *testing.T) {
 		t.Error("match any event of should not match nil event")
 	}
 
-	e1 := NewEvent(et1, 1, nil, time.Now())
+	e1 := NewEvent(et1,  nil, time.Now())
 	if !m(e1) {
 		t.Error("match any event of should match the first event")
 	}
-	e2 := NewEvent(et2, 1, nil, time.Now())
+	e2 := NewEvent(et2,  nil, time.Now())
 	if !m(e2) {
 		t.Error("match any event of should match the second event")
 	}

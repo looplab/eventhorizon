@@ -70,8 +70,13 @@ func NewHandler() (*Handler, error) {
 		dbURL = "localhost:27017"
 	}
 
+	options := eventstore.Options{SSL: false,
+		DBHost:     dbURL,
+		DBName:     "",
+		DBUser:     "",
+		DBPassword: "",}
 	// Create the event store.
-	eventStore, err := eventstore.NewEventStore(dbURL, "todomvc")
+	eventStore, err := eventstore.NewEventStore(options)
 	if err != nil {
 		return nil, fmt.Errorf("could not create event store: %s", err)
 	}
@@ -108,8 +113,15 @@ func NewHandler() (*Handler, error) {
 	}
 	commandHandler := eh.UseCommandHandlerMiddleware(aggregateCommandHandler, commandHandlerLogger)
 
+	optionsRe := repo.Options{SSL: false,
+		DBHost:     dbURL,
+		DBName:     "",
+		DBUser:     "",
+		DBPassword: "",
+		Collection: "",
+	}
 	// Create the repository and wrap in a version repository.
-	repo, err := repo.NewRepo(dbURL, "todomvc", "todos")
+	repo, err := repo.NewRepo(optionsRe)
 	if err != nil {
 		return nil, fmt.Errorf("could not create invitation repository: %s", err)
 	}

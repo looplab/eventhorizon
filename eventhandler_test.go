@@ -32,7 +32,7 @@ func TestEventHandlerFunc(t *testing.T) {
 		t.Error("the handler type should be correct:", h.HandlerType())
 	}
 
-	e := NewEvent("test", 1, nil, time.Now())
+	e := NewEvent("test",  nil, time.Now())
 	h.HandleEvent(context.Background(), e)
 	if !reflect.DeepEqual(events, []Event{e}) {
 		t.Error("the events should be correct")
@@ -58,7 +58,7 @@ func TestEventHandlerMiddleware(t *testing.T) {
 		middleware("second"),
 		middleware("third"),
 	)
-	h.HandleEvent(context.Background(), NewEvent("test", 1, nil, time.Now()))
+	h.HandleEvent(context.Background(), NewEvent("test",  nil, time.Now()))
 	if !reflect.DeepEqual(order, []string{"first", "second", "third"}) {
 		t.Error("the order of middleware should be correct")
 		t.Log(order)

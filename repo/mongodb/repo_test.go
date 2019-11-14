@@ -38,8 +38,14 @@ func TestReadRepo(t *testing.T) {
 		// Default to localhost
 		url = "localhost:27017"
 	}
-
-	r, err := NewRepo(url, "test", "mocks.Model")
+	optionsRe := Options{SSL: false,
+		DBHost:     url,
+		DBName:     "",
+		DBUser:     "",
+		DBPassword: "",
+		Collection: "mocks.Model",
+	}
+	r, err := NewRepo(optionsRe)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -182,8 +188,14 @@ func TestRepository(t *testing.T) {
 		// Default to localhost
 		url = "localhost:27017"
 	}
-
-	repo, err := NewRepo(url, "test", "mocks.Model")
+	optionsRe := Options{SSL: false,
+		DBHost:     url,
+		DBName:     "",
+		DBUser:     "",
+		DBPassword: "",
+		Collection: "mocks.Model",
+	}
+	repo, err := NewRepo(optionsRe)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
