@@ -18,8 +18,8 @@ import (
 	"context"
 	"time"
 
+	eh "github.com/firawe/eventhorizon"
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
 )
 
 func init() {

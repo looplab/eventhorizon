@@ -18,8 +18,8 @@ import (
 	"context"
 	"sync"
 
+	eh "github.com/firawe/eventhorizon"
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
 )
 
 type namespace string

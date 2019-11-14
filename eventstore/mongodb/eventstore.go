@@ -16,15 +16,18 @@ package mongodb
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
+	"strings"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/google/uuid"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 // ErrCouldNotDialDB is when the database could not be dialed.
@@ -50,13 +53,20 @@ var ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
 
 // EventStore implements an EventStore for MongoDB.
 type EventStore struct {
-	session  *mgo.Session
-	dbPrefix string
+	session *mgo.Session
+}
+
+type Options struct {
+	SSL        bool
+	DBHost     string
+	DBName     string
+	DBUser     string
+	DBPassword string
 }
 
 // NewEventStore creates a new EventStore.
-func NewEventStore(url, dbPrefix string) (*EventStore, error) {
-	session, err := mgo.Dial(url)
+func NewEventStore(options Options) (*EventStore, error) {
+	session, err := initDB(options)
 	if err != nil {
 		return nil, ErrCouldNotDialDB
 	}
@@ -64,18 +74,43 @@ func NewEventStore(url, dbPrefix string) (*EventStore, error) {
 	session.SetMode(mgo.Strong, true)
 	session.SetSafe(&mgo.Safe{W: 1})
 
-	return NewEventStoreWithSession(session, dbPrefix)
+	return NewEventStoreWithSession(session)
+}
+
+// InitDB inits the database
+func initDB(options Options) (*mgo.Session, error) {
+	dialInfo := &mgo.DialInfo{
+		Addrs:    strings.Split(options.DBHost, ","),
+		Database: options.DBName,
+		Username: options.DBUser,
+		Password: options.DBPassword,
+		DialServer: func(addr *mgo.ServerAddr) (net.Conn, error) {
+			return tls.Dial("tcp", addr.String(), &tls.Config{InsecureSkipVerify: true})
+		},
+		ReplicaSetName: "rs0",
+		Timeout:        time.Second * 10,
+	}
+
+	if !options.SSL {
+		dialInfo.ReplicaSetName = ""
+		dialInfo.DialServer = nil
+	}
+	// connect to the database
+	session, err := mgo.DialWithInfo(dialInfo)
+	if err != nil {
+		return nil, err
+	}
+	return session, err
 }
 
 // NewEventStoreWithSession creates a new EventStore with a session.
-func NewEventStoreWithSession(session *mgo.Session, dbPrefix string) (*EventStore, error) {
+func NewEventStoreWithSession(session *mgo.Session) (*EventStore, error) {
 	if session == nil {
 		return nil, ErrNoDBSession
 	}
 
 	s := &EventStore{
-		session:  session,
-		dbPrefix: dbPrefix,
+		session: session,
 	}
 
 	return s, nil
@@ -294,11 +329,11 @@ func (s *EventStore) Close() {
 	s.session.Close()
 }
 
-// dbName appends the namespace, if one is set, to the DB prefix to
+// DBName appends the namespace, if one is set, to the DB prefix to
 // get the name of the DB to use.
 func (s *EventStore) dbName(ctx context.Context) string {
 	ns := eh.NamespaceFromContext(ctx)
-	return s.dbPrefix + "_" + ns
+	return ns
 }
 
 // aggregateRecord is the DB representation of an aggregate.

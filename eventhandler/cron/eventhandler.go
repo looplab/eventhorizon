@@ -20,7 +20,7 @@ import (
 
 	"github.com/gorhill/cronexpr"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 // EventHandler is a cron runner that inserts timed events into the event stream.

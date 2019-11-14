@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 func TestMockContext(t *testing.T) {

@@ -22,11 +22,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/globalsign/mgo/bson"
 	"github.com/google/uuid"
 	"google.golang.org/api/option"
+	"gopkg.in/mgo.v2/bson"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 // DefaultQueueSize is the default queue size per handler for publishing events.

@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/firawe/eventhorizon"
 )
 
 // EventHandler is a CQRS saga handler to run a Saga implementation.

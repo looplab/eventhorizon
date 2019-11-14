@@ -21,13 +21,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/google/uuid"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/repo"
+	eh "github.com/firawe/eventhorizon"
+	"github.com/firawe/eventhorizon/mocks"
+	"github.com/firawe/eventhorizon/repo"
 )
 
 func TestReadRepo(t *testing.T) {

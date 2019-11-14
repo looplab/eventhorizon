@@ -20,9 +20,9 @@ import (
 	"log"
 	"time"
 
+	eh "github.com/firawe/eventhorizon"
+	"github.com/firawe/eventhorizon/aggregatestore/events"
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/aggregatestore/events"
 )
 
 func init() {
@@ -66,6 +66,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 	switch cmd := cmd.(type) {
 	case *CreateInvite:
 		a.StoreEvent(InviteCreatedEvent,
+
 			&InviteCreatedData{
 				cmd.Name,
 				cmd.Age,

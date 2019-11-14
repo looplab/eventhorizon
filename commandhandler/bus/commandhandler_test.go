@@ -19,9 +19,9 @@ import (
 	"reflect"
 	"testing"
 
+	eh "github.com/firawe/eventhorizon"
+	"github.com/firawe/eventhorizon/mocks"
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
 )
 
 func TestCommandHandler(t *testing.T) {

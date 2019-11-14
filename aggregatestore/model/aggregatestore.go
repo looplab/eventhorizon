@@ -18,8 +18,8 @@ import (
 	"context"
 	"errors"
 
+	eh "github.com/firawe/eventhorizon"
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
 )
 
 // ErrInvalidRepo is when a dispatcher is created with a nil repo.

@@ -19,8 +19,8 @@ import (
 	"errors"
 	"fmt"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/eventhandler/projector"
+	eh "github.com/firawe/eventhorizon"
+	"github.com/firawe/eventhorizon/eventhandler/projector"
 )
 
 // Projector is a projector of todo list events on the TodoList read model.

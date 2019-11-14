@@ -19,9 +19,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/firawe/eventhorizon/examples/todomvc/internal/domain"
+	"github.com/firawe/eventhorizon/repo/mongodb"
 	"github.com/google/uuid"
-	"github.com/looplab/eventhorizon/examples/todomvc/internal/domain"
-	"github.com/looplab/eventhorizon/repo/mongodb"
 )
 
 func main() {

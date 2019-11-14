@@ -22,18 +22,19 @@ import (
 	"sort"
 	"time"
 
+	eh "github.com/firawe/eventhorizon"
+	"github.com/firawe/eventhorizon/commandhandler/bus"
+	eventbus "github.com/firawe/eventhorizon/eventbus/local"
+	eventstore "github.com/firawe/eventhorizon/eventstore/mongodb"
+	repo "github.com/firawe/eventhorizon/repo/mongodb"
+	"github.com/firawe/eventhorizon/repo/version"
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/commandhandler/bus"
-	eventbus "github.com/looplab/eventhorizon/eventbus/local"
-	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
-	repo "github.com/looplab/eventhorizon/repo/mongodb"
-	"github.com/looplab/eventhorizon/repo/version"
 
-	"github.com/looplab/eventhorizon/examples/guestlist/domain"
+	"github.com/firawe/eventhorizon/examples/guestlist/domain"
 )
 
 func Example() {
+
 	// Local Mongo testing with Docker
 	url := os.Getenv("MONGO_HOST")
 
@@ -41,9 +42,10 @@ func Example() {
 		// Default to localhost
 		url = "localhost:27017"
 	}
+	options := eventstore.Options{DBHost: url, SSL: false, DBName: "profiles"}
 
 	// Create the event store.
-	eventStore, err := eventstore.NewEventStore(url, "demo")
+	eventStore, err := eventstore.NewEventStore(options)
 	if err != nil {
 		log.Fatalf("could not create event store: %s", err)
 	}
@@ -58,16 +60,24 @@ func Example() {
 
 	// Create the command bus.
 	commandBus := bus.NewCommandHandler()
-
+	optionsRepo := repo.Options{
+		SSL:        false,
+		DBHost:     url,
+		DBName:     "",
+		DBUser:     "",
+		DBPassword: "",
+		Collection: "invitations",
+	}
 	// Create the read repositories.
-	invitationRepo, err := repo.NewRepo(url, "demo", "invitations")
+	invitationRepo, err := repo.NewRepo(optionsRepo)
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
 	invitationRepo.SetEntityFactory(func() eh.Entity { return &domain.Invitation{} })
 	// A version repo is needed for the projector to handle eventual consistency.
 	invitationVersionRepo := version.NewRepo(invitationRepo)
-	guestListRepo, err := repo.NewRepo(url, "demo", "guest_lists")
+	optionsRepo.Collection = "guest_lists"
+	guestListRepo, err := repo.NewRepo(optionsRepo)
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}
@@ -84,7 +94,7 @@ func Example() {
 	)
 
 	// Set the namespace to use.
-	ctx := eh.NewContextWithNamespace(context.Background(), "mongodb")
+	ctx := eh.NewContextWithNamespace(context.Background(), options.DBName)
 
 	// Clear DB collections.
 	eventStore.Clear(ctx)

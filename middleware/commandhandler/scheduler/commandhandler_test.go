@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
+	eh "github.com/firawe/eventhorizon"
+	"github.com/firawe/eventhorizon/mocks"
 	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
 )
 
 func TestCommandHandler_Immediate(t *testing.T) {

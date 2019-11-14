@@ -18,8 +18,8 @@ import (
 	"context"
 	"testing"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/eventstore"
+	eh "github.com/firawe/eventhorizon"
+	"github.com/firawe/eventhorizon/eventstore"
 )
 
 func TestEventStore(t *testing.T) {
