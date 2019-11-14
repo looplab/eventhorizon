@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
+	eh "github.com/firawe/eventhorizon"
 	"github.com/google/uuid"
 	"github.com/kr/pretty"
-	eh "github.com/firawe/eventhorizon"
 )
 
 func TestProjector(t *testing.T) {

@@ -24,7 +24,7 @@ import (
 
 func TestNewEvent(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event := NewEvent(TestEventType,1, &TestEventData{"event1"}, timestamp)
+	event := NewEvent(TestEventType, 1, &TestEventData{"event1"}, timestamp)
 	if event.EventType() != TestEventType {
 		t.Error("the event type should be correct:", event.EventType())
 	}
@@ -42,7 +42,7 @@ func TestNewEvent(t *testing.T) {
 	}
 
 	id := uuid.New()
-	event = NewEventForAggregate(TestEventType,1, &TestEventData{"event1"}, timestamp,
+	event = NewEventForAggregate(TestEventType, 1, &TestEventData{"event1"}, timestamp,
 		TestAggregateType, id, 3)
 	if event.EventType() != TestEventType {
 		t.Error("the event type should be correct:", event.EventType())

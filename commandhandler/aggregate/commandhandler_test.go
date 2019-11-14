@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/uuid"
 	eh "github.com/firawe/eventhorizon"
 	"github.com/firawe/eventhorizon/mocks"
+	"github.com/google/uuid"
 )
 
 func TestNewCommandHandler(t *testing.T) {

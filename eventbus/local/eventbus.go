@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/uuid"
 	eh "github.com/firawe/eventhorizon"
+	"github.com/google/uuid"
 )
 
 // DefaultQueueSize is the default queue size per handler for publishing events.

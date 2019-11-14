@@ -16,10 +16,14 @@ package mongodb
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"net"
+	"strings"
+	"time"
 
-	"github.com/globalsign/mgo"
 	"github.com/google/uuid"
+	"gopkg.in/mgo.v2"
 
 	eh "github.com/firawe/eventhorizon"
 )
@@ -47,9 +51,18 @@ type Repo struct {
 	factoryFn  func() eh.Entity
 }
 
+type Options struct {
+	SSL        bool
+	DBHost     string
+	DBName     string
+	DBUser     string
+	DBPassword string
+	Collection string
+}
+
 // NewRepo creates a new Repo.
-func NewRepo(url, dbPrefix, collection string) (*Repo, error) {
-	session, err := mgo.Dial(url)
+func NewRepo(options Options) (*Repo, error) {
+	session, err := initDB(options)
 	if err != nil {
 		return nil, ErrCouldNotDialDB
 	}
@@ -57,18 +70,43 @@ func NewRepo(url, dbPrefix, collection string) (*Repo, error) {
 	session.SetMode(mgo.Strong, true)
 	session.SetSafe(&mgo.Safe{W: 1})
 
-	return NewRepoWithSession(session, dbPrefix, collection)
+	return NewRepoWithSession(session, options.Collection)
+}
+
+// InitDB inits the database
+func initDB(options Options) (*mgo.Session, error) {
+	dialInfo := &mgo.DialInfo{
+		Addrs:    strings.Split(options.DBHost, ","),
+		Database: options.DBName,
+		Username: options.DBUser,
+		Password: options.DBPassword,
+		DialServer: func(addr *mgo.ServerAddr) (net.Conn, error) {
+			return tls.Dial("tcp", addr.String(), &tls.Config{InsecureSkipVerify: true})
+		},
+		ReplicaSetName: "rs0",
+		Timeout:        time.Second * 10,
+	}
+
+	if !options.SSL {
+		dialInfo.ReplicaSetName = ""
+		dialInfo.DialServer = nil
+	}
+	// connect to the database
+	session, err := mgo.DialWithInfo(dialInfo)
+	if err != nil {
+		return nil, err
+	}
+	return session, err
 }
 
 // NewRepoWithSession creates a new Repo with a session.
-func NewRepoWithSession(session *mgo.Session, dbPrefix, collection string) (*Repo, error) {
+func NewRepoWithSession(session *mgo.Session, collection string) (*Repo, error) {
 	if session == nil {
 		return nil, ErrNoDBSession
 	}
 
 	r := &Repo{
 		session:    session,
-		dbPrefix:   dbPrefix,
 		collection: collection,
 	}
 
@@ -311,7 +349,7 @@ func (r *Repo) Close() {
 // get the name of the DB to use.
 func (r *Repo) dbName(ctx context.Context) string {
 	ns := eh.NamespaceFromContext(ctx)
-	return r.dbPrefix + "_" + ns
+	return ns
 }
 
 // Repository returns a parent ReadRepo if there is one.

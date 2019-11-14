@@ -20,11 +20,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	eh "github.com/firawe/eventhorizon"
 	"github.com/firawe/eventhorizon/mocks"
 	"github.com/firawe/eventhorizon/repo"
 	"github.com/firawe/eventhorizon/repo/memory"
+	"github.com/google/uuid"
 )
 
 func TestReadRepo(t *testing.T) {

@@ -18,9 +18,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/google/uuid"
 	eh "github.com/firawe/eventhorizon"
 	"github.com/firawe/eventhorizon/eventhandler/saga"
+	"github.com/google/uuid"
 )
 
 // ResponseSagaType is the type of the saga.

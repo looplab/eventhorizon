@@ -34,6 +34,7 @@ import (
 )
 
 func Example() {
+
 	// Local Mongo testing with Docker
 	url := os.Getenv("MONGO_HOST")
 
@@ -41,9 +42,10 @@ func Example() {
 		// Default to localhost
 		url = "localhost:27017"
 	}
+	options := eventstore.Options{DBHost: url, SSL: false, DBName: "profiles"}
 
 	// Create the event store.
-	eventStore, err := eventstore.NewEventStore(url, "demo")
+	eventStore, err := eventstore.NewEventStore(options)
 	if err != nil {
 		log.Fatalf("could not create event store: %s", err)
 	}
@@ -58,16 +60,24 @@ func Example() {
 
 	// Create the command bus.
 	commandBus := bus.NewCommandHandler()
-
+	optionsRepo := repo.Options{
+		SSL:        false,
+		DBHost:     url,
+		DBName:     "",
+		DBUser:     "",
+		DBPassword: "",
+		Collection: "invitations",
+	}
 	// Create the read repositories.
-	invitationRepo, err := repo.NewRepo(url, "demo", "invitations")
+	invitationRepo, err := repo.NewRepo(optionsRepo)
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
 	invitationRepo.SetEntityFactory(func() eh.Entity { return &domain.Invitation{} })
 	// A version repo is needed for the projector to handle eventual consistency.
 	invitationVersionRepo := version.NewRepo(invitationRepo)
-	guestListRepo, err := repo.NewRepo(url, "demo", "guest_lists")
+	optionsRepo.Collection = "guest_lists"
+	guestListRepo, err := repo.NewRepo(optionsRepo)
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}
@@ -84,7 +94,7 @@ func Example() {
 	)
 
 	// Set the namespace to use.
-	ctx := eh.NewContextWithNamespace(context.Background(), "mongodb")
+	ctx := eh.NewContextWithNamespace(context.Background(), options.DBName)
 
 	// Clear DB collections.
 	eventStore.Clear(ctx)

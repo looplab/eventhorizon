@@ -18,9 +18,9 @@ import (
 	"context"
 	"time"
 
+	eh "github.com/firawe/eventhorizon"
 	"github.com/google/uuid"
 	"github.com/jpillora/backoff"
-	eh "github.com/firawe/eventhorizon"
 )
 
 // Repo is a middleware that adds version checking to a read repository.

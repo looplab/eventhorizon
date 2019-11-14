@@ -21,8 +21,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	eh "github.com/firawe/eventhorizon"
+	"github.com/google/uuid"
 )
 
 // ErrCouldNotSaveAggregate is when an aggregate could not be saved.

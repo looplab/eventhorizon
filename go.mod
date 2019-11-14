@@ -3,7 +3,6 @@ module github.com/firawe/eventhorizon
 require (
 	cloud.google.com/go v0.26.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.6.0 // indirect
-	github.com/globalsign/mgo v0.0.0-20180828104044-6f9f54af1356
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/protobuf v1.2.0 // indirect
 	github.com/google/go-cmp v0.2.0 // indirect
@@ -25,6 +24,7 @@ require (
 	google.golang.org/grpc v1.14.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
+	gopkg.in/yaml.v2 v2.2.5 // indirect
 )
 
 go 1.13

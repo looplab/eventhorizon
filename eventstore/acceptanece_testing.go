@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	eh "github.com/firawe/eventhorizon"
 	"github.com/firawe/eventhorizon/mocks"
+	"github.com/google/uuid"
 )
 
 // AcceptanceTest is the acceptance test that all implementations of EventStore

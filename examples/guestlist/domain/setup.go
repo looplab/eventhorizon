@@ -17,13 +17,13 @@ package domain
 import (
 	"log"
 
-	"github.com/google/uuid"
 	eh "github.com/firawe/eventhorizon"
 	"github.com/firawe/eventhorizon/aggregatestore/events"
 	"github.com/firawe/eventhorizon/commandhandler/aggregate"
 	"github.com/firawe/eventhorizon/commandhandler/bus"
 	"github.com/firawe/eventhorizon/eventhandler/projector"
 	"github.com/firawe/eventhorizon/eventhandler/saga"
+	"github.com/google/uuid"
 )
 
 // Setup configures the domain.
@@ -75,6 +75,61 @@ func Setup(
 		InviteConfirmedEvent,
 		InviteDeniedEvent,
 	), guestListProjector)
+
+	// Setup the saga that responds to the accepted guests and limits the total
+	// amount of guests, responding with a confirmation or denial.
+	responseSaga := saga.NewEventHandler(NewResponseSaga(2), commandBus)
+	eventBus.AddHandler(eh.MatchEvent(InviteAcceptedEvent), responseSaga)
+}
+
+// Setup configures the domain.
+func Setup2(
+	eventStore eh.EventStore,
+	eventBus eh.EventBus,
+	commandBus *bus.CommandHandler,
+	eventID uuid.UUID) {
+
+	// Add a logger as an observer.
+	eventBus.AddObserver(eh.MatchAny(), &Logger{})
+
+	// Create the aggregate repository.
+	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)
+	if err != nil {
+		log.Fatalf("could not create aggregate store: %s", err)
+	}
+
+	// Create the aggregate command handler and register the commands it handles.
+	invitationHandler, err := aggregate.NewCommandHandler(InvitationAggregateType, aggregateStore)
+	if err != nil {
+		log.Fatalf("could not create command handler: %s", err)
+	}
+	commandHandler := eh.UseCommandHandlerMiddleware(invitationHandler, LoggingMiddleware)
+	commandBus.SetHandler(commandHandler, CreateInviteCommand)
+	commandBus.SetHandler(commandHandler, AcceptInviteCommand)
+	commandBus.SetHandler(commandHandler, DeclineInviteCommand)
+	commandBus.SetHandler(commandHandler, ConfirmInviteCommand)
+	commandBus.SetHandler(commandHandler, DenyInviteCommand)
+
+	// Create and register a read model for individual invitations.
+	//invitationProjector := projector.NewEventHandler(
+	//	NewInvitationProjector(), invitationRepo)
+	//invitationProjector.SetEntityFactory(func() eh.Entity { return &Invitation{} })
+	//eventBus.AddHandler(eh.MatchAnyEventOf(
+	//	InviteCreatedEvent,
+	//	InviteAcceptedEvent,
+	//	InviteDeclinedEvent,
+	//	InviteConfirmedEvent,
+	//	InviteDeniedEvent,
+	//), invitationProjector)
+
+	// Create and register a read model for a guest list.
+	//guestListProjector := NewGuestListProjector(guestListRepo, eventID)
+	//eventBus.AddHandler(eh.MatchAnyEventOf(
+	//	InviteAcceptedEvent,
+	//	InviteDeclinedEvent,
+	//	InviteConfirmedEvent,
+	//	InviteDeniedEvent,
+	//), guestListProjector)
 
 	// Setup the saga that responds to the accepted guests and limits the total
 	// amount of guests, responding with a confirmation or denial.

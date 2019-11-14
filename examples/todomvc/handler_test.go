@@ -23,10 +23,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	eh "github.com/firawe/eventhorizon"
 	"github.com/firawe/eventhorizon/eventhandler/waiter"
 	"github.com/firawe/eventhorizon/repo/mongodb"
+	"github.com/google/uuid"
 
 	"github.com/firawe/eventhorizon/examples/todomvc/internal/domain"
 )

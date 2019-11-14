@@ -17,8 +17,8 @@ package waiter
 import (
 	"context"
 
-	"github.com/google/uuid"
 	eh "github.com/firawe/eventhorizon"
+	"github.com/google/uuid"
 )
 
 // EventHandler waits for certain events to match a criteria.
