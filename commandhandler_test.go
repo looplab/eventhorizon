@@ -18,8 +18,6 @@ import (
 	"context"
 	"reflect"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func TestCommandHandlerMiddleware(t *testing.T) {
@@ -51,6 +49,6 @@ type TestCommand struct{}
 
 var _ = Command(TestCommand{})
 
-func (a TestCommand) AggregateID() uuid.UUID       { return uuid.Nil }
+func (a TestCommand) AggregateID() string       { return "" }
 func (a TestCommand) AggregateType() AggregateType { return "test" }
 func (a TestCommand) CommandType() CommandType     { return "tes" }

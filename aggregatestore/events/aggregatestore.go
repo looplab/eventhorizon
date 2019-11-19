@@ -19,7 +19,6 @@ import (
 	"errors"
 
 	eh "github.com/firawe/eventhorizon"
-	"github.com/google/uuid"
 )
 
 // ErrInvalidEventStore is when a dispatcher is created with a nil event store.
@@ -104,7 +103,7 @@ func NewAggregateStore(store eh.EventStore, bus eh.EventBus) (*AggregateStore, e
 // It loads an aggregate from the event store by creating a new aggregate of the
 // type with the ID and then applies all events to it, thus making it the most
 // current version of the aggregate.
-func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id uuid.UUID) (eh.Aggregate, error) {
+func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id string) (eh.Aggregate, error) {
 	agg, err := eh.CreateAggregate(aggregateType, id)
 	if err != nil {
 		return nil, err

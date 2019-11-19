@@ -17,8 +17,6 @@ package eventhorizon
 import (
 	"context"
 	"errors"
-
-	"github.com/google/uuid"
 )
 
 // EventStoreError is an error in the event store, with the namespace.
@@ -29,6 +27,8 @@ type EventStoreError struct {
 	BaseErr error
 	// Namespace is the namespace for the error.
 	Namespace string
+	// AggregateType
+	AggregateType string
 }
 
 // Error implements the Error method of the errors.Error interface.
@@ -37,7 +37,7 @@ func (e EventStoreError) Error() string {
 	if e.BaseErr != nil {
 		errStr += ": " + e.BaseErr.Error()
 	}
-	return errStr + " (" + e.Namespace + ")"
+	return errStr + " (" + e.Namespace + "." + e.AggregateType + ")"
 }
 
 // ErrNoEventsToAppend is when no events are available to append.
@@ -55,7 +55,7 @@ type EventStore interface {
 	Save(ctx context.Context, events []Event, originalVersion int) error
 
 	// Load loads all events for the aggregate id from the store.
-	Load(context.Context, uuid.UUID) ([]Event, error)
+	Load(context.Context, string) ([]Event, error)
 }
 
 // EventStoreMaintainer is an interface for a maintainer of an EventStore.

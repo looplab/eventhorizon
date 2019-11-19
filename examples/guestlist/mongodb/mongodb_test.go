@@ -84,7 +84,7 @@ func Example() {
 	guestListRepo.SetEntityFactory(func() eh.Entity { return &domain.GuestList{} })
 
 	// Setup the domain.
-	eventID := uuid.New()
+	eventID := uuid.New().String()
 	domain.Setup(
 		eventStore,
 		eventBus,
@@ -104,10 +104,10 @@ func Example() {
 	// --- Execute commands on the domain --------------------------------------
 
 	// IDs for all the guests.
-	athenaID := uuid.New()
-	hadesID := uuid.New()
-	zeusID := uuid.New()
-	poseidonID := uuid.New()
+	athenaID := uuid.New().String()
+	hadesID := uuid.New().String()
+	zeusID := uuid.New().String()
+	poseidonID := uuid.New().String()
 
 	// Issue some invitations and responses. Error checking omitted here.
 	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{ID: athenaID, Name: "Athena", Age: 42}); err != nil {

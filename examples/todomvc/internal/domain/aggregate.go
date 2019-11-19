@@ -18,15 +18,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	eh "github.com/firawe/eventhorizon"
 	"github.com/firawe/eventhorizon/aggregatestore/events"
-	"github.com/google/uuid"
 )
 
 func init() {
-	eh.RegisterAggregate(func(id uuid.UUID) eh.Aggregate {
+	eh.RegisterAggregate(func(id string) eh.Aggregate {
 		return &Aggregate{
 			AggregateBase: events.NewAggregateBase(AggregateType, id),
 		}
@@ -41,7 +41,7 @@ type Aggregate struct {
 	*events.AggregateBase
 
 	created    bool
-	nextItemID int
+	nextItemID string
 	items      []*TodoItem
 }
 
@@ -70,8 +70,12 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 	case *Delete:
 		a.StoreEvent(Deleted, nil, TimeNow())
 	case *AddItem:
+		s := a.nextItemID
+		if len(s) == 0 {
+			s = "0"
+		}
 		a.StoreEvent(ItemAdded, &ItemAddedData{
-			ItemID:      a.nextItemID,
+			ItemID:      s,
 			Description: cmd.Description,
 		}, TimeNow())
 	case *RemoveItem:
@@ -83,7 +87,7 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("item does not exist: %d", cmd.ItemID)
+			return fmt.Errorf("item does not exist: %s", cmd.ItemID)
 		}
 		a.StoreEvent(ItemRemoved, &ItemRemovedData{
 			ItemID: cmd.ItemID,
@@ -109,7 +113,7 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("item does not exist: %d", cmd.ItemID)
+			return fmt.Errorf("item does not exist: %s", cmd.ItemID)
 		}
 		a.StoreEvent(ItemDescriptionSet, &ItemDescriptionSetData{
 			ItemID:      cmd.ItemID,
@@ -128,7 +132,7 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("item does not exist: %d", cmd.ItemID)
+			return fmt.Errorf("item does not exist: %s", cmd.ItemID)
 		}
 		a.StoreEvent(ItemChecked, &ItemCheckedData{
 			ItemID:  cmd.ItemID,
@@ -167,7 +171,10 @@ func (a *Aggregate) ApplyEvent(ctx context.Context, event eh.Event) error {
 			ID:          data.ItemID,
 			Description: data.Description,
 		})
-		a.nextItemID++
+
+		atoi, _ := strconv.Atoi(a.nextItemID)
+		atoi++
+		a.nextItemID = strconv.Itoa(atoi)
 	case ItemRemoved:
 		data, ok := event.Data().(*ItemRemovedData)
 		if !ok {

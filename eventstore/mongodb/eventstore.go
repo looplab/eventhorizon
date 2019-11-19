@@ -23,7 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
@@ -120,8 +119,9 @@ func NewEventStoreWithSession(session *mgo.Session) (*EventStore, error) {
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return eh.EventStoreError{
-			Err:       eh.ErrNoEventsToAppend,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           eh.ErrNoEventsToAppend,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
@@ -137,16 +137,18 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		// Only accept events belonging to the same aggregate.
 		if event.AggregateID() != aggregateID {
 			return eh.EventStoreError{
-				Err:       eh.ErrInvalidEvent,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err:           eh.ErrInvalidEvent,
+				Namespace:     eh.NamespaceFromContext(ctx),
+				AggregateType: eh.AggregateTypeFromContext(ctx),
 			}
 		}
 
 		// Only accept events that apply to the correct aggregate version.
 		if event.Version() != version+1 {
 			return eh.EventStoreError{
-				Err:       eh.ErrIncorrectEventVersion,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err:           eh.ErrIncorrectEventVersion,
+				Namespace:     eh.NamespaceFromContext(ctx),
+				AggregateType: eh.AggregateTypeFromContext(ctx),
 			}
 		}
 
@@ -162,25 +164,26 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	// Either insert a new aggregate or append to an existing.
 	if originalVersion == 0 {
 		aggregate := aggregateRecord{
-			AggregateID: aggregateID.String(),
+			AggregateID: aggregateID,
 			Version:     len(dbEvents),
 			Events:      dbEvents,
 		}
 
-		if err := sess.DB(s.dbName(ctx)).C("events").Insert(aggregate); err != nil {
+		if err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)).Insert(aggregate); err != nil {
 			return eh.EventStoreError{
-				BaseErr:   err,
-				Err:       ErrCouldNotSaveAggregate,
-				Namespace: eh.NamespaceFromContext(ctx),
+				BaseErr:       err,
+				Err:           ErrCouldNotSaveAggregate,
+				Namespace:     eh.NamespaceFromContext(ctx),
+				AggregateType: eh.AggregateTypeFromContext(ctx),
 			}
 		}
 	} else {
 		// Increment aggregate version on insert of new event record, and
 		// only insert if version of aggregate is matching (ie not changed
 		// since loading the aggregate).
-		if err := sess.DB(s.dbName(ctx)).C("events").Update(
+		if err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)).Update(
 			bson.M{
-				"_id":     aggregateID.String(),
+				"_id":     aggregateID,
 				"version": originalVersion,
 			},
 			bson.M{
@@ -189,9 +192,10 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			},
 		); err != nil {
 			return eh.EventStoreError{
-				BaseErr:   err,
-				Err:       ErrCouldNotSaveAggregate,
-				Namespace: eh.NamespaceFromContext(ctx),
+				BaseErr:       err,
+				Err:           ErrCouldNotSaveAggregate,
+				Namespace:     eh.NamespaceFromContext(ctx),
+				AggregateType: eh.AggregateTypeFromContext(ctx),
 			}
 		}
 	}
@@ -200,12 +204,12 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
+func (s *EventStore) Load(ctx context.Context, id string) ([]eh.Event, error) {
 	sess := s.session.Copy()
 	defer sess.Close()
 
 	var aggregate aggregateRecord
-	err := sess.DB(s.dbName(ctx)).C("events").FindId(id.String()).One(&aggregate)
+	err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)).FindId(id).One(&aggregate)
 	if err == mgo.ErrNotFound {
 		return []eh.Event{}, nil
 	} else if err != nil {
@@ -247,7 +251,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 
 	// First check if the aggregate exists, the not found error in the update
 	// query can mean both that the aggregate or the event is not found.
-	n, err := sess.DB(s.dbName(ctx)).C("events").FindId(event.AggregateID().String()).Count()
+	n, err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)).FindId(event.AggregateID()).Count()
 	if n == 0 {
 		return eh.ErrAggregateNotFound
 	} else if err != nil {
@@ -265,9 +269,9 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	}
 
 	// Find and replace the event.
-	err = sess.DB(s.dbName(ctx)).C("events").Update(
+	err = sess.DB(s.dbName(ctx)).C(s.colName(ctx)).Update(
 		bson.M{
-			"_id":            event.AggregateID().String(),
+			"_id":            event.AggregateID(),
 			"events.version": event.Version(),
 		},
 		bson.M{
@@ -294,7 +298,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 
 	// Find and rename all events.
 	// TODO: Maybe use change info.
-	if _, err := sess.DB(s.dbName(ctx)).C("events").UpdateAll(
+	if _, err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)).UpdateAll(
 		bson.M{
 			"events.event_type": string(from),
 		},
@@ -314,11 +318,12 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 
 // Clear clears the event storage.
 func (s *EventStore) Clear(ctx context.Context) error {
-	if err := s.session.DB(s.dbName(ctx)).C("events").DropCollection(); err != nil {
+	if err := s.session.DB(s.dbName(ctx)).C(s.colName(ctx)).DropCollection(); err != nil {
 		return eh.EventStoreError{
-			BaseErr:   err,
-			Err:       ErrCouldNotClearDB,
-			Namespace: eh.NamespaceFromContext(ctx),
+			BaseErr:       err,
+			Err:           ErrCouldNotClearDB,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 	return nil
@@ -332,8 +337,11 @@ func (s *EventStore) Close() {
 // DBName appends the namespace, if one is set, to the DB prefix to
 // get the name of the DB to use.
 func (s *EventStore) dbName(ctx context.Context) string {
-	ns := eh.NamespaceFromContext(ctx)
-	return ns
+	return eh.NamespaceFromContext(ctx)
+}
+
+func (s *EventStore) colName(ctx context.Context) string {
+	return eh.AggregateTypeFromContext(ctx)
 }
 
 // aggregateRecord is the DB representation of an aggregate.
@@ -348,12 +356,12 @@ type aggregateRecord struct {
 // dbEvent is the internal event record for the MongoDB event store used
 // to save and load events from the DB.
 type dbEvent struct {
+	AggregateType eh.AggregateType `bson:"aggregate_type"`
+	AggregateID   string           `bson:"_id"`
 	EventType     eh.EventType     `bson:"event_type"`
 	RawData       bson.Raw         `bson:"data,omitempty"`
 	data          eh.EventData     `bson:"-"`
 	Timestamp     time.Time        `bson:"timestamp"`
-	AggregateType eh.AggregateType `bson:"aggregate_type"`
-	AggregateID   string           `bson:"_id"`
 	Version       int              `bson:"version"`
 }
 
@@ -365,9 +373,10 @@ func newDBEvent(ctx context.Context, event eh.Event) (*dbEvent, error) {
 		raw, err := bson.Marshal(event.Data())
 		if err != nil {
 			return nil, eh.EventStoreError{
-				BaseErr:   err,
-				Err:       ErrCouldNotMarshalEvent,
-				Namespace: eh.NamespaceFromContext(ctx),
+				BaseErr:       err,
+				Err:           ErrCouldNotMarshalEvent,
+				Namespace:     eh.NamespaceFromContext(ctx),
+				AggregateType: eh.AggregateTypeFromContext(ctx),
 			}
 		}
 		rawData = bson.Raw{Kind: 3, Data: raw}
@@ -378,7 +387,7 @@ func newDBEvent(ctx context.Context, event eh.Event) (*dbEvent, error) {
 		RawData:       rawData,
 		Timestamp:     event.Timestamp(),
 		AggregateType: event.AggregateType(),
-		AggregateID:   event.AggregateID().String(),
+		AggregateID:   event.AggregateID(),
 		Version:       event.Version(),
 	}, nil
 }
@@ -390,12 +399,8 @@ type event struct {
 }
 
 // AggrgateID implements the AggrgateID method of the eventhorizon.Event interface.
-func (e event) AggregateID() uuid.UUID {
-	id, err := uuid.Parse(e.dbEvent.AggregateID)
-	if err != nil {
-		return uuid.Nil
-	}
-	return id
+func (e event) AggregateID() string {
+	return e.dbEvent.AggregateID
 }
 
 // AggregateType implements the AggregateType method of the eventhorizon.Event interface.

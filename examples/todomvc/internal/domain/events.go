@@ -52,23 +52,23 @@ func init() {
 
 // ItemAddedData is the event data for the ItemAdded event.
 type ItemAddedData struct {
-	ItemID      int    `json:"item_id"     bson:"item_id"`
+	ItemID      string `json:"item_id"     bson:"item_id"`
 	Description string `json:"description" bson:"description"`
 }
 
 // ItemRemovedData is the event data for the ItemRemoved event.
 type ItemRemovedData struct {
-	ItemID int `json:"item_id" bson:"item_id"`
+	ItemID string `json:"item_id" bson:"item_id"`
 }
 
 // ItemDescriptionSetData is the event data for the ItemDescriptionSet event.
 type ItemDescriptionSetData struct {
-	ItemID      int    `json:"item_id"     bson:"item_id"`
+	ItemID      string `json:"item_id"     bson:"item_id"`
 	Description string `json:"description" bson:"description"`
 }
 
 // ItemCheckedData is the event data for the ItemChecked event.
 type ItemCheckedData struct {
-	ItemID  int  `json:"item_id" bson:"item_id"`
-	Checked bool `json:"checked" bson:"checked"`
+	ItemID  string `json:"item_id" bson:"item_id"`
+	Checked bool   `json:"checked" bson:"checked"`
 }

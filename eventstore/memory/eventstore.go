@@ -22,7 +22,6 @@ import (
 	"time"
 
 	eh "github.com/firawe/eventhorizon"
-	"github.com/google/uuid"
 )
 
 // ErrCouldNotSaveAggregate is when an aggregate could not be saved.
@@ -31,14 +30,14 @@ var ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
 // EventStore implements EventStore as an in memory structure.
 type EventStore struct {
 	// The outer map is with namespace as key, the inner with aggregate ID.
-	db   map[string]map[uuid.UUID]aggregateRecord
+	db   map[string]map[string]aggregateRecord
 	dbMu sync.RWMutex
 }
 
 // NewEventStore creates a new EventStore using memory as storage.
 func NewEventStore() *EventStore {
 	s := &EventStore{
-		db: map[string]map[uuid.UUID]aggregateRecord{},
+		db: map[string]map[string]aggregateRecord{},
 	}
 	return s
 }
@@ -47,8 +46,9 @@ func NewEventStore() *EventStore {
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return eh.EventStoreError{
-			Err:       eh.ErrNoEventsToAppend,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           eh.ErrNoEventsToAppend,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
@@ -116,7 +116,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
+func (s *EventStore) Load(ctx context.Context, id string) ([]eh.Event, error) {
 	s.dbMu.RLock()
 	defer s.dbMu.RUnlock()
 
@@ -179,7 +179,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 	s.dbMu.Lock()
 	defer s.dbMu.Unlock()
 
-	updated := map[uuid.UUID]aggregateRecord{}
+	updated := map[string]aggregateRecord{}
 	for id, aggregate := range s.db[ns] {
 		events := make([]dbEvent, len(aggregate.Events))
 		for i, e := range aggregate.Events {
@@ -206,13 +206,13 @@ func (s *EventStore) namespace(ctx context.Context) string {
 	defer s.dbMu.Unlock()
 	ns := eh.NamespaceFromContext(ctx)
 	if _, ok := s.db[ns]; !ok {
-		s.db[ns] = map[uuid.UUID]aggregateRecord{}
+		s.db[ns] = map[string]aggregateRecord{}
 	}
 	return ns
 }
 
 type aggregateRecord struct {
-	AggregateID uuid.UUID
+	AggregateID string
 	Version     int
 	Events      []dbEvent
 	// Snapshot    eh.Aggregate
@@ -224,7 +224,7 @@ type dbEvent struct {
 	Data          eh.EventData
 	Timestamp     time.Time
 	AggregateType eh.AggregateType
-	AggregateID   uuid.UUID
+	AggregateID   string
 	Version       int
 }
 
@@ -267,7 +267,7 @@ func (e event) AggregateType() eh.AggregateType {
 }
 
 // AggrgateID implements the AggrgateID method of the eventhorizon.Event interface.
-func (e event) AggregateID() uuid.UUID {
+func (e event) AggregateID() string {
 	return e.dbEvent.AggregateID
 }
 

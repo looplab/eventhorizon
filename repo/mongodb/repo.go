@@ -22,7 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"gopkg.in/mgo.v2"
 
 	eh "github.com/firawe/eventhorizon"
@@ -119,24 +118,26 @@ func (r *Repo) Parent() eh.ReadRepo {
 }
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
+func (r *Repo) Find(ctx context.Context, id string) (eh.Entity, error) {
 	sess := r.session.Copy()
 	defer sess.Close()
 
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
-			Err:       ErrModelNotSet,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           ErrModelNotSet,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
 	entity := r.factoryFn()
-	err := sess.DB(r.dbName(ctx)).C(r.collection).FindId(id.String()).One(entity)
+	err := sess.DB(r.dbName(ctx)).C(r.collection).FindId(id).One(entity)
 	if err != nil {
 		return nil, eh.RepoError{
-			Err:       eh.ErrEntityNotFound,
-			BaseErr:   err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           eh.ErrEntityNotFound,
+			BaseErr:       err,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
@@ -150,11 +151,11 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
-			Err:       ErrModelNotSet,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           ErrModelNotSet,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
-
 	iter := sess.DB(r.dbName(ctx)).C(r.collection).Find(nil).Iter()
 	result := []eh.Entity{}
 	entity := r.factoryFn()
@@ -164,8 +165,9 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	}
 	if err := iter.Close(); err != nil {
 		return nil, eh.RepoError{
-			Err:       err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           err,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
@@ -203,8 +205,9 @@ func (r *Repo) FindCustomIter(ctx context.Context, callback func(*mgo.Collection
 
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
-			Err:       ErrModelNotSet,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           ErrModelNotSet,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
@@ -212,8 +215,9 @@ func (r *Repo) FindCustomIter(ctx context.Context, callback func(*mgo.Collection
 	query := callback(collection)
 	if query == nil {
 		return nil, eh.RepoError{
-			Err:       ErrInvalidQuery,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           ErrInvalidQuery,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
@@ -235,8 +239,9 @@ func (r *Repo) FindCustom(ctx context.Context, callback func(*mgo.Collection) *m
 
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
-			Err:       ErrModelNotSet,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           ErrModelNotSet,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
@@ -244,8 +249,9 @@ func (r *Repo) FindCustom(ctx context.Context, callback func(*mgo.Collection) *m
 	query := callback(collection)
 	if query == nil {
 		return nil, eh.RepoError{
-			Err:       ErrInvalidQuery,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           ErrInvalidQuery,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
@@ -258,8 +264,9 @@ func (r *Repo) FindCustom(ctx context.Context, callback func(*mgo.Collection) *m
 	}
 	if err := iter.Close(); err != nil {
 		return nil, eh.RepoError{
-			Err:       err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           err,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
@@ -271,36 +278,39 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 
-	if entity.EntityID() == uuid.Nil {
+	if len(entity.EntityID()) == 0 {
 		return eh.RepoError{
-			Err:       eh.ErrCouldNotSaveEntity,
-			BaseErr:   eh.ErrMissingEntityID,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           eh.ErrCouldNotSaveEntity,
+			BaseErr:       eh.ErrMissingEntityID,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
 	if _, err := sess.DB(r.dbName(ctx)).C(r.collection).UpsertId(
-		entity.EntityID().String(), entity); err != nil {
+		entity.EntityID(), entity); err != nil {
 		return eh.RepoError{
-			Err:       eh.ErrCouldNotSaveEntity,
-			BaseErr:   err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           eh.ErrCouldNotSaveEntity,
+			BaseErr:       err,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 	return nil
 }
 
 // Remove implements the Remove method of the eventhorizon.WriteRepo interface.
-func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
+func (r *Repo) Remove(ctx context.Context, id string) error {
 	sess := r.session.Copy()
 	defer sess.Close()
 
-	err := sess.DB(r.dbName(ctx)).C(r.collection).RemoveId(id.String())
+	err := sess.DB(r.dbName(ctx)).C(r.collection).RemoveId(id)
 	if err != nil {
 		return eh.RepoError{
-			Err:       eh.ErrEntityNotFound,
-			BaseErr:   err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           eh.ErrEntityNotFound,
+			BaseErr:       err,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
@@ -315,8 +325,9 @@ func (r *Repo) Collection(ctx context.Context, f func(*mgo.Collection) error) er
 	c := sess.DB(r.dbName(ctx)).C(r.collection)
 	if err := f(c); err != nil {
 		return eh.RepoError{
-			Err:       err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           err,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 
@@ -332,9 +343,10 @@ func (r *Repo) SetEntityFactory(f func() eh.Entity) {
 func (r *Repo) Clear(ctx context.Context) error {
 	if err := r.session.DB(r.dbName(ctx)).C(r.collection).DropCollection(); err != nil {
 		return eh.RepoError{
-			Err:       ErrCouldNotClearDB,
-			BaseErr:   err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           ErrCouldNotClearDB,
+			BaseErr:       err,
+			Namespace:     eh.NamespaceFromContext(ctx),
+			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
 	return nil
@@ -350,6 +362,10 @@ func (r *Repo) Close() {
 func (r *Repo) dbName(ctx context.Context) string {
 	ns := eh.NamespaceFromContext(ctx)
 	return ns
+}
+
+func (s *Repo) colName(ctx context.Context) string {
+	return eh.AggregateTypeFromContext(ctx)
 }
 
 // Repository returns a parent ReadRepo if there is one.

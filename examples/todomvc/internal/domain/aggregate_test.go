@@ -33,7 +33,7 @@ func TestAggregateHandleCommand(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
 	}
 
-	id := uuid.New()
+	id := uuid.New().String()
 	cases := map[string]struct {
 		agg            *Aggregate
 		cmd            eh.Command
@@ -98,14 +98,14 @@ func TestAggregateHandleCommand(t *testing.T) {
 			&Aggregate{
 				AggregateBase: events.NewAggregateBase(AggregateType, id),
 				created:       true,
-				nextItemID:    1,
+				nextItemID:    "1",
 			},
 			&AddItem{
 				Description: "desc",
 			},
 			[]eh.Event{
 				eh.NewEventForAggregate(ItemAdded, &ItemAddedData{
-					ItemID:      1,
+					ItemID:      "1",
 					Description: "desc",
 				}, TimeNow(), AggregateType, id, 1),
 			},
@@ -117,18 +117,18 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc",
 						Completed:   true,
 					},
 				},
 			},
 			&RemoveItem{
-				ItemID: 1,
+				ItemID: "1",
 			},
 			[]eh.Event{
 				eh.NewEventForAggregate(ItemRemoved, &ItemRemovedData{
-					ItemID: 1,
+					ItemID: "1",
 				}, TimeNow(), AggregateType, id, 1),
 			},
 			nil,
@@ -139,14 +139,14 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc",
 						Completed:   true,
 					},
 				},
 			},
 			&RemoveItem{
-				ItemID: 2,
+				ItemID: "2",
 			},
 			nil,
 			errors.New("item does not exist: 2"),
@@ -157,17 +157,17 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   true,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "desc 2",
 						Completed:   false,
 					},
 					{
-						ID:          3,
+						ID:          "3",
 						Description: "desc 3",
 						Completed:   true,
 					},
@@ -176,10 +176,10 @@ func TestAggregateHandleCommand(t *testing.T) {
 			&RemoveCompletedItems{},
 			[]eh.Event{
 				eh.NewEventForAggregate(ItemRemoved, &ItemRemovedData{
-					ItemID: 1,
+					ItemID: "1",
 				}, TimeNow(), AggregateType, id, 1),
 				eh.NewEventForAggregate(ItemRemoved, &ItemRemovedData{
-					ItemID: 3,
+					ItemID: "3",
 				}, TimeNow(), AggregateType, id, 2),
 			},
 			nil,
@@ -190,19 +190,19 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   true,
 					},
 				},
 			},
 			&SetItemDescription{
-				ItemID:      1,
+				ItemID:      "1",
 				Description: "new desc",
 			},
 			[]eh.Event{
 				eh.NewEventForAggregate(ItemDescriptionSet, &ItemDescriptionSetData{
-					ItemID:      1,
+					ItemID:      "1",
 					Description: "new desc",
 				}, TimeNow(), AggregateType, id, 1),
 			},
@@ -214,14 +214,14 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   true,
 					},
 				},
 			},
 			&SetItemDescription{
-				ItemID:      2,
+				ItemID:      "2",
 				Description: "new desc",
 			},
 			nil,
@@ -233,14 +233,14 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   true,
 					},
 				},
 			},
 			&SetItemDescription{
-				ItemID:      1,
+				ItemID:      "1",
 				Description: "desc 1",
 			},
 			nil,
@@ -252,19 +252,19 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 				},
 			},
 			&CheckItem{
-				ItemID:  1,
+				ItemID:  "1",
 				Checked: true,
 			},
 			[]eh.Event{
 				eh.NewEventForAggregate(ItemChecked, &ItemCheckedData{
-					ItemID:  1,
+					ItemID:  "1",
 					Checked: true,
 				}, TimeNow(), AggregateType, id, 1),
 			},
@@ -276,19 +276,19 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   true,
 					},
 				},
 			},
 			&CheckItem{
-				ItemID:  1,
+				ItemID:  "1",
 				Checked: false,
 			},
 			[]eh.Event{
 				eh.NewEventForAggregate(ItemChecked, &ItemCheckedData{
-					ItemID:  1,
+					ItemID:  "1",
 					Checked: false,
 				}, TimeNow(), AggregateType, id, 1),
 			},
@@ -300,14 +300,14 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 				},
 			},
 			&CheckItem{
-				ItemID:  2,
+				ItemID:  "2",
 				Checked: true,
 			},
 			nil,
@@ -319,14 +319,14 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   true,
 					},
 				},
 			},
 			&CheckItem{
-				ItemID:  1,
+				ItemID:  "1",
 				Checked: true,
 			},
 			nil,
@@ -338,17 +338,17 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "desc 2",
 						Completed:   true,
 					},
 					{
-						ID:          3,
+						ID:          "3",
 						Description: "desc 3",
 						Completed:   false,
 					},
@@ -359,11 +359,11 @@ func TestAggregateHandleCommand(t *testing.T) {
 			},
 			[]eh.Event{
 				eh.NewEventForAggregate(ItemChecked, &ItemCheckedData{
-					ItemID:  1,
+					ItemID:  "1",
 					Checked: true,
 				}, TimeNow(), AggregateType, id, 1),
 				eh.NewEventForAggregate(ItemChecked, &ItemCheckedData{
-					ItemID:  3,
+					ItemID:  "3",
 					Checked: true,
 				}, TimeNow(), AggregateType, id, 2),
 			},
@@ -375,17 +375,17 @@ func TestAggregateHandleCommand(t *testing.T) {
 				created:       true,
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "desc 2",
 						Completed:   true,
 					},
 					{
-						ID:          3,
+						ID:          "3",
 						Description: "desc 3",
 						Completed:   false,
 					},
@@ -396,7 +396,7 @@ func TestAggregateHandleCommand(t *testing.T) {
 			},
 			[]eh.Event{
 				eh.NewEventForAggregate(ItemChecked, &ItemCheckedData{
-					ItemID:  2,
+					ItemID:  "2",
 					Checked: false,
 				}, TimeNow(), AggregateType, id, 1),
 			},
@@ -431,7 +431,7 @@ func TestAggregateApplyEvent(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
 	}
 
-	id := uuid.New()
+	id := uuid.New().String()
 	cases := map[string]struct {
 		agg         *Aggregate
 		event       eh.Event
@@ -476,18 +476,18 @@ func TestAggregateApplyEvent(t *testing.T) {
 		"item added": {
 			&Aggregate{
 				AggregateBase: events.NewAggregateBase(AggregateType, id),
-				nextItemID:    1,
+				nextItemID:    "1",
 			},
 			eh.NewEventForAggregate(ItemAdded, &ItemAddedData{
-				ItemID:      1,
+				ItemID:      "1",
 				Description: "desc 1",
 			}, TimeNow(), AggregateType, id, 1),
 			&Aggregate{
 				AggregateBase: events.NewAggregateBase(AggregateType, id),
-				nextItemID:    2,
+				nextItemID:    "2",
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
@@ -500,25 +500,25 @@ func TestAggregateApplyEvent(t *testing.T) {
 				AggregateBase: events.NewAggregateBase(AggregateType, id),
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "desc 2",
 						Completed:   false,
 					},
 				},
 			},
 			eh.NewEventForAggregate(ItemRemoved, &ItemRemovedData{
-				ItemID: 2,
+				ItemID: "2",
 			}, TimeNow(), AggregateType, id, 1),
 			&Aggregate{
 				AggregateBase: events.NewAggregateBase(AggregateType, id),
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
@@ -531,14 +531,14 @@ func TestAggregateApplyEvent(t *testing.T) {
 				AggregateBase: events.NewAggregateBase(AggregateType, id),
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 				},
 			},
 			eh.NewEventForAggregate(ItemRemoved, &ItemRemovedData{
-				ItemID: 1,
+				ItemID: "1",
 			}, TimeNow(), AggregateType, id, 1),
 			&Aggregate{
 				AggregateBase: events.NewAggregateBase(AggregateType, id),
@@ -551,31 +551,31 @@ func TestAggregateApplyEvent(t *testing.T) {
 				AggregateBase: events.NewAggregateBase(AggregateType, id),
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "desc 2",
 						Completed:   false,
 					},
 				},
 			},
 			eh.NewEventForAggregate(ItemDescriptionSet, &ItemDescriptionSetData{
-				ItemID:      2,
+				ItemID:      "2",
 				Description: "new desc",
 			}, TimeNow(), AggregateType, id, 1),
 			&Aggregate{
 				AggregateBase: events.NewAggregateBase(AggregateType, id),
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "new desc",
 						Completed:   false,
 					},
@@ -588,31 +588,31 @@ func TestAggregateApplyEvent(t *testing.T) {
 				AggregateBase: events.NewAggregateBase(AggregateType, id),
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "desc 2",
 						Completed:   false,
 					},
 				},
 			},
 			eh.NewEventForAggregate(ItemChecked, &ItemCheckedData{
-				ItemID:  2,
+				ItemID:  "2",
 				Checked: true,
 			}, TimeNow(), AggregateType, id, 1),
 			&Aggregate{
 				AggregateBase: events.NewAggregateBase(AggregateType, id),
 				items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "desc 2",
 						Completed:   true,
 					},

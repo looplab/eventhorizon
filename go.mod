@@ -5,7 +5,7 @@ require (
 	contrib.go.opencensus.io/exporter/stackdriver v0.6.0 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/protobuf v1.2.0 // indirect
-	github.com/google/go-cmp v0.2.0 // indirect
+	github.com/google/go-cmp v0.2.0
 	github.com/google/uuid v1.1.0
 	github.com/googleapis/gax-go v2.0.0+incompatible // indirect
 	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75

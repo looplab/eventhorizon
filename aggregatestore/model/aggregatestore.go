@@ -19,7 +19,6 @@ import (
 	"errors"
 
 	eh "github.com/firawe/eventhorizon"
-	"github.com/google/uuid"
 )
 
 // ErrInvalidRepo is when a dispatcher is created with a nil repo.
@@ -49,7 +48,7 @@ func NewAggregateStore(repo eh.ReadWriteRepo, bus eh.EventBus) (*AggregateStore,
 }
 
 // Load implements the Load method of the eventhorizon.AggregateStore interface.
-func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id uuid.UUID) (eh.Aggregate, error) {
+func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id string) (eh.Aggregate, error) {
 	item, err := r.repo.Find(ctx, id)
 	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
 		// Create the aggregate.

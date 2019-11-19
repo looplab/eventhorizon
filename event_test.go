@@ -41,7 +41,7 @@ func TestNewEvent(t *testing.T) {
 		t.Error("the string representation should be correct:", event.String())
 	}
 
-	id := uuid.New()
+	id := uuid.New().String()
 	event = NewEventForAggregate(TestEventType, &TestEventData{"event1"}, timestamp,
 		TestAggregateType, id, 3)
 	if event.EventType() != TestEventType {

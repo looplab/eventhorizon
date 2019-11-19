@@ -34,7 +34,7 @@ func TestEventStore(t *testing.T) {
 	optionsRepo := Options{
 		SSL:        false,
 		DBHost:     url,
-		DBName:     "",
+		DBName:     "testns",
 		DBUser:     "",
 		DBPassword: "",
 	}
@@ -46,27 +46,24 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
-
+	ctx := eh.NewContextWithNamespaceAndType(context.Background(), "testns", "testtype")
 	defer store.Close()
 	defer func() {
 		t.Log("clearing db")
-		if err = store.Clear(context.Background()); err != nil {
-			t.Fatal("there should be no error:", err)
-		}
 		if err = store.Clear(ctx); err != nil {
 			t.Fatal("there should be no error:", err)
 		}
+		if err = store.Clear(context.Background()); err != nil {
+			t.Fatal("there should be no error:", err)
+		}
 	}()
-
 	// Run the actual test suite.
+	t.Log("event store with default namespace")
+	eventstore.AcceptanceTest(t, ctx, store)
 
 	t.Log("event store with default namespace")
 	eventstore.AcceptanceTest(t, context.Background(), store)
 
-	t.Log("event store with other namespace")
-	eventstore.AcceptanceTest(t, ctx, store)
-
 	t.Log("event store maintainer")
-	eventstore.MaintainerAcceptanceTest(t, context.Background(), store)
+	eventstore.MaintainerAcceptanceTest(t,ctx, store)
 }

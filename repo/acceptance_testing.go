@@ -16,7 +16,7 @@ package repo
 
 import (
 	"context"
-	"reflect"
+	"github.com/google/go-cmp/cmp"
 	"testing"
 	"time"
 
@@ -35,9 +35,17 @@ import (
 //       repo.AcceptanceTest(t, ctx, store)
 //   }
 //
+
+var comparer = cmp.Comparer(func(a, b time.Time) bool {
+	if a.UTC().Unix() == b.UTC().Unix() {
+		return true
+	}
+	return false
+})
+
 func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	// Find non-existing item.
-	entity, err := repo.Find(ctx, uuid.New())
+	entity, err := repo.Find(ctx, uuid.New().String())
 	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {
 		t.Error("there should be a ErrEntityNotFound error:", err)
 	}
@@ -52,6 +60,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	}
 	if len(result) != 0 {
 		t.Error("there should be no items:", len(result))
+		t.Errorf("%+v\n", result[0].EntityID())
 	}
 
 	// Save model without ID.
@@ -66,7 +75,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 
 	// Save and find one item.
 	entity1 := &mocks.Model{
-		ID:        uuid.New(),
+		ID:        uuid.New().String(),
 		Content:   "entity1",
 		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
@@ -77,8 +86,8 @@ func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(entity, entity1) {
-		t.Error("the item should be correct:", entity)
+	if !cmp.Equal(entity, entity1, comparer) {
+		t.Error("not equal expected: ", cmp.Diff(entity, entity1, comparer))
 	}
 
 	// FindAll with one item.
@@ -89,8 +98,8 @@ func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	if len(result) != 1 {
 		t.Error("there should be one item:", len(result))
 	}
-	if !reflect.DeepEqual(result, []eh.Entity{entity1}) {
-		t.Error("the item should be correct:", entity1)
+	if !cmp.Equal(result, []eh.Entity{entity1}, comparer) {
+		t.Error("not equal expected: ", cmp.Diff(result, []eh.Entity{entity1}, comparer))
 	}
 
 	// Save and overwrite with same ID.
@@ -106,13 +115,13 @@ func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(entity, entity1Alt) {
-		t.Error("the item should be correct:", entity)
+	if !cmp.Equal(entity, entity1Alt, comparer) {
+		t.Error("not equal expected: ", cmp.Diff(entity, entity1Alt, comparer))
 	}
 
 	// Save with another ID.
 	entity2 := &mocks.Model{
-		ID:        uuid.New(),
+		ID:        uuid.New().String(),
 		Content:   "entity2",
 		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
@@ -123,10 +132,10 @@ func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if !reflect.DeepEqual(entity, entity2) {
-		t.Error("the item should be correct:", entity)
-	}
 
+	if !cmp.Equal(entity, entity2, comparer) {
+		t.Error("not equal expected: ", cmp.Diff(entity, entity2, comparer))
+	}
 	// FindAll with two items, order should be preserved from insert.
 	result, err = repo.FindAll(ctx)
 	if err != nil {
@@ -135,8 +144,8 @@ func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	if len(result) != 2 {
 		t.Error("there should be two items:", len(result))
 	}
-	if !reflect.DeepEqual(result, []eh.Entity{entity1Alt, entity2}) {
-		t.Error("the items should be correct:", result)
+	if !cmp.Equal(result, []eh.Entity{entity1Alt, entity2}, comparer) {
+		t.Error("not equal expected: ", cmp.Diff(result, []eh.Entity{entity1Alt, entity2}, comparer))
 	}
 
 	// Remove item.

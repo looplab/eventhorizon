@@ -30,7 +30,7 @@ func TestCommandHandler_Immediate(t *testing.T) {
 	m := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := mocks.Command{
-		ID:      uuid.New(),
+		ID:      uuid.New().String(),
 		Content: "content",
 	}
 	if err := h.HandleCommand(context.Background(), cmd); err != nil {
@@ -46,7 +46,7 @@ func TestCommandHandler_WithValidationError(t *testing.T) {
 	m := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := &mocks.Command{
-		ID:      uuid.New(),
+		ID:      uuid.New().String(),
 		Content: "content",
 	}
 	e := errors.New("a validation error")
@@ -64,7 +64,7 @@ func TestCommandHandler_WithValidationNoError(t *testing.T) {
 	m := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
 	cmd := &mocks.Command{
-		ID:      uuid.New(),
+		ID:      uuid.New().String(),
 		Content: "content",
 	}
 	c := CommandWithValidation(cmd, func() error { return nil })

@@ -19,11 +19,10 @@ import (
 	"time"
 
 	eh "github.com/firawe/eventhorizon"
-	"github.com/google/uuid"
 )
 
 func init() {
-	eh.RegisterAggregate(func(id uuid.UUID) eh.Aggregate {
+	eh.RegisterAggregate(func(id string) eh.Aggregate {
 		return NewAggregate(id)
 	})
 
@@ -53,7 +52,7 @@ type EmptyAggregate struct {
 
 // Aggregate is a mocked eventhorizon.Aggregate, useful in testing.
 type Aggregate struct {
-	ID       uuid.UUID
+	ID       string
 	Commands []eh.Command
 	Context  context.Context
 	// Used to simulate errors in HandleCommand.
@@ -63,7 +62,7 @@ type Aggregate struct {
 var _ = eh.Aggregate(&Aggregate{})
 
 // NewAggregate returns a new Aggregate.
-func NewAggregate(id uuid.UUID) *Aggregate {
+func NewAggregate(id string) *Aggregate {
 	return &Aggregate{
 		ID:       id,
 		Commands: []eh.Command{},
@@ -72,7 +71,7 @@ func NewAggregate(id uuid.UUID) *Aggregate {
 
 // EntityID implements the EntityID method of the eventhorizon.Entity and
 // eventhorizon.Aggregate interface.
-func (a *Aggregate) EntityID() uuid.UUID {
+func (a *Aggregate) EntityID() string {
 	return a.ID
 }
 
@@ -99,43 +98,43 @@ type EventData struct {
 
 // Command is a mocked eventhorizon.Command, useful in testing.
 type Command struct {
-	ID      uuid.UUID
+	ID      string
 	Content string
 }
 
 var _ = eh.Command(Command{})
 
-func (t Command) AggregateID() uuid.UUID          { return t.ID }
+func (t Command) AggregateID() string          { return t.ID }
 func (t Command) AggregateType() eh.AggregateType { return AggregateType }
 func (t Command) CommandType() eh.CommandType     { return CommandType }
 
 // CommandOther is a mocked eventhorizon.Command, useful in testing.
 type CommandOther struct {
-	ID      uuid.UUID
+	ID      string
 	Content string
 }
 
 var _ = eh.Command(CommandOther{})
 
-func (t CommandOther) AggregateID() uuid.UUID          { return t.ID }
+func (t CommandOther) AggregateID() string          { return t.ID }
 func (t CommandOther) AggregateType() eh.AggregateType { return AggregateType }
 func (t CommandOther) CommandType() eh.CommandType     { return CommandOtherType }
 
 // CommandOther2 is a mocked eventhorizon.Command, useful in testing.
 type CommandOther2 struct {
-	ID      uuid.UUID
+	ID      string
 	Content string
 }
 
 var _ = eh.Command(CommandOther2{})
 
-func (t CommandOther2) AggregateID() uuid.UUID          { return t.ID }
+func (t CommandOther2) AggregateID() string          { return t.ID }
 func (t CommandOther2) AggregateType() eh.AggregateType { return AggregateType }
 func (t CommandOther2) CommandType() eh.CommandType     { return CommandOther2Type }
 
 // Model is a mocked read model, useful in testing.
 type Model struct {
-	ID        uuid.UUID `json:"id"         bson:"_id"`
+	ID        string `json:"id"         bson:"_id"`
 	Version   int       `json:"version"    bson:"version"`
 	Content   string    `json:"content"    bson:"content"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
@@ -145,7 +144,7 @@ var _ = eh.Entity(&Model{})
 var _ = eh.Versionable(&Model{})
 
 // EntityID implements the EntityID method of the eventhorizon.Entity interface.
-func (m *Model) EntityID() uuid.UUID {
+func (m *Model) EntityID() string {
 	return m.ID
 }
 
@@ -156,14 +155,14 @@ func (m *Model) AggregateVersion() int {
 
 // SimpleModel is a mocked read model, useful in testing, without a version.
 type SimpleModel struct {
-	ID      uuid.UUID `json:"id"         bson:"_id"`
+	ID      string `json:"id"         bson:"_id"`
 	Content string    `json:"content"    bson:"content"`
 }
 
 var _ = eh.Entity(&SimpleModel{})
 
 // EntityID implements the EntityID method of the eventhorizon.Entity interface.
-func (m *SimpleModel) EntityID() uuid.UUID {
+func (m *SimpleModel) EntityID() string {
 	return m.ID
 }
 
@@ -222,7 +221,7 @@ func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	}
 	m.Events = append(m.Events, event)
 	m.Context = ctx
-	m.Time = time.Now()
+	m.Time = time.Now().UTC()
 	m.Recv <- event
 	return nil
 }
@@ -246,7 +245,7 @@ func (m *EventHandler) Wait(d time.Duration) bool {
 
 // AggregateStore is a mocked AggregateStore, useful in testing.
 type AggregateStore struct {
-	Aggregates map[uuid.UUID]eh.Aggregate
+	Aggregates map[string]eh.Aggregate
 	Context    context.Context
 	// Used to simulate errors in HandleCommand.
 	Err error
@@ -255,7 +254,7 @@ type AggregateStore struct {
 var _ = eh.AggregateStore(&AggregateStore{})
 
 // Load implements the Load method of the eventhorizon.AggregateStore interface.
-func (m *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id uuid.UUID) (eh.Aggregate, error) {
+func (m *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id string) (eh.Aggregate, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -276,7 +275,7 @@ func (m *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error
 // EventStore is a mocked eventhorizon.EventStore, useful in testing.
 type EventStore struct {
 	Events  []eh.Event
-	Loaded  uuid.UUID
+	Loaded  string
 	Context context.Context
 	// Used to simulate errors in the store.
 	Err error
@@ -297,7 +296,7 @@ func (m *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (m *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
+func (m *EventStore) Load(ctx context.Context, id string) ([]eh.Event, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -366,7 +365,7 @@ func (r *Repo) Parent() eh.ReadRepo {
 }
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
+func (r *Repo) Find(ctx context.Context, id string) (eh.Entity, error) {
 	r.FindCalled = true
 	if r.LoadErr != nil {
 		return nil, r.LoadErr
@@ -394,7 +393,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 }
 
 // Remove implements the Remove method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
+func (r *Repo) Remove(ctx context.Context, id string) error {
 	r.RemoveCalled = true
 	if r.SaveErr != nil {
 		return r.SaveErr

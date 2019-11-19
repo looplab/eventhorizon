@@ -31,12 +31,12 @@ func TestReadRepo(t *testing.T) {
 	if r.Parent() != nil {
 		t.Error("the parent repo should be nil")
 	}
-
+	ctx := eh.NewContextWithNamespaceAndType(context.Background(), "ns", "test")
 	// Repo with default namespace.
-	repo.AcceptanceTest(t, context.Background(), r)
+	repo.AcceptanceTest(t, ctx, r)
+	ctx = eh.NewContextWithNamespaceAndType(context.Background(), "ns2", "test2")
 
 	// Repo with other namespace
-	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
 	repo.AcceptanceTest(t, ctx, r)
 
 }

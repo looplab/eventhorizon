@@ -22,11 +22,10 @@ import (
 
 	eh "github.com/firawe/eventhorizon"
 	"github.com/firawe/eventhorizon/aggregatestore/events"
-	"github.com/google/uuid"
 )
 
 func init() {
-	eh.RegisterAggregate(func(id uuid.UUID) eh.Aggregate {
+	eh.RegisterAggregate(func(id string) eh.Aggregate {
 		return NewInvitationAggregate(id)
 	})
 }
@@ -55,7 +54,7 @@ type InvitationAggregate struct {
 var _ = eh.Aggregate(&InvitationAggregate{})
 
 // NewInvitationAggregate creates a new InvitationAggregate with an ID.
-func NewInvitationAggregate(id uuid.UUID) *InvitationAggregate {
+func NewInvitationAggregate(id string) *InvitationAggregate {
 	return &InvitationAggregate{
 		AggregateBase: events.NewAggregateBase(InvitationAggregateType, id),
 	}

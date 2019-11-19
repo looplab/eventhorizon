@@ -46,7 +46,7 @@ func (p *Projector) Project(ctx context.Context,
 		// Set the ID when first created.
 		model.ID = event.AggregateID()
 		model.Items = []*TodoItem{} // Prevents "null" in JSON.
-		model.CreatedAt = TimeNow()
+		model.CreatedAt = TimeNow().UTC()
 	case Deleted:
 		// Return nil as the entity to delete the model.
 		return nil, nil
@@ -97,6 +97,7 @@ func (p *Projector) Project(ctx context.Context,
 
 	// Always increment the version and set update time on successful updates.
 	model.Version++
-	model.UpdatedAt = TimeNow()
+	model.UpdatedAt = TimeNow().UTC()
+	fmt.Println("projector done")
 	return model, nil
 }

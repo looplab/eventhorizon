@@ -19,7 +19,6 @@ import (
 	"sync"
 
 	eh "github.com/firawe/eventhorizon"
-	"github.com/google/uuid"
 )
 
 type namespace string
@@ -31,7 +30,7 @@ type namespace string
 type Repo struct {
 	eh.ReadWriteRepo
 
-	cache   map[namespace]map[uuid.UUID]eh.Entity
+	cache   map[namespace]map[string]eh.Entity
 	cacheMu sync.RWMutex
 }
 
@@ -39,7 +38,7 @@ type Repo struct {
 func NewRepo(repo eh.ReadWriteRepo) *Repo {
 	return &Repo{
 		ReadWriteRepo: repo,
-		cache:         map[namespace]map[uuid.UUID]eh.Entity{},
+		cache:         map[namespace]map[string]eh.Entity{},
 	}
 }
 
@@ -58,7 +57,7 @@ func (r *Repo) Parent() eh.ReadRepo {
 }
 
 // Find implements the Find method of the eventhorizon.ReadModel interface.
-func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
+func (r *Repo) Find(ctx context.Context, id string) (eh.Entity, error) {
 	ns := r.namespace(ctx)
 
 	// First check the cache.
@@ -111,7 +110,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 }
 
 // Remove implements the Remove method of the eventhorizon.WriteRepo interface.
-func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
+func (r *Repo) Remove(ctx context.Context, id string) error {
 	// Bust the cache on remove.
 	ns := r.namespace(ctx)
 	r.cacheMu.Lock()
@@ -128,7 +127,7 @@ func (r *Repo) namespace(ctx context.Context) namespace {
 	r.cacheMu.Lock()
 	defer r.cacheMu.Unlock()
 	if _, ok := r.cache[ns]; !ok {
-		r.cache[ns] = map[uuid.UUID]eh.Entity{}
+		r.cache[ns] = map[string]eh.Entity{}
 	}
 
 	return ns

@@ -24,7 +24,7 @@ import (
 )
 
 func TestModelJSON(t *testing.T) {
-	id := uuid.New()
+	id := uuid.New().String()
 	now := time.Now()
 
 	// Don't use keys for init, we want to get compiler warnings if we haven't
@@ -34,12 +34,12 @@ func TestModelJSON(t *testing.T) {
 		1,
 		[]*TodoItem{
 			{
-				ID:          0,
+				ID:          "0",
 				Description: "desc 1",
 				Completed:   false,
 			},
 			{
-				ID:          1,
+				ID:          "1",
 				Description: "desc 2",
 				Completed:   true,
 			},
@@ -50,16 +50,16 @@ func TestModelJSON(t *testing.T) {
 
 	var expectedJSONStr = []byte(`
 {
-	"id": "` + id.String() + `",
+	"id": "` + id + `",
 	"version": 1,
 	"items": [
 		{
-			"id": 0,
+			"id": "0",
 			"desc": "desc 1",
 			"completed": false
 		},
 		{
-			"id": 1,
+			"id": "1",
 			"desc": "desc 2",
 			"completed": true
 		}

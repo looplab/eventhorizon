@@ -27,7 +27,7 @@ import (
 )
 
 func TestEventHandler(t *testing.T) {
-	id := uuid.New()
+	id := uuid.New().String()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,

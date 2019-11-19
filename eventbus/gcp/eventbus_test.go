@@ -27,7 +27,9 @@ import (
 func TestEventBus(t *testing.T) {
 	// Connect to localhost if not running inside docker
 	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
-		os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8793")
+		//os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8793")
+	} else {
+		return
 	}
 
 	// Get a random app ID.

@@ -34,12 +34,12 @@ func TestEventHandler(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := uuid.New()
+	id := uuid.New().String()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
 		mocks.AggregateType, id, 1)
-	saga.commands = []eh.Command{&mocks.Command{ID: uuid.New(), Content: "content"}}
+	saga.commands = []eh.Command{&mocks.Command{ID: uuid.New().String(), Content: "content"}}
 	handler.HandleEvent(ctx, event)
 	if saga.event != event {
 		t.Error("the handled event should be correct:", saga.event)

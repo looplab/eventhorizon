@@ -18,19 +18,18 @@ import (
 	"time"
 
 	eh "github.com/firawe/eventhorizon"
-	"github.com/google/uuid"
 )
 
 // TodoItem represents each item that can be completed in the todo list.
 type TodoItem struct {
-	ID          int    `json:"id"        bson:"id"`
+	ID          string `json:"id"        bson:"id"`
 	Description string `json:"desc"      bson:"desc"`
 	Completed   bool   `json:"completed" bson:"completed"`
 }
 
 // TodoList is the read model for the todo list.
 type TodoList struct {
-	ID        uuid.UUID   `json:"id"         bson:"_id"`
+	ID        string      `json:"id"         bson:"_id"`
 	Version   int         `json:"version"    bson:"version"`
 	Items     []*TodoItem `json:"items"      bson:"items"`
 	CreatedAt time.Time   `json:"created_at" bson:"created_at"`
@@ -41,7 +40,7 @@ var _ = eh.Entity(&TodoList{})
 var _ = eh.Versionable(&TodoList{})
 
 // EntityID implements the EntityID method of the eventhorizon.Entity interface.
-func (t *TodoList) EntityID() uuid.UUID {
+func (t *TodoList) EntityID() string {
 	return t.ID
 }
 

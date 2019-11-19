@@ -22,6 +22,7 @@ import (
 
 // DefaultNamespace is the namespace to use if not set in the context.
 const DefaultNamespace = "default"
+const DefaultAggregateType = "event_default"
 
 // DefaultMinVersionDeadline is the deadline to use when creating a min version
 // context that waits.
@@ -33,9 +34,16 @@ func init() {
 		if ns, ok := ctx.Value(namespaceKey).(string); ok {
 			vals[namespaceKeyStr] = ns
 		}
+		if aggtype, ok := ctx.Value(aggregateTypeKey).(string); ok {
+			vals[aggregateTypeKeyStr] = aggtype
+		}
+
 	})
 	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
 		if ns, ok := vals[namespaceKeyStr].(string); ok {
+			if aggtype, ok := vals[aggregateTypeKeyStr].(string); ok {
+				return NewContextWithNamespaceAndType(ctx, ns, aggtype)
+			}
 			return NewContextWithNamespace(ctx, ns)
 		}
 		return ctx
@@ -64,13 +72,15 @@ type contextKey int
 // Context keys for namespace and min version.
 const (
 	namespaceKey contextKey = iota
+	aggregateTypeKey
 	minVersionKey
 )
 
 // Strings used to marshal context values.
 const (
-	namespaceKeyStr  = "eh_namespace"
-	minVersionKeyStr = "eh_minversion"
+	namespaceKeyStr     = "eh_namespace"
+	aggregateTypeKeyStr = "eh_aggregatetype"
+	minVersionKeyStr    = "eh_minversion"
 )
 
 // NamespaceFromContext returns the namespace from the context, or the default
@@ -82,10 +92,22 @@ func NamespaceFromContext(ctx context.Context) string {
 	return DefaultNamespace
 }
 
+func AggregateTypeFromContext(ctx context.Context) string {
+	if aggtype, ok := ctx.Value(aggregateTypeKey).(string); ok {
+		return aggtype
+	}
+	return DefaultAggregateType
+}
+
 // NewContextWithNamespace sets the namespace to use in the context. The
 // namespace is used to determine which database.
 func NewContextWithNamespace(ctx context.Context, namespace string) context.Context {
 	return context.WithValue(ctx, namespaceKey, namespace)
+}
+
+func NewContextWithNamespaceAndType(ctx context.Context, namespace, aggregateType string) context.Context {
+	ctx = context.WithValue(ctx, namespaceKey, namespace)
+	return context.WithValue(ctx, aggregateTypeKey, aggregateType)
 }
 
 // MinVersionFromContext returns the min version from the context.

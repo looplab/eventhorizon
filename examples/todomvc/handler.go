@@ -43,6 +43,7 @@ type Handler struct {
 	EventBus       eh.EventBus
 	CommandHandler eh.CommandHandler
 	Repo           eh.ReadWriteRepo
+	Eventstore     eh.EventStore
 }
 
 // Logger is a simple event handler for logging all events.
@@ -72,7 +73,7 @@ func NewHandler() (*Handler, error) {
 
 	options := eventstore.Options{SSL: false,
 		DBHost:     dbURL,
-		DBName:     "",
+		DBName:     "test_handler",
 		DBUser:     "",
 		DBPassword: "",}
 	// Create the event store.
@@ -85,7 +86,7 @@ func NewHandler() (*Handler, error) {
 	eventBus := eventbus.NewEventBus(nil)
 	go func() {
 		for e := range eventBus.Errors() {
-			log.Printf("eventbus: %s", e.Error())
+			log.Printf("eventbus in handler: %s", e.Error())
 		}
 	}()
 
@@ -107,6 +108,7 @@ func NewHandler() (*Handler, error) {
 	// Create a tiny logging middleware for the command handler.
 	commandHandlerLogger := func(h eh.CommandHandler) eh.CommandHandler {
 		return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
+			ctx = eh.NewContextWithNamespaceAndType(ctx, "test_handler", "test_type")
 			log.Printf("CMD %#v", cmd)
 			return h.HandleCommand(ctx, cmd)
 		})
@@ -115,10 +117,10 @@ func NewHandler() (*Handler, error) {
 
 	optionsRe := repo.Options{SSL: false,
 		DBHost:     dbURL,
-		DBName:     "",
+		DBName:     "test_handler",
 		DBUser:     "",
 		DBPassword: "",
-		Collection: "",
+		Collection: "test_projection",
 	}
 	// Create the repository and wrap in a version repository.
 	repo, err := repo.NewRepo(optionsRe)
@@ -181,5 +183,6 @@ func NewHandler() (*Handler, error) {
 		EventBus:       eventBus,
 		CommandHandler: commandHandler,
 		Repo:           todoRepo,
+		Eventstore:     eventStore,
 	}, nil
 }

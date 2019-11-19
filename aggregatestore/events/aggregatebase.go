@@ -18,7 +18,6 @@ import (
 	"time"
 
 	eh "github.com/firawe/eventhorizon"
-	"github.com/google/uuid"
 )
 
 // AggregateBase is a event sourced aggregate base to embed in a domain aggregate.
@@ -32,7 +31,7 @@ import (
 //
 // Using a new function to create aggregates and setting up the
 // aggregate base is recommended:
-//   func NewUserAggregate(id uuid.UUID) *InvitationAggregate {
+//   func NewUserAggregate(id string) *InvitationAggregate {
 //       return &UserAggregate{
 //           AggregateBase: events.NewAggregateBase(UserAggregateType, id),
 //       }
@@ -40,7 +39,7 @@ import (
 //
 // The aggregate must also be registered, in this case:
 //   func init() {
-//       eh.RegisterAggregate(func(id uuid.UUID) eh.Aggregate {
+//       eh.RegisterAggregate(func(id string) eh.Aggregate {
 //           return NewUserAggregate(id)
 //       })
 //   }
@@ -57,14 +56,14 @@ import (
 // See the examples folder for a complete use case.
 //
 type AggregateBase struct {
-	id     uuid.UUID
+	id     string
 	t      eh.AggregateType
 	v      int
 	events []eh.Event
 }
 
 // NewAggregateBase creates an aggregate.
-func NewAggregateBase(t eh.AggregateType, id uuid.UUID) *AggregateBase {
+func NewAggregateBase(t eh.AggregateType, id string) *AggregateBase {
 	return &AggregateBase{
 		id: id,
 		t:  t,
@@ -72,7 +71,7 @@ func NewAggregateBase(t eh.AggregateType, id uuid.UUID) *AggregateBase {
 }
 
 // EntityID implements the EntityID method of the Entity and Aggregate interface.
-func (a *AggregateBase) EntityID() uuid.UUID {
+func (a *AggregateBase) EntityID() string {
 	return a.id
 }
 

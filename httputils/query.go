@@ -16,11 +16,11 @@ package httputils
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"path"
 
 	eh "github.com/firawe/eventhorizon"
-	"github.com/google/uuid"
 )
 
 // QueryHandler returns one or all items from a eventhorizon.ReadRepo. If the
@@ -32,6 +32,8 @@ func QueryHandler(repo eh.ReadRepo) http.Handler {
 			http.Error(w, "unsuported method: "+r.Method, http.StatusMethodNotAllowed)
 			return
 		}
+		ctx := eh.NewContextWithNamespaceAndType(r.Context(), "test_handler", "test_type")
+
 
 		var (
 			data interface{}
@@ -41,18 +43,21 @@ func QueryHandler(repo eh.ReadRepo) http.Handler {
 		// otherwise we try to parse an ID from the last part to return one item.
 		_, idStr := path.Split(r.URL.Path)
 		if idStr == "" {
-			if data, err = repo.FindAll(r.Context()); err != nil {
+			fmt.Println("data: ",data)
+
+			if data, err = repo.FindAll(ctx); err != nil {
 				http.Error(w, "could not find items: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 		} else {
-			id, err := uuid.Parse(idStr)
-			if err != nil {
-				http.Error(w, "could not parse ID: "+err.Error(), http.StatusBadRequest)
-				return
-			}
+			//id, err := uuid.Parse(idStr)
+			//if err != nil {
+			//	http.Error(w, "could not parse ID: "+err.Error(), http.StatusBadRequest)
+			//	return
+			//}
+			fmt.Println("data: ",data)
 
-			if data, err = repo.Find(r.Context(), id); err != nil {
+			if data, err = repo.Find(ctx, idStr); err != nil {
 				if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
 					http.Error(w, "could not find item", http.StatusNotFound)
 					return

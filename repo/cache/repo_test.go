@@ -50,7 +50,7 @@ func TestReadRepo(t *testing.T) {
 
 func extraRepoTests(t *testing.T, ctx context.Context) {
 	simpleModel := &mocks.SimpleModel{
-		ID:      uuid.New(),
+		ID:      uuid.New().String(),
 		Content: "simpleModel",
 	}
 

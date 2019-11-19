@@ -107,7 +107,7 @@ func (b *EventBus) channel(m eh.EventMatcher, h eh.EventHandler, observer bool) 
 
 	id := string(h.HandlerType())
 	if observer { // Generate unique ID for each observer.
-		id = fmt.Sprintf("%s-%s", id, uuid.New())
+		id = fmt.Sprintf("%s-%s", id, uuid.New().String())
 	}
 	return b.group.channel(id)
 }

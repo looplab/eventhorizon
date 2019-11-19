@@ -64,7 +64,7 @@ func TestAggregateStore_LoadNoEvents(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := uuid.New()
+	id := uuid.New().String()
 	agg, err := store.Load(ctx, TestAggregateType, id)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
@@ -86,7 +86,7 @@ func TestAggregateStore_LoadEvents(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := uuid.New()
+	id := uuid.New().String()
 	agg := NewTestAggregate(id)
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := agg.StoreEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp)
@@ -127,7 +127,7 @@ func TestAggregateStore_LoadEvents_MismatchedEventType(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := uuid.New()
+	id := uuid.New().String()
 	agg := NewTestAggregate(id)
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := agg.StoreEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
@@ -135,7 +135,7 @@ func TestAggregateStore_LoadEvents_MismatchedEventType(t *testing.T) {
 		t.Fatal("there should be no error:", err)
 	}
 
-	otherAggregateID := uuid.New()
+	otherAggregateID := uuid.New().String()
 	otherAgg := NewTestAggregateOther(otherAggregateID)
 	event2 := otherAgg.StoreEvent(mocks.EventOtherType, &mocks.EventData{Content: "event2"}, timestamp)
 	if err := eventStore.Save(ctx, []eh.Event{event2}, 0); err != nil {
@@ -156,7 +156,7 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := uuid.New()
+	id := uuid.New().String()
 	agg := NewTestAggregateOther(id)
 	err := store.Save(ctx, agg)
 	if err != nil {
@@ -223,7 +223,7 @@ func TestAggregateStore_AggregateNotRegistered(t *testing.T) {
 
 	ctx := context.Background()
 
-	id := uuid.New()
+	id := uuid.New().String()
 	agg, err := store.Load(ctx, "TestAggregate3", id)
 	if err != eh.ErrAggregateNotRegistered {
 		t.Error("there should be a eventhorizon.ErrAggregateNotRegistered error:", err)
@@ -251,7 +251,7 @@ func createStore(t *testing.T) (*AggregateStore, *mocks.EventStore, *mocks.Event
 }
 
 func init() {
-	eh.RegisterAggregate(func(id uuid.UUID) eh.Aggregate {
+	eh.RegisterAggregate(func(id string) eh.Aggregate {
 		return NewTestAggregateOther(id)
 	})
 }
@@ -265,7 +265,7 @@ type TestAggregateOther struct {
 
 var _ = Aggregate(&TestAggregateOther{})
 
-func NewTestAggregateOther(id uuid.UUID) *TestAggregateOther {
+func NewTestAggregateOther(id string) *TestAggregateOther {
 	return &TestAggregateOther{
 		AggregateBase: NewAggregateBase(TestAggregateOtherType, id),
 	}

@@ -22,7 +22,6 @@ import (
 
 	eh "github.com/firawe/eventhorizon"
 	"github.com/firawe/eventhorizon/eventhandler/projector"
-	"github.com/google/uuid"
 )
 
 // Invitation is a read model object for an invitation.
@@ -38,8 +37,8 @@ var _ = eh.Entity(&Invitation{})
 var _ = eh.Versionable(&Invitation{})
 
 // EntityID implements the EntityID method of the eventhorizon.Entity interface.
-func (i *Invitation) EntityID() uuid.UUID {
-	return uuid.MustParse(i.ID)
+func (i *Invitation) EntityID() string {
+	return i.ID
 }
 
 // AggregateVersion implements the AggregateVersion method of the
@@ -75,7 +74,7 @@ func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, entit
 		if !ok {
 			return nil, fmt.Errorf("projector: invalid event data type: %v", event.Data())
 		}
-		i.ID = event.AggregateID().String()
+		i.ID = event.AggregateID()
 		i.Name = data.Name
 		i.Age = data.Age
 
@@ -112,8 +111,8 @@ type GuestList struct {
 var _ = eh.Entity(&Invitation{})
 
 // EntityID implements the EntityID method of the eventhorizon.Entity interface.
-func (g *GuestList) EntityID() uuid.UUID {
-	return uuid.MustParse(g.ID)
+func (g *GuestList) EntityID() string {
+	return g.ID
 }
 
 // GuestListProjector is a projector that updates the guest list. It is
@@ -121,11 +120,11 @@ func (g *GuestList) EntityID() uuid.UUID {
 type GuestListProjector struct {
 	repo    eh.ReadWriteRepo
 	repoMu  sync.Mutex
-	eventID uuid.UUID
+	eventID string
 }
 
 // NewGuestListProjector creates a new GuestListProjector.
-func NewGuestListProjector(repo eh.ReadWriteRepo, eventID uuid.UUID) *GuestListProjector {
+func NewGuestListProjector(repo eh.ReadWriteRepo, eventID string) *GuestListProjector {
 	p := &GuestListProjector{
 		repo:    repo,
 		eventID: eventID,
@@ -149,7 +148,7 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 	m, err := p.repo.Find(ctx, p.eventID)
 	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
 		g = &GuestList{
-			ID: p.eventID.String(),
+			ID: p.eventID,
 		}
 	} else if err != nil {
 		return err

@@ -31,7 +31,7 @@ func TestCommandHandler(t *testing.T) {
 
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	expectedEvent := eh.NewEventForAggregate(mocks.EventType, nil, timestamp,
-		mocks.AggregateType, uuid.New(), 1)
+		mocks.AggregateType, uuid.New().String(), 1)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

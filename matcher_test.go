@@ -17,8 +17,6 @@ package eventhorizon
 import (
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 func TestMatchAny(t *testing.T) {
@@ -60,12 +58,12 @@ func TestMatchAggregate(t *testing.T) {
 		t.Error("match aggregate should not match nil event")
 	}
 
-	e := NewEventForAggregate("test", nil, time.Now(), at, uuid.Nil, 0)
+	e := NewEventForAggregate("test", nil, time.Now(), at, "", 0)
 	if !m(e) {
 		t.Error("match aggregate should match the event")
 	}
 
-	e = NewEventForAggregate("test", nil, time.Now(), "other", uuid.Nil, 0)
+	e = NewEventForAggregate("test", nil, time.Now(), "other", "", 0)
 	if m(e) {
 		t.Error("match aggregate should not match the event")
 	}

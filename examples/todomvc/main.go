@@ -38,7 +38,7 @@ func main() {
 		log.Println("could not clear DB:", err)
 	}
 
-	id := uuid.New()
+	id := uuid.New().String()
 	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.Create{
 		ID: id,
 	}); err != nil {

@@ -16,6 +16,7 @@ package mongodb
 
 import (
 	"context"
+	"github.com/google/go-cmp/cmp"
 	"os"
 	"reflect"
 	"testing"
@@ -30,6 +31,13 @@ import (
 	"github.com/firawe/eventhorizon/repo"
 )
 
+var comparer = cmp.Comparer(func(a, b time.Time) bool {
+	if a.UTC().Unix() == b.UTC().Unix() {
+		return true
+	}
+	return false
+})
+
 func TestReadRepo(t *testing.T) {
 	// Local Mongo testing with Docker
 	url := os.Getenv("MONGO_HOST")
@@ -40,7 +48,7 @@ func TestReadRepo(t *testing.T) {
 	}
 	optionsRe := Options{SSL: false,
 		DBHost:     url,
-		DBName:     "",
+		DBName:     "test_mongo",
 		DBUser:     "",
 		DBPassword: "",
 		Collection: "mocks.Model",
@@ -60,20 +68,11 @@ func TestReadRepo(t *testing.T) {
 		t.Error("the parent repo should be nil")
 	}
 
+	ctx := eh.NewContextWithNamespaceAndType(context.Background(), "test_mongo", "mocks.Model")
+
 	// Repo with default namespace.
 	defer func() {
-		t.Log("clearing default db")
-		if err = r.Clear(context.Background()); err != nil {
-			t.Fatal("there should be no error:", err)
-		}
-	}()
-	repo.AcceptanceTest(t, context.Background(), r)
-	extraRepoTests(t, context.Background(), r)
-
-	// Repo with other namespace.
-	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
-	defer func() {
-		t.Log("clearing ns db")
+		t.Log("clearing db",ctx)
 		if err = r.Clear(ctx); err != nil {
 			t.Fatal("there should be no error:", err)
 		}
@@ -81,12 +80,24 @@ func TestReadRepo(t *testing.T) {
 	repo.AcceptanceTest(t, ctx, r)
 	extraRepoTests(t, ctx, r)
 
+	ctx2 := eh.NewContextWithNamespaceAndType(context.Background(), "test_mongo2", "mocks.Model")
+
+	// Repo with other namespace.
+	defer func() {
+		t.Log("clearing ns db: ",ctx2)
+		if err = r.Clear(ctx2); err != nil {
+			t.Fatal("there should be no error:", err)
+		}
+	}()
+	repo.AcceptanceTest(t, ctx2, r)
+	extraRepoTests(t, ctx2, r)
+
 }
 
 func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 	// Insert a custom item.
 	modelCustom := &mocks.Model{
-		ID:        uuid.New(),
+		ID:        uuid.New().String(),
 		Content:   "modelCustom",
 		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
@@ -101,8 +112,9 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 	if len(result) != 1 {
 		t.Error("there should be one item:", len(result))
 	}
-	if !reflect.DeepEqual(result[0], modelCustom) {
-		t.Error("the item should be correct:", modelCustom)
+
+	if !cmp.Equal(result[0], modelCustom, comparer) {
+		t.Error("not equal expected: ", cmp.Diff(result[0], modelCustom, comparer))
 	}
 
 	// FindCustom with no query.
@@ -131,7 +143,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 	}
 
 	modelCustom2 := &mocks.Model{
-		ID:      uuid.New(),
+		ID:      uuid.New().String(),
 		Content: "modelCustom2",
 	}
 	if err := r.Collection(ctx, func(c *mgo.Collection) error {
@@ -158,8 +170,9 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 	if iter.Next() != true {
 		t.Error("the iterator should have results")
 	}
-	if !reflect.DeepEqual(iter.Value(), modelCustom) {
-		t.Error("the item should be correct:", modelCustom)
+
+	if !cmp.Equal(iter.Value(), modelCustom, comparer) {
+		t.Error("not equal expected: ", cmp.Diff(result[0], modelCustom, comparer))
 	}
 	if iter.Next() == true {
 		t.Error("the iterator should have no results")

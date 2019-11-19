@@ -17,8 +17,6 @@ package eventhorizon
 import (
 	"context"
 	"errors"
-
-	"github.com/google/uuid"
 )
 
 // RepoError is an error in the read repository, with the namespace.
@@ -28,7 +26,8 @@ type RepoError struct {
 	// BaseErr is an optional underlying error, for example from the DB driver.
 	BaseErr error
 	// Namespace is the namespace for the error.
-	Namespace string
+	Namespace     string
+	AggregateType string
 }
 
 // Error implements the Error method of the errors.Error interface.
@@ -56,7 +55,7 @@ type ReadRepo interface {
 	Parent() ReadRepo
 
 	// Find returns an entity for an ID.
-	Find(context.Context, uuid.UUID) (Entity, error)
+	Find(context.Context, string) (Entity, error)
 
 	// FindAll returns all entities in the repository.
 	FindAll(context.Context) ([]Entity, error)
@@ -68,7 +67,7 @@ type WriteRepo interface {
 	Save(context.Context, Entity) error
 
 	// Remove removes a entity by ID from the storage.
-	Remove(context.Context, uuid.UUID) error
+	Remove(context.Context, string) error
 }
 
 // ReadWriteRepo is a combined read and write repo, mainly useful for testing.

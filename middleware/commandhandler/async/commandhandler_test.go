@@ -28,7 +28,7 @@ import (
 
 func TestCommandHandler(t *testing.T) {
 	cmd := mocks.Command{
-		ID:      uuid.New(),
+		ID:      uuid.New().String(),
 		Content: "content",
 	}
 

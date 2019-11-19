@@ -23,7 +23,6 @@ import (
 	"github.com/firawe/eventhorizon/commandhandler/bus"
 	"github.com/firawe/eventhorizon/eventhandler/projector"
 	"github.com/firawe/eventhorizon/eventhandler/saga"
-	"github.com/google/uuid"
 )
 
 // Setup configures the domain.
@@ -32,7 +31,7 @@ func Setup(
 	eventBus eh.EventBus,
 	commandBus *bus.CommandHandler,
 	invitationRepo, guestListRepo eh.ReadWriteRepo,
-	eventID uuid.UUID) {
+	eventID string) {
 
 	// Add a logger as an observer.
 	eventBus.AddObserver(eh.MatchAny(), &Logger{})
@@ -87,7 +86,7 @@ func Setup2(
 	eventStore eh.EventStore,
 	eventBus eh.EventBus,
 	commandBus *bus.CommandHandler,
-	eventID uuid.UUID) {
+	eventID string) {
 
 	// Add a logger as an observer.
 	eventBus.AddObserver(eh.MatchAny(), &Logger{})

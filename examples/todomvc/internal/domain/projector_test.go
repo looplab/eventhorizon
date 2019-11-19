@@ -17,13 +17,12 @@ package domain
 import (
 	"context"
 	"errors"
-	"reflect"
+	"github.com/google/go-cmp/cmp"
 	"testing"
 	"time"
 
 	eh "github.com/firawe/eventhorizon"
 	"github.com/google/uuid"
-	"github.com/kr/pretty"
 )
 
 func TestProjector(t *testing.T) {
@@ -31,7 +30,7 @@ func TestProjector(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.Local)
 	}
 
-	id := uuid.New()
+	id := uuid.New().String()
 	cases := map[string]struct {
 		model         eh.Entity
 		event         eh.Event
@@ -72,7 +71,7 @@ func TestProjector(t *testing.T) {
 				CreatedAt: TimeNow(),
 			},
 			eh.NewEventForAggregate(ItemAdded, &ItemAddedData{
-				ItemID:      1,
+				ItemID:      "1",
 				Description: "desc 1",
 			}, TimeNow(), AggregateType, id, 1),
 			&TodoList{
@@ -80,7 +79,7 @@ func TestProjector(t *testing.T) {
 				Version: 2,
 				Items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
@@ -96,12 +95,12 @@ func TestProjector(t *testing.T) {
 				Version: 1,
 				Items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "desc 2",
 						Completed:   false,
 					},
@@ -109,14 +108,14 @@ func TestProjector(t *testing.T) {
 				CreatedAt: TimeNow(),
 			},
 			eh.NewEventForAggregate(ItemRemoved, &ItemRemovedData{
-				ItemID: 2,
+				ItemID: "2",
 			}, TimeNow(), AggregateType, id, 1),
 			&TodoList{
 				ID:      id,
 				Version: 2,
 				Items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
@@ -132,7 +131,7 @@ func TestProjector(t *testing.T) {
 				Version: 1,
 				Items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
@@ -140,7 +139,7 @@ func TestProjector(t *testing.T) {
 				CreatedAt: TimeNow(),
 			},
 			eh.NewEventForAggregate(ItemRemoved, &ItemRemovedData{
-				ItemID: 1,
+				ItemID: "1",
 			}, TimeNow(), AggregateType, id, 1),
 			&TodoList{
 				ID:        id,
@@ -157,12 +156,12 @@ func TestProjector(t *testing.T) {
 				Version: 1,
 				Items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "desc 2",
 						Completed:   false,
 					},
@@ -170,7 +169,7 @@ func TestProjector(t *testing.T) {
 				CreatedAt: TimeNow(),
 			},
 			eh.NewEventForAggregate(ItemDescriptionSet, &ItemDescriptionSetData{
-				ItemID:      2,
+				ItemID:      "2",
 				Description: "new desc",
 			}, TimeNow(), AggregateType, id, 1),
 			&TodoList{
@@ -178,12 +177,12 @@ func TestProjector(t *testing.T) {
 				Version: 2,
 				Items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "new desc",
 						Completed:   false,
 					},
@@ -199,12 +198,12 @@ func TestProjector(t *testing.T) {
 				Version: 1,
 				Items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "desc 2",
 						Completed:   false,
 					},
@@ -212,7 +211,7 @@ func TestProjector(t *testing.T) {
 				CreatedAt: TimeNow(),
 			},
 			eh.NewEventForAggregate(ItemChecked, &ItemCheckedData{
-				ItemID:  2,
+				ItemID:  "2",
 				Checked: true,
 			}, TimeNow(), AggregateType, id, 1),
 			&TodoList{
@@ -220,12 +219,12 @@ func TestProjector(t *testing.T) {
 				Version: 2,
 				Items: []*TodoItem{
 					{
-						ID:          1,
+						ID:          "1",
 						Description: "desc 1",
 						Completed:   false,
 					},
 					{
-						ID:          2,
+						ID:          "2",
 						Description: "desc 2",
 						Completed:   true,
 					},
@@ -250,11 +249,16 @@ func TestProjector(t *testing.T) {
 				t.Log("exp:", tc.expectedErr)
 				t.Log("got:", err)
 			}
-			if !reflect.DeepEqual(model, tc.expectedModel) {
-				t.Errorf("test case '%s': incorrect aggregate", name)
-				t.Log("exp:\n", pretty.Sprint(tc.expectedModel))
-				t.Log("got:\n", pretty.Sprint(model))
+			if !cmp.Equal(model, tc.expectedModel, comparer) {
+				t.Error("not equal expected: ", cmp.Diff(model, tc.expectedModel, comparer))
 			}
 		})
 	}
 }
+
+var comparer = cmp.Comparer(func(a, b time.Time) bool {
+	if a.UTC().Unix() == b.UTC().Unix() {
+		return true
+	}
+	return false
+})
