@@ -17,7 +17,7 @@ package mongodb
 import (
 	"context"
 	"fmt"
-	"log"
+	"github.com/labstack/gommon/log"
 	"os"
 	"sort"
 	"time"
@@ -42,7 +42,7 @@ func Example() {
 		// Default to localhost
 		url = "localhost:27017"
 	}
-	options := eventstore.Options{DBHost: url, SSL: false, DBName: "profiles"}
+	options := eventstore.Options{DBHost: url, SSL: false, DBName: "guestlist"}
 
 	// Create the event store.
 	eventStore, err := eventstore.NewEventStore(options)
@@ -54,7 +54,7 @@ func Example() {
 	eventBus := eventbus.NewEventBus(nil)
 	go func() {
 		for e := range eventBus.Errors() {
-			log.Printf("eventbus: %s", e.Error())
+			log.Infof("eventbus: %s", e.Error())
 		}
 	}()
 
@@ -98,6 +98,7 @@ func Example() {
 
 	// Clear DB collections.
 	eventStore.Clear(ctx)
+
 	invitationRepo.Clear(ctx)
 	guestListRepo.Clear(ctx)
 
@@ -111,16 +112,16 @@ func Example() {
 
 	// Issue some invitations and responses. Error checking omitted here.
 	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{ID: athenaID, Name: "Athena", Age: 42}); err != nil {
-		log.Println("error:", err)
+		log.Error("error:", err)
 	}
 	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{ID: hadesID, Name: "Hades"}); err != nil {
-		log.Println("error:", err)
+		log.Error("error:", err)
 	}
 	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{ID: zeusID, Name: "Zeus"}); err != nil {
-		log.Println("error:", err)
+		log.Error("error:", err)
 	}
 	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{ID: poseidonID, Name: "Poseidon"}); err != nil {
-		log.Println("error:", err)
+		log.Error("error:", err)
 	}
 	time.Sleep(100 * time.Millisecond)
 
@@ -129,24 +130,24 @@ func Example() {
 	// that is not allowed by the domain logic in InvitationAggregate. The
 	// result is that she is still accepted.
 	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{ID: athenaID}); err != nil {
-		log.Println("error:", err)
+		log.Error("error:", err)
 	}
 	if err = commandBus.HandleCommand(ctx, &domain.DeclineInvite{ID: athenaID}); err != nil {
 		// NOTE: This error is supposed to be printed!
-		log.Println("error:", err)
+		log.Error("error:", err)
 	}
 	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{ID: hadesID}); err != nil {
-		log.Println("error:", err)
+		log.Error("error:", err)
 	}
 	if err := commandBus.HandleCommand(ctx, &domain.DeclineInvite{ID: zeusID}); err != nil {
-		log.Println("error:", err)
+		log.Error("error:", err)
 	}
 
 	// Poseidon is a bit late to the party...
 	// TODO: Remove sleeps.
 	time.Sleep(100 * time.Millisecond)
 	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{ID: poseidonID}); err != nil {
-		log.Println("error:", err)
+		log.Error("error:", err)
 	}
 
 	// Wait for simulated eventual consistency before reading.
@@ -156,7 +157,7 @@ func Example() {
 	invitationStrs := []string{}
 	invitations, err := invitationRepo.FindAll(ctx)
 	if err != nil {
-		log.Println("error:", err)
+		log.Error("error:", err)
 	}
 	for _, i := range invitations {
 		if i, ok := i.(*domain.Invitation); ok {
@@ -167,17 +168,17 @@ func Example() {
 	// Sort the output to be able to compare test results.
 	sort.Strings(invitationStrs)
 	for _, s := range invitationStrs {
-		log.Printf("invitation: %s\n", s)
+		log.Infof("invitation: %s\n", s)
 		fmt.Printf("invitation: %s\n", s)
 	}
 
 	// Read the guest list.
 	l, err := guestListRepo.Find(ctx, eventID)
 	if err != nil {
-		log.Println("error:", err)
+		log.Error("error:", err)
 	}
 	if l, ok := l.(*domain.GuestList); ok {
-		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
+		log.Infof("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 		fmt.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)

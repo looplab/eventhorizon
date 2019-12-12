@@ -36,6 +36,7 @@ type EventData interface{}
 //
 // The event should contain all the data needed when applying/handling it.
 type Event interface {
+	ID() string
 	// EventType returns the type of the event.
 	EventType() EventType
 	// The data attached to the event.
@@ -79,10 +80,24 @@ func NewEventForAggregate(eventType EventType, data EventData, timestamp time.Ti
 	}
 }
 
+func NewIdEventForAggregate(id string, eventType EventType, data EventData, timestamp time.Time,
+	aggregateType AggregateType, aggregateID string, version int) Event {
+	return event{
+		id:            id,
+		eventType:     eventType,
+		data:          data,
+		timestamp:     timestamp,
+		aggregateType: aggregateType,
+		aggregateID:   aggregateID,
+		version:       version,
+	}
+}
+
 // event is an internal representation of an event, returned when the aggregate
 // uses NewEvent to create a new event. The events loaded from the db is
 // represented by each DBs internal event type, implementing Event.
 type event struct {
+	id            string
 	eventType     EventType
 	data          EventData
 	timestamp     time.Time
@@ -119,6 +134,10 @@ func (e event) AggregateID() string {
 // Version implements the Version method of the Event interface.
 func (e event) Version() int {
 	return e.version
+}
+
+func (e event) ID() string {
+	return e.id
 }
 
 // String implements the String method of the Event interface.

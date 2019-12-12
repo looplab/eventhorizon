@@ -15,6 +15,7 @@
 package events
 
 import (
+	"github.com/google/uuid"
 	"time"
 
 	eh "github.com/firawe/eventhorizon"
@@ -104,6 +105,14 @@ func (a *AggregateBase) ClearEvents() {
 // StoreEvent stores an event for later retrieval by Events().
 func (a *AggregateBase) StoreEvent(t eh.EventType, data eh.EventData, timestamp time.Time) eh.Event {
 	e := eh.NewEventForAggregate(t, data, timestamp,
+		a.AggregateType(), a.EntityID(),
+		a.Version()+len(a.events)+1)
+	a.events = append(a.events, e)
+	return e
+}
+
+func (a *AggregateBase) StoreEventWithID(t eh.EventType, data eh.EventData, timestamp time.Time) eh.Event {
+	e := eh.NewIdEventForAggregate(uuid.New().String(), t, data, timestamp,
 		a.AggregateType(), a.EntityID(),
 		a.Version()+len(a.events)+1)
 	a.events = append(a.events, e)

@@ -12,11 +12,11 @@ require (
 	github.com/gorilla/websocket v1.4.0
 	github.com/jpillora/backoff v0.0.0-20170918002102-8eab2debe79d
 	github.com/kr/pretty v0.1.0
+	github.com/labstack/gommon v0.3.0
 	go.opencensus.io v0.15.0 // indirect
 	golang.org/x/net v0.0.0-20180826012351-8a410e7b638d // indirect
 	golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be // indirect
 	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f // indirect
-	golang.org/x/sys v0.0.0-20180903190138-2b024373dcd9 // indirect
 	golang.org/x/text v0.3.0 // indirect
 	google.golang.org/api v0.0.0-20180904000447-0ad5a633fea1
 	google.golang.org/appengine v1.1.0 // indirect
