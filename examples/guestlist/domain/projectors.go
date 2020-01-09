@@ -91,7 +91,7 @@ func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, entit
 		i.Status = "denied"
 
 	default:
-		return nil, errors.New("could not handle event: " + event.String())
+		return nil, errors.New("InvitationProjector could not handle event: " + event.String())
 	}
 
 	i.Version++
@@ -177,7 +177,7 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 		g.NumDenied++
 
 	default:
-		return errors.New("could not handle event: " + event.String())
+		return errors.New("InvitationProjector could not handle event: " + event.String())
 	}
 
 	if err := p.repo.Save(ctx, g); err != nil {

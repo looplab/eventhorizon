@@ -17,7 +17,6 @@ package projector
 import (
 	"context"
 	"errors"
-
 	eh "github.com/firawe/eventhorizon"
 )
 

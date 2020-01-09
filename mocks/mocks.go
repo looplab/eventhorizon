@@ -93,7 +93,7 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 
 // EventData is a mocked event data, useful in testing.
 type EventData struct {
-	Content string
+	Content string `json:"contentData"         bson:"contentData"`
 }
 
 // Command is a mocked eventhorizon.Command, useful in testing.
@@ -104,7 +104,7 @@ type Command struct {
 
 var _ = eh.Command(Command{})
 
-func (t Command) AggregateID() string          { return t.ID }
+func (t Command) AggregateID() string             { return t.ID }
 func (t Command) AggregateType() eh.AggregateType { return AggregateType }
 func (t Command) CommandType() eh.CommandType     { return CommandType }
 
@@ -116,7 +116,7 @@ type CommandOther struct {
 
 var _ = eh.Command(CommandOther{})
 
-func (t CommandOther) AggregateID() string          { return t.ID }
+func (t CommandOther) AggregateID() string             { return t.ID }
 func (t CommandOther) AggregateType() eh.AggregateType { return AggregateType }
 func (t CommandOther) CommandType() eh.CommandType     { return CommandOtherType }
 
@@ -128,13 +128,13 @@ type CommandOther2 struct {
 
 var _ = eh.Command(CommandOther2{})
 
-func (t CommandOther2) AggregateID() string          { return t.ID }
+func (t CommandOther2) AggregateID() string             { return t.ID }
 func (t CommandOther2) AggregateType() eh.AggregateType { return AggregateType }
 func (t CommandOther2) CommandType() eh.CommandType     { return CommandOther2Type }
 
 // Model is a mocked read model, useful in testing.
 type Model struct {
-	ID        string `json:"id"         bson:"_id"`
+	ID        string    `json:"id"         bson:"_id"`
 	Version   int       `json:"version"    bson:"version"`
 	Content   string    `json:"content"    bson:"content"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
@@ -156,7 +156,7 @@ func (m *Model) AggregateVersion() int {
 // SimpleModel is a mocked read model, useful in testing, without a version.
 type SimpleModel struct {
 	ID      string `json:"id"         bson:"_id"`
-	Content string    `json:"content"    bson:"content"`
+	Content string `json:"content"    bson:"content"`
 }
 
 var _ = eh.Entity(&SimpleModel{})
@@ -296,13 +296,13 @@ func (m *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (m *EventStore) Load(ctx context.Context, id string) ([]eh.Event, error) {
+func (m *EventStore) Load(ctx context.Context, id string) ([]eh.Event, context.Context, error) {
 	if m.Err != nil {
-		return nil, m.Err
+		return nil, ctx, m.Err
 	}
 	m.Loaded = id
 	m.Context = ctx
-	return m.Events, nil
+	return m.Events, ctx, nil
 }
 
 // Replace implements the Replace method of the eventhorizon.EventStore interface.

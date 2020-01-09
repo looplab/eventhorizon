@@ -55,7 +55,7 @@ type EventStore interface {
 	Save(ctx context.Context, events []Event, originalVersion int) error
 
 	// Load loads all events for the aggregate id from the store.
-	Load(context.Context, string) ([]Event, error)
+	Load(context.Context, string) ([]Event, context.Context, error)
 }
 
 // EventStoreMaintainer is an interface for a maintainer of an EventStore.

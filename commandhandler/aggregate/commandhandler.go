@@ -17,7 +17,6 @@ package aggregate
 import (
 	"context"
 	"errors"
-
 	eh "github.com/firawe/eventhorizon"
 )
 
@@ -58,7 +57,6 @@ func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) erro
 	if err != nil {
 		return err
 	}
-
 	a, err := h.store.Load(ctx, h.t, cmd.AggregateID())
 	if err != nil {
 		return err

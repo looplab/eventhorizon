@@ -40,7 +40,6 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	savedEvents := []eh.Event{}
 
 	ctx = context.WithValue(ctx, "testkey", "testval")
-	fmt.Printf("c %+v\n", ctx)
 	t.Log("save no events")
 	err := store.Save(ctx, []eh.Event{}, 0)
 	if esErr, ok := err.(eh.EventStoreError); !ok || esErr.Err != eh.ErrNoEventsToAppend {
@@ -109,7 +108,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	savedEvents = append(savedEvents, event7)
 
 	t.Log("load events for non-existing aggregate")
-	events, err := store.Load(ctx, uuid.New().String())
+	events, ctx, err := store.Load(ctx, uuid.New().String())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -118,7 +117,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	}
 
 	t.Log("load events")
-	events, err = store.Load(ctx, id.String())
+	events, ctx, err = store.Load(ctx, id.String())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -138,7 +137,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	}
 
 	t.Log("load events for another aggregate")
-	events, err = store.Load(ctx, id2.String())
+	events, ctx, err = store.Load(ctx, id2.String())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -182,7 +181,7 @@ func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventS
 	}
 
 	t.Log("replace event, no aggregate")
-	eventWithoutAggregate := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event"},
+	eventWithoutAggregate := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "eventReplace"},
 		timestamp, mocks.AggregateType, uuid.New().String(), 1)
 	if err := store.Replace(ctx, eventWithoutAggregate); err != eh.ErrAggregateNotFound {
 		t.Error("there should be an aggregate not found error:", err)
@@ -201,7 +200,7 @@ func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventS
 	if err := store.Replace(ctx, event2Mod); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	events, err := store.Load(ctx, id.String())
+	events, ctx, err := store.Load(ctx, id.String())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -239,7 +238,7 @@ func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventS
 	if err := store.RenameEvent(ctx, oldEventType, newEventType); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	events, err = store.Load(ctx, id1)
+	events, ctx, err = store.Load(ctx, id1)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -251,7 +250,7 @@ func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventS
 	if err := mocks.CompareEvents(events[0], newEvent1); err != nil {
 		t.Error("the event was incorrect:", err)
 	}
-	events, err = store.Load(ctx, id2)
+	events, ctx, err = store.Load(ctx, id2)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

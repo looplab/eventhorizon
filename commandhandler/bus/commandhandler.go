@@ -46,7 +46,6 @@ func NewCommandHandler() *CommandHandler {
 func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
 	h.handlersMu.RLock()
 	defer h.handlersMu.RUnlock()
-
 	if handler, ok := h.handlers[cmd.CommandType()]; ok {
 		return handler.HandleCommand(ctx, cmd)
 	}

@@ -62,11 +62,9 @@ func NewInvitationAggregate(id string) *InvitationAggregate {
 
 // HandleCommand implements the HandleCommand method of the Aggregate interface.
 func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
-	fmt.Printf("cmd=%+v | type=%s | \n", cmd, cmd.CommandType())
 	switch cmd := cmd.(type) {
 	case *CreateInvite:
 		a.StoreEventWithID(InviteCreatedEvent,
-
 			&InviteCreatedData{
 				cmd.Name,
 				cmd.Age,
@@ -87,7 +85,6 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 		if a.accepted {
 			return nil
 		}
-
 		a.StoreEvent(InviteAcceptedEvent, nil, time.Now())
 		return nil
 
@@ -136,8 +133,6 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 
 // ApplyEvent implements the ApplyEvent method of the Aggregate interface.
 func (a *InvitationAggregate) ApplyEvent(ctx context.Context, event eh.Event) error {
-	fmt.Printf("apply event=%+v\n", event)
-	fmt.Println("event data=", event.Data())
 	switch event.EventType() {
 	case InviteCreatedEvent:
 		if data, ok := event.Data().(*InviteCreatedData); ok {

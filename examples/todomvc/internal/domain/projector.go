@@ -98,6 +98,5 @@ func (p *Projector) Project(ctx context.Context,
 	// Always increment the version and set update time on successful updates.
 	model.Version++
 	model.UpdatedAt = TimeNow().UTC()
-	fmt.Println("projector done")
 	return model, nil
 }

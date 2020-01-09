@@ -116,7 +116,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (s *EventStore) Load(ctx context.Context, id string) ([]eh.Event, error) {
+func (s *EventStore) Load(ctx context.Context, id string) ([]eh.Event, context.Context, error) {
 	s.dbMu.RLock()
 	defer s.dbMu.RUnlock()
 
@@ -127,7 +127,7 @@ func (s *EventStore) Load(ctx context.Context, id string) ([]eh.Event, error) {
 
 	aggregate, ok := s.db[ns][id]
 	if !ok {
-		return []eh.Event{}, nil
+		return []eh.Event{}, ctx, nil
 	}
 
 	events := make([]eh.Event, len(aggregate.Events))
@@ -135,7 +135,7 @@ func (s *EventStore) Load(ctx context.Context, id string) ([]eh.Event, error) {
 		events[i] = event{dbEvent: dbEvent}
 	}
 
-	return events, nil
+	return events, ctx, nil
 }
 
 // Replace implements the Replace method of the eventhorizon.EventStore interface.

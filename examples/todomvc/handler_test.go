@@ -68,7 +68,6 @@ func TestGetAll(t *testing.T) {
 	if !ok {
 		t.Fatal("incorrect repo type")
 	}
-	fmt.Printf("repo: %+v\n", repo)
 	ctx := eh.NewContextWithNamespaceAndType(context.Background(), "test_handler", "test_type")
 	if err := repo.Clear(ctx); err != nil {
 		t.Log("could not clear DB:", err)

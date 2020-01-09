@@ -140,7 +140,6 @@ func (r *Repo) Find(ctx context.Context, id string) (eh.Entity, error) {
 			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
-
 	return entity, nil
 }
 

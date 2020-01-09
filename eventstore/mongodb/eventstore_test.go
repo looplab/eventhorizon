@@ -34,7 +34,7 @@ func TestEventStore(t *testing.T) {
 	optionsRepo := Options{
 		SSL:        false,
 		DBHost:     url,
-		DBName:     "testns",
+		DBName:     "testdb",
 		DBUser:     "",
 		DBPassword: "",
 	}
@@ -46,24 +46,35 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	ctx := eh.NewContextWithNamespaceAndType(context.Background(), "testns", "testtype")
+	ctx := eh.NewContextWithNamespaceAndType(context.Background(), "testdb", "testagg_acceptance")
+	t.Log("clearing db")
+	if err = store.Clear(ctx); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if err = store.Clear(eh.NewContextWithNamespaceAndType(context.Background(), "testdb", "testagg_maintainer"));err != nil{
+		t.Log("there should be no error:", err)
+	}
+	if err = store.Clear(context.Background()); err != nil {
+		t.Log("there should be no error:", err)
+	}
+
 	defer store.Close()
 	defer func() {
-		t.Log("clearing db")
-		if err = store.Clear(ctx); err != nil {
-			t.Fatal("there should be no error:", err)
-		}
-		if err = store.Clear(context.Background()); err != nil {
-			t.Fatal("there should be no error:", err)
-		}
+		//t.Log("clearing db")
+		//if err = store.Clear(ctx); err != nil {
+		//	t.Fatal("there should be no error:", err)
+		//}
+		//if err = store.Clear(context.Background()); err != nil {
+		//	t.Fatal("there should be no error:", err)
+		//}
 	}()
 	// Run the actual test suite.
 	t.Log("event store with default namespace")
 	eventstore.AcceptanceTest(t, ctx, store)
-
-	t.Log("event store with default namespace")
-	eventstore.AcceptanceTest(t, context.Background(), store)
-
+	t.Log("✔✔✔✔✔✔✔ testagg_acceptance done")
+	//t.Log("event store with default namespace")
+	//eventstore.AcceptanceTest(t, context.Background(), store)
 	t.Log("event store maintainer")
-	eventstore.MaintainerAcceptanceTest(t,ctx, store)
+	ctx = eh.NewContextWithNamespaceAndType(context.Background(), "testdb", "testagg_maintainer")
+	eventstore.MaintainerAcceptanceTest(t, ctx, store)
 }

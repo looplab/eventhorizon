@@ -25,10 +25,9 @@ import (
 	"strings"
 	"time"
 
+	eh "github.com/firawe/eventhorizon"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-
-	eh "github.com/firawe/eventhorizon"
 )
 
 // ErrCouldNotDialDB is when the database could not be dialed.
@@ -133,7 +132,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	// Build all event records, with incrementing versions starting from the
 	// original aggregate version.
 	dbEvents := make([]dbEvent, len(events))
-	aggregateEvents := make([]aggregateEvent, len(events))
 	aggregateID := events[0].AggregateID()
 	version := originalVersion
 	for i, event := range events {
@@ -160,12 +158,9 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if err != nil {
 			return err
 		}
-		aggE := newAggregateEvent(ctx, event)
 		if len(e.ID) == 0 {
 			e.ID = uuid.New().String()
-			aggE.ID = e.ID
 		}
-		aggregateEvents[i] = *aggE
 		dbEvents[i] = *e
 		version++
 	}
@@ -175,49 +170,17 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		aggregate := aggregateRecord{
 			AggregateID: aggregateID,
 			Version:     len(dbEvents),
-			Events:      aggregateEvents,
+			Events:      dbEvents,
 		}
 		if dbEvents[0].ID == "" {
 			dbEvents[0].ID = uuid.New().String()
-			aggregateEvents[0].ID = dbEvents[0].ID
 		}
-		_, err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)+"test").Upsert(
-			bson.M{
-				"_id": dbEvents[0].ID,
-			},
-			bson.M{
-				"$set": bson.M{
-					"data":           dbEvents[0].RawData,
-					"aggregate_id":   dbEvents[0].AggregateID,
-					"aggregate_type": dbEvents[0].AggregateType,
-					"event_type":     dbEvents[0].EventType,
-					"version":        dbEvents[0].Version,
-					"timestamp":      dbEvents[0].Timestamp,
-				},
-			},
-		)
-		if err != nil {
-			return eh.EventStoreError{
-				BaseErr:       err,
-				Err:           ErrCouldNotSaveAggregate,
-				Namespace:     eh.NamespaceFromContext(ctx),
-				AggregateType: eh.AggregateTypeFromContext(ctx),
-			}
-		}
-		if err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)).Insert(aggregate); err != nil {
-			return eh.EventStoreError{
-				BaseErr:       err,
-				Err:           ErrCouldNotSaveAggregate,
-				Namespace:     eh.NamespaceFromContext(ctx),
-				AggregateType: eh.AggregateTypeFromContext(ctx),
-			}
-		}
-	} else {
-		// Increment aggregate version on insert of new event record, and
-		// only insert if version of aggregate is matching (ie not changed
-		// since loading the aggregate).
+
 		for i := range dbEvents {
-			upsert, err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)+"test").Upsert(
+			if dbEvents[i].ID == "" {
+				dbEvents[i].ID = uuid.New().String()
+			}
+			_, err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)+".events").Upsert(
 				bson.M{
 					"_id": dbEvents[i].ID,
 				},
@@ -236,7 +199,40 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 					AggregateType: eh.AggregateTypeFromContext(ctx),
 				}
 			}
-			fmt.Println("upsert=", upsert)
+		}
+
+		if err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)).Insert(aggregate); err != nil {
+			return eh.EventStoreError{
+				BaseErr:       err,
+				Err:           ErrCouldNotSaveAggregate,
+				Namespace:     eh.NamespaceFromContext(ctx),
+				AggregateType: eh.AggregateTypeFromContext(ctx),
+			}
+		}
+	} else {
+		// Increment aggregate version on insert of new event record, and
+		// only insert if version of aggregate is matching (ie not changed
+		// since loading the aggregate).
+		for i := range dbEvents {
+			_, err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)+".events").Upsert(
+				bson.M{
+					"_id": dbEvents[i].ID,
+				},
+				bson.M{
+					"$set": dbEvents[i],
+				},
+			)
+			if err != nil {
+				log.Error(err)
+			}
+			if err != nil {
+				return eh.EventStoreError{
+					BaseErr:       err,
+					Err:           ErrCouldNotSaveAggregate,
+					Namespace:     eh.NamespaceFromContext(ctx),
+					AggregateType: eh.AggregateTypeFromContext(ctx),
+				}
+			}
 		}
 
 		if err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)).Update(
@@ -245,8 +241,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 				"version": originalVersion,
 			},
 			bson.M{
-				"$push": bson.M{"events": bson.M{"$each": aggregateEvents}},
-				"$inc":  bson.M{"version": len(aggregateEvents)},
+				"$inc": bson.M{"version": len(dbEvents)},
 			},
 		); err != nil {
 			return eh.EventStoreError{
@@ -262,47 +257,46 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 }
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
-func (s *EventStore) Load(ctx context.Context, id string) ([]eh.Event, error) {
+func (s *EventStore) Load(ctx context.Context, id string) ([]eh.Event, context.Context, error) {
 	sess := s.session.Copy()
 	defer sess.Close()
 
-	var aggregate aggregateRecord
-	err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)).FindId(id).One(&aggregate)
-	if err == mgo.ErrNotFound {
-		return []eh.Event{}, nil
-	} else if err != nil {
-		return nil, eh.EventStoreError{
-			BaseErr:   err,
-			Err:       err,
-			Namespace: eh.NamespaceFromContext(ctx),
-		}
+	batch := false
+	var err error
+	var skip int
+	limit, ok := ctx.Value("limit").(int)
+	if ok {
+		batch = true
+		skip, _ = ctx.Value("offset").(int)
+	}
+	//load dbEvents
+	query := bson.M{
+		"aggregate_id": id,
+	}
+	var result []dbEvent
+	if batch {
+		err = sess.DB(s.dbName(ctx)).C(s.colName(ctx) + ".events").Find(query).Sort("version").Skip(skip).Limit(limit).All(&result)
+	} else {
+		err = sess.DB(s.dbName(ctx)).C(s.colName(ctx) + ".events").Find(query).Sort("version").All(&result)
 	}
 
-	events := make([]eh.Event, len(aggregate.Events))
-	//load dbEvents
-	ids := make([]string, len(aggregate.Events))
-	for i := range aggregate.Events {
-		ids[i] = aggregate.Events[i].ID
-	}
-	query := bson.M{"_id": bson.M{"$in": ids}}
-	var result []dbEvent
-	err = sess.DB(s.dbName(ctx)).C(s.colName(ctx) + "test").Find(query).All(&result)
 	if err == mgo.ErrNotFound {
-		return []eh.Event{}, nil
+		return []eh.Event{}, ctx, nil
 	} else if err != nil {
-		return nil, eh.EventStoreError{
+		return nil, ctx, eh.EventStoreError{
 			BaseErr:   err,
 			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
+	events := make([]eh.Event, len(result))
 
 	for i, dbEvent := range result {
 		// Create an event of the correct type.
 		if data, err := eh.CreateEventData(dbEvent.EventType); err == nil {
 			// Manually decode the raw BSON event.
 			if err := dbEvent.RawData.Unmarshal(data); err != nil {
-				return nil, eh.EventStoreError{
+				return nil, ctx, eh.EventStoreError{
 					BaseErr:   err,
 					Err:       ErrCouldNotUnmarshalEvent,
 					Namespace: eh.NamespaceFromContext(ctx),
@@ -317,7 +311,7 @@ func (s *EventStore) Load(ctx context.Context, id string) ([]eh.Event, error) {
 		events[i] = event{dbEvent: dbEvent}
 	}
 
-	return events, nil
+	return events, ctx, nil
 }
 
 // Replace implements the Replace method of the eventhorizon.EventStore interface.
@@ -343,15 +337,19 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	if err != nil {
 		return err
 	}
-
 	// Find and replace the event.
-	err = sess.DB(s.dbName(ctx)).C(s.colName(ctx)).Update(
+
+	err = sess.DB(s.dbName(ctx)).C(s.colName(ctx)+".events").Update(
 		bson.M{
-			"_id":            event.AggregateID(),
-			"events.version": event.Version(),
+			"aggregate_id": e.AggregateID,
+			"version":      e.Version,
 		},
 		bson.M{
-			"$set": bson.M{"events.$": *e},
+			"$set": bson.M{
+				"data":       e.RawData,
+				"timestamp":  e.Timestamp,
+				"event_type": e.EventType,
+			},
 		},
 	)
 	if err == mgo.ErrNotFound {
@@ -374,12 +372,12 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 
 	// Find and rename all events.
 	// TODO: Maybe use change info.
-	if _, err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)).UpdateAll(
+	if _, err := sess.DB(s.dbName(ctx)).C(s.colName(ctx)+".events").UpdateAll(
 		bson.M{
-			"events.event_type": string(from),
+			"event_type": string(from),
 		},
 		bson.M{
-			"$set": bson.M{"events.$.event_type": string(to)},
+			"$set": bson.M{"event_type": string(to)},
 		},
 	); err != nil {
 		return eh.EventStoreError{
@@ -402,7 +400,7 @@ func (s *EventStore) Clear(ctx context.Context) error {
 			AggregateType: eh.AggregateTypeFromContext(ctx),
 		}
 	}
-	if err := s.session.DB(s.dbName(ctx)).C(s.colName(ctx) + "test").DropCollection(); err != nil {
+	if err := s.session.DB(s.dbName(ctx)).C(s.colName(ctx) + ".events").DropCollection(); err != nil {
 		return eh.EventStoreError{
 			BaseErr:       err,
 			Err:           ErrCouldNotClearDB,
@@ -430,19 +428,19 @@ func (s *EventStore) colName(ctx context.Context) string {
 
 // aggregateRecord is the DB representation of an aggregate.
 type aggregateRecord struct {
-	AggregateID string           `bson:"_id"`
-	Version     int              `bson:"version"`
-	Events      []aggregateEvent `bson:"events"`
+	AggregateID string    `bson:"_id"`
+	Version     int       `bson:"version"`
+	Events      []dbEvent `bson:"-"`
 	// Type        string        `bson:"type"`
 	// Snapshot    bson.Raw      `bson:"snapshot"`
 }
 
-type aggregateEvent struct {
-	ID        string       `bson:"event_id"`
-	EventType eh.EventType `bson:"event_type"`
-	Timestamp time.Time    `bson:"timestamp"`
-	Version   int          `bson:"version"`
-}
+//type aggregateEvent struct {
+//	ID        string       `bson:"event_id"`
+//	EventType eh.EventType `bson:"event_type"`
+//	Timestamp time.Time    `bson:"timestamp"`
+//	Version   int          `bson:"version"`
+//}
 
 // dbEvent is the internal event record for the MongoDB event store used
 // to save and load events from the DB.
@@ -455,16 +453,6 @@ type dbEvent struct {
 	data          eh.EventData     `bson:"-"`
 	Timestamp     time.Time        `bson:"timestamp"`
 	Version       int              `bson:"version"`
-}
-
-// newDBEvent returns a new dbEvent for an event.
-func newAggregateEvent(ctx context.Context, event eh.Event) *aggregateEvent {
-	return &aggregateEvent{
-		ID:        event.ID(),
-		EventType: event.EventType(),
-		Timestamp: event.Timestamp(),
-		Version:   event.Version(),
-	}
 }
 
 // newDBEvent returns a new dbEvent for an event.

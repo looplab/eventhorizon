@@ -20,6 +20,7 @@ import (
 	"github.com/labstack/gommon/log"
 	"os"
 	"sort"
+	"testing"
 	"time"
 
 	eh "github.com/firawe/eventhorizon"
@@ -33,8 +34,7 @@ import (
 	"github.com/firawe/eventhorizon/examples/guestlist/domain"
 )
 
-func Example() {
-
+func TestExample(t *testing.T) {
 	// Local Mongo testing with Docker
 	url := os.Getenv("MONGO_HOST")
 
@@ -63,7 +63,7 @@ func Example() {
 	optionsRepo := repo.Options{
 		SSL:        false,
 		DBHost:     url,
-		DBName:     "",
+		DBName:     "guestlistdb22",
 		DBUser:     "",
 		DBPassword: "",
 		Collection: "invitations",
@@ -94,11 +94,10 @@ func Example() {
 	)
 
 	// Set the namespace to use.
-	ctx := eh.NewContextWithNamespace(context.Background(), options.DBName)
+	ctx := eh.NewContextWithNamespaceAndType(context.Background(), options.DBName,"invitations.aggregate")
 
 	// Clear DB collections.
 	eventStore.Clear(ctx)
-
 	invitationRepo.Clear(ctx)
 	guestListRepo.Clear(ctx)
 
