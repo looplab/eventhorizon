@@ -113,7 +113,7 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 		return nil, ErrInvalidAggregateType
 	}
 
-	var events2 []eh.Event
+	var events []eh.Event
 	batchSize := 5
 	value, ok := ctx.Value("batchsize").(int)
 	if ok {
@@ -122,18 +122,20 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 	ctx = context.WithValue(ctx, "offset", 0)
 	ctx = context.WithValue(ctx, "limit", batchSize)
 
-	events2, ctx, err = r.store.Load(ctx, id)
+	events, ctx, err = r.store.Load(ctx, id)
 	for i := 1; ; i++ {
-		if err = r.applyEvents(ctx, a, events2); err != nil {
+		if err = r.applyEvents(ctx, a, events); err != nil {
 			return nil, err
 		}
 		ctx = context.WithValue(ctx, "offset", batchSize*i)
-
-		events2, ctx, err = r.store.Load(ctx, id)
+		if len(events) < batchSize {
+			break
+		}
+		events, ctx, err = r.store.Load(ctx, id)
 		if err != nil {
 			break
 		}
-		if len(events2) == 0 {
+		if len(events) == 0 {
 			break
 		}
 	}
