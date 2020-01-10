@@ -16,7 +16,6 @@ package eventstore
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 	"time"

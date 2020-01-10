@@ -112,20 +112,13 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 	if !ok {
 		return nil, ErrInvalidAggregateType
 	}
-	//fmt.Println("id=", id)
-	//fmt.Println("aggid=", a.EntityID())
-	//events, ctx, err := r.store.Load(ctx, a.EntityID())
-	//if err != nil {
-	//	return nil, err
-	//}
-	//if err := r.applyEvents(ctx, a, events); err != nil {
-	//	return nil, err
-	//}
-	//fmt.Println("old load= ", events)
-	//fmt.Println("old agg=", a)
 
 	var events2 []eh.Event
-	batchSize := 1
+	batchSize := 5
+	value, ok := ctx.Value("batchsize").(int)
+	if ok {
+		batchSize = value
+	}
 	ctx = context.WithValue(ctx, "offset", 0)
 	ctx = context.WithValue(ctx, "limit", batchSize)
 
@@ -146,20 +139,6 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 	}
 
 	return a, nil
-}
-
-func loadBatch(events []eh.Event, ctx context.Context, err error) ([]eh.Event, context.Context, error, bool) {
-	if len(events) > 0 || err != nil {
-		return events, ctx, err, false
-	} else if len(events) == 0 {
-		return events, ctx, err, false
-	}
-	offset, ok := ctx.Value("offset").(int)
-	if !ok {
-		return events, ctx, err, false
-	}
-	ctx = context.WithValue(ctx, "offset", offset+5)
-	return events, ctx, err, true
 }
 
 // Save implements the Save method of the eventhorizon.AggregateStore interface.
