@@ -133,7 +133,7 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 		}
 		events, ctx, err = r.store.Load(ctx, id)
 		if err != nil {
-			break
+			return a, err
 		}
 		if len(events) == 0 {
 			break
