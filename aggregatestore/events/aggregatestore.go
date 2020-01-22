@@ -172,7 +172,7 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 		batchSize = value
 	}
 	if a.Version() != 0 {
-		minVersion = a.Version()
+		minVersion = a.Version() + 1
 	}
 
 	ctx = context.WithValue(ctx, "minVersion", minVersion)
