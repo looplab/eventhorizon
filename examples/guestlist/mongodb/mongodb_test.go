@@ -51,7 +51,7 @@ func TestExample(t *testing.T) {
 		log.Fatalf("could not create event store: %s", err)
 	}
 
-	soptions := mongodb.Options{DBHost: url, SSL: false, DBName: "guestlist"}
+	soptions := mongodb.Options{DBHost: url, SSL: false, DBName: "guestlist",SingleSnapshot:true}
 	snapshotStore, err := mongodb.NewSnapshotStore(soptions)
 	if err != nil {
 		log.Fatalf("could not create snapshot store: %s", err)

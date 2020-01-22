@@ -36,15 +36,17 @@ var ErrCouldNotLoadSnapshot = errors.New("could not load snapshot")
 var ErrCouldNotSaveSnapshot = errors.New("could not save snapshot")
 
 type SnapshotStore struct {
-	session *mgo.Session
+	session        *mgo.Session
+	SingleSnapshot bool
 }
 
 type Options struct {
-	SSL        bool
-	DBHost     string
-	DBName     string
-	DBUser     string
-	DBPassword string
+	SSL            bool
+	DBHost         string
+	DBName         string
+	DBUser         string
+	DBPassword     string
+	SingleSnapshot bool
 }
 
 // NewSnapshotStore creates a new EventStore.
@@ -57,7 +59,15 @@ func NewSnapshotStore(options Options) (*SnapshotStore, error) {
 	session.SetMode(mgo.Strong, true)
 	session.SetSafe(&mgo.Safe{W: 1})
 
-	return NewSnapshotStoreWithSession(session)
+	if session == nil {
+		return nil, ErrNoDBSession
+	}
+
+	s := &SnapshotStore{
+		session:        session,
+		SingleSnapshot: options.SingleSnapshot,
+	}
+	return s, nil
 }
 
 // DBName appends the namespace, if one is set, to the DB prefix to
@@ -98,19 +108,6 @@ func initDB(options Options) (*mgo.Session, error) {
 		return nil, err
 	}
 	return session, err
-}
-
-// NewSnapshotStoreWithSession creates a new EventStore with a session.
-func NewSnapshotStoreWithSession(session *mgo.Session) (*SnapshotStore, error) {
-	if session == nil {
-		return nil, ErrNoDBSession
-	}
-
-	s := &SnapshotStore{
-		session: session,
-	}
-
-	return s, nil
 }
 
 func (s *SnapshotStore) Load(ctx context.Context, aggregateType eh.AggregateType, id string, version int) (eh.Aggregate, error) {
@@ -159,16 +156,25 @@ func (s *SnapshotStore) Save(ctx context.Context, aggregate eh.Aggregate) error 
 	if err != nil {
 		return err
 	}
+
+	selector := bson.M{
+		"_id":     snapshot.ID,
+		"version": snapshot.Version,
+	}
+	if s.SingleSnapshot {
+		selector = bson.M{
+			"_id": snapshot.AggregateID,
+		}
+	}
+
 	_, err = sess.DB(s.dbName(ctx)).C(s.colName(ctx)+".snapshots").Upsert(
-		bson.M{
-			"_id":     snapshot.ID,
-			"version": snapshot.Version,
-		},
+		selector,
 		bson.M{
 			"$set": bson.M{
-				"version": snapshot.Version,
-				"_id":     snapshot.ID,
-				"data":    snapshot.RawData,
+				"version":      snapshot.Version,
+				"aggregate_id": snapshot.AggregateID,
+				"timestamp":    time.Now(),
+				"data": snapshot.RawData,
 			},
 		},
 	)
