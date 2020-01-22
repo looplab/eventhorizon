@@ -177,13 +177,12 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 
 	ctx = context.WithValue(ctx, "minVersion", minVersion)
 	ctx = context.WithValue(ctx, "limit", batchSize)
-
 	events, ctx, err = r.store.Load(ctx, id)
 	for i := 1; ; i++ {
 		if err = r.applyEvents(ctx, a, events); err != nil {
 			return nil, err
 		}
-		ctx = context.WithValue(ctx, "minVersion", batchSize*i+1)
+		ctx = context.WithValue(ctx, "minVersion", batchSize*i+a.Version()+1)
 		if len(events) < batchSize {
 			break
 		}
