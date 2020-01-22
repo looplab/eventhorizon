@@ -131,7 +131,6 @@ func (s *SnapshotStore) Load(ctx context.Context, aggregateType eh.AggregateType
 		}
 		return nil, err
 	}
-
 	aggregate, err := eh.CreateAggregate(aggregateType, id)
 	if err != nil {
 		return nil, err
@@ -159,7 +158,7 @@ func (s *SnapshotStore) Save(ctx context.Context, aggregate eh.Aggregate) error 
 
 	selector := bson.M{
 		"_id":     snapshot.ID,
-		"version": snapshot.Version,
+		"version": snapshot.Version(),
 	}
 	if s.SingleSnapshot {
 		selector = bson.M{
@@ -171,10 +170,11 @@ func (s *SnapshotStore) Save(ctx context.Context, aggregate eh.Aggregate) error 
 		selector,
 		bson.M{
 			"$set": bson.M{
-				"version":      snapshot.Version,
-				"aggregate_id": snapshot.AggregateID,
-				"timestamp":    time.Now(),
-				"data": snapshot.RawData,
+				"version":        snapshot.Version(),
+				"aggregate_id":   snapshot.AggregateID,
+				"aggregate_type": snapshot.AggregateType(),
+				"timestamp":      time.Now(),
+				"data":           snapshot.RawData,
 			},
 		},
 	)
@@ -206,66 +206,37 @@ func newDBSnapshot(ctx context.Context, aggregate events.Aggregate) (*dbSnapshot
 		rawData = bson.Raw{Kind: 3, Data: raw}
 	}
 	return &dbSnapshot{
-		ID:            uuid.New().String(),
-		AggregateID:   aggregate.EntityID(),
-		RawData:       rawData,
-		AggregateType: aggregate.AggregateType(),
-		Timestamp:     time.Now(),
-		Version:       aggregate.Version(),
+		ID:             uuid.New().String(),
+		AggregateID:    aggregate.EntityID(),
+		RawData:        rawData,
+		AggregateTypeV: aggregate.AggregateType(),
+		Timestamp:      time.Now(),
+		VersionV:       aggregate.Version(),
 	}, nil
 }
 
 type dbSnapshot struct {
-	ID            string           `bson:"_id"`
-	AggregateID   string           `bson:"aggregate_id"`
-	AggregateType eh.AggregateType `bson:"aggregate_type"`
-	RawData       bson.Raw         `bson:"data,omitempty"`
-	data          eh.EventData     `bson:"-"`
-	Timestamp     time.Time        `bson:"timestamp"`
-	Version       int              `bson:"version"`
+	ID             string           `bson:"_id"`
+	AggregateID    string           `bson:"aggregate_id"`
+	AggregateTypeV eh.AggregateType `bson:"aggregate_type"`
+	RawData        bson.Raw         `bson:"data,omitempty"`
+	data           eh.EventData     `bson:"-"`
+	Timestamp      time.Time        `bson:"timestamp"`
+	VersionV       int              `bson:"version"`
 }
-
-//func (snap dbSnapshot) EntityID() string {
-//	return snap.AggregateID
-//}
-//
-//func (snap dbSnapshot) AggregateTypeV() eh.AggregateType {
-//	return snap.AggregateType
-//}
-//
-//func (snap dbSnapshot) HandleCommand(ctx context.Context, c eh.Command) error {
-//	return snap.HandleCommand(ctx, c)
-//}
-//
-//func (snap dbSnapshot) VersionV() int {
-//	return snap.Version
-//}
-//
-//func (snap dbSnapshot) IncrementVersion() {
-//	snap.Version++
-//}
-//
-//func (snap dbSnapshot) Events() []eh.Event {
-//	panic("implement me")
-//}
-//
-//func (snap dbSnapshot) ClearEvents() {
-//	panic("implement me")
-//}
-//
-//func (snap dbSnapshot) Data() events.AggregateData {
-//	return snap.data
-//}
 
 func (snap dbSnapshot) RawDataI() interface{} {
 	return snap.RawData
 }
 
-//
-//func (snap dbSnapshot) ApplyEvent(context.Context, eh.Event) error {
-//	panic("implement me")
-//}
-//
-//func (snap dbSnapshot) ApplySnapshot(context.Context, events.Aggregate) error {
-//	panic("implement me")
-//}
+func (snap dbSnapshot) Version() int {
+	return snap.VersionV
+}
+
+func (snap dbSnapshot) AggregateType() eh.AggregateType {
+	return snap.AggregateTypeV
+}
+
+func (snap dbSnapshot) AggregateId() string {
+	return snap.AggregateID
+}

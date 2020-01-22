@@ -159,12 +159,13 @@ func (a *InvitationAggregate) ApplySnapshot(ctx context.Context, snapshot eh.Sna
 	switch sn := snapshot.RawDataI().(type) {
 	case bson.Raw:
 		if err := sn.Unmarshal(a); err != nil {
-			log.Println("cannot unmarshal snapshot2:", err)
 			return err
 		}
 		a.AggregateBase = base
+		for i := a.Version(); i < snapshot.Version(); i++ {
+			a.IncrementVersion()
+		}
 	}
-	log.Printf("applied snapshot=%+v\n", a)
 	return nil
 }
 
