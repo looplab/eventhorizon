@@ -241,7 +241,8 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 
 // evt is the internal event used on the wire only.
 type evt struct {
-	EventType     eh.EventType           `bson:"event_type"`
+	ID string
+	EventType     eh.EventType `bson:"event_type"`
 	RawData       bson.Raw               `bson:"data,omitempty"`
 	data          eh.EventData           `bson:"-"`
 	Timestamp     time.Time              `bson:"timestamp"`
@@ -255,6 +256,10 @@ type evt struct {
 // for a MongoDB event store.
 type event struct {
 	evt
+}
+
+func (e event) ID() string {
+	return e.evt.ID
 }
 
 // EventType implements the EventType method of the eventhorizon.Event interface.

@@ -29,15 +29,20 @@ import (
 func Setup(
 	eventStore eh.EventStore,
 	eventBus eh.EventBus,
+	store eh.SnapshotStore,
 	commandBus *bus.CommandHandler,
 	invitationRepo, guestListRepo eh.ReadWriteRepo,
 	eventID string) {
 
 	// Add a logger as an observer.
 	eventBus.AddObserver(eh.MatchAny(), &Logger{})
-
+	options := events.Options{
+		Store:         eventStore,
+		Bus:           eventBus,
+		SnapshotStore: store,
+	}
 	// Create the aggregate repository.
-	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)
+	aggregateStore, err := events.NewAggregateStoreOptions(options)
 	if err != nil {
 		log.Fatalf("could not create aggregate store: %s", err)
 	}

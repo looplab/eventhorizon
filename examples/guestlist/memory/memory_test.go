@@ -55,6 +55,7 @@ func Example() {
 	domain.Setup(
 		eventStore,
 		eventBus,
+		nil,
 		commandBus,
 		invitationRepo, guestListRepo,
 		eventID,

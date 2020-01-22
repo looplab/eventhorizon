@@ -17,6 +17,7 @@ package mongodb
 import (
 	"context"
 	"fmt"
+	"github.com/firawe/eventhorizon/snapshotstore/mongodb"
 	"github.com/labstack/gommon/log"
 	"os"
 	"sort"
@@ -50,6 +51,11 @@ func TestExample(t *testing.T) {
 		log.Fatalf("could not create event store: %s", err)
 	}
 
+	soptions := mongodb.Options{DBHost: url, SSL: false, DBName: "guestlist"}
+	snapshotStore, err := mongodb.NewSnapshotStore(soptions)
+	if err != nil {
+		log.Fatalf("could not create snapshot store: %s", err)
+	}
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus(nil)
 	go func() {
@@ -63,7 +69,7 @@ func TestExample(t *testing.T) {
 	optionsRepo := repo.Options{
 		SSL:        false,
 		DBHost:     url,
-		DBName:     "guestlistdb22",
+		DBName:     "guestlist",
 		DBUser:     "",
 		DBPassword: "",
 		Collection: "invitations",
@@ -88,18 +94,22 @@ func TestExample(t *testing.T) {
 	domain.Setup(
 		eventStore,
 		eventBus,
+		snapshotStore,
 		commandBus,
 		invitationVersionRepo, guestListRepo,
 		eventID,
 	)
 
 	// Set the namespace to use.
-	ctx := eh.NewContextWithNamespaceAndType(context.Background(), options.DBName,"invitations.aggregate")
+	ctx := eh.NewContextWithNamespaceAndType(context.Background(), options.DBName, "invitations.agg")
+	ctx = context.WithValue(ctx,"snapshotMod",1)
+	ctx = context.WithValue(ctx,"batchsize",1)
 
 	// Clear DB collections.
 	eventStore.Clear(ctx)
 	invitationRepo.Clear(ctx)
 	guestListRepo.Clear(ctx)
+	snapshotStore.Clear(ctx)
 
 	// --- Execute commands on the domain --------------------------------------
 

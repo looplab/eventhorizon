@@ -17,6 +17,7 @@ package domain
 import (
 	"context"
 	"fmt"
+	"gopkg.in/mgo.v2/bson"
 	"log"
 	"time"
 
@@ -30,7 +31,7 @@ func init() {
 	})
 }
 
-// InvitationAggregateType is the type name of the aggregate.
+// InvitationAggregateType is the type Name of the aggregate.
 const InvitationAggregateType eh.AggregateType = "Invitation"
 
 // InvitationAggregate is the root aggregate.
@@ -41,14 +42,14 @@ type InvitationAggregate struct {
 	// AggregateBase implements most of the eventhorizon.Aggregate interface.
 	*events.AggregateBase
 
-	name string
-	age  int
+	Name string
+	Age  int
 
 	// TODO: Replace with FSM.
-	accepted  bool
-	declined  bool
-	confirmed bool
-	denied    bool
+	Accepted  bool
+	Declined  bool
+	Confirmed bool
+	Denied    bool
 }
 
 var _ = eh.Aggregate(&InvitationAggregate{})
@@ -74,30 +75,30 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 		return nil
 
 	case *AcceptInvite:
-		if a.name == "" {
+		if a.Name == "" {
 			return fmt.Errorf("invitee does not exist")
 		}
 
-		if a.declined {
-			return fmt.Errorf("%s already declined", a.name)
+		if a.Declined {
+			return fmt.Errorf("%s already declined", a.Name)
 		}
 
-		if a.accepted {
+		if a.Accepted {
 			return nil
 		}
 		a.StoreEvent(InviteAcceptedEvent, nil, time.Now())
 		return nil
 
 	case *DeclineInvite:
-		if a.name == "" {
+		if a.Name == "" {
 			return fmt.Errorf("invitee does not exist")
 		}
 
-		if a.accepted {
-			return fmt.Errorf("%s already accepted", a.name)
+		if a.Accepted {
+			return fmt.Errorf("%s already accepted", a.Name)
 		}
 
-		if a.declined {
+		if a.Declined {
 			return nil
 		}
 
@@ -105,11 +106,11 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 		return nil
 
 	case *ConfirmInvite:
-		if a.name == "" {
+		if a.Name == "" {
 			return fmt.Errorf("invitee does not exist")
 		}
 
-		if !a.accepted || a.declined {
+		if !a.Accepted || a.Declined {
 			return fmt.Errorf("only accepted invites can be confirmed")
 		}
 
@@ -117,11 +118,11 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 		return nil
 
 	case *DenyInvite:
-		if a.name == "" {
+		if a.Name == "" {
 			return fmt.Errorf("invitee does not exist")
 		}
 
-		if !a.accepted || a.declined {
+		if !a.Accepted || a.Declined {
 			return fmt.Errorf("only accepted invites can be denied")
 		}
 
@@ -136,19 +137,37 @@ func (a *InvitationAggregate) ApplyEvent(ctx context.Context, event eh.Event) er
 	switch event.EventType() {
 	case InviteCreatedEvent:
 		if data, ok := event.Data().(*InviteCreatedData); ok {
-			a.name = data.Name
-			a.age = data.Age
+			a.Name = data.Name
+			a.Age = data.Age
 		} else {
 			log.Println("invalid event data type:", event.Data())
 		}
 	case InviteAcceptedEvent:
-		a.accepted = true
+		a.Accepted = true
 	case InviteDeclinedEvent:
-		a.declined = true
+		a.Declined = true
 	case InviteConfirmedEvent:
-		a.confirmed = true
+		a.Confirmed = true
 	case InviteDeniedEvent:
-		a.denied = true
+		a.Denied = true
 	}
 	return nil
+}
+
+func (a *InvitationAggregate) ApplySnapshot(ctx context.Context, snapshot eh.Snapshot) error {
+	base := a.AggregateBase
+	switch sn := snapshot.RawDataI().(type) {
+	case bson.Raw:
+		if err := sn.Unmarshal(a); err != nil {
+			log.Println("cannot unmarshal snapshot2:", err)
+			return err
+		}
+		a.AggregateBase = base
+	}
+	log.Printf("applied snapshot=%+v\n", a)
+	return nil
+}
+
+func (a *InvitationAggregate) Data() events.AggregateData {
+	return a
 }

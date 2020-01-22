@@ -42,6 +42,6 @@ func init() {
 
 // InviteCreatedData is the event data for when an invite has been created.
 type InviteCreatedData struct {
-	Name string `bson:"name"`
-	Age  int    `bson:"age"`
+	Name string `bson:"Name"`
+	Age  int    `bson:"Age"`
 }

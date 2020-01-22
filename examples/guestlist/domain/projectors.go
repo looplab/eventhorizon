@@ -79,16 +79,16 @@ func (p *InvitationProjector) Project(ctx context.Context, event eh.Event, entit
 		i.Age = data.Age
 
 	case InviteAcceptedEvent:
-		i.Status = "accepted"
+		i.Status = "Accepted"
 
 	case InviteDeclinedEvent:
-		i.Status = "declined"
+		i.Status = "Declined"
 
 	case InviteConfirmedEvent:
-		i.Status = "confirmed"
+		i.Status = "Confirmed"
 
 	case InviteDeniedEvent:
-		i.Status = "denied"
+		i.Status = "Denied"
 
 	default:
 		return nil, errors.New("InvitationProjector could not handle event: " + event.String())

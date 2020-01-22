@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/labstack/gommon/log"
 	"net"
 	"strings"
 	"time"
@@ -53,7 +52,8 @@ var ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
 
 // EventStore implements an EventStore for MongoDB.
 type EventStore struct {
-	session *mgo.Session
+	snapshotStore eh.SnapshotStore
+	session       *mgo.Session
 }
 
 type Options struct {
@@ -189,9 +189,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 				},
 			)
 			if err != nil {
-				log.Error(err)
-			}
-			if err != nil {
 				return eh.EventStoreError{
 					BaseErr:       err,
 					Err:           ErrCouldNotSaveAggregate,
@@ -222,9 +219,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 					"$set": dbEvents[i],
 				},
 			)
-			if err != nil {
-				log.Error(err)
-			}
 			if err != nil {
 				return eh.EventStoreError{
 					BaseErr:       err,
@@ -263,19 +257,20 @@ func (s *EventStore) Load(ctx context.Context, id string) ([]eh.Event, context.C
 
 	batch := false
 	var err error
-	var skip int
+	var minVersion int
 	limit, ok := ctx.Value("limit").(int)
 	if ok {
 		batch = true
-		skip, _ = ctx.Value("offset").(int)
+		minVersion, _ = ctx.Value("minVersion").(int)
 	}
 	//load dbEvents
 	query := bson.M{
 		"aggregate_id": id,
+		"version":      bson.M{"$gte": minVersion},
 	}
 	var result []dbEvent
 	if batch {
-		err = sess.DB(s.dbName(ctx)).C(s.colName(ctx) + ".events").Find(query).Sort("version").Skip(skip).Limit(limit).All(&result)
+		err = sess.DB(s.dbName(ctx)).C(s.colName(ctx) + ".events").Find(query).Sort("version").Limit(limit).All(&result)
 	} else {
 		err = sess.DB(s.dbName(ctx)).C(s.colName(ctx) + ".events").Find(query).Sort("version").All(&result)
 	}
@@ -434,13 +429,6 @@ type aggregateRecord struct {
 	// Type        string        `bson:"type"`
 	// Snapshot    bson.Raw      `bson:"snapshot"`
 }
-
-//type aggregateEvent struct {
-//	ID        string       `bson:"event_id"`
-//	EventType eh.EventType `bson:"event_type"`
-//	Timestamp time.Time    `bson:"timestamp"`
-//	Version   int          `bson:"version"`
-//}
 
 // dbEvent is the internal event record for the MongoDB event store used
 // to save and load events from the DB.

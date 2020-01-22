@@ -17,7 +17,6 @@ package events
 import (
 	"context"
 	"errors"
-
 	eh "github.com/firawe/eventhorizon"
 )
 
@@ -27,8 +26,14 @@ var ErrInvalidEventStore = errors.New("invalid event store")
 // ErrInvalidEventBus is when a dispatcher is created with a nil event bus.
 var ErrInvalidEventBus = errors.New("invalid event bus")
 
+var ErrInvalidSnapshotStore = errors.New("invalid snapshot store")
+
 // ErrInvalidAggregateType is when  the aggregate does not implement event.Aggregte.
 var ErrInvalidAggregateType = errors.New("invalid aggregate type")
+
+var ErrInvalidSnapshot = errors.New("invalid snapshot")
+
+var ErrNotFound = errors.New("snapshot not found")
 
 // ErrMismatchedEventType occurs when loaded events from ID does not match aggregate type.
 var ErrMismatchedEventType = errors.New("mismatched event type and aggregate type")
@@ -46,6 +51,8 @@ type ApplyEventError struct {
 func (a ApplyEventError) Error() string {
 	return "failed to apply event " + a.Event.String() + ": " + a.Err.Error()
 }
+
+type AggregateData interface{}
 
 // Aggregate is an interface representing a versioned data entity created from
 // events. It receives commands and generates events that are stored.
@@ -68,17 +75,28 @@ type Aggregate interface {
 	// ClearEvents clears all uncommitted events after saving.
 	ClearEvents()
 
+	Data() AggregateData
+
 	// ApplyEvent applies an event on the aggregate by setting its values.
 	// If there are no errors the version should be incremented by calling
 	// IncrementVersion.
 	ApplyEvent(context.Context, eh.Event) error
+
+	ApplySnapshot(context.Context, eh.Snapshot) error
 }
 
 // AggregateStore is an aggregate store using event sourcing. It
 // uses an event store for loading and saving events used to build the aggregate.
 type AggregateStore struct {
-	store eh.EventStore
-	bus   eh.EventBus
+	store         eh.EventStore
+	snapshotStore eh.SnapshotStore
+	bus           eh.EventBus
+}
+
+type Options struct {
+	Store         eh.EventStore
+	Bus           eh.EventBus
+	SnapshotStore eh.SnapshotStore
 }
 
 // NewAggregateStore creates a repository that will use an event store
@@ -99,6 +117,27 @@ func NewAggregateStore(store eh.EventStore, bus eh.EventBus) (*AggregateStore, e
 	return d, nil
 }
 
+func NewAggregateStoreOptions(options Options) (*AggregateStore, error) {
+	if options.Store == nil {
+		return nil, ErrInvalidEventStore
+	}
+
+	if options.Bus == nil {
+		return nil, ErrInvalidEventBus
+	}
+
+	if options.SnapshotStore == nil {
+		return nil, ErrInvalidSnapshot
+	}
+
+	d := &AggregateStore{
+		store:         options.Store,
+		bus:           options.Bus,
+		snapshotStore: options.SnapshotStore,
+	}
+	return d, nil
+}
+
 // Load implements the Load method of the eventhorizon.AggregateStore interface.
 // It loads an aggregate from the event store by creating a new aggregate of the
 // type with the ID and then applies all events to it, thus making it the most
@@ -112,14 +151,31 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 	if !ok {
 		return nil, ErrInvalidAggregateType
 	}
+	var aggregate eh.Aggregate
+	if r.snapshotStore != nil {
+		aggregate, err = r.snapshotStore.Load(ctx, a.AggregateType(), id, -1)
+		if err != nil {
+			if err != ErrNotFound {
+				return nil, err
+			}
+			err = nil
+		} else {
+			a = aggregate.(Aggregate)
+		}
+	}
 
 	var events []eh.Event
 	batchSize := 5
+	minVersion := 1
 	value, ok := ctx.Value("batchsize").(int)
 	if ok {
 		batchSize = value
 	}
-	ctx = context.WithValue(ctx, "offset", 0)
+	if a.Version() != 0 {
+		minVersion = a.Version()
+	}
+
+	ctx = context.WithValue(ctx, "minVersion", minVersion)
 	ctx = context.WithValue(ctx, "limit", batchSize)
 
 	events, ctx, err = r.store.Load(ctx, id)
@@ -127,7 +183,7 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 		if err = r.applyEvents(ctx, a, events); err != nil {
 			return nil, err
 		}
-		ctx = context.WithValue(ctx, "offset", batchSize*i)
+		ctx = context.WithValue(ctx, "minVersion", batchSize*i+1)
 		if len(events) < batchSize {
 			break
 		}
@@ -155,6 +211,19 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 	if len(events) < 1 {
 		return nil
 	}
+	if r.snapshotStore != nil {
+		snapshotMod := 10
+		value, ok := ctx.Value("snapshotMod").(int)
+		if ok {
+			snapshotMod = value
+		}
+
+		if a.Version() > 0 && a.Version()%snapshotMod == 0 {
+			if err := r.snapshotStore.Save(ctx, a); err != nil {
+				return err
+			}
+		}
+	}
 
 	if err := r.store.Save(ctx, events, a.Version()); err != nil {
 		return err
@@ -163,9 +232,9 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 
 	// Apply the events in case the aggregate needs to be further used
 	// after this save. Currently it is not reused.
-	if err := r.applyEvents(ctx, a, events); err != nil {
-		return err
-	}
+	//if err := r.applyEvents(ctx, a, events); err != nil {
+	//	return err
+	//}
 
 	for _, e := range events {
 		if err := r.bus.PublishEvent(ctx, e); err != nil {

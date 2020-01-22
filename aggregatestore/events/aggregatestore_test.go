@@ -281,3 +281,12 @@ func (a *TestAggregateOther) ApplyEvent(ctx context.Context, event eh.Event) err
 	}
 	return nil
 }
+
+func (a *TestAggregateOther) Data() AggregateData {
+	return nil
+}
+
+func (a *TestAggregateOther) ApplySnapshot(context.Context, eh.Snapshot) error {
+	return nil
+}
+

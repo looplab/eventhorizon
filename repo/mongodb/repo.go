@@ -363,7 +363,7 @@ func (r *Repo) dbName(ctx context.Context) string {
 	return ns
 }
 
-func (s *Repo) colName(ctx context.Context) string {
+func (r *Repo) colName(ctx context.Context) string {
 	return eh.AggregateTypeFromContext(ctx)
 }
 

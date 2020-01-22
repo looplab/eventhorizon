@@ -76,7 +76,7 @@ func TestEventStore(t *testing.T) {
 	}
 
 	t.Log("load events without tracing")
-	events, err := store.Load(ctx, event1.AggregateID())
+	events,ctx, err := store.Load(ctx, event1.AggregateID())
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

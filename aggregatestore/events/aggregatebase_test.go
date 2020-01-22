@@ -167,3 +167,12 @@ func (a *TestAggregate) ApplyEvent(ctx context.Context, event eh.Event) error {
 	a.event = event
 	return nil
 }
+
+func (a *TestAggregate) Data() AggregateData {
+	return nil
+}
+
+func (a *TestAggregate) ApplySnapshot(context.Context, eh.Snapshot) error {
+	return nil
+}
+

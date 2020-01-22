@@ -220,6 +220,7 @@ type aggregateRecord struct {
 
 // dbEvent is the internal event record for the memory event store.
 type dbEvent struct {
+	ID            string
 	EventType     eh.EventType
 	Data          eh.EventData
 	Timestamp     time.Time
@@ -244,6 +245,10 @@ func newDBEvent(event eh.Event) dbEvent {
 // for a memory event store.
 type event struct {
 	dbEvent
+}
+
+func (e event) ID() string {
+	return e.dbEvent.ID
 }
 
 // EventType implements the EventType method of the eventhorizon.Event interface.
