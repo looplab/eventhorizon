@@ -201,8 +201,8 @@ func TestDelete(t *testing.T) {
 	defer cancel()
 	l.Wait(ctx)
 
-	if _, err := h.Repo.Find(context.Background(), id); err == nil ||
-		err.Error() != "could not find entity: not found (default)" {
+	_, err = h.Repo.Find(context.Background(), id)
+	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {
 		t.Error("there should be a not found error:", err)
 	}
 }

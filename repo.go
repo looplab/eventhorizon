@@ -95,8 +95,8 @@ type Versionable interface {
 // from repos that support it. You must call Close() on each Iter even when
 // results were delivered without apparent error.
 type Iter interface {
-	Next() bool
+	Next(context.Context) bool
 	Value() interface{}
 	// Close must be called after the last Next() to retrieve error if any
-	Close() error
+	Close(context.Context) error
 }

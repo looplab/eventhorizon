@@ -18,8 +18,16 @@ import (
 	"context"
 	"errors"
 
-	"github.com/globalsign/mgo"
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+
+	// Register uuid.UUID as BSON type.
+	_ "github.com/looplab/eventhorizon/types/mongodb"
 
 	eh "github.com/looplab/eventhorizon"
 )
@@ -27,8 +35,8 @@ import (
 // ErrCouldNotDialDB is when the database could not be dialed.
 var ErrCouldNotDialDB = errors.New("could not dial database")
 
-// ErrNoDBSession is when no database session is set.
-var ErrNoDBSession = errors.New("no database session")
+// ErrNoDBClient is when no database client is set.
+var ErrNoDBClient = errors.New("no database client")
 
 // ErrCouldNotClearDB is when the database could not be cleared.
 var ErrCouldNotClearDB = errors.New("could not clear database")
@@ -41,33 +49,34 @@ var ErrInvalidQuery = errors.New("invalid query")
 
 // Repo implements an MongoDB repository for entities.
 type Repo struct {
-	session    *mgo.Session
+	client     *mongo.Client
 	dbPrefix   string
 	collection string
 	factoryFn  func() eh.Entity
 }
 
 // NewRepo creates a new Repo.
-func NewRepo(url, dbPrefix, collection string) (*Repo, error) {
-	session, err := mgo.Dial(url)
+func NewRepo(uri, dbPrefix, collection string) (*Repo, error) {
+	opts := options.Client().ApplyURI(uri)
+	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
+	opts.SetReadConcern(readconcern.Majority())
+	opts.SetReadPreference(readpref.Primary())
+	client, err := mongo.Connect(context.TODO(), opts)
 	if err != nil {
 		return nil, ErrCouldNotDialDB
 	}
 
-	session.SetMode(mgo.Strong, true)
-	session.SetSafe(&mgo.Safe{W: 1})
-
-	return NewRepoWithSession(session, dbPrefix, collection)
+	return NewRepoWithClient(client, dbPrefix, collection)
 }
 
-// NewRepoWithSession creates a new Repo with a session.
-func NewRepoWithSession(session *mgo.Session, dbPrefix, collection string) (*Repo, error) {
-	if session == nil {
-		return nil, ErrNoDBSession
+// NewRepoWithClient creates a new Repo with a client.
+func NewRepoWithClient(client *mongo.Client, dbPrefix, collection string) (*Repo, error) {
+	if client == nil {
+		return nil, ErrNoDBClient
 	}
 
 	r := &Repo{
-		session:    session,
+		client:     client,
 		dbPrefix:   dbPrefix,
 		collection: collection,
 	}
@@ -82,9 +91,6 @@ func (r *Repo) Parent() eh.ReadRepo {
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
-	sess := r.session.Copy()
-	defer sess.Close()
-
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
 			Err:       ErrModelNotSet,
@@ -92,12 +98,18 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 		}
 	}
 
+	c := r.client.Database(r.dbName(ctx)).Collection(r.collection)
+
 	entity := r.factoryFn()
-	err := sess.DB(r.dbName(ctx)).C(r.collection).FindId(id).One(entity)
-	if err != nil {
+	if err := c.FindOne(ctx, bson.M{"_id": id.String()}).Decode(entity); err == mongo.ErrNoDocuments {
 		return nil, eh.RepoError{
 			Err:       eh.ErrEntityNotFound,
 			BaseErr:   err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	} else if err != nil {
+		return nil, eh.RepoError{
+			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
@@ -107,9 +119,6 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 
 // FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
 func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
-	sess := r.session.Copy()
-	defer sess.Close()
-
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
 			Err:       ErrModelNotSet,
@@ -117,14 +126,29 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 		}
 	}
 
-	iter := sess.DB(r.dbName(ctx)).C(r.collection).Find(nil).Iter()
-	result := []eh.Entity{}
-	entity := r.factoryFn()
-	for iter.Next(entity) {
-		result = append(result, entity)
-		entity = r.factoryFn()
+	c := r.client.Database(r.dbName(ctx)).Collection(r.collection)
+
+	cursor, err := c.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, eh.RepoError{
+			Err:       err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
 	}
-	if err := iter.Close(); err != nil {
+
+	result := []eh.Entity{}
+	for cursor.Next(ctx) {
+		entity := r.factoryFn()
+		if err := cursor.Decode(entity); err != nil {
+			return nil, eh.RepoError{
+				Err:       err,
+				Namespace: eh.NamespaceFromContext(ctx),
+			}
+		}
+		result = append(result, entity)
+	}
+
+	if err := cursor.Close(ctx); err != nil {
 		return nil, eh.RepoError{
 			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
@@ -136,33 +160,36 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 
 // The iterator is not thread safe.
 type iter struct {
-	session   *mgo.Session
-	iter      *mgo.Iter
+	cursor    *mongo.Cursor
 	data      eh.Entity
 	factoryFn func() eh.Entity
+	decodeErr error
 }
 
-func (i *iter) Next() bool {
+func (i *iter) Next(ctx context.Context) bool {
+	if !i.cursor.Next(ctx) {
+		return false
+	}
+
 	item := i.factoryFn()
-	more := i.iter.Next(item)
+	i.decodeErr = i.cursor.Decode(item)
 	i.data = item
-	return more
+	return true
 }
 
 func (i *iter) Value() interface{} {
 	return i.data
 }
 
-func (i *iter) Close() error {
-	err := i.iter.Close()
-	i.session.Close()
-	return err
+func (i *iter) Close(ctx context.Context) error {
+	if err := i.cursor.Close(ctx); err != nil {
+		return err
+	}
+	return i.decodeErr
 }
 
 // FindCustomIter returns a mgo cursor you can use to stream results of very large datasets
-func (r *Repo) FindCustomIter(ctx context.Context, callback func(*mgo.Collection) *mgo.Query) (eh.Iter, error) {
-	sess := r.session.Copy()
-
+func (r *Repo) FindCustomIter(ctx context.Context, f func(context.Context, *mongo.Collection) (*mongo.Cursor, error)) (eh.Iter, error) {
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
 			Err:       ErrModelNotSet,
@@ -170,9 +197,17 @@ func (r *Repo) FindCustomIter(ctx context.Context, callback func(*mgo.Collection
 		}
 	}
 
-	collection := sess.DB(r.dbName(ctx)).C(r.collection)
-	query := callback(collection)
-	if query == nil {
+	c := r.client.Database(r.dbName(ctx)).Collection(r.collection)
+
+	cursor, err := f(ctx, c)
+	if err != nil {
+		return nil, eh.RepoError{
+			BaseErr:   err,
+			Err:       ErrInvalidQuery,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+	if cursor == nil {
 		return nil, eh.RepoError{
 			Err:       ErrInvalidQuery,
 			Namespace: eh.NamespaceFromContext(ctx),
@@ -180,8 +215,7 @@ func (r *Repo) FindCustomIter(ctx context.Context, callback func(*mgo.Collection
 	}
 
 	return &iter{
-		session:   sess,
-		iter:      query.Iter(),
+		cursor:    cursor,
 		factoryFn: r.factoryFn,
 	}, nil
 }
@@ -191,10 +225,7 @@ func (r *Repo) FindCustomIter(ctx context.Context, callback func(*mgo.Collection
 // the query in the callback and returning nil to block a second execution of
 // the same query in FindCustom. Expect a ErrInvalidQuery if returning a nil
 // query from the callback.
-func (r *Repo) FindCustom(ctx context.Context, callback func(*mgo.Collection) *mgo.Query) ([]interface{}, error) {
-	sess := r.session.Copy()
-	defer sess.Close()
-
+func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Collection) (*mongo.Cursor, error)) ([]interface{}, error) {
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
 			Err:       ErrModelNotSet,
@@ -202,23 +233,36 @@ func (r *Repo) FindCustom(ctx context.Context, callback func(*mgo.Collection) *m
 		}
 	}
 
-	collection := sess.DB(r.dbName(ctx)).C(r.collection)
-	query := callback(collection)
-	if query == nil {
+	c := r.client.Database(r.dbName(ctx)).Collection(r.collection)
+
+	cursor, err := f(ctx, c)
+	if err != nil {
+		return nil, eh.RepoError{
+			BaseErr:   err,
+			Err:       ErrInvalidQuery,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+	if cursor == nil {
 		return nil, eh.RepoError{
 			Err:       ErrInvalidQuery,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
-	iter := query.Iter()
 	result := []interface{}{}
 	entity := r.factoryFn()
-	for iter.Next(entity) {
+	for cursor.Next(ctx) {
+		if err := cursor.Decode(entity); err != nil {
+			return nil, eh.RepoError{
+				Err:       err,
+				Namespace: eh.NamespaceFromContext(ctx),
+			}
+		}
 		result = append(result, entity)
 		entity = r.factoryFn()
 	}
-	if err := iter.Close(); err != nil {
+	if err := cursor.Close(ctx); err != nil {
 		return nil, eh.RepoError{
 			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
@@ -230,9 +274,6 @@ func (r *Repo) FindCustom(ctx context.Context, callback func(*mgo.Collection) *m
 
 // Save implements the Save method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
-	sess := r.session.Copy()
-	defer sess.Close()
-
 	if entity.EntityID() == uuid.Nil {
 		return eh.RepoError{
 			Err:       eh.ErrCouldNotSaveEntity,
@@ -241,8 +282,17 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 		}
 	}
 
-	if _, err := sess.DB(r.dbName(ctx)).C(r.collection).UpsertId(
-		entity.EntityID(), entity); err != nil {
+	c := r.client.Database(r.dbName(ctx)).Collection(r.collection)
+
+	if _, err := c.UpdateOne(ctx,
+		bson.M{
+			"_id": entity.EntityID().String(),
+		},
+		bson.M{
+			"$set": entity,
+		},
+		options.Update().SetUpsert(true),
+	); err != nil {
 		return eh.RepoError{
 			Err:       eh.ErrCouldNotSaveEntity,
 			BaseErr:   err,
@@ -254,14 +304,16 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 
 // Remove implements the Remove method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
-	sess := r.session.Copy()
-	defer sess.Close()
+	c := r.client.Database(r.dbName(ctx)).Collection(r.collection)
 
-	err := sess.DB(r.dbName(ctx)).C(r.collection).RemoveId(id)
-	if err != nil {
+	if r, err := c.DeleteOne(ctx, bson.M{"_id": id.String()}); err != nil {
+		return eh.RepoError{
+			Err:       err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	} else if r.DeletedCount == 0 {
 		return eh.RepoError{
 			Err:       eh.ErrEntityNotFound,
-			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
@@ -270,12 +322,10 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 }
 
 // Collection lets the function do custom actions on the collection.
-func (r *Repo) Collection(ctx context.Context, f func(*mgo.Collection) error) error {
-	sess := r.session.Copy()
-	defer sess.Close()
+func (r *Repo) Collection(ctx context.Context, f func(context.Context, *mongo.Collection) error) error {
+	c := r.client.Database(r.dbName(ctx)).Collection(r.collection)
 
-	c := sess.DB(r.dbName(ctx)).C(r.collection)
-	if err := f(c); err != nil {
+	if err := f(ctx, c); err != nil {
 		return eh.RepoError{
 			Err:       err,
 			Namespace: eh.NamespaceFromContext(ctx),
@@ -292,7 +342,9 @@ func (r *Repo) SetEntityFactory(f func() eh.Entity) {
 
 // Clear clears the read model database.
 func (r *Repo) Clear(ctx context.Context) error {
-	if err := r.session.DB(r.dbName(ctx)).C(r.collection).DropCollection(); err != nil {
+	c := r.client.Database(r.dbName(ctx)).Collection(r.collection)
+
+	if err := c.Drop(ctx); err != nil {
 		return eh.RepoError{
 			Err:       ErrCouldNotClearDB,
 			BaseErr:   err,
@@ -303,8 +355,8 @@ func (r *Repo) Clear(ctx context.Context) error {
 }
 
 // Close closes a database session.
-func (r *Repo) Close() {
-	r.session.Close()
+func (r *Repo) Close(ctx context.Context) {
+	r.client.Disconnect(ctx)
 }
 
 // dbName appends the namespace, if one is set, to the DB prefix to

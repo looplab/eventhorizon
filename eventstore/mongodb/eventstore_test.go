@@ -24,13 +24,12 @@ import (
 )
 
 func TestEventStore(t *testing.T) {
-	// Local Mongo testing with Docker
+	// Use MongoDB in Docker with fallback to localhost.
 	url := os.Getenv("MONGO_HOST")
-
 	if url == "" {
-		// Default to localhost
 		url = "localhost:27017"
 	}
+	url = "mongodb://" + url
 
 	store, err := NewEventStore(url, "test")
 	if err != nil {
@@ -40,27 +39,20 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
+	customNamespaceCtx := eh.NewContextWithNamespace(context.Background(), "ns")
 
-	defer store.Close()
+	defer store.Close(context.Background())
 	defer func() {
-		t.Log("clearing db")
 		if err = store.Clear(context.Background()); err != nil {
 			t.Fatal("there should be no error:", err)
 		}
-		if err = store.Clear(ctx); err != nil {
+		if err = store.Clear(customNamespaceCtx); err != nil {
 			t.Fatal("there should be no error:", err)
 		}
 	}()
 
-	// Run the actual test suite.
-
-	t.Log("event store with default namespace")
+	// Run the actual test suite, both for default and custom namespace.
 	eventstore.AcceptanceTest(t, context.Background(), store)
-
-	t.Log("event store with other namespace")
-	eventstore.AcceptanceTest(t, ctx, store)
-
-	t.Log("event store maintainer")
+	eventstore.AcceptanceTest(t, customNamespaceCtx, store)
 	eventstore.MaintainerAcceptanceTest(t, context.Background(), store)
 }

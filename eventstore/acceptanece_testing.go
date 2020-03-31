@@ -40,14 +40,14 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 
 	ctx = context.WithValue(ctx, "testkey", "testval")
 
-	t.Log("save no events")
+	// Save no events.
 	err := store.Save(ctx, []eh.Event{}, 0)
 	if esErr, ok := err.(eh.EventStoreError); !ok || esErr.Err != eh.ErrNoEventsToAppend {
 		t.Error("there shoud be a ErrNoEventsToAppend error:", err)
 	}
 
-	t.Log("save event, version 1")
-	id, _ := uuid.Parse("c1138e5f-f6fb-4dd0-8e79-255c6c8d3756")
+	// Save event, version 1.
+	id := uuid.New()
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
 		timestamp, mocks.AggregateType, id, 1)
@@ -60,13 +60,13 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	// 	t.Error("the context should be correct:", agg.Context)
 	// }
 
-	t.Log("try to save same event twice")
+	// Try to save same event twice.
 	err = store.Save(ctx, []eh.Event{event1}, 1)
 	if esErr, ok := err.(eh.EventStoreError); !ok || esErr.Err != eh.ErrIncorrectEventVersion {
 		t.Error("there should be a ErrIncerrectEventVersion error:", err)
 	}
 
-	t.Log("save event, version 2")
+	// Save event, version 2.
 	event2 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event2"},
 		timestamp, mocks.AggregateType, id, 2)
 	err = store.Save(ctx, []eh.Event{event2}, 1)
@@ -75,7 +75,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	}
 	savedEvents = append(savedEvents, event2)
 
-	t.Log("save event without data, version 3")
+	// Save event without data, version 3.
 	event3 := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
 		mocks.AggregateType, id, 3)
 	err = store.Save(ctx, []eh.Event{event3}, 2)
@@ -84,7 +84,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	}
 	savedEvents = append(savedEvents, event3)
 
-	t.Log("save multiple events, version 4, 5 and 6")
+	// Save multiple events, version 4,5 and 6.
 	event4 := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
 		mocks.AggregateType, id, 4)
 	event5 := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
@@ -97,8 +97,8 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	}
 	savedEvents = append(savedEvents, event4, event5, event6)
 
-	t.Log("save event for another aggregate")
-	id2, _ := uuid.Parse("c1138e5e-f6fb-4dd0-8e79-255c6c8d3756")
+	// Save event for another aggregate.
+	id2 := uuid.New()
 	event7 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event7"},
 		timestamp, mocks.AggregateType, id2, 1)
 	err = store.Save(ctx, []eh.Event{event7}, 0)
@@ -107,7 +107,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	}
 	savedEvents = append(savedEvents, event7)
 
-	t.Log("load events for non-existing aggregate")
+	// Load events for non-existing aggregate.
 	events, err := store.Load(ctx, uuid.New())
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -116,7 +116,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 		t.Error("there should be no loaded events:", eventsToString(events))
 	}
 
-	t.Log("load events")
+	// Load events.
 	events, err = store.Load(ctx, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -136,7 +136,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 		}
 	}
 
-	t.Log("load events for another aggregate")
+	// Load events for another aggregate.
 	events, err = store.Load(ctx, id2)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -167,8 +167,8 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStoreMaintainer) {
 	ctx = context.WithValue(ctx, "testkey", "testval")
 
-	t.Log("save some events")
-	id, _ := uuid.Parse("c1138e5f-f6fb-4dd0-8e79-255c6c8d3757")
+	// Save some events.
+	id := uuid.New()
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
 		timestamp, mocks.AggregateType, id, 1)
@@ -180,21 +180,21 @@ func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventS
 		t.Error("there should be no error:", err)
 	}
 
-	t.Log("replace event, no aggregate")
+	// Replace event, no aggregate.
 	eventWithoutAggregate := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event"},
 		timestamp, mocks.AggregateType, uuid.New(), 1)
 	if err := store.Replace(ctx, eventWithoutAggregate); err != eh.ErrAggregateNotFound {
 		t.Error("there should be an aggregate not found error:", err)
 	}
 
-	t.Log("replace event, no event version")
+	// Replace event, no event version.
 	eventWithoutVersion := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event20"},
 		timestamp, mocks.AggregateType, id, 20)
 	if err := store.Replace(ctx, eventWithoutVersion); err != eh.ErrInvalidEvent {
 		t.Error("there should be an invalid event error:", err)
 	}
 
-	t.Log("replace event")
+	// Replace event.
 	event2Mod := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event2_mod"},
 		timestamp, mocks.AggregateType, id, 2)
 	if err := store.Replace(ctx, event2Mod); err != nil {
@@ -218,7 +218,7 @@ func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventS
 		}
 	}
 
-	t.Log("save events of the old type")
+	// Save events of the old type.
 	oldEventType := eh.EventType("old_event_type")
 	id1 := uuid.New()
 	oldEvent1 := eh.NewEventForAggregate(oldEventType, nil, timestamp,
@@ -233,7 +233,7 @@ func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventS
 		t.Error("there should be no error:", err)
 	}
 
-	t.Log("rename events to the new type")
+	// Rename events to the new type.
 	newEventType := eh.EventType("new_event_type")
 	if err := store.RenameEvent(ctx, oldEventType, newEventType); err != nil {
 		t.Error("there should be no error:", err)

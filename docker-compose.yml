@@ -2,7 +2,7 @@ version: "3.4"
 
 services:
   golang:
-    image: golang:stretch
+    image: golang:1.14
     depends_on:
       - mongo
       - redis
@@ -16,12 +16,12 @@ services:
     working_dir: /eventhorizon
 
   mongo:
-    image: mongo:latest
+    image: mongo:4.2
     ports:
       - "27017:27017"
 
   redis:
-    image: redis:latest
+    image: redis:5.0
     ports:
       - "6379:6379"
 
