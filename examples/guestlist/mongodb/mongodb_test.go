@@ -34,13 +34,12 @@ import (
 )
 
 func Example() {
-	// Local Mongo testing with Docker
+	// Use MongoDB in Docker with fallback to localhost.
 	url := os.Getenv("MONGO_HOST")
-
 	if url == "" {
-		// Default to localhost
 		url = "localhost:27017"
 	}
+	url = "mongodb://" + url
 
 	// Create the event store.
 	eventStore, err := eventstore.NewEventStore(url, "demo")

@@ -22,9 +22,12 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/globalsign/mgo/bson"
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/api/option"
+
+	// Register uuid.UUID as BSON type.
+	_ "github.com/looplab/eventhorizon/types/mongodb"
 
 	eh "github.com/looplab/eventhorizon"
 )
@@ -84,11 +87,10 @@ func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) error {
 
 	// Marshal event data if there is any.
 	if event.Data() != nil {
-		rawData, err := bson.Marshal(event.Data())
-		if err != nil {
+		var err error
+		if e.RawData, err = bson.Marshal(event.Data()); err != nil {
 			return errors.New("could not marshal event data: " + err.Error())
 		}
-		e.RawData = bson.Raw{Kind: 3, Data: rawData}
 	}
 
 	// Marshal the event (using BSON for now).
@@ -97,13 +99,10 @@ func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) error {
 		return errors.New("could not marshal event: " + err.Error())
 	}
 
-	// NOTE: Using a new context here.
-	// TODO: Why?
-	publishCtx := context.Background()
-	res := b.topic.Publish(publishCtx, &pubsub.Message{
+	res := b.topic.Publish(ctx, &pubsub.Message{
 		Data: data,
 	})
-	if _, err := res.Get(publishCtx); err != nil {
+	if _, err := res.Get(ctx); err != nil {
 		return errors.New("could not publish event: " + err.Error())
 	}
 
@@ -185,13 +184,9 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, sub *pubsub.Subs
 
 func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx context.Context, msg *pubsub.Message) {
 	return func(ctx context.Context, msg *pubsub.Message) {
-		// Manually decode the raw BSON event.
-		data := bson.Raw{
-			Kind: 3,
-			Data: msg.Data,
-		}
+		// Decode the raw BSON event data.
 		var e evt
-		if err := data.Unmarshal(&e); err != nil {
+		if err := bson.Unmarshal(msg.Data, &e); err != nil {
 			select {
 			case b.errCh <- eh.EventBusError{Err: errors.New("could not unmarshal event: " + err.Error()), Ctx: ctx}:
 			default:
@@ -200,22 +195,25 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 			return
 		}
 
-		// Create an event of the correct type.
-		if data, err := eh.CreateEventData(e.EventType); err == nil {
-			// Manually decode the raw BSON event.
-			if err := e.RawData.Unmarshal(data); err != nil {
-				select {
-				case b.errCh <- eh.EventBusError{Err: errors.New("could not unmarshal event data: " + err.Error()), Ctx: ctx}:
-				default:
-				}
-				msg.Nack()
-				return
+		// Create an event of the correct type and decode from raw BSON.
+		var err error
+		if e.data, err = eh.CreateEventData(e.EventType); err != nil {
+			select {
+			case b.errCh <- eh.EventBusError{Err: errors.New("could not create event data: " + err.Error()), Ctx: ctx}:
+			default:
 			}
-
-			// Set concrete event and zero out the decoded event.
-			e.data = data
-			e.RawData = bson.Raw{}
+			msg.Nack()
+			return
 		}
+		if err := bson.Unmarshal(e.RawData, e.data); err != nil {
+			select {
+			case b.errCh <- eh.EventBusError{Err: errors.New("could not unmarshal event data: " + err.Error()), Ctx: ctx}:
+			default:
+			}
+			msg.Nack()
+			return
+		}
+		e.RawData = nil
 
 		event := event{evt: e}
 		ctx = eh.UnmarshalContext(e.Context)

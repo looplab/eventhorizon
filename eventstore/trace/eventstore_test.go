@@ -33,7 +33,7 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	// Run the actual test suite.
+	// Run the actual test suite, with tracing enabled.
 	store.StartTracing()
 	savedEvents := eventstore.AcceptanceTest(t, context.Background(), store)
 	store.StopTracing()
@@ -61,7 +61,7 @@ func TestEventStore(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Log("save event, version 7")
+	// Save event, version 7.
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event7 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
 		timestamp, mocks.AggregateType, event1.AggregateID(), 7)
@@ -75,7 +75,7 @@ func TestEventStore(t *testing.T) {
 		t.Error("there should be no events traced:", trace)
 	}
 
-	t.Log("load events without tracing")
+	// Load events without tracing.
 	events, err := store.Load(ctx, event1.AggregateID())
 	if err != nil {
 		t.Error("there should be no error:", err)

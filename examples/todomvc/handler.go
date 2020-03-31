@@ -62,13 +62,12 @@ func (l *Logger) HandleEvent(ctx context.Context, event eh.Event) error {
 // NewHandler sets up the full Event Horizon domain for the TodoMVC app and
 // returns a handler exposing some of the components.
 func NewHandler() (*Handler, error) {
-	// Local Mongo testing with Docker
+	// Use MongoDB in Docker with fallback to localhost.
 	dbURL := os.Getenv("MONGO_HOST")
-
 	if dbURL == "" {
-		// Default to localhost
 		dbURL = "localhost:27017"
 	}
+	dbURL = "mongodb://" + dbURL
 
 	// Create the event store.
 	eventStore, err := eventstore.NewEventStore(dbURL, "todomvc")
