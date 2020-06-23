@@ -45,9 +45,9 @@ There are simple in memory implementations of an event store and entity repo. Th
 ### MongoDB
 
 Fairly mature, used in production.
-_Warning: Default MongoDB eventstore could lead to MongoDB errors while saving aggregates exceeding 16MB in size._
+_Note: This implementation has a document size limit of 16Mb, which could lead to errors for large aggregates. If needed use the alternative version below_
 
-### MongoDB (Improved eventStore)
+### MongoBD-DPE (supporting larger aggregates)
 
 MongoDB-DPE (stands for **D**ocument **P**er **E**vent) is a fork of the MongoDB driver mentioned above. In the MongoDB-DPE driver the max size of a mongo-document is taken into account so big aggregates with many events can be saved without exceeding the [16MB limit](https://docs.mongodb.com/manual/reference/limits/) by MongoDB .
 [https://github.com/gjongenelen/eh-mongodb](https://github.com/gjongenelen/eh-mongodb)
