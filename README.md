@@ -56,6 +56,14 @@ MongoDB-**D**ocument **P**er **E**vent is an alternative to the MongoDB driver m
 
 https://github.com/seedboxtech/eh-dynamo
 
+### Postgress
+
+https://github.com/giautm/eh-pg
+
+### Redis
+
+https://github.com/TerraSkye/eh-redis
+
 # Messaging drivers
 
 These are the drivers for messaging, currently only publishers.
