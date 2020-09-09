@@ -57,6 +57,7 @@ type Repo struct {
 	dbName     func(context.Context) string
 }
 
+// RepoOptionSetter is for convenient use with optional functions
 type RepoOptionSetter func(*Repo) error
 
 // NewRepo creates a new Repo.
@@ -100,6 +101,7 @@ func NewRepoWithClient(client *mongo.Client, dbPrefix, collection string, config
 	return r, nil
 }
 
+// DBNameNoPrefix overrides the dbName function to return the dbPrefix as is
 func DBNameNoPrefix() RepoOptionSetter {
 	return func(r *Repo) error {
 		r.dbName = func(context.Context) string {
@@ -109,6 +111,7 @@ func DBNameNoPrefix() RepoOptionSetter {
 	}
 }
 
+// WithDBName overrides the dbName function with a custom implementation
 func WithDBName(dbName func(context.Context) string) RepoOptionSetter {
 	return func(r *Repo) error {
 		r.dbName = dbName

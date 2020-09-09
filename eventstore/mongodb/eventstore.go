@@ -76,6 +76,7 @@ func NewEventStore(uri, dbPrefix string, config ...EventStoreOptionSetter) (*Eve
 	return NewEventStoreWithClient(client, dbPrefix, config...)
 }
 
+// EventStoreOptionSetter is for convenient use with optional functions
 type EventStoreOptionSetter func(*EventStore) error
 
 // NewEventStoreWithClient creates a new EventStore with a client.
@@ -104,6 +105,7 @@ func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, config ...Ev
 	return s, nil
 }
 
+// DBNameNoPrefix overrides the dbName function to return the dbPrefix as is
 func DBNameNoPrefix() EventStoreOptionSetter {
 	return func(store *EventStore) error {
 		store.dbName = func(context.Context) string {
@@ -113,6 +115,7 @@ func DBNameNoPrefix() EventStoreOptionSetter {
 	}
 }
 
+// WithDBName overrides the dbName function with a custom implementation
 func WithDBName(dbName func(context.Context) string) EventStoreOptionSetter {
 	return func(store *EventStore) error {
 		store.dbName = dbName
