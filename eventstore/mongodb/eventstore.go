@@ -59,10 +59,11 @@ var ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
 type EventStore struct {
 	client   *mongo.Client
 	dbPrefix string
+	dbName   func(ctx context.Context) string
 }
 
 // NewEventStore creates a new EventStore with a MongoDB URI: `mongodb://hostname`.
-func NewEventStore(uri, dbPrefix string) (*EventStore, error) {
+func NewEventStore(uri, dbPrefix string, config ...EventStoreOptionSetter) (*EventStore, error) {
 	opts := options.Client().ApplyURI(uri)
 	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
 	opts.SetReadConcern(readconcern.Majority())
@@ -72,11 +73,13 @@ func NewEventStore(uri, dbPrefix string) (*EventStore, error) {
 		return nil, ErrCouldNotDialDB
 	}
 
-	return NewEventStoreWithClient(client, dbPrefix)
+	return NewEventStoreWithClient(client, dbPrefix, config...)
 }
 
+type EventStoreOptionSetter func(*EventStore) error
+
 // NewEventStoreWithClient creates a new EventStore with a client.
-func NewEventStoreWithClient(client *mongo.Client, dbPrefix string) (*EventStore, error) {
+func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, config ...EventStoreOptionSetter) (*EventStore, error) {
 	if client == nil {
 		return nil, ErrNoDBClient
 	}
@@ -86,7 +89,35 @@ func NewEventStoreWithClient(client *mongo.Client, dbPrefix string) (*EventStore
 		dbPrefix: dbPrefix,
 	}
 
+	s.dbName = func(ctx context.Context) string {
+		ns := eh.NamespaceFromContext(ctx)
+		return dbPrefix + "_" + ns
+	}
+
+	for _, option := range config {
+		err := option(s)
+		if err != nil {
+			return nil, fmt.Errorf("error while applying option: %v", err)
+		}
+	}
+
 	return s, nil
+}
+
+func DBNameNoPrefix() EventStoreOptionSetter {
+	return func(store *EventStore) error {
+		store.dbName = func(context.Context) string {
+			return store.dbPrefix
+		}
+		return nil
+	}
+}
+
+func WithDBName(dbName func(context.Context) string) EventStoreOptionSetter {
+	return func(store *EventStore) error {
+		store.dbName = dbName
+		return nil
+	}
 }
 
 // Save implements the Save method of the eventhorizon.EventStore interface.
@@ -298,13 +329,6 @@ func (s *EventStore) Clear(ctx context.Context) error {
 // Close closes the database client.
 func (s *EventStore) Close(ctx context.Context) {
 	s.client.Disconnect(ctx)
-}
-
-// dbName appends the namespace, if one is set, to the Database prefix to
-// get the name of the Database to use.
-func (s *EventStore) dbName(ctx context.Context) string {
-	ns := eh.NamespaceFromContext(ctx)
-	return s.dbPrefix + "_" + ns
 }
 
 // aggregateRecord is the Database representation of an aggregate.
