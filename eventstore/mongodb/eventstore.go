@@ -150,7 +150,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		// Increment aggregate version on insert of new event record, and
 		// only insert if version of aggregate is matching (ie not changed
 		// since loading the aggregate).
-		if _, err := c.UpdateOne(ctx,
+		if r, err := c.UpdateOne(ctx,
 			bson.M{
 				"_id":     aggregateID,
 				"version": originalVersion,
@@ -163,6 +163,11 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			return eh.EventStoreError{
 				Err:       ErrCouldNotSaveAggregate,
 				BaseErr:   err,
+				Namespace: eh.NamespaceFromContext(ctx),
+			}
+		} else if r.MatchedCount == 0 {
+			return eh.EventStoreError{
+				Err:       ErrCouldNotSaveAggregate,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
