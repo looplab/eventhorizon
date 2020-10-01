@@ -16,6 +16,7 @@ package eventhorizon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -32,6 +33,15 @@ func (e EventBusError) Error() string {
 	return fmt.Sprintf("%s: (%s)", e.Err, e.Event)
 }
 
+// ErrMissingMatcher is returned when adding a handler without a matcher.
+var ErrMissingMatcher = errors.New("missing matcher")
+
+// ErrMissingHandler is returned when adding a handler with a nil handler.
+var ErrMissingHandler = errors.New("missing handler")
+
+// ErrHandlerAlreadyAdded is returned when adding the same handler twice.
+var ErrHandlerAlreadyAdded = errors.New("handler already added")
+
 // EventBus sends published events to one of each handler type and all observers.
 // That means that if the same handler is registered on multiple nodes only one
 // of them will receive the event. In contrast all observers registered on multiple
@@ -41,9 +51,10 @@ type EventBus interface {
 	// PublishEvent publishes the event on the bus.
 	PublishEvent(context.Context, Event) error
 
-	// AddHandler adds a handler for an event. Panics if either the matcher
-	// or handler is nil or the handler is already added.
-	AddHandler(EventMatcher, EventHandler)
+	// AddHandler adds a handler for an event. Returns an error if either the
+	// matcher or handler is nil, the handler is already added or there was some
+	// other problem adding the handler (for networked handlers for example).
+	AddHandler(EventMatcher, EventHandler) error
 
 	// Errors returns an error channel where async handling errors are sent.
 	Errors() <-chan EventBusError
