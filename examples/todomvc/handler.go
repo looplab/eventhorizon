@@ -34,7 +34,7 @@ import (
 	repo "github.com/looplab/eventhorizon/repo/mongodb"
 	"github.com/looplab/eventhorizon/repo/version"
 
-	"github.com/looplab/eventhorizon/examples/todomvc/internal/domain"
+	"github.com/looplab/eventhorizon/examples/todomvc/domains/todo"
 )
 
 // Handler is a http.Handler for the TodoMVC app.
@@ -95,7 +95,7 @@ func NewHandler() (*Handler, error) {
 	}
 
 	// Create the aggregate command handler.
-	aggregateCommandHandler, err := aggregate.NewCommandHandler(domain.AggregateType, aggregateStore)
+	aggregateCommandHandler, err := aggregate.NewCommandHandler(todo.AggregateType, aggregateStore)
 	if err != nil {
 		return nil, fmt.Errorf("could not create command handler: %s", err)
 	}
@@ -114,33 +114,33 @@ func NewHandler() (*Handler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not create invitation repository: %s", err)
 	}
-	repo.SetEntityFactory(func() eh.Entity { return &domain.TodoList{} })
+	repo.SetEntityFactory(func() eh.Entity { return &todo.TodoList{} })
 	todoRepo := version.NewRepo(repo)
 
 	// Create the read model projector.
-	projector := projector.NewEventHandler(&domain.Projector{}, todoRepo)
-	projector.SetEntityFactory(func() eh.Entity { return &domain.TodoList{} })
+	projector := projector.NewEventHandler(&todo.Projector{}, todoRepo)
+	projector.SetEntityFactory(func() eh.Entity { return &todo.TodoList{} })
 	eventBus.AddHandler(eh.MatchAnyEventOf(
-		domain.Created,
-		domain.Deleted,
-		domain.ItemAdded,
-		domain.ItemRemoved,
-		domain.ItemDescriptionSet,
-		domain.ItemChecked,
+		todo.Created,
+		todo.Deleted,
+		todo.ItemAdded,
+		todo.ItemRemoved,
+		todo.ItemDescriptionSet,
+		todo.ItemChecked,
 	), projector)
 
 	// Handle the API.
 	h := http.NewServeMux()
 	h.Handle("/api/events/", httputils.EventBusHandler(eventBus, eh.MatchAny(), "any"))
 	h.Handle("/api/todos/", httputils.QueryHandler(todoRepo))
-	h.Handle("/api/todos/create", httputils.CommandHandler(commandHandler, domain.CreateCommand))
-	h.Handle("/api/todos/delete", httputils.CommandHandler(commandHandler, domain.DeleteCommand))
-	h.Handle("/api/todos/add_item", httputils.CommandHandler(commandHandler, domain.AddItemCommand))
-	h.Handle("/api/todos/remove_item", httputils.CommandHandler(commandHandler, domain.RemoveItemCommand))
-	h.Handle("/api/todos/remove_completed", httputils.CommandHandler(commandHandler, domain.RemoveCompletedItemsCommand))
-	h.Handle("/api/todos/set_item_desc", httputils.CommandHandler(commandHandler, domain.SetItemDescriptionCommand))
-	h.Handle("/api/todos/check_item", httputils.CommandHandler(commandHandler, domain.CheckItemCommand))
-	h.Handle("/api/todos/check_all_items", httputils.CommandHandler(commandHandler, domain.CheckAllItemsCommand))
+	h.Handle("/api/todos/create", httputils.CommandHandler(commandHandler, todo.CreateCommand))
+	h.Handle("/api/todos/delete", httputils.CommandHandler(commandHandler, todo.DeleteCommand))
+	h.Handle("/api/todos/add_item", httputils.CommandHandler(commandHandler, todo.AddItemCommand))
+	h.Handle("/api/todos/remove_item", httputils.CommandHandler(commandHandler, todo.RemoveItemCommand))
+	h.Handle("/api/todos/remove_completed", httputils.CommandHandler(commandHandler, todo.RemoveCompletedItemsCommand))
+	h.Handle("/api/todos/set_item_desc", httputils.CommandHandler(commandHandler, todo.SetItemDescriptionCommand))
+	h.Handle("/api/todos/check_item", httputils.CommandHandler(commandHandler, todo.CheckItemCommand))
+	h.Handle("/api/todos/check_all_items", httputils.CommandHandler(commandHandler, todo.CheckAllItemsCommand))
 
 	// Proxy to elm-reactor, which must be running. For development.
 	elmReactorURL, err := url.Parse("http://localhost:8000")

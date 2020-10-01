@@ -20,7 +20,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/looplab/eventhorizon/examples/todomvc/internal/domain"
+	"github.com/looplab/eventhorizon/examples/todomvc/domains/todo"
 	"github.com/looplab/eventhorizon/repo/mongodb"
 )
 
@@ -39,12 +39,12 @@ func main() {
 	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.Create{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		log.Fatal("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.AddItem{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {

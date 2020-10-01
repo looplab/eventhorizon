@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package guestlist
 
 import (
 	"log"
@@ -27,7 +27,7 @@ import (
 	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
 )
 
-// Setup configures the domain.
+// Setup configures the guestlist.
 func Setup(
 	eventStore eh.EventStore,
 	eventBus eh.EventBus,
