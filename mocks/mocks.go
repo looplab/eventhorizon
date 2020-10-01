@@ -337,7 +337,9 @@ func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) error {
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) {}
+func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
+	return nil
+}
 
 // Errors implements the Error method of the eventhorizon.EventBus interface.
 func (b *EventBus) Errors() <-chan eh.EventBusError {

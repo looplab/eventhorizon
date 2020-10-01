@@ -39,36 +39,23 @@ import (
 //   }
 //
 func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration) {
-	// Panic on nil matcher.
-	func() {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Errorf("adding a nil matcher should panic")
-			}
-		}()
-		bus1.AddHandler(nil, mocks.NewEventHandler("panic"))
-	}()
+	// Error on nil matcher.
+	if err := bus1.AddHandler(nil, mocks.NewEventHandler("no-matcher")); err != eh.ErrMissingMatcher {
+		t.Error("the error should be correct:", err)
+	}
 
-	// Panic on nil handler.
-	func() {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Errorf("adding a nil handler should panic")
-			}
-		}()
-		bus1.AddHandler(eh.MatchAny(), nil)
-	}()
+	// Error on nil handler.
+	if err := bus1.AddHandler(eh.MatchAny(), nil); err != eh.ErrMissingHandler {
+		t.Error("the error should be correct:", err)
+	}
 
-	// Panic on multiple registrations.
-	func() {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Errorf("adding multiple handlers should panic")
-			}
-		}()
-		bus1.AddHandler(eh.MatchAny(), mocks.NewEventHandler("multi"))
-		bus1.AddHandler(eh.MatchAny(), mocks.NewEventHandler("multi"))
-	}()
+	// Error on multiple registrations.
+	if err := bus1.AddHandler(eh.MatchAny(), mocks.NewEventHandler("multi")); err != nil {
+		t.Error("there should be no errer:", err)
+	}
+	if err := bus1.AddHandler(eh.MatchAny(), mocks.NewEventHandler("multi")); err != eh.ErrHandlerAlreadyAdded {
+		t.Error("the error should be correct:", err)
+	}
 
 	ctx := mocks.WithContextOne(context.Background(), "testval")
 

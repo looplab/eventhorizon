@@ -54,19 +54,19 @@ func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) error {
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) {
+func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 	if m == nil {
-		panic("matcher can't be nil")
+		return eh.ErrMissingMatcher
 	}
 	if h == nil {
-		panic("handler can't be nil")
+		return eh.ErrMissingHandler
 	}
 
 	// Check handler existence.
 	b.registeredMu.Lock()
 	defer b.registeredMu.Unlock()
 	if _, ok := b.registered[h.HandlerType()]; ok {
-		panic(fmt.Sprintf("multiple registrations for %s", h.HandlerType()))
+		return eh.ErrHandlerAlreadyAdded
 	}
 
 	// Get or create the channel.
@@ -78,6 +78,8 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) {
 
 	// Handle (forever).
 	go b.handle(m, h, ch)
+
+	return nil
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.
