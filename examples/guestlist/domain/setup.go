@@ -24,6 +24,7 @@ import (
 	"github.com/looplab/eventhorizon/commandhandler/bus"
 	"github.com/looplab/eventhorizon/eventhandler/projector"
 	"github.com/looplab/eventhorizon/eventhandler/saga"
+	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
 )
 
 // Setup configures the domain.
@@ -35,7 +36,8 @@ func Setup(
 	eventID uuid.UUID) {
 
 	// Add a logger as an observer.
-	eventBus.AddObserver(eh.MatchAny(), &Logger{})
+	eventBus.AddHandler(eh.MatchAny(),
+		eh.UseEventHandlerMiddleware(&Logger{}, observer.Middleware))
 
 	// Create the aggregate repository.
 	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)

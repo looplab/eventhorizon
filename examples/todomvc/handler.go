@@ -30,6 +30,7 @@ import (
 	"github.com/looplab/eventhorizon/eventhandler/projector"
 	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
 	"github.com/looplab/eventhorizon/httputils"
+	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
 	repo "github.com/looplab/eventhorizon/repo/mongodb"
 	"github.com/looplab/eventhorizon/repo/version"
 
@@ -84,7 +85,8 @@ func NewHandler() (*Handler, error) {
 	}()
 
 	// Add a logger as an observer.
-	eventBus.AddObserver(eh.MatchAny(), &Logger{})
+	eventBus.AddHandler(eh.MatchAny(),
+		eh.UseEventHandlerMiddleware(&Logger{}, observer.Middleware))
 
 	// Create the aggregate repository.
 	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)

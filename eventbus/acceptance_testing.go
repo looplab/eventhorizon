@@ -24,6 +24,7 @@ import (
 	"github.com/kr/pretty"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
 	"github.com/looplab/eventhorizon/mocks"
 )
 
@@ -94,8 +95,9 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	bus1.AddHandler(eh.MatchAny(), handlerBus1)
 	bus2.AddHandler(eh.MatchAny(), handlerBus2)
 	bus2.AddHandler(eh.MatchAny(), anotherHandlerBus2)
-	bus1.AddObserver(eh.MatchAny(), observerBus1)
-	bus2.AddObserver(eh.MatchAny(), observerBus2)
+	// Add observers using the observer middleware.
+	bus1.AddHandler(eh.MatchAny(), eh.UseEventHandlerMiddleware(observerBus1, observer.Middleware))
+	bus2.AddHandler(eh.MatchAny(), eh.UseEventHandlerMiddleware(observerBus2, observer.Middleware))
 
 	if err := bus1.PublishEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)

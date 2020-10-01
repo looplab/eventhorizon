@@ -111,47 +111,24 @@ func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) error {
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
 func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) {
-	sub := b.subscription(m, h, false)
-	go b.handle(m, h, sub)
-}
-
-// AddObserver implements the AddObserver method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) {
-	sub := b.subscription(m, h, true)
-	go b.handle(m, h, sub)
-}
-
-// Errors implements the Errors method of the eventhorizon.EventBus interface.
-func (b *EventBus) Errors() <-chan eh.EventBusError {
-	return b.errCh
-}
-
-// Checks the matcher and handler and gets the event subscription.
-func (b *EventBus) subscription(m eh.EventMatcher, h eh.EventHandler, observer bool) *pubsub.Subscription {
-	b.registeredMu.Lock()
-	defer b.registeredMu.Unlock()
-
 	if m == nil {
 		panic("matcher can't be nil")
 	}
 	if h == nil {
 		panic("handler can't be nil")
 	}
+
+	// Check handler existence.
+	b.registeredMu.Lock()
+	defer b.registeredMu.Unlock()
 	if _, ok := b.registered[h.HandlerType()]; ok {
 		panic(fmt.Sprintf("multiple registrations for %s", h.HandlerType()))
 	}
-	b.registered[h.HandlerType()] = struct{}{}
-
-	id := string(h.HandlerType())
-	if observer { // Generate unique ID for each observer.
-		id = fmt.Sprintf("%s-%s", id, uuid.New())
-	}
-
-	ctx := context.Background()
 
 	// Get or create the subscription.
-	subscriptionID := b.appID + "_" + id
+	subscriptionID := b.appID + "_" + string(h.HandlerType())
 	sub := b.client.Subscription(subscriptionID)
+	ctx := context.Background()
 	if ok, err := sub.Exists(ctx); err != nil {
 		panic("could not check subscription: " + err.Error())
 	} else if !ok {
@@ -165,7 +142,16 @@ func (b *EventBus) subscription(m eh.EventMatcher, h eh.EventHandler, observer b
 		}
 	}
 
-	return sub
+	// Register handler.
+	b.registered[h.HandlerType()] = struct{}{}
+
+	// Handle (forever).
+	go b.handle(m, h, sub)
+}
+
+// Errors implements the Errors method of the eventhorizon.EventBus interface.
+func (b *EventBus) Errors() <-chan eh.EventBusError {
+	return b.errCh
 }
 
 // Handles all events coming in on the channel.

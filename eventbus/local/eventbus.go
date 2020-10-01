@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -56,13 +55,28 @@ func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) error {
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
 func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) {
-	ch := b.channel(m, h, false)
-	go b.handle(m, h, ch)
-}
+	if m == nil {
+		panic("matcher can't be nil")
+	}
+	if h == nil {
+		panic("handler can't be nil")
+	}
 
-// AddObserver implements the AddObserver method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddObserver(m eh.EventMatcher, h eh.EventHandler) {
-	ch := b.channel(m, h, true)
+	// Check handler existence.
+	b.registeredMu.Lock()
+	defer b.registeredMu.Unlock()
+	if _, ok := b.registered[h.HandlerType()]; ok {
+		panic(fmt.Sprintf("multiple registrations for %s", h.HandlerType()))
+	}
+
+	// Get or create the channel.
+	id := string(h.HandlerType())
+	ch := b.group.channel(id)
+
+	// Register handler.
+	b.registered[h.HandlerType()] = struct{}{}
+
+	// Handle (forever).
 	go b.handle(m, h, ch)
 }
 
@@ -87,29 +101,6 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan evt) {
 			}
 		}
 	}
-}
-
-// Checks the matcher and handler and gets the event channel from the group.
-func (b *EventBus) channel(m eh.EventMatcher, h eh.EventHandler, observer bool) <-chan evt {
-	b.registeredMu.Lock()
-	defer b.registeredMu.Unlock()
-
-	if m == nil {
-		panic("matcher can't be nil")
-	}
-	if h == nil {
-		panic("handler can't be nil")
-	}
-	if _, ok := b.registered[h.HandlerType()]; ok {
-		panic(fmt.Sprintf("multiple registrations for %s", h.HandlerType()))
-	}
-	b.registered[h.HandlerType()] = struct{}{}
-
-	id := string(h.HandlerType())
-	if observer { // Generate unique ID for each observer.
-		id = fmt.Sprintf("%s-%s", id, uuid.New())
-	}
-	return b.group.channel(id)
 }
 
 // Close all the channels in the events bus group

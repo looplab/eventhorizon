@@ -22,6 +22,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
 )
 
 var upgrader = websocket.Upgrader{} // use default options
@@ -63,7 +64,7 @@ func EventBusHandler(eventBus eh.EventBus, m eh.EventMatcher, id string) http.Ha
 			id: id,
 			ch: make(chan eh.Event, 10),
 		}
-		eventBus.AddObserver(m, h)
+		eventBus.AddHandler(m, eh.UseEventHandlerMiddleware(h, observer.Middleware))
 
 		for event := range h.ch {
 			if err := c.WriteMessage(websocket.TextMessage, []byte(event.String())); err != nil {
