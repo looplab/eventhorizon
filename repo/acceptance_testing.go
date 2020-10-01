@@ -135,7 +135,9 @@ func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
 	if len(result) != 2 {
 		t.Error("there should be two items:", len(result))
 	}
-	if !reflect.DeepEqual(result, []eh.Entity{entity1Alt, entity2}) {
+	// Retrieval in any order is accepted.
+	if !reflect.DeepEqual(result, []eh.Entity{entity1Alt, entity2}) &&
+		!reflect.DeepEqual(result, []eh.Entity{entity2, entity1Alt}) {
 		t.Error("the items should be correct:", result)
 	}
 
