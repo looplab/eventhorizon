@@ -16,7 +16,6 @@ package eventhorizon
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -28,7 +27,7 @@ func TestEventHandlerFunc(t *testing.T) {
 		events = append(events, e)
 		return nil
 	})
-	if h.HandlerType() != EventHandlerType(fmt.Sprintf("handler-func-%v", h)) {
+	if h.HandlerType() != EventHandlerType("eventhorizon-TestEventHandlerFunc-func1") {
 		t.Error("the handler type should be correct:", h.HandlerType())
 	}
 

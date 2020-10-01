@@ -16,7 +16,9 @@ package eventhorizon
 
 import (
 	"context"
-	"fmt"
+	"reflect"
+	"runtime"
+	"strings"
 )
 
 // EventHandlerType is the type of an event handler, used as its unique identifier.
@@ -37,14 +39,18 @@ type EventHandler interface {
 type EventHandlerFunc func(context.Context, Event) error
 
 // HandleEvent implements the HandleEvent method of the EventHandler.
-func (h EventHandlerFunc) HandleEvent(ctx context.Context, e Event) error {
-	return h(ctx, e)
+func (f EventHandlerFunc) HandleEvent(ctx context.Context, e Event) error {
+	return f(ctx, e)
 }
 
-// HandlerType implements the HandlerType method of the EventHandler.
-func (h EventHandlerFunc) HandlerType() EventHandlerType {
-	// Using the memory address as handler type, i.e "handler-func-0x11351a0".
-	return EventHandlerType(fmt.Sprintf("handler-func-%v", h))
+// HandlerType implements the HandlerType method of the EventHandler by returning
+// the name of the package and function:
+// "github.com/looplab/eventhorizon.Function" becomes "eventhorizon-Function"
+func (f EventHandlerFunc) HandlerType() EventHandlerType {
+	fullName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name() // Extract full func name: github.com/...
+	parts := strings.Split(fullName, "/")                              // Split URL.
+	name := parts[len(parts)-1]                                        // Take only the last part: package.Function.
+	return EventHandlerType(strings.ReplaceAll(name, ".", "-"))        // Use - as separator.
 }
 
 // EventHandlerMiddleware is a function that middlewares can implement to be
