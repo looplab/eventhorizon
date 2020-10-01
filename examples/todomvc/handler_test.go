@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventhandler/waiter"
+	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
 	"github.com/looplab/eventhorizon/repo/mongodb"
 
 	"github.com/looplab/eventhorizon/examples/todomvc/internal/domain"
@@ -86,7 +87,8 @@ func TestGetAll(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemAdded), waiter)
+	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemAdded),
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -132,7 +134,8 @@ func TestCreate(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddObserver(eh.MatchEvent(domain.Created), waiter)
+	h.EventBus.AddHandler(eh.MatchEvent(domain.Created),
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -195,7 +198,8 @@ func TestDelete(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddObserver(eh.MatchEvent(domain.Deleted), waiter)
+	h.EventBus.AddHandler(eh.MatchEvent(domain.Deleted),
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -243,7 +247,8 @@ func TestAddItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemAdded), waiter)
+	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemAdded),
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -317,7 +322,8 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemRemoved), waiter)
+	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemRemoved),
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -399,7 +405,8 @@ func TestRemoveCompleted(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemRemoved), waiter)
+	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemRemoved),
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5
 	})
@@ -475,7 +482,8 @@ func TestSetItemDesc(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemDescriptionSet), waiter)
+	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemDescriptionSet),
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -555,7 +563,8 @@ func TestCheckItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemChecked), waiter)
+	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemChecked),
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -640,7 +649,8 @@ func TestCheckAllItems(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddObserver(eh.MatchEvent(domain.ItemRemoved), waiter)
+	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemRemoved),
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5
 	})
