@@ -26,9 +26,8 @@ import (
 	"github.com/looplab/eventhorizon/commandhandler/bus"
 	eventbus "github.com/looplab/eventhorizon/eventbus/local"
 	eventstore "github.com/looplab/eventhorizon/eventstore/memory"
+	"github.com/looplab/eventhorizon/examples/guestlist/domains/guestlist"
 	repo "github.com/looplab/eventhorizon/repo/memory"
-
-	"github.com/looplab/eventhorizon/examples/guestlist/domain"
 )
 
 func Example() {
@@ -50,9 +49,9 @@ func Example() {
 	invitationRepo := repo.NewRepo()
 	guestListRepo := repo.NewRepo()
 
-	// Setup the domain.
+	// Setup the guestlist.
 	eventID := uuid.New()
-	domain.Setup(
+	guestlist.Setup(
 		eventStore,
 		eventBus,
 		commandBus,
@@ -72,16 +71,16 @@ func Example() {
 	poseidonID := uuid.New()
 
 	// Issue some invitations and responses. Error checking omitted here.
-	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{ID: athenaID, Name: "Athena", Age: 42}); err != nil {
+	if err := commandBus.HandleCommand(ctx, &guestlist.CreateInvite{ID: athenaID, Name: "Athena", Age: 42}); err != nil {
 		log.Println("error:", err)
 	}
-	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{ID: hadesID, Name: "Hades"}); err != nil {
+	if err := commandBus.HandleCommand(ctx, &guestlist.CreateInvite{ID: hadesID, Name: "Hades"}); err != nil {
 		log.Println("error:", err)
 	}
-	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{ID: zeusID, Name: "Zeus"}); err != nil {
+	if err := commandBus.HandleCommand(ctx, &guestlist.CreateInvite{ID: zeusID, Name: "Zeus"}); err != nil {
 		log.Println("error:", err)
 	}
-	if err := commandBus.HandleCommand(ctx, &domain.CreateInvite{ID: poseidonID, Name: "Poseidon"}); err != nil {
+	if err := commandBus.HandleCommand(ctx, &guestlist.CreateInvite{ID: poseidonID, Name: "Poseidon"}); err != nil {
 		log.Println("error:", err)
 	}
 	time.Sleep(100 * time.Millisecond)
@@ -90,24 +89,24 @@ func Example() {
 	// Note that Athena tries to decline the event after first accepting, but
 	// that is not allowed by the domain logic in InvitationAggregate. The
 	// result is that she is still accepted.
-	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{ID: athenaID}); err != nil {
+	if err := commandBus.HandleCommand(ctx, &guestlist.AcceptInvite{ID: athenaID}); err != nil {
 		log.Println("error:", err)
 	}
-	if err := commandBus.HandleCommand(ctx, &domain.DeclineInvite{ID: athenaID}); err != nil {
+	if err := commandBus.HandleCommand(ctx, &guestlist.DeclineInvite{ID: athenaID}); err != nil {
 		// NOTE: This error is supposed to be printed!
 		log.Printf("error: %s\n", err)
 	}
-	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{ID: hadesID}); err != nil {
+	if err := commandBus.HandleCommand(ctx, &guestlist.AcceptInvite{ID: hadesID}); err != nil {
 		log.Println("error:", err)
 	}
-	if err := commandBus.HandleCommand(ctx, &domain.DeclineInvite{ID: zeusID}); err != nil {
+	if err := commandBus.HandleCommand(ctx, &guestlist.DeclineInvite{ID: zeusID}); err != nil {
 		log.Println("error:", err)
 	}
 
 	// Poseidon is a bit late to the party...
 	// TODO: Remove sleeps.
 	time.Sleep(10 * time.Millisecond)
-	if err := commandBus.HandleCommand(ctx, &domain.AcceptInvite{ID: poseidonID}); err != nil {
+	if err := commandBus.HandleCommand(ctx, &guestlist.AcceptInvite{ID: poseidonID}); err != nil {
 		log.Println("error:", err)
 	}
 
@@ -121,7 +120,7 @@ func Example() {
 		log.Println("error:", err)
 	}
 	for _, i := range invitations {
-		if i, ok := i.(*domain.Invitation); ok {
+		if i, ok := i.(*guestlist.Invitation); ok {
 			invitationStrs = append(invitationStrs, fmt.Sprintf("%s - %s", i.Name, i.Status))
 		}
 	}
@@ -138,7 +137,7 @@ func Example() {
 	if err != nil {
 		log.Println("error:", err)
 	}
-	if l, ok := guestList.(*domain.GuestList); ok {
+	if l, ok := guestList.(*guestlist.GuestList); ok {
 		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 		fmt.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",

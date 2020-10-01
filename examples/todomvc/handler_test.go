@@ -29,7 +29,7 @@ import (
 	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
 	"github.com/looplab/eventhorizon/repo/mongodb"
 
-	"github.com/looplab/eventhorizon/examples/todomvc/internal/domain"
+	"github.com/looplab/eventhorizon/examples/todomvc/domains/todo"
 )
 
 func TestStaticFiles(t *testing.T) {
@@ -47,7 +47,7 @@ func TestStaticFiles(t *testing.T) {
 }
 
 func TestGetAll(t *testing.T) {
-	domain.TimeNow = func() time.Time {
+	todo.TimeNow = func() time.Time {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
@@ -74,12 +74,12 @@ func TestGetAll(t *testing.T) {
 	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.Create{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.AddItem{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
@@ -87,7 +87,7 @@ func TestGetAll(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemAdded),
+	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemAdded),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -99,13 +99,13 @@ func TestGetAll(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("the status should be correct:", w.Code)
 	}
-	if string(w.Body.Bytes()) != `[{"id":"`+id.String()+`","version":2,"items":[{"id":0,"desc":"desc","completed":false}],"created_at":"`+domain.TimeNow().Format(time.RFC3339Nano)+`","updated_at":"`+domain.TimeNow().Format(time.RFC3339Nano)+`"}]` {
+	if string(w.Body.Bytes()) != `[{"id":"`+id.String()+`","version":2,"items":[{"id":0,"desc":"desc","completed":false}],"created_at":"`+todo.TimeNow().Format(time.RFC3339Nano)+`","updated_at":"`+todo.TimeNow().Format(time.RFC3339Nano)+`"}]` {
 		t.Error("the body should be correct:", string(w.Body.Bytes()))
 	}
 }
 
 func TestCreate(t *testing.T) {
-	domain.TimeNow = func() time.Time {
+	todo.TimeNow = func() time.Time {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
@@ -134,7 +134,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(domain.Created),
+	h.EventBus.AddHandler(eh.MatchEvent(todo.Created),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -145,25 +145,25 @@ func TestCreate(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	todo, ok := m.(*domain.TodoList)
+	list, ok := m.(*todo.TodoList)
 	if !ok {
 		t.Error("the item should be a todo list")
 	}
-	expected := &domain.TodoList{
+	expected := &todo.TodoList{
 		ID:        id,
 		Version:   1,
-		Items:     []*domain.TodoItem{},
-		CreatedAt: domain.TimeNow(),
-		UpdatedAt: domain.TimeNow(),
+		Items:     []*todo.TodoItem{},
+		CreatedAt: todo.TimeNow(),
+		UpdatedAt: todo.TimeNow(),
 	}
-	if !reflect.DeepEqual(todo, expected) {
-		t.Error("the item should be correct:", todo)
+	if !reflect.DeepEqual(list, expected) {
+		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
 }
 
 func TestDelete(t *testing.T) {
-	domain.TimeNow = func() time.Time {
+	todo.TimeNow = func() time.Time {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
@@ -180,7 +180,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.Create{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
@@ -198,7 +198,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(domain.Deleted),
+	h.EventBus.AddHandler(eh.MatchEvent(todo.Deleted),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -212,7 +212,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestAddItem(t *testing.T) {
-	domain.TimeNow = func() time.Time {
+	todo.TimeNow = func() time.Time {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
@@ -229,7 +229,7 @@ func TestAddItem(t *testing.T) {
 	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.Create{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
@@ -247,7 +247,7 @@ func TestAddItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemAdded),
+	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemAdded),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -258,30 +258,30 @@ func TestAddItem(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	todo, ok := m.(*domain.TodoList)
+	list, ok := m.(*todo.TodoList)
 	if !ok {
 		t.Error("the item should be a todo list")
 	}
-	expected := &domain.TodoList{
+	expected := &todo.TodoList{
 		ID:      id,
 		Version: 2,
-		Items: []*domain.TodoItem{
+		Items: []*todo.TodoItem{
 			{
 				ID:          0,
 				Description: "desc",
 			},
 		},
-		CreatedAt: domain.TimeNow(),
-		UpdatedAt: domain.TimeNow(),
+		CreatedAt: todo.TimeNow(),
+		UpdatedAt: todo.TimeNow(),
 	}
-	if !reflect.DeepEqual(todo, expected) {
-		t.Error("the item should be correct:", todo)
+	if !reflect.DeepEqual(list, expected) {
+		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
 }
 
 func TestRemoveItem(t *testing.T) {
-	domain.TimeNow = func() time.Time {
+	todo.TimeNow = func() time.Time {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
@@ -298,12 +298,12 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.Create{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.AddItem{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
@@ -322,7 +322,7 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemRemoved),
+	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -333,25 +333,25 @@ func TestRemoveItem(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	todo, ok := m.(*domain.TodoList)
+	list, ok := m.(*todo.TodoList)
 	if !ok {
 		t.Error("the item should be a todo list")
 	}
-	expected := &domain.TodoList{
+	expected := &todo.TodoList{
 		ID:        id,
 		Version:   3,
-		Items:     []*domain.TodoItem{},
-		CreatedAt: domain.TimeNow(),
-		UpdatedAt: domain.TimeNow(),
+		Items:     []*todo.TodoItem{},
+		CreatedAt: todo.TimeNow(),
+		UpdatedAt: todo.TimeNow(),
 	}
-	if !reflect.DeepEqual(todo, expected) {
-		t.Error("the item should be correct:", todo)
+	if !reflect.DeepEqual(list, expected) {
+		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
 }
 
 func TestRemoveCompleted(t *testing.T) {
-	domain.TimeNow = func() time.Time {
+	todo.TimeNow = func() time.Time {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
@@ -368,24 +368,24 @@ func TestRemoveCompleted(t *testing.T) {
 	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.Create{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.AddItem{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.AddItem{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "completed",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.CheckItem{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.CheckItem{
 		ID:      id,
 		ItemID:  1,
 		Checked: true,
@@ -405,7 +405,7 @@ func TestRemoveCompleted(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemRemoved),
+	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5
@@ -418,30 +418,30 @@ func TestRemoveCompleted(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	todo, ok := m.(*domain.TodoList)
+	list, ok := m.(*todo.TodoList)
 	if !ok {
 		t.Error("the item should be a todo list")
 	}
-	expected := &domain.TodoList{
+	expected := &todo.TodoList{
 		ID:      id,
 		Version: 5,
-		Items: []*domain.TodoItem{
+		Items: []*todo.TodoItem{
 			{
 				ID:          0,
 				Description: "desc",
 			},
 		},
-		CreatedAt: domain.TimeNow(),
-		UpdatedAt: domain.TimeNow(),
+		CreatedAt: todo.TimeNow(),
+		UpdatedAt: todo.TimeNow(),
 	}
-	if !reflect.DeepEqual(todo, expected) {
-		t.Error("the item should be correct:", todo)
+	if !reflect.DeepEqual(list, expected) {
+		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
 }
 
 func TestSetItemDesc(t *testing.T) {
-	domain.TimeNow = func() time.Time {
+	todo.TimeNow = func() time.Time {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
@@ -458,12 +458,12 @@ func TestSetItemDesc(t *testing.T) {
 	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.Create{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.AddItem{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
@@ -482,7 +482,7 @@ func TestSetItemDesc(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemDescriptionSet),
+	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemDescriptionSet),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -493,30 +493,30 @@ func TestSetItemDesc(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	todo, ok := m.(*domain.TodoList)
+	list, ok := m.(*todo.TodoList)
 	if !ok {
 		t.Error("the item should be a todo list")
 	}
-	expected := &domain.TodoList{
+	expected := &todo.TodoList{
 		ID:      id,
 		Version: 3,
-		Items: []*domain.TodoItem{
+		Items: []*todo.TodoItem{
 			{
 				ID:          0,
 				Description: "new desc",
 			},
 		},
-		CreatedAt: domain.TimeNow(),
-		UpdatedAt: domain.TimeNow(),
+		CreatedAt: todo.TimeNow(),
+		UpdatedAt: todo.TimeNow(),
 	}
-	if !reflect.DeepEqual(todo, expected) {
-		t.Error("the item should be correct:", todo)
+	if !reflect.DeepEqual(list, expected) {
+		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
 }
 
 func TestCheckItem(t *testing.T) {
-	domain.TimeNow = func() time.Time {
+	todo.TimeNow = func() time.Time {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
@@ -533,18 +533,18 @@ func TestCheckItem(t *testing.T) {
 	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.Create{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.AddItem{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.AddItem{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "completed",
 	}); err != nil {
@@ -563,7 +563,7 @@ func TestCheckItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemChecked),
+	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemChecked),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -574,14 +574,14 @@ func TestCheckItem(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	todo, ok := m.(*domain.TodoList)
+	list, ok := m.(*todo.TodoList)
 	if !ok {
 		t.Error("the item should be a todo list")
 	}
-	expected := &domain.TodoList{
+	expected := &todo.TodoList{
 		ID:      id,
 		Version: 4,
-		Items: []*domain.TodoItem{
+		Items: []*todo.TodoItem{
 			{
 				ID:          0,
 				Description: "desc",
@@ -592,17 +592,17 @@ func TestCheckItem(t *testing.T) {
 				Completed:   true,
 			},
 		},
-		CreatedAt: domain.TimeNow(),
-		UpdatedAt: domain.TimeNow(),
+		CreatedAt: todo.TimeNow(),
+		UpdatedAt: todo.TimeNow(),
 	}
-	if !reflect.DeepEqual(todo, expected) {
-		t.Error("the item should be correct:", todo)
+	if !reflect.DeepEqual(list, expected) {
+		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
 }
 
 func TestCheckAllItems(t *testing.T) {
-	domain.TimeNow = func() time.Time {
+	todo.TimeNow = func() time.Time {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
@@ -619,18 +619,18 @@ func TestCheckAllItems(t *testing.T) {
 	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.Create{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.AddItem{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &domain.AddItem{
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "completed",
 	}); err != nil {
@@ -649,7 +649,7 @@ func TestCheckAllItems(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(domain.ItemRemoved),
+	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5
@@ -662,14 +662,14 @@ func TestCheckAllItems(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	todo, ok := m.(*domain.TodoList)
+	list, ok := m.(*todo.TodoList)
 	if !ok {
 		t.Error("the item should be a todo list")
 	}
-	expected := &domain.TodoList{
+	expected := &todo.TodoList{
 		ID:      id,
 		Version: 5,
-		Items: []*domain.TodoItem{
+		Items: []*todo.TodoItem{
 			{
 				ID:          0,
 				Description: "desc",
@@ -681,11 +681,11 @@ func TestCheckAllItems(t *testing.T) {
 				Completed:   true,
 			},
 		},
-		CreatedAt: domain.TimeNow(),
-		UpdatedAt: domain.TimeNow(),
+		CreatedAt: todo.TimeNow(),
+		UpdatedAt: todo.TimeNow(),
 	}
-	if !reflect.DeepEqual(todo, expected) {
-		t.Error("the item should be correct:", todo)
+	if !reflect.DeepEqual(list, expected) {
+		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
 }
