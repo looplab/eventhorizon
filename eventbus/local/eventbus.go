@@ -77,6 +77,7 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 	b.registered[h.HandlerType()] = struct{}{}
 
 	// Handle (forever).
+	b.wg.Add(1)
 	go b.handle(m, h, ch)
 
 	return nil
@@ -89,7 +90,6 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 
 // Handles all events coming in on the channel.
 func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan evt) {
-	b.wg.Add(1)
 	defer b.wg.Done()
 
 	for e := range ch {

@@ -16,6 +16,7 @@ package mocks
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -169,6 +170,8 @@ func (m *SimpleModel) EntityID() uuid.UUID {
 
 // CommandHandler is a mocked eventhorizon.CommandHandler, useful in testing.
 type CommandHandler struct {
+	sync.RWMutex
+
 	Commands []eh.Command
 	Context  context.Context
 	// Used to simulate errors when handling.
@@ -179,6 +182,9 @@ var _ = eh.CommandHandler(&CommandHandler{})
 
 // HandleCommand implements the HandleCommand method of the eventhorizon.CommandHandler interface.
 func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	h.Lock()
+	defer h.Unlock()
+
 	if h.Err != nil {
 		return h.Err
 	}
@@ -189,6 +195,8 @@ func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) erro
 
 // EventHandler is a mocked eventhorizon.EventHandler, useful in testing.
 type EventHandler struct {
+	sync.RWMutex
+
 	Type    string
 	Events  []eh.Event
 	Context context.Context
@@ -217,6 +225,9 @@ func (m *EventHandler) HandlerType() eh.EventHandlerType {
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
+	m.Lock()
+	defer m.Unlock()
+
 	if m.Err != nil {
 		return m.Err
 	}
@@ -229,6 +240,9 @@ func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 
 // Reset resets the mock data.
 func (m *EventHandler) Reset() {
+	m.Lock()
+	defer m.Unlock()
+
 	m.Events = []eh.Event{}
 	m.Context = context.Background()
 	m.Time = time.Time{}
@@ -348,6 +362,8 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 
 // Repo is a mocked eventhorizon.ReadRepo, useful in testing.
 type Repo struct {
+	sync.RWMutex
+
 	ParentRepo eh.ReadWriteRepo
 	Entity     eh.Entity
 	Entities   []eh.Entity
@@ -366,6 +382,9 @@ func (r *Repo) Parent() eh.ReadRepo {
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
+	r.RLock()
+	defer r.RUnlock()
+
 	r.FindCalled = true
 	if r.LoadErr != nil {
 		return nil, r.LoadErr
@@ -375,6 +394,9 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 
 // FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
 func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
+	r.RLock()
+	defer r.RUnlock()
+
 	r.FindAllCalled = true
 	if r.LoadErr != nil {
 		return nil, r.LoadErr
@@ -384,6 +406,9 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 
 // Save implements the Save method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
+	r.Lock()
+	defer r.Unlock()
+
 	r.SaveCalled = true
 	if r.SaveErr != nil {
 		return r.SaveErr
@@ -394,6 +419,9 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 
 // Remove implements the Remove method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
+	r.Lock()
+	defer r.Unlock()
+
 	r.RemoveCalled = true
 	if r.SaveErr != nil {
 		return r.SaveErr

@@ -42,18 +42,24 @@ func TestCommandHandler(t *testing.T) {
 	}
 
 	<-time.After(time.Second)
+	h.RLock()
 	if !reflect.DeepEqual(h.Events, []eh.Event{expectedEvent}) {
 		t.Error("the events should be correct:", h.Events)
 	}
+	h.RUnlock()
 
 	<-time.After(time.Second)
+	h.RLock()
 	if !reflect.DeepEqual(h.Events, []eh.Event{expectedEvent, expectedEvent}) {
 		t.Error("the events should be correct:", h.Events)
 	}
+	h.RUnlock()
 
 	cancel()
 	<-time.After(time.Second)
+	h.RLock()
 	if !reflect.DeepEqual(h.Events, []eh.Event{expectedEvent, expectedEvent}) {
 		t.Error("the events should be correct:", h.Events)
 	}
+	h.RUnlock()
 }
