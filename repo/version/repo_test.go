@@ -29,6 +29,10 @@ import (
 
 func TestReadRepo(t *testing.T) {
 	baseRepo := memory.NewRepo()
+	baseRepo.SetEntityFactory(func() eh.Entity {
+		return &mocks.Model{}
+	})
+
 	r := NewRepo(baseRepo)
 	if r == nil {
 		t.Error("there should be a repository")
@@ -39,16 +43,21 @@ func TestReadRepo(t *testing.T) {
 
 	// Read repository with default namespace.
 	repo.AcceptanceTest(t, context.Background(), r)
-	extraRepoTests(t, context.Background(), r)
+	extraRepoTests(t, context.Background(), r, baseRepo)
 
 	// Read repository with other namespace.
 	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
 	repo.AcceptanceTest(t, ctx, r)
-	extraRepoTests(t, ctx, r)
+	extraRepoTests(t, ctx, r, baseRepo)
 
 }
 
-func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
+func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory.Repo) {
+	// Set a model without version for the first test case.
+	// A repo should not change models mid-life like this.
+	baseRepo.SetEntityFactory(func() eh.Entity {
+		return &mocks.SimpleModel{}
+	})
 	// Insert a non-versioned item.
 	simpleModel := &mocks.SimpleModel{
 		ID:      uuid.New(),
@@ -65,6 +74,10 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 		t.Error("there should be a model has no version error:", err)
 	}
 
+	// Reset back to the model with version.
+	baseRepo.SetEntityFactory(func() eh.Entity {
+		return &mocks.Model{}
+	})
 	// Insert a versioned item.
 	modelMinVersion := &mocks.Model{
 		ID:        uuid.New(),

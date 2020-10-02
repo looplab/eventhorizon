@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/jinzhu/copier"
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -49,8 +50,7 @@ func NewEventBus(g *Group) *EventBus {
 
 // PublishEvent implements the PublishEvent method of the eventhorizon.EventBus interface.
 func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) error {
-	b.group.publish(ctx, event)
-	return nil
+	return b.group.publish(ctx, event)
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
@@ -146,17 +146,35 @@ func (g *Group) channel(id string) <-chan evt {
 	return ch
 }
 
-func (g *Group) publish(ctx context.Context, event eh.Event) {
+func (g *Group) publish(ctx context.Context, event eh.Event) error {
 	g.busMu.RLock()
 	defer g.busMu.RUnlock()
 
 	for _, ch := range g.bus {
+		var data eh.EventData
+		if event.Data() != nil {
+			var err error
+			if data, err = eh.CreateEventData(event.EventType()); err != nil {
+				return fmt.Errorf("could not create event data: %w", err)
+			}
+			copier.Copy(data, event.Data())
+		}
+		toPublish := eh.NewEventForAggregate(
+			event.EventType(),
+			data,
+			event.Timestamp(),
+			event.AggregateType(),
+			event.AggregateID(),
+			event.Version(),
+		)
 		select {
-		case ch <- evt{ctx, event}:
+		case ch <- evt{ctx, toPublish}:
 		default:
 			// TODO: Maybe log here because queue is full.
 		}
 	}
+
+	return nil
 }
 
 // Close all the open channels
