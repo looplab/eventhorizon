@@ -23,6 +23,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
@@ -57,12 +58,9 @@ type Repo struct {
 	dbName     func(context.Context) string
 }
 
-// RepoOptionSetter is for convenient use with optional functions
-type RepoOptionSetter func(*Repo) error
-
 // NewRepo creates a new Repo.
-func NewRepo(uri, dbPrefix, collection string, config ...RepoOptionSetter) (*Repo, error) {
-	opts := options.Client().ApplyURI(uri)
+func NewRepo(uri, dbPrefix, collection string, options ...Option) (*Repo, error) {
+	opts := mongoOptions.Client().ApplyURI(uri)
 	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
 	opts.SetReadConcern(readconcern.Majority())
 	opts.SetReadPreference(readpref.Primary())
@@ -71,11 +69,11 @@ func NewRepo(uri, dbPrefix, collection string, config ...RepoOptionSetter) (*Rep
 		return nil, ErrCouldNotDialDB
 	}
 
-	return NewRepoWithClient(client, dbPrefix, collection, config...)
+	return NewRepoWithClient(client, dbPrefix, collection, options...)
 }
 
 // NewRepoWithClient creates a new Repo with a client.
-func NewRepoWithClient(client *mongo.Client, dbPrefix, collection string, config ...RepoOptionSetter) (*Repo, error) {
+func NewRepoWithClient(client *mongo.Client, dbPrefix, collection string, options ...Option) (*Repo, error) {
 	if client == nil {
 		return nil, ErrNoDBClient
 	}
@@ -86,14 +84,14 @@ func NewRepoWithClient(client *mongo.Client, dbPrefix, collection string, config
 		collection: collection,
 	}
 
+	// Use the a prefix and namespcae from the context for DB name.
 	r.dbName = func(ctx context.Context) string {
 		ns := eh.NamespaceFromContext(ctx)
 		return dbPrefix + "_" + ns
 	}
 
-	for _, option := range config {
-		err := option(r)
-		if err != nil {
+	for _, option := range options {
+		if err := option(r); err != nil {
 			return nil, fmt.Errorf("error while applying option: %v", err)
 		}
 	}
@@ -101,8 +99,11 @@ func NewRepoWithClient(client *mongo.Client, dbPrefix, collection string, config
 	return r, nil
 }
 
-// DBNameNoPrefix overrides the dbName function to return the dbPrefix as is
-func DBNameNoPrefix() RepoOptionSetter {
+// Option is an option setter used to configure creation.
+type Option func(*Repo) error
+
+// WithPrefixAsDBName uses only the prefix as DB name, without namespace support.
+func WithPrefixAsDBName() Option {
 	return func(r *Repo) error {
 		r.dbName = func(context.Context) string {
 			return r.dbPrefix
@@ -111,8 +112,8 @@ func DBNameNoPrefix() RepoOptionSetter {
 	}
 }
 
-// WithDBName overrides the dbName function with a custom implementation
-func WithDBName(dbName func(context.Context) string) RepoOptionSetter {
+// WithDBName uses a custom DB name function.
+func WithDBName(dbName func(context.Context) string) Option {
 	return func(r *Repo) error {
 		r.dbName = dbName
 		return nil

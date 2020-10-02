@@ -104,12 +104,13 @@ make stop
 When the services are running testing can be done either locally or with Docker:
 
 ```bash
+go test ./...
 make test
 make test_docker
-go test ./...
+make cover
 ```
 
-The difference between `make test` and `go test ./...` is that `make test` also prints coverage info.
+The difference between `make test` and `go test ./...` is that `make test` also does race detection.
 
 # Get Involved
 

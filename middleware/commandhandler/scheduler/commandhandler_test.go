@@ -54,13 +54,18 @@ func TestCommandHandler_Delayed(t *testing.T) {
 	if err := h.HandleCommand(context.Background(), c); err != nil {
 		t.Error("there should be no error:", err)
 	}
+	inner.RLock()
 	if len(inner.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
+	inner.RUnlock()
+
 	time.Sleep(10 * time.Millisecond)
+	inner.RLock()
 	if !reflect.DeepEqual(inner.Commands, []eh.Command{c}) {
 		t.Error("the command should have been handled:", inner.Commands)
 	}
+	inner.RUnlock()
 }
 
 func TestCommandHandler_ZeroTime(t *testing.T) {

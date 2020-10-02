@@ -28,6 +28,10 @@ func TestReadRepo(t *testing.T) {
 	if r == nil {
 		t.Error("there should be a repository")
 	}
+
+	r.SetEntityFactory(func() eh.Entity {
+		return &mocks.Model{}
+	})
 	if r.Parent() != nil {
 		t.Error("the parent repo should be nil")
 	}

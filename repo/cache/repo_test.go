@@ -29,6 +29,10 @@ import (
 
 func TestReadRepo(t *testing.T) {
 	baseRepo := memory.NewRepo()
+	baseRepo.SetEntityFactory(func() eh.Entity {
+		return &mocks.Model{}
+	})
+
 	r := NewRepo(baseRepo)
 	if r == nil {
 		t.Error("there should be a repository")

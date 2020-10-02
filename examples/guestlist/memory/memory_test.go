@@ -47,7 +47,9 @@ func Example() {
 
 	// Create the read repositories.
 	invitationRepo := repo.NewRepo()
+	invitationRepo.SetEntityFactory(func() eh.Entity { return &guestlist.Invitation{} })
 	guestListRepo := repo.NewRepo()
+	guestListRepo.SetEntityFactory(func() eh.Entity { return &guestlist.GuestList{} })
 
 	// Setup the guestlist.
 	eventID := uuid.New()

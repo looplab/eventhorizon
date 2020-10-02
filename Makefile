@@ -2,7 +2,7 @@ default: services test
 
 .PHONY: test
 test:
-	go test ./...
+	go test -race ./...
 
 .PHONY: test_docker
 test_docker:

@@ -23,7 +23,7 @@ import (
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
@@ -63,8 +63,8 @@ type EventStore struct {
 }
 
 // NewEventStore creates a new EventStore with a MongoDB URI: `mongodb://hostname`.
-func NewEventStore(uri, dbPrefix string, config ...EventStoreOptionSetter) (*EventStore, error) {
-	opts := options.Client().ApplyURI(uri)
+func NewEventStore(uri, dbPrefix string, options ...Option) (*EventStore, error) {
+	opts := mongoOptions.Client().ApplyURI(uri)
 	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
 	opts.SetReadConcern(readconcern.Majority())
 	opts.SetReadPreference(readpref.Primary())
@@ -73,14 +73,11 @@ func NewEventStore(uri, dbPrefix string, config ...EventStoreOptionSetter) (*Eve
 		return nil, ErrCouldNotDialDB
 	}
 
-	return NewEventStoreWithClient(client, dbPrefix, config...)
+	return NewEventStoreWithClient(client, dbPrefix, options...)
 }
 
-// EventStoreOptionSetter is for convenient use with optional functions
-type EventStoreOptionSetter func(*EventStore) error
-
 // NewEventStoreWithClient creates a new EventStore with a client.
-func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, config ...EventStoreOptionSetter) (*EventStore, error) {
+func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, options ...Option) (*EventStore, error) {
 	if client == nil {
 		return nil, ErrNoDBClient
 	}
@@ -90,12 +87,13 @@ func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, config ...Ev
 		dbPrefix: dbPrefix,
 	}
 
+	// Use the a prefix and namespcae from the context for DB name.
 	s.dbName = func(ctx context.Context) string {
 		ns := eh.NamespaceFromContext(ctx)
 		return dbPrefix + "_" + ns
 	}
 
-	for _, option := range config {
+	for _, option := range options {
 		err := option(s)
 		if err != nil {
 			return nil, fmt.Errorf("error while applying option: %v", err)
@@ -105,20 +103,23 @@ func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, config ...Ev
 	return s, nil
 }
 
-// DBNameNoPrefix overrides the dbName function to return the dbPrefix as is
-func DBNameNoPrefix() EventStoreOptionSetter {
-	return func(store *EventStore) error {
-		store.dbName = func(context.Context) string {
-			return store.dbPrefix
+// Option is an option setter used to configure creation.
+type Option func(*EventStore) error
+
+// WithPrefixAsDBName uses only the prefix as DB name, without namespace support.
+func WithPrefixAsDBName() Option {
+	return func(s *EventStore) error {
+		s.dbName = func(context.Context) string {
+			return s.dbPrefix
 		}
 		return nil
 	}
 }
 
-// WithDBName overrides the dbName function with a custom implementation
-func WithDBName(dbName func(context.Context) string) EventStoreOptionSetter {
-	return func(store *EventStore) error {
-		store.dbName = dbName
+// WithDBName uses a custom DB name function.
+func WithDBName(dbName func(context.Context) string) Option {
+	return func(s *EventStore) error {
+		s.dbName = dbName
 		return nil
 	}
 }

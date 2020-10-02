@@ -43,9 +43,11 @@ func TestCommandHandler(t *testing.T) {
 		t.Error("there should not be an error:", err)
 	case <-time.After(time.Millisecond):
 	}
+	inner.RLock()
 	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
 		t.Error("the command shoud have been handeled:", inner.Commands)
 	}
+	inner.RUnlock()
 
 	// Error handling.
 	inner = &mocks.CommandHandler{}

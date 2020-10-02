@@ -16,13 +16,18 @@ package memory
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/jinzhu/copier"
 	eh "github.com/looplab/eventhorizon"
 )
 
 type namespace string
+
+// ErrModelNotSet is when an model factory is not set on the Repo.
+var ErrModelNotSet = errors.New("model not set")
 
 // Repo implements an in memory repository of read models.
 type Repo struct {
@@ -32,7 +37,8 @@ type Repo struct {
 
 	// A list of all item ids, only the order is used.
 	// The outer map is for the namespace.
-	ids map[namespace][]uuid.UUID
+	ids       map[namespace][]uuid.UUID
+	factoryFn func() eh.Entity
 }
 
 // NewRepo creates a new Repo.
@@ -51,39 +57,64 @@ func (r *Repo) Parent() eh.ReadRepo {
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
+	if r.factoryFn == nil {
+		return nil, eh.RepoError{
+			Err:       ErrModelNotSet,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
 	ns := r.namespace(ctx)
 
 	r.dbMu.RLock()
 	defer r.dbMu.RUnlock()
-	model, ok := r.db[ns][id]
+	item, ok := r.db[ns][id]
 	if !ok {
 		return nil, eh.RepoError{
 			Err:       eh.ErrEntityNotFound,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
+	entity := r.factoryFn()
+	copier.Copy(entity, item)
 
-	return model, nil
+	return entity, nil
 }
 
 // FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
 func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
+	if r.factoryFn == nil {
+		return nil, eh.RepoError{
+			Err:       ErrModelNotSet,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
 	ns := r.namespace(ctx)
 
 	r.dbMu.RLock()
 	defer r.dbMu.RUnlock()
-	all := []eh.Entity{}
+	result := []eh.Entity{}
 	for _, id := range r.ids[ns] {
-		if m, ok := r.db[ns][id]; ok {
-			all = append(all, m)
+		if item, ok := r.db[ns][id]; ok {
+			entity := r.factoryFn()
+			copier.Copy(entity, item)
+			result = append(result, entity)
 		}
 	}
 
-	return all, nil
+	return result, nil
 }
 
 // Save implements the Save method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
+	if r.factoryFn == nil {
+		return eh.RepoError{
+			Err:       ErrModelNotSet,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
 	ns := r.namespace(ctx)
 
 	if entity.EntityID() == uuid.Nil {
@@ -100,7 +131,9 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	if _, ok := r.db[ns][id]; !ok {
 		r.ids[ns] = append(r.ids[ns], id)
 	}
-	r.db[ns][id] = entity
+	toInsert := r.factoryFn()
+	copier.Copy(toInsert, entity)
+	r.db[ns][id] = toInsert
 
 	return nil
 }
@@ -130,6 +163,11 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 		Err:       eh.ErrEntityNotFound,
 		Namespace: eh.NamespaceFromContext(ctx),
 	}
+}
+
+// SetEntityFactory sets a factory function that creates concrete entity types.
+func (r *Repo) SetEntityFactory(f func() eh.Entity) {
+	r.factoryFn = f
 }
 
 // Helper to get the namespace and ensure that its data exists.
