@@ -24,12 +24,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// EventType is the type of an event, used as its unique identifier.
-type EventType string
-
-// EventData is any additional data for an event.
-type EventData interface{}
-
 // Event is a domain event describing a change that has happened to an aggregate.
 //
 // An event struct and type name should:
@@ -57,6 +51,12 @@ type Event interface {
 	// A string representation of the event.
 	String() string
 }
+
+// EventType is the type of an event, used as its unique identifier.
+type EventType string
+
+// EventData is any additional data for an event.
+type EventData interface{}
 
 // NewEvent creates a new event with a type and data, setting its timestamp.
 func NewEvent(eventType EventType, data EventData, timestamp time.Time) Event {
@@ -128,9 +128,6 @@ func (e event) String() string {
 	return fmt.Sprintf("%s@%d", e.eventType, e.version)
 }
 
-var eventDataFactories = make(map[EventType]func() EventData)
-var eventDataFactoriesMu sync.RWMutex
-
 // ErrEventDataNotRegistered is when no event data factory was registered.
 var ErrEventDataNotRegistered = errors.New("event data not registered")
 
@@ -181,3 +178,6 @@ func CreateEventData(eventType EventType) (EventData, error) {
 	}
 	return nil, ErrEventDataNotRegistered
 }
+
+var eventDataFactories = make(map[EventType]func() EventData)
+var eventDataFactoriesMu sync.RWMutex

@@ -38,28 +38,3 @@ func TestEventHandlerFunc(t *testing.T) {
 		t.Log(events)
 	}
 }
-
-func TestEventHandlerMiddleware(t *testing.T) {
-	order := []string{}
-	middleware := func(s string) EventHandlerMiddleware {
-		return EventHandlerMiddleware(func(h EventHandler) EventHandler {
-			return EventHandlerFunc(func(ctx context.Context, e Event) error {
-				order = append(order, s)
-				return h.HandleEvent(ctx, e)
-			})
-		})
-	}
-	handler := func(ctx context.Context, e Event) error {
-		return nil
-	}
-	h := UseEventHandlerMiddleware(EventHandlerFunc(handler),
-		middleware("first"),
-		middleware("second"),
-		middleware("third"),
-	)
-	h.HandleEvent(context.Background(), NewEvent("test", nil, time.Now()))
-	if !reflect.DeepEqual(order, []string{"first", "second", "third"}) {
-		t.Error("the order of middleware should be correct")
-		t.Log(order)
-	}
-}

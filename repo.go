@@ -21,34 +21,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// RepoError is an error in the read repository, with the namespace.
-type RepoError struct {
-	// Err is the error.
-	Err error
-	// BaseErr is an optional underlying error, for example from the DB driver.
-	BaseErr error
-	// Namespace is the namespace for the error.
-	Namespace string
-}
-
-// Error implements the Error method of the errors.Error interface.
-func (e RepoError) Error() string {
-	errStr := e.Err.Error()
-	if e.BaseErr != nil {
-		errStr += ": " + e.BaseErr.Error()
-	}
-	return errStr + " (" + e.Namespace + ")"
-}
-
-// ErrEntityNotFound is when a entity could not be found.
-var ErrEntityNotFound = errors.New("could not find entity")
-
-// ErrCouldNotSaveEntity is when a entity could not be saved.
-var ErrCouldNotSaveEntity = errors.New("could not save entity")
-
-// ErrMissingEntityID is when a entity has no ID.
-var ErrMissingEntityID = errors.New("missing entity ID")
-
 // ReadRepo is a read repository for entities.
 type ReadRepo interface {
 	// Parent returns the parent read repository, if there is one.
@@ -77,12 +49,6 @@ type ReadWriteRepo interface {
 	WriteRepo
 }
 
-// ErrEntityHasNoVersion is when an entity has no version number.
-var ErrEntityHasNoVersion = errors.New("entity has no version")
-
-// ErrIncorrectEntityVersion is when an entity has an incorrect version.
-var ErrIncorrectEntityVersion = errors.New("incorrect entity version")
-
 // Versionable is an item that has a version number,
 // used by version.ReadRepo.FindMinVersion().
 type Versionable interface {
@@ -100,3 +66,37 @@ type Iter interface {
 	// Close must be called after the last Next() to retrieve error if any
 	Close(context.Context) error
 }
+
+// RepoError is an error in the read repository, with the namespace.
+type RepoError struct {
+	// Err is the error.
+	Err error
+	// BaseErr is an optional underlying error, for example from the DB driver.
+	BaseErr error
+	// Namespace is the namespace for the error.
+	Namespace string
+}
+
+// Error implements the Error method of the errors.Error interface.
+func (e RepoError) Error() string {
+	errStr := e.Err.Error()
+	if e.BaseErr != nil {
+		errStr += ": " + e.BaseErr.Error()
+	}
+	return errStr + " (" + e.Namespace + ")"
+}
+
+// ErrEntityNotFound is when a entity could not be found.
+var ErrEntityNotFound = errors.New("could not find entity")
+
+// ErrCouldNotSaveEntity is when a entity could not be saved.
+var ErrCouldNotSaveEntity = errors.New("could not save entity")
+
+// ErrMissingEntityID is when a entity has no ID.
+var ErrMissingEntityID = errors.New("missing entity ID")
+
+// ErrEntityHasNoVersion is when an entity has no version number.
+var ErrEntityHasNoVersion = errors.New("entity has no version")
+
+// ErrIncorrectEntityVersion is when an entity has an incorrect version.
+var ErrIncorrectEntityVersion = errors.New("incorrect entity version")

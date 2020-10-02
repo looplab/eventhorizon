@@ -23,12 +23,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// ErrAggregateNotFound is when no aggregate can be found.
-var ErrAggregateNotFound = errors.New("aggregate not found")
-
-// AggregateType is the type of an aggregate.
-type AggregateType string
-
 // Aggregate is an interface representing a versioned data entity created from
 // events. It receives commands and generates events that are stored.
 //
@@ -47,6 +41,9 @@ type Aggregate interface {
 	CommandHandler
 }
 
+// AggregateType is the type of an aggregate.
+type AggregateType string
+
 // AggregateStore is responsible for loading and saving aggregates.
 type AggregateStore interface {
 	// Load loads the most recent version of an aggregate with a type and id.
@@ -56,8 +53,8 @@ type AggregateStore interface {
 	Save(context.Context, Aggregate) error
 }
 
-var aggregates = make(map[AggregateType]func(uuid.UUID) Aggregate)
-var aggregatesMu sync.RWMutex
+// ErrAggregateNotFound is when no aggregate can be found.
+var ErrAggregateNotFound = errors.New("aggregate not found")
 
 // ErrAggregateNotRegistered is when no aggregate factory was registered.
 var ErrAggregateNotRegistered = errors.New("aggregate not registered")
@@ -99,3 +96,6 @@ func CreateAggregate(aggregateType AggregateType, id uuid.UUID) (Aggregate, erro
 	}
 	return nil, ErrAggregateNotRegistered
 }
+
+var aggregates = make(map[AggregateType]func(uuid.UUID) Aggregate)
+var aggregatesMu sync.RWMutex

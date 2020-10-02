@@ -18,6 +18,7 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -40,17 +41,42 @@ func TestCommandHandlerMiddleware(t *testing.T) {
 		middleware("second"),
 		middleware("third"),
 	)
-	h.HandleCommand(context.Background(), TestCommand{})
+	h.HandleCommand(context.Background(), MiddlewareTestCommand{})
 	if !reflect.DeepEqual(order, []string{"first", "second", "third"}) {
 		t.Error("the order of middleware should be correct")
 		t.Log(order)
 	}
 }
 
-type TestCommand struct{}
+type MiddlewareTestCommand struct{}
 
-var _ = Command(TestCommand{})
+var _ = Command(MiddlewareTestCommand{})
 
-func (a TestCommand) AggregateID() uuid.UUID       { return uuid.Nil }
-func (a TestCommand) AggregateType() AggregateType { return "test" }
-func (a TestCommand) CommandType() CommandType     { return "tes" }
+func (a MiddlewareTestCommand) AggregateID() uuid.UUID       { return uuid.Nil }
+func (a MiddlewareTestCommand) AggregateType() AggregateType { return "test" }
+func (a MiddlewareTestCommand) CommandType() CommandType     { return "tes" }
+
+func TestEventHandlerMiddleware(t *testing.T) {
+	order := []string{}
+	middleware := func(s string) EventHandlerMiddleware {
+		return EventHandlerMiddleware(func(h EventHandler) EventHandler {
+			return EventHandlerFunc(func(ctx context.Context, e Event) error {
+				order = append(order, s)
+				return h.HandleEvent(ctx, e)
+			})
+		})
+	}
+	handler := func(ctx context.Context, e Event) error {
+		return nil
+	}
+	h := UseEventHandlerMiddleware(EventHandlerFunc(handler),
+		middleware("first"),
+		middleware("second"),
+		middleware("third"),
+	)
+	h.HandleEvent(context.Background(), NewEvent("test", nil, time.Now()))
+	if !reflect.DeepEqual(order, []string{"first", "second", "third"}) {
+		t.Error("the order of middleware should be correct")
+		t.Log(order)
+	}
+}

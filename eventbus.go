@@ -20,6 +20,24 @@ import (
 	"fmt"
 )
 
+// EventBus sends published events to one of each handler type and all observers.
+// That means that if the same handler is registered on multiple nodes only one
+// of them will receive the event. In contrast all observers registered on multiple
+// nodes will receive the event. Events are not garantued to be handeled or observed
+// in order.
+type EventBus interface {
+	// PublishEvent publishes the event on the bus.
+	PublishEvent(context.Context, Event) error
+
+	// AddHandler adds a handler for an event. Returns an error if either the
+	// matcher or handler is nil, the handler is already added or there was some
+	// other problem adding the handler (for networked handlers for example).
+	AddHandler(EventMatcher, EventHandler) error
+
+	// Errors returns an error channel where async handling errors are sent.
+	Errors() <-chan EventBusError
+}
+
 // EventBusError is an async error containing the error returned from a handler
 // or observer and the event that it happened on.
 type EventBusError struct {
@@ -41,21 +59,3 @@ var ErrMissingHandler = errors.New("missing handler")
 
 // ErrHandlerAlreadyAdded is returned when adding the same handler twice.
 var ErrHandlerAlreadyAdded = errors.New("handler already added")
-
-// EventBus sends published events to one of each handler type and all observers.
-// That means that if the same handler is registered on multiple nodes only one
-// of them will receive the event. In contrast all observers registered on multiple
-// nodes will receive the event. Events are not garantued to be handeled or observed
-// in order.
-type EventBus interface {
-	// PublishEvent publishes the event on the bus.
-	PublishEvent(context.Context, Event) error
-
-	// AddHandler adds a handler for an event. Returns an error if either the
-	// matcher or handler is nil, the handler is already added or there was some
-	// other problem adding the handler (for networked handlers for example).
-	AddHandler(EventMatcher, EventHandler) error
-
-	// Errors returns an error channel where async handling errors are sent.
-	Errors() <-chan EventBusError
-}

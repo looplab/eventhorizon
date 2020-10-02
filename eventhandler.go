@@ -52,17 +52,3 @@ func (f EventHandlerFunc) HandlerType() EventHandlerType {
 	name := parts[len(parts)-1]                                        // Take only the last part: package.Function.
 	return EventHandlerType(strings.ReplaceAll(name, ".", "-"))        // Use - as separator.
 }
-
-// EventHandlerMiddleware is a function that middlewares can implement to be
-// able to chain.
-type EventHandlerMiddleware func(EventHandler) EventHandler
-
-// UseEventHandlerMiddleware wraps a EventHandler in one or more middleware.
-func UseEventHandlerMiddleware(h EventHandler, middleware ...EventHandlerMiddleware) EventHandler {
-	// Apply in reverse order.
-	for i := len(middleware) - 1; i >= 0; i-- {
-		m := middleware[i]
-		h = m(h)
-	}
-	return h
-}

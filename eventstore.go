@@ -21,6 +21,28 @@ import (
 	"github.com/google/uuid"
 )
 
+// EventStore is an interface for an event sourcing event store.
+type EventStore interface {
+	// Save appends all events in the event stream to the store.
+	Save(ctx context.Context, events []Event, originalVersion int) error
+
+	// Load loads all events for the aggregate id from the store.
+	Load(context.Context, uuid.UUID) ([]Event, error)
+}
+
+// EventStoreMaintainer is an interface for a maintainer of an EventStore.
+// NOTE: Should not be used in apps, useful for migration tools etc.
+type EventStoreMaintainer interface {
+	EventStore
+
+	// Replace an event, the version must match. Useful for maintenance actions.
+	// Returns ErrAggregateNotFound if there is no aggregate.
+	Replace(context.Context, Event) error
+
+	// RenameEvent renames all instances of the event type.
+	RenameEvent(ctx context.Context, from, to EventType) error
+}
+
 // EventStoreError is an error in the event store, with the namespace.
 type EventStoreError struct {
 	// Err is the error.
@@ -48,25 +70,3 @@ var ErrInvalidEvent = errors.New("invalid event")
 
 // ErrIncorrectEventVersion is when an event is for an other version of the aggregate.
 var ErrIncorrectEventVersion = errors.New("mismatching event version")
-
-// EventStore is an interface for an event sourcing event store.
-type EventStore interface {
-	// Save appends all events in the event stream to the store.
-	Save(ctx context.Context, events []Event, originalVersion int) error
-
-	// Load loads all events for the aggregate id from the store.
-	Load(context.Context, uuid.UUID) ([]Event, error)
-}
-
-// EventStoreMaintainer is an interface for a maintainer of an EventStore.
-// NOTE: Should not be used in apps, useful for migration tools etc.
-type EventStoreMaintainer interface {
-	EventStore
-
-	// Replace an event, the version must match. Useful for maintenance actions.
-	// Returns ErrAggregateNotFound if there is no aggregate.
-	Replace(context.Context, Event) error
-
-	// RenameEvent renames all instances of the event type.
-	RenameEvent(ctx context.Context, from, to EventType) error
-}

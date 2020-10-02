@@ -48,9 +48,6 @@ type Command interface {
 // CommandType is the type of a command, used as its unique identifier.
 type CommandType string
 
-var commands = make(map[CommandType]func() Command)
-var commandsMu sync.RWMutex
-
 // ErrCommandNotRegistered is when no command factory was registered.
 var ErrCommandNotRegistered = errors.New("command not registered")
 
@@ -107,6 +104,9 @@ func CreateCommand(commandType CommandType) (Command, error) {
 	}
 	return nil, ErrCommandNotRegistered
 }
+
+var commands = make(map[CommandType]func() Command)
+var commandsMu sync.RWMutex
 
 // CommandFieldError is returned by Dispatch when a field is incorrect.
 type CommandFieldError struct {
