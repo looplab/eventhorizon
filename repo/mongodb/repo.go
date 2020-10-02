@@ -17,6 +17,7 @@ package mongodb
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
@@ -53,10 +54,14 @@ type Repo struct {
 	dbPrefix   string
 	collection string
 	factoryFn  func() eh.Entity
+	dbName     func(context.Context) string
 }
 
+// RepoOptionSetter is for convenient use with optional functions
+type RepoOptionSetter func(*Repo) error
+
 // NewRepo creates a new Repo.
-func NewRepo(uri, dbPrefix, collection string) (*Repo, error) {
+func NewRepo(uri, dbPrefix, collection string, config ...RepoOptionSetter) (*Repo, error) {
 	opts := options.Client().ApplyURI(uri)
 	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
 	opts.SetReadConcern(readconcern.Majority())
@@ -66,11 +71,11 @@ func NewRepo(uri, dbPrefix, collection string) (*Repo, error) {
 		return nil, ErrCouldNotDialDB
 	}
 
-	return NewRepoWithClient(client, dbPrefix, collection)
+	return NewRepoWithClient(client, dbPrefix, collection, config...)
 }
 
 // NewRepoWithClient creates a new Repo with a client.
-func NewRepoWithClient(client *mongo.Client, dbPrefix, collection string) (*Repo, error) {
+func NewRepoWithClient(client *mongo.Client, dbPrefix, collection string, config ...RepoOptionSetter) (*Repo, error) {
 	if client == nil {
 		return nil, ErrNoDBClient
 	}
@@ -81,7 +86,37 @@ func NewRepoWithClient(client *mongo.Client, dbPrefix, collection string) (*Repo
 		collection: collection,
 	}
 
+	r.dbName = func(ctx context.Context) string {
+		ns := eh.NamespaceFromContext(ctx)
+		return dbPrefix + "_" + ns
+	}
+
+	for _, option := range config {
+		err := option(r)
+		if err != nil {
+			return nil, fmt.Errorf("error while applying option: %v", err)
+		}
+	}
+
 	return r, nil
+}
+
+// DBNameNoPrefix overrides the dbName function to return the dbPrefix as is
+func DBNameNoPrefix() RepoOptionSetter {
+	return func(r *Repo) error {
+		r.dbName = func(context.Context) string {
+			return r.dbPrefix
+		}
+		return nil
+	}
+}
+
+// WithDBName overrides the dbName function with a custom implementation
+func WithDBName(dbName func(context.Context) string) RepoOptionSetter {
+	return func(r *Repo) error {
+		r.dbName = dbName
+		return nil
+	}
 }
 
 // Parent implements the Parent method of the eventhorizon.ReadRepo interface.
@@ -357,13 +392,6 @@ func (r *Repo) Clear(ctx context.Context) error {
 // Close closes a database session.
 func (r *Repo) Close(ctx context.Context) {
 	r.client.Disconnect(ctx)
-}
-
-// dbName appends the namespace, if one is set, to the DB prefix to
-// get the name of the DB to use.
-func (r *Repo) dbName(ctx context.Context) string {
-	ns := eh.NamespaceFromContext(ctx)
-	return r.dbPrefix + "_" + ns
 }
 
 // Repository returns a parent ReadRepo if there is one.
