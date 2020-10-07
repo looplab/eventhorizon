@@ -182,7 +182,7 @@ func extraRepoTests(t *testing.T, ctx context.Context) {
 	r = NewRepo(baseRepo)
 	event := eh.NewEventForAggregate(mocks.EventType, nil,
 		time.Now(), mocks.AggregateType, simpleModel.EntityID(), 1)
-	r.Notify(ctx, event)
+	r.HandleEvent(ctx, event)
 	baseRepo.FindCalled = false
 	entity, err = r.Find(ctx, simpleModel.ID)
 	if err != nil {

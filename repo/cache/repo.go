@@ -16,6 +16,7 @@ package version
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -43,13 +44,21 @@ func NewRepo(repo eh.ReadWriteRepo) *Repo {
 	}
 }
 
-// Notify implements the Notify method of the eventhorizon.Observer interface.
-func (r *Repo) Notify(ctx context.Context, event eh.Event) {
-	// Bust the cache on entity updates.
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (r *Repo) HandlerType() eh.EventHandlerType {
+	return eh.EventHandlerType(fmt.Sprintf("repo-cache-%s", uuid.New()))
+}
+
+// HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
+// It will bust the cache for any updates to the relevant aggregate.
+// The repo should be added with a eh.MatchAny or eh.MatchAggregate for best
+// effect (depending on if the underlying repo is used for all or individual aggregate types).
+func (r *Repo) HandleEvent(ctx context.Context, event eh.Event) error {
 	ns := r.namespace(ctx)
 	r.cacheMu.Lock()
 	delete(r.cache[ns], event.AggregateID())
 	r.cacheMu.Unlock()
+	return nil
 }
 
 // Parent implements the Parent method of the eventhorizon.ReadRepo interface.
