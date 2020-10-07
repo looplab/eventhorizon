@@ -29,7 +29,7 @@ func LoggingMiddleware(h eh.CommandHandler) eh.CommandHandler {
 	})
 }
 
-// Logger is a simple event observer for logging all events.
+// Logger is a simple event handler for logging all events.
 type Logger struct{}
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.

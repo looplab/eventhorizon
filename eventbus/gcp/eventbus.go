@@ -206,12 +206,13 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 		event := event{evt: e}
 		ctx = eh.UnmarshalContext(e.Context)
 
+		// Ignore non-matching events.
 		if !m(event) {
 			msg.Ack()
 			return
 		}
 
-		// Notify all observers about the event.
+		// Handle the event if it did match.
 		if err := h.HandleEvent(ctx, event); err != nil {
 			select {
 			case b.errCh <- eh.EventBusError{Err: fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error()), Ctx: ctx, Event: event}:

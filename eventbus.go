@@ -20,11 +20,9 @@ import (
 	"fmt"
 )
 
-// EventBus sends published events to one of each handler type and all observers.
-// That means that if the same handler is registered on multiple nodes only one
-// of them will receive the event. In contrast all observers registered on multiple
-// nodes will receive the event. Events are not garantued to be handeled or observed
-// in order.
+// EventBus distributes published events to all matching handlers that are
+// registered, but only one handler of each type will handle the event.
+// Events are not garanteed to be handeled in order.
 type EventBus interface {
 	// PublishEvent publishes the event on the bus.
 	PublishEvent(context.Context, Event) error
@@ -39,7 +37,7 @@ type EventBus interface {
 }
 
 // EventBusError is an async error containing the error returned from a handler
-// or observer and the event that it happened on.
+// and the event that it happened on.
 type EventBusError struct {
 	Err   error
 	Ctx   context.Context
