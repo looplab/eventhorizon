@@ -1,4 +1,4 @@
-default: services test
+default: run_services test
 
 .PHONY: test
 test:
@@ -20,13 +20,13 @@ publish_cover: cover
 	gover
 	@goveralls -coverprofile=gover.coverprofile -service=travis-ci -repotoken=$(COVERALLS_TOKEN)
 
-.PHONY: services
-services:
+.PHONY: run_services
+run_services:
 	docker-compose pull mongo redis gpubsub
 	docker-compose up -d mongo redis gpubsub
 
-.PHONY: stop
-stop:
+.PHONY: stop_services
+stop_services:
 	docker-compose down
 
 .PHONY: clean

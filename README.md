@@ -97,8 +97,8 @@ make
 To manualy run the services and stop them:
 
 ```bash
-make services
-make stop
+make run_services
+make stop_services
 ```
 
 When the services are running testing can be done either locally or with Docker:

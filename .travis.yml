@@ -14,13 +14,13 @@ jobs:
   include:
     - stage: test
       if: type == pull_request
-      script: make services test
+      script: make run_services test
       env:
         - GO111MODULE=on
 
     - stage: test_and_cover
       name: "Test (with coverage)"
       if: type != pull_request
-      script: make services cover publish_cover
+      script: make run_services cover publish_cover
       env:
         - GO111MODULE=on
