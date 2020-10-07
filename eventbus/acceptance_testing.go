@@ -64,7 +64,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
 		mocks.AggregateType, id, 1)
-	if err := bus1.PublishEvent(ctx, event1); err != nil {
+	if err := bus1.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
 	}
 
@@ -86,7 +86,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	bus1.AddHandler(eh.MatchAny(), eh.UseEventHandlerMiddleware(observerBus1, observer.Middleware))
 	bus2.AddHandler(eh.MatchAny(), eh.UseEventHandlerMiddleware(observerBus2, observer.Middleware))
 
-	if err := bus1.PublishEvent(ctx, event1); err != nil {
+	if err := bus1.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
 	}
 
@@ -164,7 +164,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	errorHandler := mocks.NewEventHandler("error_handler")
 	errorHandler.Err = errors.New("handler error")
 	bus1.AddHandler(eh.MatchAny(), errorHandler)
-	if err := bus1.PublishEvent(ctx, event1); err != nil {
+	if err := bus1.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
 	}
 	select {

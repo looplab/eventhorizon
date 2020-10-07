@@ -74,8 +74,13 @@ func NewEventBus(projectID, appID string, opts ...option.ClientOption) (*EventBu
 	}, nil
 }
 
-// PublishEvent implements the PublishEvent method of the eventhorizon.EventBus interface.
-func (b *EventBus) PublishEvent(ctx context.Context, event eh.Event) error {
+// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
+func (b *EventBus) HandlerType() eh.EventHandlerType {
+	return "event-bus"
+}
+
+// HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
+func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	e := evt{
 		AggregateID:   event.AggregateID().String(),
 		AggregateType: event.AggregateType(),

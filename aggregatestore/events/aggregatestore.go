@@ -76,26 +76,28 @@ type Aggregate interface {
 }
 
 // AggregateStore is an aggregate store using event sourcing. It
-// uses an event store for loading and saving events used to build the aggregate.
+// uses an event store for loading and saving events used to build the aggregate
+// and an event handler to handle resulting events.
 type AggregateStore struct {
-	store eh.EventStore
-	bus   eh.EventBus
+	store        eh.EventStore
+	eventHandler eh.EventHandler
 }
 
-// NewAggregateStore creates a repository that will use an event store
-// and bus.
-func NewAggregateStore(store eh.EventStore, bus eh.EventBus) (*AggregateStore, error) {
+// NewAggregateStore creates a aggregate store with an event store and an event
+// handler that will handle resulting events (for example by publishing them
+// on an event bus).
+func NewAggregateStore(store eh.EventStore, eventHandler eh.EventHandler) (*AggregateStore, error) {
 	if store == nil {
 		return nil, ErrInvalidEventStore
 	}
 
-	if bus == nil {
+	if eventHandler == nil {
 		return nil, ErrInvalidEventBus
 	}
 
 	d := &AggregateStore{
-		store: store,
-		bus:   bus,
+		store:        store,
+		eventHandler: eventHandler,
 	}
 	return d, nil
 }
@@ -151,7 +153,7 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 	}
 
 	for _, e := range events {
-		if err := r.bus.PublishEvent(ctx, e); err != nil {
+		if err := r.eventHandler.HandleEvent(ctx, e); err != nil {
 			return err
 		}
 	}

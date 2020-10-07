@@ -31,19 +31,21 @@ var ErrInvalidAggregate = errors.New("invalid aggregate")
 // AggregateStore is an aggregate store that uses a read write repo for
 // loading and saving aggregates.
 type AggregateStore struct {
-	repo eh.ReadWriteRepo
-	bus  eh.EventBus
+	repo         eh.ReadWriteRepo
+	eventHandler eh.EventHandler
 }
 
-// NewAggregateStore creates an aggregate store with a read write repo.
-func NewAggregateStore(repo eh.ReadWriteRepo, bus eh.EventBus) (*AggregateStore, error) {
+// NewAggregateStore creates an aggregate store with a read write repo and an
+// event handler that can handle any resulting events (for example by publishing
+// them on an event bus).
+func NewAggregateStore(repo eh.ReadWriteRepo, eventHandler eh.EventHandler) (*AggregateStore, error) {
 	if repo == nil {
 		return nil, ErrInvalidRepo
 	}
 
 	d := &AggregateStore{
-		repo: repo,
-		bus:  bus,
+		repo:         repo,
+		eventHandler: eventHandler,
 	}
 	return d, nil
 }
@@ -75,11 +77,11 @@ func (r *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error
 	}
 
 	// Publish events if supported by the aggregate.
-	if publisher, ok := aggregate.(EventPublisher); ok && r.bus != nil {
+	if publisher, ok := aggregate.(EventPublisher); ok && r.eventHandler != nil {
 		events := publisher.EventsToPublish()
 		publisher.ClearEvents()
 		for _, e := range events {
-			if err := r.bus.PublishEvent(ctx, e); err != nil {
+			if err := r.eventHandler.HandleEvent(ctx, e); err != nil {
 				return err
 			}
 		}
