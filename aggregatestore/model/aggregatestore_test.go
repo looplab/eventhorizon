@@ -145,8 +145,8 @@ func TestAggregateStore_SaveWithPublish(t *testing.T) {
 	event := eh.NewEvent("test", nil, time.Now())
 
 	// Normal publish should publish events on the bus.
-	agg.PublishEvent(event)
-	if len(agg.SliceEventPublisher) != 1 {
+	agg.AppendEvent(event)
+	if len(agg.SliceEventSource) != 1 {
 		t.Error("there should be one event to publish")
 	}
 	err := store.Save(ctx, agg)
@@ -159,18 +159,18 @@ func TestAggregateStore_SaveWithPublish(t *testing.T) {
 	if !reflect.DeepEqual(bus.Events, []eh.Event{event}) {
 		t.Error("there should be an event on the bus:", bus.Events)
 	}
-	if len(agg.SliceEventPublisher) != 0 {
+	if len(agg.SliceEventSource) != 0 {
 		t.Error("there should be no events to publish")
 	}
 
 	// Simulate a bus error.
 	bus.Err = errors.New("bus error")
-	agg.PublishEvent(event)
+	agg.AppendEvent(event)
 	err = store.Save(ctx, agg)
 	if err == nil || err.Error() != "bus error" {
 		t.Error("there should be an error named 'error':", err)
 	}
-	if len(agg.SliceEventPublisher) != 0 {
+	if len(agg.SliceEventSource) != 0 {
 		t.Error("there should be no events to publish")
 	}
 }
@@ -199,7 +199,7 @@ const (
 
 // Aggregate is a mocked eventhorizon.Aggregate, useful in testing.
 type Aggregate struct {
-	SliceEventPublisher
+	SliceEventSource
 
 	ID       uuid.UUID
 	Commands []eh.Command

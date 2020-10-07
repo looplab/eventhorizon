@@ -65,7 +65,7 @@ func NewInvitationAggregate(id uuid.UUID) *InvitationAggregate {
 func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 	switch cmd := cmd.(type) {
 	case *CreateInvite:
-		a.StoreEvent(InviteCreatedEvent,
+		a.AppendEvent(InviteCreatedEvent,
 			&InviteCreatedData{
 				cmd.Name,
 				cmd.Age,
@@ -87,7 +87,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 			return nil
 		}
 
-		a.StoreEvent(InviteAcceptedEvent, nil, time.Now())
+		a.AppendEvent(InviteAcceptedEvent, nil, time.Now())
 		return nil
 
 	case *DeclineInvite:
@@ -103,7 +103,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 			return nil
 		}
 
-		a.StoreEvent(InviteDeclinedEvent, nil, time.Now())
+		a.AppendEvent(InviteDeclinedEvent, nil, time.Now())
 		return nil
 
 	case *ConfirmInvite:
@@ -115,7 +115,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 			return fmt.Errorf("only accepted invites can be confirmed")
 		}
 
-		a.StoreEvent(InviteConfirmedEvent, nil, time.Now())
+		a.AppendEvent(InviteConfirmedEvent, nil, time.Now())
 		return nil
 
 	case *DenyInvite:
@@ -127,7 +127,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 			return fmt.Errorf("only accepted invites can be denied")
 		}
 
-		a.StoreEvent(InviteDeniedEvent, nil, time.Now())
+		a.AppendEvent(InviteDeniedEvent, nil, time.Now())
 		return nil
 	}
 	return fmt.Errorf("couldn't handle command")

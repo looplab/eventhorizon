@@ -22,6 +22,14 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
+// AggregateStore is an aggregate store using event sourcing. It
+// uses an event store for loading and saving events used to build the aggregate
+// and an event handler to handle resulting events.
+type AggregateStore struct {
+	store        eh.EventStore
+	eventHandler eh.EventHandler
+}
+
 // ErrInvalidEventStore is when a dispatcher is created with a nil event store.
 var ErrInvalidEventStore = errors.New("invalid event store")
 
@@ -46,41 +54,6 @@ type ApplyEventError struct {
 // Error implements the Error method of the error interface.
 func (a ApplyEventError) Error() string {
 	return "failed to apply event " + a.Event.String() + ": " + a.Err.Error()
-}
-
-// Aggregate is an interface representing a versioned data entity created from
-// events. It receives commands and generates events that are stored.
-//
-// The aggregate is created/loaded and saved by the Repository inside the
-// Dispatcher. A domain specific aggregate can either implement the full interface,
-// or more commonly embed *AggregateBase to take care of the common methods.
-type Aggregate interface {
-	// Provides all the basic aggregate data.
-	eh.Aggregate
-
-	// Version returns the version of the aggregate.
-	Version() int
-	// Increment version increments the version of the aggregate. It should be
-	// called after an event has been successfully applied.
-	IncrementVersion()
-
-	// Events returns all uncommitted events that are not yet saved.
-	Events() []eh.Event
-	// ClearEvents clears all uncommitted events after saving.
-	ClearEvents()
-
-	// ApplyEvent applies an event on the aggregate by setting its values.
-	// If there are no errors the version should be incremented by calling
-	// IncrementVersion.
-	ApplyEvent(context.Context, eh.Event) error
-}
-
-// AggregateStore is an aggregate store using event sourcing. It
-// uses an event store for loading and saving events used to build the aggregate
-// and an event handler to handle resulting events.
-type AggregateStore struct {
-	store        eh.EventStore
-	eventHandler eh.EventHandler
 }
 
 // NewAggregateStore creates a aggregate store with an event store and an event
@@ -136,15 +109,14 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 		return ErrInvalidAggregateType
 	}
 
+	// Retrieve any new events to store.
 	events := a.Events()
-	if len(events) < 1 {
+	if len(events) == 0 {
 		return nil
 	}
-
 	if err := r.store.Save(ctx, events, a.Version()); err != nil {
 		return err
 	}
-	a.ClearEvents()
 
 	// Apply the events in case the aggregate needs to be further used
 	// after this save. Currently it is not reused.

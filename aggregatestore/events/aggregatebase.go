@@ -71,12 +71,12 @@ func NewAggregateBase(t eh.AggregateType, id uuid.UUID) *AggregateBase {
 	}
 }
 
-// EntityID implements the EntityID method of the Entity and Aggregate interface.
+// EntityID implements the EntityID method of the eh.Entity and eh.Aggregate interface.
 func (a *AggregateBase) EntityID() uuid.UUID {
 	return a.id
 }
 
-// AggregateType implements the AggregateType method of the Aggregate interface.
+// AggregateType implements the AggregateType method of the eh.Aggregate interface.
 func (a *AggregateBase) AggregateType() eh.AggregateType {
 	return a.t
 }
@@ -86,24 +86,20 @@ func (a *AggregateBase) Version() int {
 	return a.v
 }
 
-// IncrementVersion increments the v of the aggregate and should be called
-// after an event has been applied successfully in ApplyEvent.
+// IncrementVersion implements the IncrementVersion method of the Aggregate interface.
 func (a *AggregateBase) IncrementVersion() {
 	a.v++
 }
 
-// Events implements the Events method of the Aggregate interface.
+// Events implements the Events method of the eh.EventSource interface.
 func (a *AggregateBase) Events() []eh.Event {
-	return a.events
-}
-
-// ClearEvents implements the ClearEvents method of the Aggregate interface.
-func (a *AggregateBase) ClearEvents() {
+	events := a.events
 	a.events = nil
+	return events
 }
 
-// StoreEvent stores an event for later retrieval by Events().
-func (a *AggregateBase) StoreEvent(t eh.EventType, data eh.EventData, timestamp time.Time) eh.Event {
+// AppendEvent appends an event for later retrieval by Events().
+func (a *AggregateBase) AppendEvent(t eh.EventType, data eh.EventData, timestamp time.Time) eh.Event {
 	e := eh.NewEventForAggregate(t, data, timestamp,
 		a.AggregateType(), a.EntityID(),
 		a.Version()+len(a.events)+1)

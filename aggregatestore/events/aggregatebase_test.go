@@ -57,7 +57,7 @@ func TestAggregateEvents(t *testing.T) {
 	id := uuid.New()
 	agg := NewTestAggregate(id)
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event1 := agg.StoreEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
+	event1 := agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
 	if event1.EventType() != TestAggregateEventType {
 		t.Error("the event type should be correct:", event1.EventType())
 	}
@@ -79,41 +79,44 @@ func TestAggregateEvents(t *testing.T) {
 	if event1.String() != "TestAggregateEvent@1" {
 		t.Error("the string representation should be correct:", event1.String())
 	}
-	events := agg.Events()
+	events := agg.events
 	if len(events) != 1 {
-		t.Fatal("there should be one event stored:", len(events))
+		t.Fatal("there should be one event provided:", len(events))
 	}
 	if events[0] != event1 {
-		t.Error("the stored event should be correct:", events[0])
+		t.Error("the provided event should be correct:", events[0])
 	}
 
-	event2 := agg.StoreEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
+	event2 := agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
 	if event2.Version() != 2 {
 		t.Error("the version should be 2:", event2.Version())
 	}
-
-	agg.ClearEvents()
 	events = agg.Events()
-	if len(events) != 0 {
-		t.Error("there should be no events stored:", len(events))
+	if len(events) != 2 {
+		t.Error("there should be two events provided:", len(events))
 	}
-	event3 := agg.StoreEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
+
+	event3 := agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
 	if event3.Version() != 1 {
 		t.Error("the version should be 1 after clearing uncommitted events (without applying any):", event3.Version())
 	}
+	events = agg.Events()
+	if len(events) != 1 {
+		t.Error("there should be one new event provided:", len(events))
+	}
 
 	agg = NewTestAggregate(uuid.New())
-	event1 = agg.StoreEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
-	event2 = agg.StoreEvent(TestAggregateEventType, &TestEventData{"event2"}, timestamp)
-	events = agg.Events()
+	event1 = agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
+	event2 = agg.AppendEvent(TestAggregateEventType, &TestEventData{"event2"}, timestamp)
+	events = agg.events
 	if len(events) != 2 {
-		t.Fatal("there should be 2 events stored:", len(events))
+		t.Fatal("there should be 2 events provided:", len(events))
 	}
 	if events[0] != event1 {
-		t.Error("the first stored event should be correct:", events[0])
+		t.Error("the first provided event should be correct:", events[0])
 	}
 	if events[1] != event2 {
-		t.Error("the second stored event should be correct:", events[0])
+		t.Error("the second provided event should be correct:", events[0])
 	}
 }
 

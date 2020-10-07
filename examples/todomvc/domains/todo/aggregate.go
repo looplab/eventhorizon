@@ -66,11 +66,11 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 
 	switch cmd := cmd.(type) {
 	case *Create:
-		a.StoreEvent(Created, nil, TimeNow())
+		a.AppendEvent(Created, nil, TimeNow())
 	case *Delete:
-		a.StoreEvent(Deleted, nil, TimeNow())
+		a.AppendEvent(Deleted, nil, TimeNow())
 	case *AddItem:
-		a.StoreEvent(ItemAdded, &ItemAddedData{
+		a.AppendEvent(ItemAdded, &ItemAddedData{
 			ItemID:      a.nextItemID,
 			Description: cmd.Description,
 		}, TimeNow())
@@ -85,13 +85,13 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 		if !found {
 			return fmt.Errorf("item does not exist: %d", cmd.ItemID)
 		}
-		a.StoreEvent(ItemRemoved, &ItemRemovedData{
+		a.AppendEvent(ItemRemoved, &ItemRemovedData{
 			ItemID: cmd.ItemID,
 		}, TimeNow())
 	case *RemoveCompletedItems:
 		for _, item := range a.items {
 			if item.Completed {
-				a.StoreEvent(ItemRemoved, &ItemRemovedData{
+				a.AppendEvent(ItemRemoved, &ItemRemovedData{
 					ItemID: item.ID,
 				}, TimeNow())
 			}
@@ -111,7 +111,7 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 		if !found {
 			return fmt.Errorf("item does not exist: %d", cmd.ItemID)
 		}
-		a.StoreEvent(ItemDescriptionSet, &ItemDescriptionSetData{
+		a.AppendEvent(ItemDescriptionSet, &ItemDescriptionSetData{
 			ItemID:      cmd.ItemID,
 			Description: cmd.Description,
 		}, TimeNow())
@@ -130,7 +130,7 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 		if !found {
 			return fmt.Errorf("item does not exist: %d", cmd.ItemID)
 		}
-		a.StoreEvent(ItemChecked, &ItemCheckedData{
+		a.AppendEvent(ItemChecked, &ItemCheckedData{
 			ItemID:  cmd.ItemID,
 			Checked: cmd.Checked,
 		}, TimeNow())
@@ -138,7 +138,7 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 		for _, item := range a.items {
 			if item.Completed != cmd.Checked {
 				// Only emit events when there is a change.
-				a.StoreEvent(ItemChecked, &ItemCheckedData{
+				a.AppendEvent(ItemChecked, &ItemCheckedData{
 					ItemID:  item.ID,
 					Checked: cmd.Checked,
 				}, TimeNow())

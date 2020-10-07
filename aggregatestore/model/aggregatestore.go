@@ -22,18 +22,18 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// ErrInvalidRepo is when a dispatcher is created with a nil repo.
-var ErrInvalidRepo = errors.New("invalid repo")
-
-// ErrInvalidAggregate occurs when a loaded aggregate is not an aggregate.
-var ErrInvalidAggregate = errors.New("invalid aggregate")
-
 // AggregateStore is an aggregate store that uses a read write repo for
 // loading and saving aggregates.
 type AggregateStore struct {
 	repo         eh.ReadWriteRepo
 	eventHandler eh.EventHandler
 }
+
+// ErrInvalidRepo is when a dispatcher is created with a nil repo.
+var ErrInvalidRepo = errors.New("invalid repo")
+
+// ErrInvalidAggregate occurs when a loaded aggregate is not an aggregate.
+var ErrInvalidAggregate = errors.New("invalid aggregate")
 
 // NewAggregateStore creates an aggregate store with a read write repo and an
 // event handler that can handle any resulting events (for example by publishing
@@ -76,11 +76,9 @@ func (r *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error
 		return err
 	}
 
-	// Publish events if supported by the aggregate.
-	if publisher, ok := aggregate.(EventPublisher); ok && r.eventHandler != nil {
-		events := publisher.EventsToPublish()
-		publisher.ClearEvents()
-		for _, e := range events {
+	// Handle any events optionally provided by the aggregate.
+	if a, ok := aggregate.(eh.EventSource); ok && r.eventHandler != nil {
+		for _, e := range a.Events() {
 			if err := r.eventHandler.HandleEvent(ctx, e); err != nil {
 				return err
 			}

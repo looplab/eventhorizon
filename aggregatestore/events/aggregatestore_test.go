@@ -89,7 +89,7 @@ func TestAggregateStore_LoadEvents(t *testing.T) {
 	id := uuid.New()
 	agg := NewTestAggregate(id)
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event1 := agg.StoreEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp)
+	event1 := agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp)
 	if err := eventStore.Save(ctx, []eh.Event{event1}, 0); err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -130,14 +130,14 @@ func TestAggregateStore_LoadEvents_MismatchedEventType(t *testing.T) {
 	id := uuid.New()
 	agg := NewTestAggregate(id)
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event1 := agg.StoreEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
+	event1 := agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
 	if err := eventStore.Save(ctx, []eh.Event{event1}, 0); err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 
 	otherAggregateID := uuid.New()
 	otherAgg := NewTestAggregateOther(otherAggregateID)
-	event2 := otherAgg.StoreEvent(mocks.EventOtherType, &mocks.EventData{Content: "event2"}, timestamp)
+	event2 := otherAgg.AppendEvent(mocks.EventOtherType, &mocks.EventData{Content: "event2"}, timestamp)
 	if err := eventStore.Save(ctx, []eh.Event{event2}, 0); err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -164,7 +164,7 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 	}
 
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event1 := agg.StoreEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
+	event1 := agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
 	err = store.Save(ctx, agg)
 	if err != nil {
 		t.Error("there should be no error:", err)
@@ -192,7 +192,7 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 	}
 
 	// Store error.
-	event1 = agg.StoreEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
+	event1 = agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
 	eventStore.Err = errors.New("aggregate error")
 	err = store.Save(ctx, agg)
 	if err == nil || err.Error() != "aggregate error" {
@@ -201,7 +201,7 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 	eventStore.Err = nil
 
 	// Aggregate error.
-	event1 = agg.StoreEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
+	event1 = agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
 	agg.err = errors.New("error")
 	err = store.Save(ctx, agg)
 	if _, ok := err.(ApplyEventError); !ok {
@@ -210,7 +210,7 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 	agg.err = nil
 
 	// Bus error.
-	event1 = agg.StoreEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
+	event1 = agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
 	bus.Err = errors.New("bus error")
 	err = store.Save(ctx, agg)
 	if err == nil || err.Error() != "bus error" {
