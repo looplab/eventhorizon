@@ -5,11 +5,9 @@ services:
     image: golang:1.14
     depends_on:
       - mongo
-      - redis
       - gpubsub
     environment:
       MONGO_HOST: "mongo:27017"
-      REDIS_HOST: "redis:6379"
       PUBSUB_EMULATOR_HOST: "gpubsub:8793"
     volumes:
       - .:/eventhorizon
@@ -19,11 +17,6 @@ services:
     image: mongo:4.2
     ports:
       - "27017:27017"
-
-  redis:
-    image: redis:5.0
-    ports:
-      - "6379:6379"
 
   gpubsub:
     image: google/cloud-sdk:latest

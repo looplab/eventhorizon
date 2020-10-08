@@ -22,8 +22,8 @@ publish_cover: cover
 
 .PHONY: run_services
 run_services:
-	docker-compose pull mongo redis gpubsub
-	docker-compose up -d mongo redis gpubsub
+	docker-compose pull mongo gpubsub
+	docker-compose up -d mongo gpubsub
 
 .PHONY: stop_services
 stop_services:
