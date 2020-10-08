@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package handler
 
 import (
 	"context"
 	"fmt"
 	"log"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 
 	eh "github.com/looplab/eventhorizon"
@@ -34,7 +32,7 @@ import (
 	repo "github.com/looplab/eventhorizon/repo/mongodb"
 	"github.com/looplab/eventhorizon/repo/version"
 
-	"github.com/looplab/eventhorizon/examples/todomvc/domains/todo"
+	"github.com/looplab/eventhorizon/examples/todomvc/backend/domains/todo"
 )
 
 // Handler is a http.Handler for the TodoMVC app.
@@ -142,18 +140,15 @@ func NewHandler() (*Handler, error) {
 	h.Handle("/api/todos/check_item", httputils.CommandHandler(commandHandler, todo.CheckItemCommand))
 	h.Handle("/api/todos/check_all_items", httputils.CommandHandler(commandHandler, todo.CheckAllItemsCommand))
 
-	// Proxy to elm-reactor, which must be running. For development.
-	elmReactorURL, err := url.Parse("http://localhost:8000")
-	if err != nil {
-		return nil, fmt.Errorf("could not parse proxy URL: %s", err)
-	}
-	h.Handle("/_compile/", httputil.NewSingleHostReverseProxy(elmReactorURL))
-
 	// Handle all static files, only allow what is needed.
 	h.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/", "/index.html", "/styles.css", "/elm.js":
-			http.ServeFile(w, r, "ui"+r.URL.Path)
+		case "/",
+			"/index.html",
+			"/elm.js",
+			"/css/base.css",
+			"/css/styles.css":
+			http.ServeFile(w, r, "frontend"+r.URL.Path)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

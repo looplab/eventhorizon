@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package handler
 
 import (
 	"context"
@@ -29,7 +29,7 @@ import (
 	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
 	"github.com/looplab/eventhorizon/repo/mongodb"
 
-	"github.com/looplab/eventhorizon/examples/todomvc/domains/todo"
+	"github.com/looplab/eventhorizon/examples/todomvc/backend/domains/todo"
 )
 
 func TestStaticFiles(t *testing.T) {

@@ -20,14 +20,19 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/looplab/eventhorizon/examples/todomvc/domains/todo"
 	"github.com/looplab/eventhorizon/repo/mongodb"
+
+	"github.com/looplab/eventhorizon/examples/todomvc/backend/domains/todo"
+	"github.com/looplab/eventhorizon/examples/todomvc/backend/handler"
 )
 
 func main() {
 	log.Println("starting TodoMVC backend")
 
-	h, err := NewHandler()
+	h, err := handler.NewHandler()
+	if err != nil {
+		log.Fatal("could not create handler:", err)
+	}
 
 	// NOTE: Temp clear of DB on startup.
 	repo, ok := h.Repo.Parent().(*mongodb.Repo)
@@ -38,6 +43,9 @@ func main() {
 		log.Println("could not clear DB:", err)
 	}
 
+	log.Println("\n\nTo start, visit http://localhost:8080 in your browser.\n")
+
+	log.Println("Adding a todo list with a few example items")
 	id := uuid.New()
 	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
@@ -46,13 +54,16 @@ func main() {
 	}
 	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
-		Description: "desc",
+		Description: "Learn Go",
+	}); err != nil {
+		log.Fatal("there should be no error:", err)
+	}
+	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
+		ID:          id,
+		Description: "Learn Elm",
 	}); err != nil {
 		log.Fatal("there should be no error:", err)
 	}
 
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println(http.ListenAndServe(":8080", h))
+	log.Fatal(http.ListenAndServe(":8080", h))
 }

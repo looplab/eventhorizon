@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Elm • TodoMVC</title>
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+
+  <body></body>
+
+  <script type="text/javascript" src="elm.js"></script>
+
+  <script type="text/javascript">
+    var app = Elm.Main.init({ flags: null });
+
+    // Add an Elm port that connects to the Websocket event bus.
+    var socket = new WebSocket("ws://localhost:8080/api/events/");
+    socket.addEventListener("message", function (event) {
+      app.ports.eventReceiver.send(event.data);
+    });
+  </script>
+</html>

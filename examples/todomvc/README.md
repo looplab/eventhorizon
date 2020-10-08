@@ -4,29 +4,22 @@ This is a full example of using Event Horizon, including a frontend in Elm. The 
 
 ## Usage
 
-Run the Elm frontend in the reactor:
-```bash
-cd ui && elm-reactor
-```
+Run the backend together with MongoDB, this will also compile the frontend:
 
-Or compile the Elm frontend:
 ```bash
-cd ui && elm-make Main.elm --output elm.js
-```
-
-Run MongoDB in Docker:
-```bash
-docker run -d --name mongo -p 27017:27017 mongo:latest
-```
-
-Run the Event Horizon backend, which also serves the frontend:
-```bash
-go run main.go handler.go
+make run
 ```
 
 Visit http://localhost:8080
 
-To run the tests:
+To run the tests (requires that MongoDB is runnng):
+
 ```bash
 go test ./...
+```
+
+To stop MongoDB:
+
+```bash
+make stop
 ```

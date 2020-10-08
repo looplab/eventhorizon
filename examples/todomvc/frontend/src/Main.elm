@@ -1,4 +1,4 @@
-port module App exposing (..)
+port module Main exposing (..)
 
 {-| TodoMVC implemented in Elm, using plain HTML and CSS for rendering.
 
@@ -13,49 +13,46 @@ this in <http://guide.elm-lang.org/architecture/index.html>
 
 -}
 
-import Dom
+import Browser
+import Browser.Dom as Dom
+import Debug
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
 import Html.Lazy exposing (lazy, lazy2)
 import Http
-import Json.Encode as Encode
 import Json.Decode as Decode
 import Json.Decode.Pipeline as Pipeline
+import Json.Encode as Encode
 import Task
-import WebSocket
+import VirtualDom
+
+
+
+-- MAIN
 
 
 main : Program (Maybe Model) Model Msg
 main =
-    Html.programWithFlags
+    Browser.document
         { init = init
-        , view = view
-        , update = updateWithStorage
+        , view = \model -> { title = "Event Horizon • TodoMVC", body = [ view model ] }
+        , update = update
         , subscriptions = subscriptions
         }
 
 
-port setStorage : Model -> Cmd msg
+
+-- PORTS
 
 
-{-| Middleware for update to save the state in local storage on every update
-using the setStorage port.
--}
-updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
-updateWithStorage msg model =
-    let
-        ( newModel, cmds ) =
-            update msg model
-    in
-        ( newModel
-        , Cmd.batch [ setStorage newModel, cmds ]
-        )
+port eventReceiver : (String -> msg) -> Sub msg
 
 
 
 -- MODEL
+-- The full application state of our todo app.
 
 
 type alias Model =
@@ -80,9 +77,10 @@ emptyModel =
 
 
 init : Maybe Model -> ( Model, Cmd Msg )
-init savedModel =
-    Maybe.withDefault emptyModel savedModel
-        ! [ getTodoLists ]
+init maybeModel =
+    ( emptyModel
+    , getTodoLists
+    )
 
 
 
@@ -115,11 +113,12 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NoOp ->
-            model ! []
+            ( model, Cmd.none )
 
         Event event ->
-            model
-                ! [ getTodoLists ]
+            ( model
+            , getTodoLists
+            )
 
         GetTodoListsResp (Ok lists) ->
             let
@@ -133,96 +132,113 @@ update msg model =
                             -- NOTE: Always use the first todo list for now.
                             x
             in
-                { model | list = list }
-                    ! []
+            ( { model | list = list }
+            , Cmd.none
+            )
 
         GetTodoListsResp (Err _) ->
-            model ! []
+            ( model, Cmd.none )
 
         StoreInput str ->
-            { model | input = str }
-                ! []
+            ( { model | input = str }
+            , Cmd.none
+            )
 
         ChangeVisibility visibility ->
-            { model | visibility = visibility }
-                ! []
+            ( { model | visibility = visibility }
+            , Cmd.none
+            )
 
         AddItem ->
-            { model | error = Nothing }
-                ! [ postAddItem model.list.id model.input ]
+            ( { model | error = Nothing }
+            , postAddItem model.list.id model.input
+            )
 
         AddItemResp (Ok _) ->
-            { model | input = "" }
-                ! []
+            ( { model | input = "" }
+            , Cmd.none
+            )
 
         AddItemResp (Err error) ->
-            { model | error = Just (toString error) }
-                ! []
+            ( { model | error = Just (errorToString error) }
+            , Cmd.none
+            )
 
         RemoveItem itemID ->
-            { model | error = Nothing }
-                ! [ postRemoveItem model.list.id itemID ]
+            ( { model | error = Nothing }
+            , postRemoveItem model.list.id itemID
+            )
 
         RemoveItemResp (Ok ()) ->
-            model ! []
+            ( model, Cmd.none )
 
         RemoveItemResp (Err error) ->
-            { model | error = Just (toString error) }
-                ! []
+            ( { model | error = Just (errorToString error) }
+            , Cmd.none
+            )
 
         RemoveCompleted ->
-            { model | error = Nothing }
-                ! [ postRemoveCompleted model.list.id ]
+            ( { model | error = Nothing }
+            , postRemoveCompleted model.list.id
+            )
 
         RemoveCompletedResp (Ok ()) ->
-            model ! []
+            ( model, Cmd.none )
 
         RemoveCompletedResp (Err error) ->
-            { model | error = Just (toString error) }
-                ! []
+            ( { model | error = Just (errorToString error) }
+            , Cmd.none
+            )
 
         SetEditing id isEditing ->
             -- TODO: When isEditing goes false, send a post to set desc.
             -- This is to avoid sending commands on every keystroke.
             let
-                focusTask =
-                    Dom.focus ("todo-" ++ toString id)
+                focus =
+                    Dom.focus ("todo-" ++ String.fromInt id)
             in
-                { model | list = setEditing model.list id isEditing }
-                    ! [ Task.attempt (\_ -> NoOp) focusTask ]
+            ( { model | list = setEditing model.list id isEditing }
+            , Task.attempt (\_ -> NoOp) focus
+            )
 
         SetItemDescription itemID desc ->
-            { model | error = Nothing }
-                ! [ postSetItemDescription model.list.id itemID desc ]
+            ( { model | error = Nothing }
+            , postSetItemDescription model.list.id itemID desc
+            )
 
         SetItemDescriptionResp (Ok ()) ->
-            model ! []
+            ( model, Cmd.none )
 
         SetItemDescriptionResp (Err error) ->
-            { model | error = Just (toString error) }
-                ! []
+            ( { model | error = Just (errorToString error) }
+            , Cmd.none
+            )
 
         CheckItem itemID isChecked ->
-            { model | error = Nothing }
-                ! [ postCheckItem model.list.id itemID isChecked ]
+            ( { model | error = Nothing }
+            , postCheckItem model.list.id itemID isChecked
+            )
 
         CheckItemResp (Ok ()) ->
-            model ! []
+            ( model, Cmd.none )
 
         CheckItemResp (Err error) ->
-            { model | error = Just (toString error) }
-                ! []
+            ( { model | error = Just (errorToString error) }
+            , Cmd.none
+            )
 
         CheckAllItems isChecked ->
-            { model | error = Nothing }
-                ! [ postCheckAllItems model.list.id isChecked ]
+            ( { model | error = Nothing }
+            , postCheckAllItems model.list.id isChecked
+            )
 
         CheckAllItemsResp (Ok ()) ->
-            model ! []
+            ( model, Cmd.none )
 
         CheckAllItemsResp (Err error) ->
-            { model | error = Just (toString error) }
-                ! []
+            ( { model | error = Just (errorToString error) }
+            , Cmd.none
+            )
 
 
 
@@ -231,8 +247,12 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    -- Listen to faked backend events.
-    WebSocket.listen "ws://localhost:8080/api/events/" Event
+    let
+        a =
+            Debug.log (Debug.toString Event)
+    in
+    -- Listen to backend events.
+    eventReceiver Event
 
 
 
@@ -272,10 +292,11 @@ setEditing list id isEditing =
         updateItem item =
             if item.id == id then
                 { item | editing = isEditing }
+
             else
                 item
     in
-        { list | items = List.map updateItem list.items }
+    { list | items = List.map updateItem list.items }
 
 
 
@@ -284,17 +305,17 @@ setEditing list id isEditing =
 
 getTodoLists : Cmd Msg
 getTodoLists =
-    Http.send GetTodoListsResp
-        (Http.get
-            "http://localhost:8080/api/todos/"
-            (Decode.list decodeTodoList)
-        )
+    Http.get
+        { url = "http://localhost:8080/api/todos/"
+        , expect = Http.expectJson GetTodoListsResp (Decode.list decodeTodoList)
+        }
 
 
 postAddItem : String -> String -> Cmd Msg
 postAddItem id desc =
     if String.isEmpty desc then
         Cmd.none
+
     else
         postCmd "add_item"
             [ ( "id", Encode.string id )
@@ -345,26 +366,20 @@ postCheckAllItems id isChecked =
 
 postCmd : String -> List ( String, Encode.Value ) -> Cmd Msg
 postCmd cmd body =
-    Http.send AddItemResp
-        (Http.request
-            { method = "POST"
-            , headers = []
-            , url = "http://localhost:8080/api/todos/" ++ cmd
-            , body = Http.jsonBody (Encode.object body)
-            , expect = Http.expectStringResponse (\_ -> Ok ())
-            , timeout = Nothing
-            , withCredentials = False
-            }
-        )
+    Http.post
+        { url = "http://localhost:8080/api/todos/" ++ cmd
+        , body = Http.jsonBody (Encode.object body)
+        , expect = Http.expectWhatever AddItemResp
+        }
 
 
 
--- JSON Decoding
+-- JSON decoding
 
 
 decodeTodoList : Decode.Decoder TodoList
 decodeTodoList =
-    Pipeline.decode TodoList
+    Decode.succeed TodoList
         |> Pipeline.required "id" Decode.string
         |> Pipeline.required "version" Decode.int
         |> Pipeline.required "items" (Decode.list decodeTodoItem)
@@ -374,11 +389,40 @@ decodeTodoList =
 
 decodeTodoItem : Decode.Decoder TodoItem
 decodeTodoItem =
-    Pipeline.decode TodoItem
+    Decode.succeed TodoItem
         |> Pipeline.required "id" Decode.int
         |> Pipeline.required "desc" Decode.string
         |> Pipeline.required "completed" Decode.bool
         |> Pipeline.hardcoded False
+
+
+
+-- Error formatting
+
+
+errorToString : Http.Error -> String
+errorToString error =
+    case error of
+        Http.BadUrl url ->
+            "The URL " ++ url ++ " was invalid"
+
+        Http.Timeout ->
+            "Unable to reach the server, try again"
+
+        Http.NetworkError ->
+            "Unable to reach the server, check your network connection"
+
+        Http.BadStatus 500 ->
+            "The server had a problem, try again later"
+
+        Http.BadStatus 400 ->
+            "Verify your information and try again"
+
+        Http.BadStatus _ ->
+            "Unknown error"
+
+        Http.BadBody errorMessage ->
+            errorMessage
 
 
 
@@ -388,9 +432,7 @@ decodeTodoItem =
 view : Model -> Html Msg
 view model =
     div
-        [ class "todomvc-wrapper"
-        , style [ ( "visibility", "hidden" ) ]
-        ]
+        []
         [ section
             [ class "todoapp" ]
             [ lazy viewInput model.input
@@ -398,7 +440,7 @@ view model =
             , lazy2 viewControls model.visibility model.list.items
             ]
         , viewFooter
-        , text (toString model.error)
+        , text (Maybe.withDefault "" model.error)
         ]
 
 
@@ -426,10 +468,11 @@ onEnter msg =
         isEnter code =
             if code == 13 then
                 Decode.succeed msg
+
             else
                 Decode.fail "not ENTER"
     in
-        on "keydown" (Decode.andThen isEnter keyCode)
+    on "keydown" (Decode.andThen isEnter keyCode)
 
 
 
@@ -456,27 +499,28 @@ viewItems visibility items =
         cssVisibility =
             if List.isEmpty items then
                 "hidden"
+
             else
                 "visible"
     in
-        section
-            [ class "main"
-            , style [ ( "visibility", cssVisibility ) ]
+    section
+        [ class "main"
+        , style "visibility" cssVisibility
+        ]
+        [ input
+            [ class "toggle-all"
+            , type_ "checkbox"
+            , name "toggle"
+            , checked allCompleted
+            , onClick (CheckAllItems (not allCompleted))
             ]
-            [ input
-                [ class "toggle-all"
-                , type_ "checkbox"
-                , name "toggle"
-                , checked allCompleted
-                , onClick (CheckAllItems (not allCompleted))
-                ]
-                []
-            , label
-                [ for "toggle-all" ]
-                [ text "Mark all as complete" ]
-            , Keyed.ul [ class "todo-list" ] <|
-                List.map viewKeyedItem (List.filter isVisible items)
-            ]
+            []
+        , label
+            [ for "toggle-all" ]
+            [ text "Mark all as complete" ]
+        , Keyed.ul [ class "todo-list" ] <|
+            List.map viewKeyedItem (List.filter isVisible items)
+        ]
 
 
 
@@ -485,7 +529,7 @@ viewItems visibility items =
 
 viewKeyedItem : TodoItem -> ( String, Html Msg )
 viewKeyedItem todo =
-    ( toString todo.id, lazy viewItem todo )
+    ( String.fromInt todo.id, lazy viewItem todo )
 
 
 viewItem : TodoItem -> Html Msg
@@ -514,7 +558,7 @@ viewItem todo =
             [ class "edit"
             , value todo.description
             , name "title"
-            , id ("todo-" ++ toString todo.id)
+            , id ("todo-" ++ String.fromInt todo.id)
             , onInput (SetItemDescription todo.id)
             , onBlur (SetEditing todo.id False)
             , onEnter (SetEditing todo.id False)
@@ -536,14 +580,14 @@ viewControls visibility items =
         itemsLeft =
             List.length items - itemsCompleted
     in
-        footer
-            [ class "footer"
-            , hidden (List.isEmpty items)
-            ]
-            [ lazy viewControlsCount itemsLeft
-            , lazy viewControlsFilters visibility
-            , lazy viewControlsClear itemsCompleted
-            ]
+    footer
+        [ class "footer"
+        , hidden (List.isEmpty items)
+        ]
+        [ lazy viewControlsCount itemsLeft
+        , lazy viewControlsFilters visibility
+        , lazy viewControlsClear itemsCompleted
+        ]
 
 
 viewControlsCount : Int -> Html Msg
@@ -552,14 +596,15 @@ viewControlsCount itemsLeft =
         item_ =
             if itemsLeft == 1 then
                 " item"
+
             else
                 " items"
     in
-        span
-            [ class "todo-count" ]
-            [ strong [] [ text (toString itemsLeft) ]
-            , text (item_ ++ " left")
-            ]
+    span
+        [ class "todo-count" ]
+        [ strong [] [ text (String.fromInt itemsLeft) ]
+        , text (item_ ++ " left")
+        ]
 
 
 viewControlsFilters : String -> Html Msg
@@ -590,7 +635,7 @@ viewControlsClear itemsCompleted =
         , hidden (itemsCompleted == 0)
         , onClick RemoveCompleted
         ]
-        [ text ("Clear completed (" ++ toString itemsCompleted ++ ")")
+        [ text ("Clear completed (" ++ String.fromInt itemsCompleted ++ ")")
         ]
 
 
