@@ -4,7 +4,13 @@ This is a full example of using Event Horizon, including a frontend in Elm. The 
 
 ## Usage
 
-Run the backend together with MongoDB, this will also compile the frontend:
+First run all services from the project root:
+
+```bash
+make run_services
+```
+
+Run the backend which will also compile the frontend:
 
 ```bash
 make run
@@ -18,8 +24,8 @@ To run the tests (requires that MongoDB is runnng):
 go test ./...
 ```
 
-To stop MongoDB:
+To stop the services from the project root:
 
 ```bash
-make stop
+make stop_services
 ```

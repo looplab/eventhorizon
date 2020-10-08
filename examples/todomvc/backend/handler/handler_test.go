@@ -16,24 +16,35 @@ package handler
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+
 	eh "github.com/looplab/eventhorizon"
+	gcpEventBus "github.com/looplab/eventhorizon/eventbus/gcp"
+	localEventBus "github.com/looplab/eventhorizon/eventbus/local"
 	"github.com/looplab/eventhorizon/eventhandler/waiter"
+	memoryEventStore "github.com/looplab/eventhorizon/eventstore/memory"
+	mongoEventStore "github.com/looplab/eventhorizon/eventstore/mongodb"
 	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
+	"github.com/looplab/eventhorizon/repo/memory"
 	"github.com/looplab/eventhorizon/repo/mongodb"
+	"github.com/looplab/eventhorizon/repo/version"
 
 	"github.com/looplab/eventhorizon/examples/todomvc/backend/domains/todo"
 )
 
 func TestStaticFiles(t *testing.T) {
-	h, err := NewHandler()
+	commandHandler, eventBus, todoRepo := NewTestSession()
+
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +53,7 @@ func TestStaticFiles(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
-		t.Error(err)
+		t.Error("there should be a 200 status for /")
 	}
 }
 
@@ -51,16 +62,11 @@ func TestGetAll(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	h, err := NewHandler()
+	commandHandler, eventBus, todoRepo := NewTestSession()
+
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
-	}
-	repo, ok := h.Repo.Parent().(*mongodb.Repo)
-	if !ok {
-		t.Fatal("incorrect repo type")
-	}
-	if err := repo.Clear(context.Background()); err != nil {
-		t.Log("could not clear DB:", err)
 	}
 
 	r := httptest.NewRequest("GET", "/api/todos/", nil)
@@ -74,12 +80,12 @@ func TestGetAll(t *testing.T) {
 	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
@@ -87,7 +93,7 @@ func TestGetAll(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemAdded),
+	eventBus.AddHandler(eh.MatchEvent(todo.ItemAdded),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -109,16 +115,11 @@ func TestCreate(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	h, err := NewHandler()
+	commandHandler, eventBus, todoRepo := NewTestSession()
+
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
-	}
-	repo, ok := h.Repo.Parent().(*mongodb.Repo)
-	if !ok {
-		t.Fatal("incorrect repo type")
-	}
-	if err := repo.Clear(context.Background()); err != nil {
-		t.Log("could not clear DB:", err)
 	}
 
 	id := uuid.New()
@@ -134,14 +135,14 @@ func TestCreate(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(todo.Created),
+	eventBus.AddHandler(eh.MatchEvent(todo.Created),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	l.Wait(ctx)
 
-	m, err := h.Repo.Find(context.Background(), id)
+	m, err := todoRepo.Find(context.Background(), id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -167,20 +168,15 @@ func TestDelete(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	h, err := NewHandler()
+	commandHandler, eventBus, todoRepo := NewTestSession()
+
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
-	repo, ok := h.Repo.Parent().(*mongodb.Repo)
-	if !ok {
-		t.Fatal("incorrect repo type")
-	}
-	if err := repo.Clear(context.Background()); err != nil {
-		t.Log("could not clear DB:", err)
-	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
@@ -198,14 +194,14 @@ func TestDelete(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(todo.Deleted),
+	eventBus.AddHandler(eh.MatchEvent(todo.Deleted),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	l.Wait(ctx)
 
-	_, err = h.Repo.Find(context.Background(), id)
+	_, err = todoRepo.Find(context.Background(), id)
 	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {
 		t.Error("there should be a not found error:", err)
 	}
@@ -216,20 +212,15 @@ func TestAddItem(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	h, err := NewHandler()
+	commandHandler, eventBus, todoRepo := NewTestSession()
+
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
-	repo, ok := h.Repo.Parent().(*mongodb.Repo)
-	if !ok {
-		t.Fatal("incorrect repo type")
-	}
-	if err := repo.Clear(context.Background()); err != nil {
-		t.Log("could not clear DB:", err)
-	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
@@ -247,14 +238,14 @@ func TestAddItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemAdded),
+	eventBus.AddHandler(eh.MatchEvent(todo.ItemAdded),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	l.Wait(ctx)
 
-	m, err := h.Repo.Find(context.Background(), id)
+	m, err := todoRepo.Find(context.Background(), id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -285,25 +276,20 @@ func TestRemoveItem(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	h, err := NewHandler()
+	commandHandler, eventBus, todoRepo := NewTestSession()
+
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
-	repo, ok := h.Repo.Parent().(*mongodb.Repo)
-	if !ok {
-		t.Fatal("incorrect repo type")
-	}
-	if err := repo.Clear(context.Background()); err != nil {
-		t.Log("could not clear DB:", err)
-	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
@@ -322,14 +308,14 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
+	eventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	l.Wait(ctx)
 
-	m, err := h.Repo.Find(context.Background(), id)
+	m, err := todoRepo.Find(context.Background(), id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -355,37 +341,32 @@ func TestRemoveCompleted(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	h, err := NewHandler()
+	commandHandler, eventBus, todoRepo := NewTestSession()
+
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
-	repo, ok := h.Repo.Parent().(*mongodb.Repo)
-	if !ok {
-		t.Fatal("incorrect repo type")
-	}
-	if err := repo.Clear(context.Background()); err != nil {
-		t.Log("could not clear DB:", err)
-	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "completed",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.CheckItem{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.CheckItem{
 		ID:      id,
 		ItemID:  1,
 		Checked: true,
@@ -405,7 +386,7 @@ func TestRemoveCompleted(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
+	eventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5
@@ -414,7 +395,7 @@ func TestRemoveCompleted(t *testing.T) {
 	defer cancel()
 	l.Wait(ctx)
 
-	m, err := h.Repo.Find(context.Background(), id)
+	m, err := todoRepo.Find(context.Background(), id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -445,25 +426,20 @@ func TestSetItemDesc(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	h, err := NewHandler()
+	commandHandler, eventBus, todoRepo := NewTestSession()
+
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
-	repo, ok := h.Repo.Parent().(*mongodb.Repo)
-	if !ok {
-		t.Fatal("incorrect repo type")
-	}
-	if err := repo.Clear(context.Background()); err != nil {
-		t.Log("could not clear DB:", err)
-	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
@@ -482,14 +458,14 @@ func TestSetItemDesc(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemDescriptionSet),
+	eventBus.AddHandler(eh.MatchEvent(todo.ItemDescriptionSet),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	l.Wait(ctx)
 
-	m, err := h.Repo.Find(context.Background(), id)
+	m, err := todoRepo.Find(context.Background(), id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -520,31 +496,26 @@ func TestCheckItem(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	h, err := NewHandler()
+	commandHandler, eventBus, todoRepo := NewTestSession()
+
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
-	repo, ok := h.Repo.Parent().(*mongodb.Repo)
-	if !ok {
-		t.Fatal("incorrect repo type")
-	}
-	if err := repo.Clear(context.Background()); err != nil {
-		t.Log("could not clear DB:", err)
-	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "completed",
 	}); err != nil {
@@ -563,14 +534,14 @@ func TestCheckItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemChecked),
+	eventBus.AddHandler(eh.MatchEvent(todo.ItemChecked),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	l.Wait(ctx)
 
-	m, err := h.Repo.Find(context.Background(), id)
+	m, err := todoRepo.Find(context.Background(), id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -606,31 +577,26 @@ func TestCheckAllItems(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	h, err := NewHandler()
+	commandHandler, eventBus, todoRepo := NewTestSession()
+
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
-	repo, ok := h.Repo.Parent().(*mongodb.Repo)
-	if !ok {
-		t.Fatal("incorrect repo type")
-	}
-	if err := repo.Clear(context.Background()); err != nil {
-		t.Log("could not clear DB:", err)
-	}
 
 	id := uuid.New()
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := h.CommandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
 		ID:          id,
 		Description: "completed",
 	}); err != nil {
@@ -649,7 +615,7 @@ func TestCheckAllItems(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	h.EventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
+	eventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5
@@ -658,7 +624,7 @@ func TestCheckAllItems(t *testing.T) {
 	defer cancel()
 	l.Wait(ctx)
 
-	m, err := h.Repo.Find(context.Background(), id)
+	m, err := todoRepo.Find(context.Background(), id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -688,4 +654,64 @@ func TestCheckAllItems(t *testing.T) {
 		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
+}
+
+func NewTestSession() (
+	eh.CommandHandler,
+	eh.EventBus,
+	eh.ReadWriteRepo,
+) {
+	eventStore := memoryEventStore.NewEventStore()
+	eventBus := localEventBus.NewEventBus(nil)
+	todoRepo := memory.NewRepo()
+	commandHandler, _ := todo.SetupDomain(eventStore, eventBus, todoRepo)
+	return commandHandler, eventBus, todoRepo
+}
+
+func NewIntegrationTestSession() (
+	eh.CommandHandler,
+	eh.EventBus,
+	eh.ReadWriteRepo,
+) {
+	// Use MongoDB in Docker with fallback to localhost.
+	dbURL := os.Getenv("MONGO_HOST")
+	if dbURL == "" {
+		dbURL = "localhost:27017"
+	}
+	dbURL = "mongodb://" + dbURL
+	dbPrefix := "todomvc-example"
+
+	eventStore, err := mongoEventStore.NewEventStore(dbURL, dbPrefix)
+	if err != nil {
+		log.Fatalf("could not create event store: %s", err)
+	}
+
+	eventBus, err := gcpEventBus.NewEventBus("project-id", dbPrefix)
+	if err != nil {
+		log.Fatalf("could not create event bus: %s", err)
+	}
+	go func() {
+		for e := range eventBus.Errors() {
+			log.Printf("eventbus: %s", e.Error())
+		}
+	}()
+
+	repo, err := mongodb.NewRepo(dbURL, dbPrefix, "todos")
+	if err != nil {
+		log.Fatalf("could not create invitation repository: %s", err)
+	}
+	todoRepo := version.NewRepo(repo)
+
+	// NOTE: Temp clear of DB on startup.
+	mongoRepo, ok := todoRepo.Parent().(*mongodb.Repo)
+	if !ok {
+		log.Fatal("incorrect repo type")
+	}
+	if err := mongoRepo.Clear(context.Background()); err != nil {
+		log.Println("could not clear DB:", err)
+	}
+
+	commandHandler, _ := todo.SetupDomain(eventStore, eventBus, todoRepo)
+
+	return commandHandler, eventBus, todoRepo
 }

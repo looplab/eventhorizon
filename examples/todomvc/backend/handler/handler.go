@@ -15,122 +15,32 @@
 package handler
 
 import (
-	"context"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/aggregatestore/events"
-	"github.com/looplab/eventhorizon/commandhandler/aggregate"
-	eventbus "github.com/looplab/eventhorizon/eventbus/local"
-	"github.com/looplab/eventhorizon/eventhandler/projector"
-	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
 	"github.com/looplab/eventhorizon/httputils"
-	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
-	repo "github.com/looplab/eventhorizon/repo/mongodb"
-	"github.com/looplab/eventhorizon/repo/version"
 
 	"github.com/looplab/eventhorizon/examples/todomvc/backend/domains/todo"
 )
 
-// Handler is a http.Handler for the TodoMVC app.
-type Handler struct {
-	http.Handler
-
-	EventBus       eh.EventBus
-	CommandHandler eh.CommandHandler
-	Repo           eh.ReadWriteRepo
-}
-
-// Logger is a simple event handler for logging all events.
-type Logger struct{}
-
-// HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
-func (l *Logger) HandlerType() eh.EventHandlerType {
-	return "logger"
-}
-
-// HandleEvent implements the HandleEvent method of the EventHandler interface.
-func (l *Logger) HandleEvent(ctx context.Context, event eh.Event) error {
-	log.Printf("EVENT %s", event)
-	return nil
-}
-
-// NewHandler sets up the full Event Horizon domain for the TodoMVC app and
-// returns a handler exposing some of the components.
-func NewHandler() (*Handler, error) {
-	// Use MongoDB in Docker with fallback to localhost.
-	dbURL := os.Getenv("MONGO_HOST")
-	if dbURL == "" {
-		dbURL = "localhost:27017"
-	}
-	dbURL = "mongodb://" + dbURL
-
-	// Create the event store.
-	eventStore, err := eventstore.NewEventStore(dbURL, "todomvc")
-	if err != nil {
-		return nil, fmt.Errorf("could not create event store: %s", err)
-	}
-
-	// Create the event bus that distributes events.
-	eventBus := eventbus.NewEventBus(nil)
-	go func() {
-		for e := range eventBus.Errors() {
-			log.Printf("eventbus: %s", e.Error())
-		}
-	}()
-
-	// Add a logger as an observer.
-	eventBus.AddHandler(eh.MatchAny(),
-		eh.UseEventHandlerMiddleware(&Logger{}, observer.Middleware))
-
-	// Create the aggregate repository.
-	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)
-	if err != nil {
-		return nil, fmt.Errorf("could not create aggregate store: %s", err)
-	}
-
-	// Create the aggregate command handler.
-	aggregateCommandHandler, err := aggregate.NewCommandHandler(todo.AggregateType, aggregateStore)
-	if err != nil {
-		return nil, fmt.Errorf("could not create command handler: %s", err)
-	}
-
-	// Create a tiny logging middleware for the command handler.
-	commandHandlerLogger := func(h eh.CommandHandler) eh.CommandHandler {
-		return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
-			log.Printf("CMD %#v", cmd)
-			return h.HandleCommand(ctx, cmd)
-		})
-	}
-	commandHandler := eh.UseCommandHandlerMiddleware(aggregateCommandHandler, commandHandlerLogger)
-
-	// Create the repository and wrap in a version repository.
-	repo, err := repo.NewRepo(dbURL, "todomvc", "todos")
-	if err != nil {
-		return nil, fmt.Errorf("could not create invitation repository: %s", err)
-	}
-	repo.SetEntityFactory(func() eh.Entity { return &todo.TodoList{} })
-	todoRepo := version.NewRepo(repo)
-
-	// Create the read model projector.
-	projector := projector.NewEventHandler(&todo.Projector{}, todoRepo)
-	projector.SetEntityFactory(func() eh.Entity { return &todo.TodoList{} })
-	eventBus.AddHandler(eh.MatchAnyEventOf(
-		todo.Created,
-		todo.Deleted,
-		todo.ItemAdded,
-		todo.ItemRemoved,
-		todo.ItemDescriptionSet,
-		todo.ItemChecked,
-	), projector)
-
-	// Handle the API.
+// NewHandler returns a http.Handler that interacts exposes the command handler,
+// read repo and event bus to the frontend.
+func NewHandler(
+	commandHandler eh.CommandHandler,
+	eventBus eh.EventBus,
+	todoRepo eh.ReadRepo,
+	staticFolder string,
+) (http.Handler, error) {
 	h := http.NewServeMux()
+
+	// Add the event bus as a websocket that sends the events as JSON.
 	h.Handle("/api/events/", httputils.EventBusHandler(eventBus, eh.MatchAny(), "any"))
+
+	// Add the todo read repo to query items as JSON objects.
 	h.Handle("/api/todos/", httputils.QueryHandler(todoRepo))
+
+	// Add handlers of all commands in JSON format.
 	h.Handle("/api/todos/create", httputils.CommandHandler(commandHandler, todo.CreateCommand))
 	h.Handle("/api/todos/delete", httputils.CommandHandler(commandHandler, todo.DeleteCommand))
 	h.Handle("/api/todos/add_item", httputils.CommandHandler(commandHandler, todo.AddItemCommand))
@@ -148,7 +58,7 @@ func NewHandler() (*Handler, error) {
 			"/elm.js",
 			"/css/base.css",
 			"/css/styles.css":
-			http.ServeFile(w, r, "frontend"+r.URL.Path)
+			http.ServeFile(w, r, staticFolder+r.URL.Path)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -160,10 +70,5 @@ func NewHandler() (*Handler, error) {
 		h.ServeHTTP(w, r)
 	})
 
-	return &Handler{
-		Handler:        handler,
-		EventBus:       eventBus,
-		CommandHandler: commandHandler,
-		Repo:           todoRepo,
-	}, nil
+	return handler, nil
 }
