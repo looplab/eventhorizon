@@ -73,25 +73,46 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 		observerName = "observer"
 	)
 
+	// Event without data (tested in its own handler).
+	otherHandler := mocks.NewEventHandler("other-handler")
+	bus1.AddHandler(eh.MatchEvent(mocks.EventOtherType), otherHandler)
+	eventWithoutData := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
+		mocks.AggregateType, uuid.New(), 1)
+	if err := bus1.HandleEvent(ctx, eventWithoutData); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	expectedEvents := []eh.Event{eventWithoutData}
+	if !otherHandler.Wait(timeout) {
+		t.Error("did not receive event in time")
+	}
+	if !mocks.EqualEvents(otherHandler.Events, expectedEvents) {
+		t.Error("the events were incorrect:")
+		t.Log(otherHandler.Events)
+		if len(otherHandler.Events) == 1 {
+			t.Log(pretty.Sprint(otherHandler.Events[0]))
+		}
+	}
+
 	// Add handlers and observers.
 	handlerBus1 := mocks.NewEventHandler(handlerName)
 	handlerBus2 := mocks.NewEventHandler(handlerName)
 	anotherHandlerBus2 := mocks.NewEventHandler("another_handler")
 	observerBus1 := mocks.NewEventHandler(observerName)
 	observerBus2 := mocks.NewEventHandler(observerName)
-	bus1.AddHandler(eh.MatchAny(), handlerBus1)
-	bus2.AddHandler(eh.MatchAny(), handlerBus2)
-	bus2.AddHandler(eh.MatchAny(), anotherHandlerBus2)
+	bus1.AddHandler(eh.MatchEvent(mocks.EventType), handlerBus1)
+	bus2.AddHandler(eh.MatchEvent(mocks.EventType), handlerBus2)
+	bus2.AddHandler(eh.MatchEvent(mocks.EventType), anotherHandlerBus2)
 	// Add observers using the observer middleware.
 	bus1.AddHandler(eh.MatchAny(), eh.UseEventHandlerMiddleware(observerBus1, observer.Middleware))
 	bus2.AddHandler(eh.MatchAny(), eh.UseEventHandlerMiddleware(observerBus2, observer.Middleware))
 
+	// Event with data.
 	if err := bus1.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
 	}
 
 	// Check for correct event in handler 1 or 2.
-	expectedEvents := []eh.Event{event1}
+	expectedEvents = []eh.Event{event1}
 	if !(handlerBus1.Wait(timeout) || handlerBus2.Wait(timeout)) {
 		t.Error("did not receive event in time")
 	}

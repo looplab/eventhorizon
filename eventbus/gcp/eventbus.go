@@ -189,24 +189,26 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 		}
 
 		// Create an event of the correct type and decode from raw BSON.
-		var err error
-		if e.data, err = eh.CreateEventData(e.EventType); err != nil {
-			select {
-			case b.errCh <- eh.EventBusError{Err: errors.New("could not create event data: " + err.Error()), Ctx: ctx}:
-			default:
+		if len(e.RawData) > 0 {
+			var err error
+			if e.data, err = eh.CreateEventData(e.EventType); err != nil {
+				select {
+				case b.errCh <- eh.EventBusError{Err: errors.New("could not create event data: " + err.Error()), Ctx: ctx}:
+				default:
+				}
+				msg.Nack()
+				return
 			}
-			msg.Nack()
-			return
-		}
-		if err := bson.Unmarshal(e.RawData, e.data); err != nil {
-			select {
-			case b.errCh <- eh.EventBusError{Err: errors.New("could not unmarshal event data: " + err.Error()), Ctx: ctx}:
-			default:
+			if err := bson.Unmarshal(e.RawData, e.data); err != nil {
+				select {
+				case b.errCh <- eh.EventBusError{Err: errors.New("could not unmarshal event data: " + err.Error()), Ctx: ctx}:
+				default:
+				}
+				msg.Nack()
+				return
 			}
-			msg.Nack()
-			return
+			e.RawData = nil
 		}
-		e.RawData = nil
 
 		event := event{evt: e}
 		ctx = eh.UnmarshalContext(e.Context)
