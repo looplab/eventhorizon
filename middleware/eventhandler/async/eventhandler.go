@@ -26,16 +26,24 @@ import (
 func NewMiddleware() (eh.EventHandlerMiddleware, chan Error) {
 	errCh := make(chan Error, 20)
 	return eh.EventHandlerMiddleware(func(h eh.EventHandler) eh.EventHandler {
-		return eh.EventHandlerFunc(func(ctx context.Context, event eh.Event) error {
-			go func() {
-				if err := h.HandleEvent(ctx, event); err != nil {
-					// Always try to deliver errors.
-					errCh <- Error{err, ctx, event}
-				}
-			}()
-			return nil
-		})
+		return &eventHandler{h, errCh}
 	}), errCh
+}
+
+type eventHandler struct {
+	eh.EventHandler
+	errCh chan Error
+}
+
+// HandleEvent implements the HandleEvent method of the EventHandler.
+func (h *eventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
+	go func() {
+		if err := h.EventHandler.HandleEvent(ctx, event); err != nil {
+			// Always try to deliver errors.
+			h.errCh <- Error{err, ctx, event}
+		}
+	}()
+	return nil
 }
 
 // Error is an async error containing the error and the event.

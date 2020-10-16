@@ -46,7 +46,7 @@ func TestEventHandler(t *testing.T) {
 	}
 	inner.RLock()
 	if !reflect.DeepEqual(inner.Events, []eh.Event{event}) {
-		t.Error("the event shoud have been handeled:", inner.Events)
+		t.Error("the event should have been handeled:", inner.Events)
 	}
 	inner.RUnlock()
 
