@@ -19,7 +19,7 @@ services:
       - "27017:27017"
 
   gpubsub:
-    image: google/cloud-sdk:latest
+    image: google/cloud-sdk:313.0.1
     ports:
       - "8793:8793"
     entrypoint:
