@@ -64,6 +64,7 @@ func NewEventBus(projectID, appID string, opts ...option.ClientOption) (*EventBu
 			return nil, err
 		}
 	}
+	topic.EnableMessageOrdering = true
 
 	return &EventBus{
 		appID:      appID,
@@ -105,7 +106,8 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	}
 
 	res := b.topic.Publish(ctx, &pubsub.Message{
-		Data: data,
+		Data:        data,
+		OrderingKey: event.AggregateID().String(),
 	})
 	if _, err := res.Get(ctx); err != nil {
 		return errors.New("could not publish event: " + err.Error())
@@ -139,11 +141,19 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 	} else if !ok {
 		if sub, err = b.client.CreateSubscription(ctx, subscriptionID,
 			pubsub.SubscriptionConfig{
-				Topic:       b.topic,
-				AckDeadline: 60 * time.Second,
+				Topic:                 b.topic,
+				EnableMessageOrdering: true,
 			},
 		); err != nil {
 			return fmt.Errorf("could not create subscription: %w", err)
+		}
+	} else if ok {
+		cfg, err := sub.Config(ctx)
+		if err != nil {
+			return fmt.Errorf("could not get subscription config: %w", err)
+		}
+		if !cfg.EnableMessageOrdering {
+			return fmt.Errorf("message ordering not enabled for subscription '%s', please remove to recreate", h.HandlerType())
 		}
 	}
 
