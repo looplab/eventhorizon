@@ -2,7 +2,7 @@ version: "3.4"
 
 services:
   golang:
-    image: golang:1.14
+    image: golang:1.15
     depends_on:
       - mongo
       - gpubsub
@@ -19,7 +19,7 @@ services:
       - "27017:27017"
 
   gpubsub:
-    image: google/cloud-sdk:313.0.1
+    image: google/cloud-sdk:318.0.0
     ports:
       - "8793:8793"
     entrypoint:
