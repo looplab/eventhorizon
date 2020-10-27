@@ -76,7 +76,7 @@ func NewEventBus(projectID, appID string, opts ...option.ClientOption) (*EventBu
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandlerType() eh.EventHandlerType {
-	return "event-bus"
+	return "eventbus"
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.

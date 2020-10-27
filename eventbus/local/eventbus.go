@@ -50,7 +50,7 @@ func NewEventBus(g *Group) *EventBus {
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandlerType() eh.EventHandlerType {
-	return "event-bus"
+	return "eventbus"
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
