@@ -156,6 +156,9 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 			return fmt.Errorf("message ordering not enabled for subscription '%s', please remove to recreate", h.HandlerType())
 		}
 	}
+	// Default is to use 10 goroutines which is often not needed for multiple
+	// handlers.
+	sub.ReceiveSettings.NumGoroutines = 2
 
 	// Register handler.
 	b.registered[h.HandlerType()] = struct{}{}
