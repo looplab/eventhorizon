@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -80,6 +81,11 @@ func (b *EventBus) HandlerType() eh.EventHandlerType {
 	return "eventbus"
 }
 
+const (
+	aggregateTypeAttribute = "aggregate_type"
+	eventTypeAttribute     = "event_type"
+)
+
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	e := evt{
@@ -106,7 +112,11 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	}
 
 	res := b.topic.Publish(ctx, &pubsub.Message{
-		Data:        data,
+		Data: data,
+		Attributes: map[string]string{
+			aggregateTypeAttribute:     event.AggregateType().String(),
+			event.EventType().String(): "", // The event type as a key to save space when filtering.
+		},
 		OrderingKey: event.AggregateID().String(),
 	})
 	if _, err := res.Get(ctx); err != nil {
@@ -132,6 +142,12 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 		return eh.ErrHandlerAlreadyAdded
 	}
 
+	// Build the subscription filter.
+	filter := createFilter(m)
+	if len(filter) >= 256 {
+		return fmt.Errorf("match filter is longer than 256 chars: %d", len(filter))
+	}
+
 	// Get or create the subscription.
 	subscriptionID := b.appID + "_" + h.HandlerType().String()
 	sub := b.client.Subscription(subscriptionID)
@@ -142,6 +158,7 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 		if sub, err = b.client.CreateSubscription(ctx, subscriptionID,
 			pubsub.SubscriptionConfig{
 				Topic:                 b.topic,
+				Filter:                filter,
 				EnableMessageOrdering: true,
 			},
 		); err != nil {
@@ -151,6 +168,9 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 		cfg, err := sub.Config(ctx)
 		if err != nil {
 			return fmt.Errorf("could not get subscription config: %w", err)
+		}
+		if cfg.Filter != filter {
+			return fmt.Errorf("the existing filter for '%s' differs, please remove to recreate", h.HandlerType())
 		}
 		if !cfg.EnableMessageOrdering {
 			return fmt.Errorf("message ordering not enabled for subscription '%s', please remove to recreate", h.HandlerType())
@@ -167,6 +187,39 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 	go b.handle(m, h, sub)
 
 	return nil
+}
+
+// Creates a filter in the GCP pub sub filter syntax:
+// https://cloud.google.com/pubsub/docs/filtering
+func createFilter(m eh.EventMatcher) string {
+	switch m := m.(type) {
+	case eh.MatchEvents:
+		s := make([]string, len(m))
+		for i, et := range m {
+			s[i] = fmt.Sprintf(`attributes:"%s"`, et) // Filter event types by key to save space.
+		}
+		return strings.Join(s, " OR ")
+	case eh.MatchAggregates:
+		s := make([]string, len(m))
+		for i, at := range m {
+			s[i] = fmt.Sprintf(`attributes.%s="%s"`, aggregateTypeAttribute, at)
+		}
+		return strings.Join(s, " OR ")
+	case eh.MatchAny:
+		s := make([]string, len(m))
+		for i, sm := range m {
+			s[i] = fmt.Sprintf("(%s)", createFilter(sm))
+		}
+		return strings.Join(s, " OR ")
+	case eh.MatchAll:
+		s := make([]string, len(m))
+		for i, sm := range m {
+			s[i] = fmt.Sprintf("(%s)", createFilter(sm))
+		}
+		return strings.Join(s, " AND ")
+	default:
+		return ""
+	}
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.
