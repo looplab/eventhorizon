@@ -45,15 +45,15 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	}
 
 	// Error on nil handler.
-	if err := bus1.AddHandler(eh.MatchAny(), nil); err != eh.ErrMissingHandler {
+	if err := bus1.AddHandler(eh.MatchAll{}, nil); err != eh.ErrMissingHandler {
 		t.Error("the error should be correct:", err)
 	}
 
 	// Error on multiple registrations.
-	if err := bus1.AddHandler(eh.MatchAny(), mocks.NewEventHandler("multi")); err != nil {
+	if err := bus1.AddHandler(eh.MatchAll{}, mocks.NewEventHandler("multi")); err != nil {
 		t.Error("there should be no errer:", err)
 	}
-	if err := bus1.AddHandler(eh.MatchAny(), mocks.NewEventHandler("multi")); err != eh.ErrHandlerAlreadyAdded {
+	if err := bus1.AddHandler(eh.MatchAll{}, mocks.NewEventHandler("multi")); err != eh.ErrHandlerAlreadyAdded {
 		t.Error("the error should be correct:", err)
 	}
 
@@ -75,7 +75,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 
 	// Event without data (tested in its own handler).
 	otherHandler := mocks.NewEventHandler("other-handler")
-	bus1.AddHandler(eh.MatchEvent(mocks.EventOtherType), otherHandler)
+	bus1.AddHandler(eh.MatchEvents{mocks.EventOtherType}, otherHandler)
 	eventWithoutData := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
 		mocks.AggregateType, uuid.New(), 1)
 	if err := bus1.HandleEvent(ctx, eventWithoutData); err != nil {
@@ -99,12 +99,12 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	anotherHandlerBus2 := mocks.NewEventHandler("another_handler")
 	observerBus1 := mocks.NewEventHandler(observerName)
 	observerBus2 := mocks.NewEventHandler(observerName)
-	bus1.AddHandler(eh.MatchEvent(mocks.EventType), handlerBus1)
-	bus2.AddHandler(eh.MatchEvent(mocks.EventType), handlerBus2)
-	bus2.AddHandler(eh.MatchEvent(mocks.EventType), anotherHandlerBus2)
+	bus1.AddHandler(eh.MatchEvents{mocks.EventType}, handlerBus1)
+	bus2.AddHandler(eh.MatchEvents{mocks.EventType}, handlerBus2)
+	bus2.AddHandler(eh.MatchEvents{mocks.EventType}, anotherHandlerBus2)
 	// Add observers using the observer middleware.
-	bus1.AddHandler(eh.MatchAny(), eh.UseEventHandlerMiddleware(observerBus1, observer.Middleware))
-	bus2.AddHandler(eh.MatchAny(), eh.UseEventHandlerMiddleware(observerBus2, observer.Middleware))
+	bus1.AddHandler(eh.MatchAll{}, eh.UseEventHandlerMiddleware(observerBus1, observer.Middleware))
+	bus2.AddHandler(eh.MatchAll{}, eh.UseEventHandlerMiddleware(observerBus2, observer.Middleware))
 
 	// Event with data.
 	if err := bus1.HandleEvent(ctx, event1); err != nil {
@@ -184,7 +184,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	// Test async errors from handlers.
 	errorHandler := mocks.NewEventHandler("error_handler")
 	errorHandler.Err = errors.New("handler error")
-	bus1.AddHandler(eh.MatchAny(), errorHandler)
+	bus1.AddHandler(eh.MatchAll{}, errorHandler)
 	if err := bus1.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
 	}

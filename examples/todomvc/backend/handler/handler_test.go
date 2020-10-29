@@ -93,7 +93,7 @@ func TestGetAll(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvent(todo.ItemAdded),
+	eventBus.AddHandler(eh.MatchEvents{todo.ItemAdded},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -135,7 +135,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvent(todo.Created),
+	eventBus.AddHandler(eh.MatchEvents{todo.Created},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -194,7 +194,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvent(todo.Deleted),
+	eventBus.AddHandler(eh.MatchEvents{todo.Deleted},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -238,7 +238,7 @@ func TestAddItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvent(todo.ItemAdded),
+	eventBus.AddHandler(eh.MatchEvents{todo.ItemAdded},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -308,7 +308,7 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
+	eventBus.AddHandler(eh.MatchEvents{todo.ItemRemoved},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -386,7 +386,7 @@ func TestRemoveCompleted(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
+	eventBus.AddHandler(eh.MatchEvents{todo.ItemRemoved},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5
@@ -458,7 +458,7 @@ func TestSetItemDesc(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvent(todo.ItemDescriptionSet),
+	eventBus.AddHandler(eh.MatchEvents{todo.ItemDescriptionSet},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -534,7 +534,7 @@ func TestCheckItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvent(todo.ItemChecked),
+	eventBus.AddHandler(eh.MatchEvents{todo.ItemChecked},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -615,7 +615,7 @@ func TestCheckAllItems(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvent(todo.ItemRemoved),
+	eventBus.AddHandler(eh.MatchEvents{todo.ItemRemoved},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5

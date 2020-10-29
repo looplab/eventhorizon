@@ -35,14 +35,14 @@ func SetupDomain(
 	// Create the read model projector.
 	projector := projector.NewEventHandler(&Projector{}, todoRepo)
 	projector.SetEntityFactory(func() eh.Entity { return &TodoList{} })
-	eventBus.AddHandler(eh.MatchAnyEventOf(
+	eventBus.AddHandler(eh.MatchEvents{
 		Created,
 		Deleted,
 		ItemAdded,
 		ItemRemoved,
 		ItemDescriptionSet,
 		ItemChecked,
-	), projector)
+	}, projector)
 
 	// Create the event sourced aggregate repository.
 	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)

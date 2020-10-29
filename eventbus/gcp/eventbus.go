@@ -227,7 +227,7 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 		ctx = eh.UnmarshalContext(e.Context)
 
 		// Ignore non-matching events.
-		if !m(event) {
+		if !m.Match(event) {
 			msg.Ack()
 			return
 		}

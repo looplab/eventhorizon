@@ -35,7 +35,7 @@ func NewHandler(
 	h := http.NewServeMux()
 
 	// Add the event bus as a websocket that sends the events as JSON.
-	h.Handle("/api/events/", httputils.EventBusHandler(eventBus, eh.MatchAny(), "any"))
+	h.Handle("/api/events/", httputils.EventBusHandler(eventBus, eh.MatchAll{}, "any"))
 
 	// Add the todo read repo to query items as JSON objects.
 	h.Handle("/api/todos/", httputils.QueryHandler(todoRepo))

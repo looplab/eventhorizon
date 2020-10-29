@@ -78,7 +78,7 @@ func TestEventBusMultipleReceivers(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := range handlers {
 		h := mocks.NewEventHandler(fmt.Sprintf("handler-%d", i))
-		if err := bus.AddHandler(eh.MatchAny(), h); err != nil {
+		if err := bus.AddHandler(eh.MatchAll{}, h); err != nil {
 			t.Error("there should be no error:", err)
 		}
 		wg.Add(1)

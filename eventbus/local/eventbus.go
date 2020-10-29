@@ -98,7 +98,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan evt) {
 	defer b.wg.Done()
 
 	for e := range ch {
-		if !m(e.event) {
+		if !m.Match(e.event) {
 			continue
 		}
 		if err := h.HandleEvent(e.ctx, e.event); err != nil {

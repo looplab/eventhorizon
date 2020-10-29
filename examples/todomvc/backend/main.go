@@ -67,7 +67,7 @@ func main() {
 	}()
 
 	// Add an event logger as an observer.
-	eventBus.AddHandler(eh.MatchAny(),
+	eventBus.AddHandler(eh.MatchAll{},
 		eh.UseEventHandlerMiddleware(&EventLogger{}, observer.Middleware))
 
 	// Create the repository and wrap in a version repository.

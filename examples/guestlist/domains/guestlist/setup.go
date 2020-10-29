@@ -36,7 +36,7 @@ func Setup(
 	eventID uuid.UUID) {
 
 	// Add a logger as an observer.
-	eventBus.AddHandler(eh.MatchAny(),
+	eventBus.AddHandler(eh.MatchAll{},
 		eh.UseEventHandlerMiddleware(&Logger{}, observer.Middleware))
 
 	// Create the aggregate repository.
@@ -61,25 +61,25 @@ func Setup(
 	invitationProjector := projector.NewEventHandler(
 		NewInvitationProjector(), invitationRepo)
 	invitationProjector.SetEntityFactory(func() eh.Entity { return &Invitation{} })
-	eventBus.AddHandler(eh.MatchAnyEventOf(
+	eventBus.AddHandler(eh.MatchEvents{
 		InviteCreatedEvent,
 		InviteAcceptedEvent,
 		InviteDeclinedEvent,
 		InviteConfirmedEvent,
 		InviteDeniedEvent,
-	), invitationProjector)
+	}, invitationProjector)
 
 	// Create and register a read model for a guest list.
 	guestListProjector := NewGuestListProjector(guestListRepo, eventID)
-	eventBus.AddHandler(eh.MatchAnyEventOf(
+	eventBus.AddHandler(eh.MatchEvents{
 		InviteAcceptedEvent,
 		InviteDeclinedEvent,
 		InviteConfirmedEvent,
 		InviteDeniedEvent,
-	), guestListProjector)
+	}, guestListProjector)
 
 	// Setup the saga that responds to the accepted guests and limits the total
 	// amount of guests, responding with a confirmation or denial.
 	responseSaga := saga.NewEventHandler(NewResponseSaga(2), commandBus)
-	eventBus.AddHandler(eh.MatchEvent(InviteAcceptedEvent), responseSaga)
+	eventBus.AddHandler(eh.MatchEvents{InviteAcceptedEvent}, responseSaga)
 }
