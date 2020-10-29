@@ -43,6 +43,11 @@ type Saga interface {
 // Type is the type of a saga, used as its unique identifier.
 type Type string
 
+// String returns the string representation of a saga type.
+func (t Type) String() string {
+	return string(t)
+}
+
 // NewEventHandler creates a new EventHandler.
 func NewEventHandler(saga Saga, commandHandler eh.CommandHandler) *EventHandler {
 	return &EventHandler{
@@ -65,8 +70,8 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	for _, cmd := range cmds {
 		if err := h.commandHandler.HandleCommand(ctx, cmd); err != nil {
 			return errors.New("could not handle command '" +
-				string(cmd.CommandType()) + "' from saga '" +
-				string(h.saga.SagaType()) + "': " + err.Error())
+				cmd.CommandType().String() + "' from saga '" +
+				h.saga.SagaType().String() + "': " + err.Error())
 		}
 	}
 

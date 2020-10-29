@@ -75,7 +75,7 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 	}
 
 	// Get or create the channel.
-	id := string(h.HandlerType())
+	id := h.HandlerType().String()
 	ch := b.group.channel(id)
 
 	// Register handler.

@@ -133,7 +133,7 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 	}
 
 	// Get or create the subscription.
-	subscriptionID := b.appID + "_" + string(h.HandlerType())
+	subscriptionID := b.appID + "_" + h.HandlerType().String()
 	sub := b.client.Subscription(subscriptionID)
 	ctx := context.Background()
 	if ok, err := sub.Exists(ctx); err != nil {

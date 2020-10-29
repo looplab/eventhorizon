@@ -48,6 +48,11 @@ type Command interface {
 // CommandType is the type of a command, used as its unique identifier.
 type CommandType string
 
+// String returns the string representation of a command type.
+func (ct CommandType) String() string {
+	return string(ct)
+}
+
 // ErrCommandNotRegistered is when no command factory was registered.
 var ErrCommandNotRegistered = errors.New("command not registered")
 

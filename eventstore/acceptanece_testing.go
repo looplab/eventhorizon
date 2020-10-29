@@ -16,6 +16,7 @@ package eventstore
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -267,9 +268,7 @@ func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventS
 func eventsToString(events []eh.Event) string {
 	parts := make([]string, len(events))
 	for i, e := range events {
-		parts[i] = string(e.AggregateType()) +
-			":" + string(e.EventType()) +
-			" (" + e.AggregateID().String() + ")"
+		parts[i] = fmt.Sprintf("%s:%s (%s)", e.AggregateType(), e.EventType(), e.AggregateID())
 	}
 	return strings.Join(parts, ", ")
 }

@@ -305,10 +305,10 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 	// TODO: Maybe use change info.
 	if _, err := c.UpdateMany(ctx,
 		bson.M{
-			"events.event_type": string(from),
+			"events.event_type": from.String(),
 		},
 		bson.M{
-			"$set": bson.M{"events.$.event_type": string(to)},
+			"$set": bson.M{"events.$.event_type": to.String()},
 		},
 	); err != nil {
 		return eh.EventStoreError{

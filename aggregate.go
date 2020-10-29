@@ -44,6 +44,11 @@ type Aggregate interface {
 // AggregateType is the type of an aggregate.
 type AggregateType string
 
+// String returns the string representation of an aggregate type.
+func (at AggregateType) String() string {
+	return string(at)
+}
+
 // AggregateStore is responsible for loading and saving aggregates.
 type AggregateStore interface {
 	// Load loads the most recent version of an aggregate with a type and id.
