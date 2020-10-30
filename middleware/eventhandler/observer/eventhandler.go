@@ -16,10 +16,51 @@ package observer
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 )
+
+// Group provides groupings of observers by different criteria.
+type Group interface {
+	// Group returns the name of the observer group.
+	Group() string
+}
+
+// group is a string based group that resolves at creation.
+type group string
+
+// Group implements the Group method of the Group interface.
+func (g group) Group() string {
+	return string(g)
+}
+
+// NamedGroup returns a Group with a fixed name.
+func NamedGroup(name string) Group {
+	return group(name)
+}
+
+// UUIDGroup returns a Group with a fixed UUID.
+func UUIDGroup(id uuid.UUID) Group {
+	return group(id.String())
+}
+
+// RandomGroup returns a Group from a random UUID, useful to have many completely
+// separate observers.
+func RandomGroup() Group {
+	return group(uuid.New().String())
+}
+
+// HostnameGroup returns a Group for the hostname, useful to have an observer per
+// host.
+func HostnameGroup() Group {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic("could not get hostname for HostnameGroup()")
+	}
+	return group(hostname)
+}
 
 type eventHandler struct {
 	eh.EventHandler
@@ -31,10 +72,18 @@ func (h *eventHandler) HandlerType() eh.EventHandlerType {
 	return h.handlerType
 }
 
-// Middleware is middleware that sets a unique handler name using UUID:
-// "HandlerTypeA-1123987-114871-124124-9187784"
-// This is useful for implementing observer handlers where multiple handlers of
-// the same type should receive an event.
+// NewMiddleware creates a middleware that lets multiple handlers handle an event
+// depending on their group. It works by suffixing the group name to the handler type.
+// To create an observer that is unique for every added handler use the RandomGroup.
+// To create an observer per host use the HostnameGroup.
+// To create handling groups manually use either the NamedGroup or UUIDGroup.
+func NewMiddleware(group Group) func(eh.EventHandler) eh.EventHandler {
+	return func(h eh.EventHandler) eh.EventHandler {
+		return &eventHandler{h, h.HandlerType() + eh.EventHandlerType(fmt.Sprintf("-%s", group.Group()))}
+	}
+}
+
+// Middleware creates an observer middleware with a random group.
 func Middleware(h eh.EventHandler) eh.EventHandler {
-	return &eventHandler{h, h.HandlerType() + eh.EventHandlerType(fmt.Sprintf("-%s", uuid.New()))}
+	return &eventHandler{h, h.HandlerType() + eh.EventHandlerType(fmt.Sprintf("-%s", RandomGroup().Group()))}
 }

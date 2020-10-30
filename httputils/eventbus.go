@@ -29,13 +29,12 @@ var upgrader = websocket.Upgrader{} // use default options
 
 // EventHandler is a simple event handler for observing events.
 type handler struct {
-	id string
 	ch chan eh.Event
 }
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (h *handler) HandlerType() eh.EventHandlerType {
-	return eh.EventHandlerType("websocket_" + h.id)
+	return eh.EventHandlerType("websocket")
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
@@ -61,10 +60,9 @@ func EventBusHandler(eventBus eh.EventBus, m eh.EventMatcher, id string) http.Ha
 		defer c.Close()
 
 		h := &handler{
-			id: id,
 			ch: make(chan eh.Event, 10),
 		}
-		eventBus.AddHandler(m, eh.UseEventHandlerMiddleware(h, observer.Middleware))
+		eventBus.AddHandler(m, eh.UseEventHandlerMiddleware(h, observer.NewMiddleware(observer.NamedGroup(id))))
 
 		for event := range h.ch {
 			if err := c.WriteMessage(websocket.TextMessage, []byte(event.String())); err != nil {
