@@ -160,11 +160,10 @@ func RegisterContextUnmarshaler(f ContextUnmarshalFunc) {
 }
 
 // UnmarshalContext unmarshals a context from a map.
-func UnmarshalContext(vals map[string]interface{}) context.Context {
+func UnmarshalContext(ctx context.Context, vals map[string]interface{}) context.Context {
 	contextUnmarshalFuncsMu.RLock()
 	defer contextUnmarshalFuncsMu.RUnlock()
 
-	ctx := context.Background()
 	if vals == nil {
 		return ctx
 	}

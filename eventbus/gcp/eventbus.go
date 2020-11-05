@@ -277,7 +277,7 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 		}
 
 		event := event{evt: e}
-		ctx = eh.UnmarshalContext(e.Context)
+		ctx = eh.UnmarshalContext(ctx, e.Context)
 
 		// Ignore non-matching events.
 		if !m.Match(event) {

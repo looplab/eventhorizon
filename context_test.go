@@ -47,7 +47,7 @@ func TestContextNamespace(t *testing.T) {
 	if err := json.Unmarshal(b, &vals); err != nil {
 		t.Error("could not unmarshal JSON:", err)
 	}
-	ctx = UnmarshalContext(vals)
+	ctx = UnmarshalContext(context.Background(), vals)
 	if ns := NamespaceFromContext(ctx); ns != "ns" {
 		t.Error("the namespace should be correct:", ns)
 	}
@@ -80,7 +80,7 @@ func TestContextMinVersion(t *testing.T) {
 	if err := json.Unmarshal(b, &vals); err != nil {
 		t.Error("could not unmarshal JSON:", err)
 	}
-	ctx = UnmarshalContext(vals)
+	ctx = UnmarshalContext(context.Background(), vals)
 	if v, ok := MinVersionFromContext(ctx); !ok || v != 8 {
 		t.Error("the min version should be correct:", v)
 	}
@@ -127,12 +127,12 @@ func TestContextUnmarshaler(t *testing.T) {
 	}
 
 	vals := map[string]interface{}{}
-	ctx := UnmarshalContext(vals)
+	ctx := UnmarshalContext(context.Background(), vals)
 	if _, ok := ContextTestOne(ctx); ok {
 		t.Error("the unmarshaled context should be empty:", ctx)
 	}
 	vals[contextTestKeyOneStr] = "testval"
-	ctx = UnmarshalContext(vals)
+	ctx = UnmarshalContext(context.Background(), vals)
 	if val, ok := ContextTestOne(ctx); !ok || val != "testval" {
 		t.Error("the unmarshaled context should be correct:", val)
 	}
