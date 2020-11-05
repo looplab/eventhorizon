@@ -19,56 +19,67 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/websocket"
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
 )
 
-var upgrader = websocket.Upgrader{} // use default options
+// EventBusHandler is a simple event handler for observing events.
+type EventBusHandler struct {
+	// Use the default options.
+	upgrader websocket.Upgrader
+	chs      []chan eh.Event
+	chsMu    sync.RWMutex
+}
 
-// EventHandler is a simple event handler for observing events.
-type handler struct {
-	ch chan eh.Event
+// NewEventBusHandler creates a new EventBusHandler.
+func NewEventBusHandler() *EventBusHandler {
+	return &EventBusHandler{}
 }
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
-func (h *handler) HandlerType() eh.EventHandlerType {
+func (h *EventBusHandler) HandlerType() eh.EventHandlerType {
 	return eh.EventHandlerType("websocket")
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
-func (h *handler) HandleEvent(ctx context.Context, event eh.Event) error {
-	select {
-	case h.ch <- event:
-	default:
-		return fmt.Errorf("missed event: %s", event)
+func (h *EventBusHandler) HandleEvent(ctx context.Context, event eh.Event) error {
+	h.chsMu.RLock()
+	defer h.chsMu.RUnlock()
+
+	// Send to all websocket connections.
+	for _, ch := range h.chs {
+		select {
+		case ch <- event:
+		default:
+			return fmt.Errorf("missed event: %s", event)
+		}
 	}
+
 	return nil
 }
 
-// EventBusHandler is a Websocket handler for eventhorizon.Events. Events will
-// be forwarded to all requests that have been upgraded to websockets.
+// ServeHTTP implements the ServeHTTP method of the http.Handler interface
+// by upgrading requests to websocket connections which will receive all events.
 // TODO: Send events as JSON.
-func EventBusHandler(eventBus eh.EventBus, m eh.EventMatcher, id string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			log.Print("upgrade:", err)
-			return
-		}
-		defer c.Close()
+func (h *EventBusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	c, err := h.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Print("upgrade:", err)
+		return
+	}
+	defer c.Close()
 
-		h := &handler{
-			ch: make(chan eh.Event, 10),
-		}
-		eventBus.AddHandler(m, eh.UseEventHandlerMiddleware(h, observer.NewMiddleware(observer.NamedGroup(id))))
+	ch := make(chan eh.Event, 10)
+	h.chsMu.Lock()
+	h.chs = append(h.chs, ch)
+	h.chsMu.Unlock()
 
-		for event := range h.ch {
-			if err := c.WriteMessage(websocket.TextMessage, []byte(event.String())); err != nil {
-				log.Println("write:", err)
-				break
-			}
+	for event := range ch {
+		if err := c.WriteMessage(websocket.TextMessage, []byte(event.String())); err != nil {
+			log.Println("write:", err)
+			break
 		}
-	})
+	}
 }

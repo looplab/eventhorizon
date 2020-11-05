@@ -20,6 +20,7 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/httputils"
+	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
 
 	"github.com/looplab/eventhorizon/examples/todomvc/backend/domains/todo"
 )
@@ -35,7 +36,11 @@ func NewHandler(
 	h := http.NewServeMux()
 
 	// Add the event bus as a websocket that sends the events as JSON.
-	h.Handle("/api/events/", httputils.EventBusHandler(eventBus, eh.MatchAll{}, "any"))
+	eventBusHandler := httputils.NewEventBusHandler()
+	observerMiddleware := observer.NewMiddleware(observer.NamedGroup("eventbus-observer"))
+	eventBus.AddHandler(eh.MatchAll{},
+		eh.UseEventHandlerMiddleware(eventBusHandler, observerMiddleware))
+	h.Handle("/api/events/", eventBusHandler)
 
 	// Add the todo read repo to query items as JSON objects.
 	h.Handle("/api/todos/", httputils.QueryHandler(todoRepo))
