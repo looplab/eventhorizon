@@ -42,9 +42,11 @@ import (
 )
 
 func TestStaticFiles(t *testing.T) {
-	commandHandler, eventBus, todoRepo := NewTestSession()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
+	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
+
+	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,6 +57,10 @@ func TestStaticFiles(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("there should be a 200 status for /")
 	}
+
+	// Cancel all handlers and wait.
+	cancel()
+	eventBus.Wait()
 }
 
 func TestGetAll(t *testing.T) {
@@ -62,9 +68,11 @@ func TestGetAll(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	commandHandler, eventBus, todoRepo := NewTestSession()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
+	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
+
+	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,12 +88,12 @@ func TestGetAll(t *testing.T) {
 	}
 
 	id := uuid.New()
-	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(ctx, &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(ctx, &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
@@ -93,12 +101,13 @@ func TestGetAll(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvents{todo.ItemAdded},
+	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemAdded},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	var cancelTimeout func()
+	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
 	l.Wait(ctx)
+	cancelTimeout()
 
 	w = httptest.NewRecorder()
 	h.ServeHTTP(w, r)
@@ -108,6 +117,10 @@ func TestGetAll(t *testing.T) {
 	if string(w.Body.Bytes()) != `[{"id":"`+id.String()+`","version":2,"items":[{"id":0,"desc":"desc","completed":false}],"created_at":"`+todo.TimeNow().Format(time.RFC3339Nano)+`","updated_at":"`+todo.TimeNow().Format(time.RFC3339Nano)+`"}]` {
 		t.Error("the body should be correct:", string(w.Body.Bytes()))
 	}
+
+	// Cancel all handlers and wait.
+	cancel()
+	eventBus.Wait()
 }
 
 func TestCreate(t *testing.T) {
@@ -115,9 +128,11 @@ func TestCreate(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	commandHandler, eventBus, todoRepo := NewTestSession()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
+	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
+
+	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,14 +150,15 @@ func TestCreate(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvents{todo.Created},
+	eventBus.AddHandler(ctx, eh.MatchEvents{todo.Created},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	var cancelTimeout func()
+	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
 	l.Wait(ctx)
+	cancelTimeout()
 
-	m, err := todoRepo.Find(context.Background(), id)
+	m, err := todoRepo.Find(ctx, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -161,6 +177,10 @@ func TestCreate(t *testing.T) {
 		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
+
+	// Cancel all handlers and wait.
+	cancel()
+	eventBus.Wait()
 }
 
 func TestDelete(t *testing.T) {
@@ -168,15 +188,17 @@ func TestDelete(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	commandHandler, eventBus, todoRepo := NewTestSession()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
+	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
+
+	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id := uuid.New()
-	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(ctx, &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
@@ -194,17 +216,22 @@ func TestDelete(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvents{todo.Deleted},
+	eventBus.AddHandler(ctx, eh.MatchEvents{todo.Deleted},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	var cancelTimeout func()
+	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
 	l.Wait(ctx)
+	cancelTimeout()
 
-	_, err = todoRepo.Find(context.Background(), id)
+	_, err = todoRepo.Find(ctx, id)
 	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {
 		t.Error("there should be a not found error:", err)
 	}
+
+	// Cancel all handlers and wait.
+	cancel()
+	eventBus.Wait()
 }
 
 func TestAddItem(t *testing.T) {
@@ -212,15 +239,17 @@ func TestAddItem(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	commandHandler, eventBus, todoRepo := NewTestSession()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
+	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
+
+	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id := uuid.New()
-	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(ctx, &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
@@ -238,14 +267,15 @@ func TestAddItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvents{todo.ItemAdded},
+	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemAdded},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	var cancelTimeout func()
+	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
 	l.Wait(ctx)
+	cancelTimeout()
 
-	m, err := todoRepo.Find(context.Background(), id)
+	m, err := todoRepo.Find(ctx, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -269,6 +299,10 @@ func TestAddItem(t *testing.T) {
 		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
+
+	// Cancel all handlers and wait.
+	cancel()
+	eventBus.Wait()
 }
 
 func TestRemoveItem(t *testing.T) {
@@ -276,20 +310,22 @@ func TestRemoveItem(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	commandHandler, eventBus, todoRepo := NewTestSession()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
+	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
+
+	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id := uuid.New()
-	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(ctx, &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(ctx, &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
@@ -308,14 +344,15 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvents{todo.ItemRemoved},
+	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemRemoved},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	var cancelTimeout func()
+	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
 	l.Wait(ctx)
+	cancelTimeout()
 
-	m, err := todoRepo.Find(context.Background(), id)
+	m, err := todoRepo.Find(ctx, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -334,6 +371,10 @@ func TestRemoveItem(t *testing.T) {
 		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
+
+	// Cancel all handlers and wait.
+	cancel()
+	eventBus.Wait()
 }
 
 func TestRemoveCompleted(t *testing.T) {
@@ -341,32 +382,34 @@ func TestRemoveCompleted(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	commandHandler, eventBus, todoRepo := NewTestSession()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
+	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
+
+	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id := uuid.New()
-	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(ctx, &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(ctx, &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(ctx, &todo.AddItem{
 		ID:          id,
 		Description: "completed",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := commandHandler.HandleCommand(context.Background(), &todo.CheckItem{
+	if err := commandHandler.HandleCommand(ctx, &todo.CheckItem{
 		ID:      id,
 		ItemID:  1,
 		Checked: true,
@@ -386,16 +429,17 @@ func TestRemoveCompleted(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvents{todo.ItemRemoved},
+	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemRemoved},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5
 	})
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	var cancelTimeout func()
+	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
 	l.Wait(ctx)
+	cancelTimeout()
 
-	m, err := todoRepo.Find(context.Background(), id)
+	m, err := todoRepo.Find(ctx, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -419,6 +463,10 @@ func TestRemoveCompleted(t *testing.T) {
 		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
+
+	// Cancel all handlers and wait.
+	cancel()
+	eventBus.Wait()
 }
 
 func TestSetItemDesc(t *testing.T) {
@@ -426,20 +474,22 @@ func TestSetItemDesc(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	commandHandler, eventBus, todoRepo := NewTestSession()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
+	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
+
+	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id := uuid.New()
-	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(ctx, &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(ctx, &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
@@ -458,14 +508,15 @@ func TestSetItemDesc(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvents{todo.ItemDescriptionSet},
+	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemDescriptionSet},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	var cancelTimeout func()
+	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
 	l.Wait(ctx)
+	cancelTimeout()
 
-	m, err := todoRepo.Find(context.Background(), id)
+	m, err := todoRepo.Find(ctx, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -489,6 +540,10 @@ func TestSetItemDesc(t *testing.T) {
 		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
+
+	// Cancel all handlers and wait.
+	cancel()
+	eventBus.Wait()
 }
 
 func TestCheckItem(t *testing.T) {
@@ -496,26 +551,28 @@ func TestCheckItem(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	commandHandler, eventBus, todoRepo := NewTestSession()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
+	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
+
+	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id := uuid.New()
-	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(ctx, &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(ctx, &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(ctx, &todo.AddItem{
 		ID:          id,
 		Description: "completed",
 	}); err != nil {
@@ -534,14 +591,15 @@ func TestCheckItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvents{todo.ItemChecked},
+	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemChecked},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(nil)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	var cancelTimeout func()
+	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
 	l.Wait(ctx)
+	cancelTimeout()
 
-	m, err := todoRepo.Find(context.Background(), id)
+	m, err := todoRepo.Find(ctx, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -570,6 +628,10 @@ func TestCheckItem(t *testing.T) {
 		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
+
+	// Cancel all handlers and wait.
+	cancel()
+	eventBus.Wait()
 }
 
 func TestCheckAllItems(t *testing.T) {
@@ -577,26 +639,28 @@ func TestCheckAllItems(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	commandHandler, eventBus, todoRepo := NewTestSession()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
+	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
+
+	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id := uuid.New()
-	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
+	if err := commandHandler.HandleCommand(ctx, &todo.Create{
 		ID: id,
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(ctx, &todo.AddItem{
 		ID:          id,
 		Description: "desc",
 	}); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if err := commandHandler.HandleCommand(context.Background(), &todo.AddItem{
+	if err := commandHandler.HandleCommand(ctx, &todo.AddItem{
 		ID:          id,
 		Description: "completed",
 	}); err != nil {
@@ -615,16 +679,17 @@ func TestCheckAllItems(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(eh.MatchEvents{todo.ItemRemoved},
+	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemRemoved},
 		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5
 	})
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	var cancelTimeout func()
+	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
 	l.Wait(ctx)
+	cancelTimeout()
 
-	m, err := todoRepo.Find(context.Background(), id)
+	m, err := todoRepo.Find(ctx, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -654,9 +719,13 @@ func TestCheckAllItems(t *testing.T) {
 		t.Error("the item should be correct:", list)
 		t.Log("expected:", expected)
 	}
+
+	// Cancel all handlers and wait.
+	cancel()
+	eventBus.Wait()
 }
 
-func NewTestSession() (
+func NewTestSession(ctx context.Context) (
 	eh.CommandHandler,
 	eh.EventBus,
 	eh.ReadWriteRepo,
@@ -664,11 +733,11 @@ func NewTestSession() (
 	eventStore := memoryEventStore.NewEventStore()
 	eventBus := localEventBus.NewEventBus(nil)
 	todoRepo := memory.NewRepo()
-	commandHandler, _ := todo.SetupDomain(eventStore, eventBus, todoRepo)
+	commandHandler, _ := todo.SetupDomain(ctx, eventStore, eventBus, todoRepo)
 	return commandHandler, eventBus, todoRepo
 }
 
-func NewIntegrationTestSession() (
+func NewIntegrationTestSession(ctx context.Context) (
 	eh.CommandHandler,
 	eh.EventBus,
 	eh.ReadWriteRepo,
@@ -707,11 +776,11 @@ func NewIntegrationTestSession() (
 	if !ok {
 		log.Fatal("incorrect repo type")
 	}
-	if err := mongoRepo.Clear(context.Background()); err != nil {
+	if err := mongoRepo.Clear(ctx); err != nil {
 		log.Println("could not clear DB:", err)
 	}
 
-	commandHandler, _ := todo.SetupDomain(eventStore, eventBus, todoRepo)
+	commandHandler, _ := todo.SetupDomain(ctx, eventStore, eventBus, todoRepo)
 
 	return commandHandler, eventBus, todoRepo
 }

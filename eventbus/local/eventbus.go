@@ -59,7 +59,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
+func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.EventHandler) error {
 	if m == nil {
 		return eh.ErrMissingMatcher
 	}
@@ -81,9 +81,9 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 	// Register handler.
 	b.registered[h.HandlerType()] = struct{}{}
 
-	// Handle (forever).
+	// Handle until context is cancelled.
 	b.wg.Add(1)
-	go b.handle(m, h, ch)
+	go b.handle(ctx, m, h, ch)
 
 	return nil
 }
@@ -93,31 +93,38 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return b.errCh
 }
 
-// Handles all events coming in on the channel.
-func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan evt) {
-	defer b.wg.Done()
-
-	for e := range ch {
-		if !m.Match(e.event) {
-			continue
-		}
-		if err := h.HandleEvent(e.ctx, e.event); err != nil {
-			select {
-			case b.errCh <- eh.EventBusError{Err: fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error()), Ctx: e.ctx, Event: e.event}:
-			default:
-			}
-		}
-	}
-}
-
-// Close all the channels in the events bus group
-func (b *EventBus) Close() {
-	b.group.Close()
-}
-
 // Wait for all channels to close in the event bus group
 func (b *EventBus) Wait() {
 	b.wg.Wait()
+	b.group.close()
+}
+
+type evt struct {
+	ctxVals map[string]interface{}
+	event   eh.Event
+}
+
+// Handles all events coming in on the channel.
+func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, ch <-chan evt) {
+	defer b.wg.Done()
+
+	for {
+		select {
+		case e := <-ch:
+			ctx := eh.UnmarshalContext(ctx, e.ctxVals)
+			if !m.Match(e.event) {
+				continue
+			}
+			if err := h.HandleEvent(ctx, e.event); err != nil {
+				select {
+				case b.errCh <- eh.EventBusError{Err: fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error()), Ctx: ctx, Event: e.event}:
+				default:
+				}
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // Group is a publishing group shared by multiple event busses locally, if needed.
@@ -131,11 +138,6 @@ func NewGroup() *Group {
 	return &Group{
 		bus: map[string]chan evt{},
 	}
-}
-
-type evt struct {
-	ctx   context.Context
-	event eh.Event
 }
 
 func (g *Group) channel(id string) <-chan evt {
@@ -164,7 +166,7 @@ func (g *Group) publish(ctx context.Context, event eh.Event) error {
 			}
 			copier.Copy(data, event.Data())
 		}
-		toPublish := eh.NewEventForAggregate(
+		eventCopy := eh.NewEventForAggregate(
 			event.EventType(),
 			data,
 			event.Timestamp(),
@@ -172,8 +174,11 @@ func (g *Group) publish(ctx context.Context, event eh.Event) error {
 			event.AggregateID(),
 			event.Version(),
 		)
+		// Marshal and unmarshal the context to both simulate only sending data
+		// that would be sent over a network bus and also break any relationship
+		// with the old context.
 		select {
-		case ch <- evt{ctx, toPublish}:
+		case ch <- evt{eh.MarshalContext(ctx), eventCopy}:
 		default:
 			// TODO: Maybe log here because queue is full.
 		}
@@ -182,8 +187,8 @@ func (g *Group) publish(ctx context.Context, event eh.Event) error {
 	return nil
 }
 
-// Close all the open channels
-func (g *Group) Close() {
+// Closes all the open channels after handling is done.
+func (g *Group) close() {
 	for _, ch := range g.bus {
 		close(ch)
 	}

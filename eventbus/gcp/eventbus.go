@@ -45,6 +45,7 @@ type EventBus struct {
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
+	wg           sync.WaitGroup
 }
 
 // NewEventBus creates an EventBus, with optional GCP connection settings.
@@ -127,7 +128,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
+func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.EventHandler) error {
 	if m == nil {
 		return eh.ErrMissingMatcher
 	}
@@ -151,7 +152,6 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 	// Get or create the subscription.
 	subscriptionID := b.appID + "_" + h.HandlerType().String()
 	sub := b.client.Subscription(subscriptionID)
-	ctx := context.Background()
 	if ok, err := sub.Exists(ctx); err != nil {
 		return fmt.Errorf("could not check existing subscription: %w", err)
 	} else if !ok {
@@ -183,43 +183,11 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 	// Register handler.
 	b.registered[h.HandlerType()] = struct{}{}
 
-	// Handle (forever).
-	go b.handle(m, h, sub)
+	// Handle until context is cancelled.
+	b.wg.Add(1)
+	go b.handle(ctx, m, h, sub)
 
 	return nil
-}
-
-// Creates a filter in the GCP pub sub filter syntax:
-// https://cloud.google.com/pubsub/docs/filtering
-func createFilter(m eh.EventMatcher) string {
-	switch m := m.(type) {
-	case eh.MatchEvents:
-		s := make([]string, len(m))
-		for i, et := range m {
-			s[i] = fmt.Sprintf(`attributes:"%s"`, et) // Filter event types by key to save space.
-		}
-		return strings.Join(s, " OR ")
-	case eh.MatchAggregates:
-		s := make([]string, len(m))
-		for i, at := range m {
-			s[i] = fmt.Sprintf(`attributes.%s="%s"`, aggregateTypeAttribute, at)
-		}
-		return strings.Join(s, " OR ")
-	case eh.MatchAny:
-		s := make([]string, len(m))
-		for i, sm := range m {
-			s[i] = fmt.Sprintf("(%s)", createFilter(sm))
-		}
-		return strings.Join(s, " OR ")
-	case eh.MatchAll:
-		s := make([]string, len(m))
-		for i, sm := range m {
-			s[i] = fmt.Sprintf("(%s)", createFilter(sm))
-		}
-		return strings.Join(s, " AND ")
-	default:
-		return ""
-	}
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.
@@ -227,17 +195,26 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return b.errCh
 }
 
+// Wait for all channels to close in the event bus group
+func (b *EventBus) Wait() {
+	b.wg.Wait()
+}
+
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, sub *pubsub.Subscription) {
+func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, sub *pubsub.Subscription) {
+	defer b.wg.Done()
+
 	for {
-		ctx := context.Background()
-		if err := sub.Receive(ctx, b.handler(m, h)); err != context.Canceled {
+		if err := sub.Receive(ctx, b.handler(m, h)); err != nil {
 			select {
 			case b.errCh <- eh.EventBusError{Ctx: ctx, Err: errors.New("could not receive: " + err.Error())}:
 			default:
 			}
+			// Retry the receive loop if there was an error.
+			time.Sleep(time.Second)
+			continue
 		}
-		time.Sleep(time.Second)
+		return
 	}
 }
 
@@ -296,6 +273,39 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 		}
 
 		msg.Ack()
+	}
+}
+
+// Creates a filter in the GCP pub sub filter syntax:
+// https://cloud.google.com/pubsub/docs/filtering
+func createFilter(m eh.EventMatcher) string {
+	switch m := m.(type) {
+	case eh.MatchEvents:
+		s := make([]string, len(m))
+		for i, et := range m {
+			s[i] = fmt.Sprintf(`attributes:"%s"`, et) // Filter event types by key to save space.
+		}
+		return strings.Join(s, " OR ")
+	case eh.MatchAggregates:
+		s := make([]string, len(m))
+		for i, at := range m {
+			s[i] = fmt.Sprintf(`attributes.%s="%s"`, aggregateTypeAttribute, at)
+		}
+		return strings.Join(s, " OR ")
+	case eh.MatchAny:
+		s := make([]string, len(m))
+		for i, sm := range m {
+			s[i] = fmt.Sprintf("(%s)", createFilter(sm))
+		}
+		return strings.Join(s, " OR ")
+	case eh.MatchAll:
+		s := make([]string, len(m))
+		for i, sm := range m {
+			s[i] = fmt.Sprintf("(%s)", createFilter(sm))
+		}
+		return strings.Join(s, " AND ")
+	default:
+		return ""
 	}
 }
 

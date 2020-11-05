@@ -38,9 +38,22 @@ func TestEventBus(t *testing.T) {
 	}
 
 	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
+}
 
-	bus1.Close()
-	bus2.Close()
-	bus1.Wait()
-	bus2.Wait()
+func TestEventBusLoad(t *testing.T) {
+	bus := NewEventBus(nil)
+	if bus == nil {
+		t.Fatal("there should be a bus")
+	}
+
+	eventbus.LoadTest(t, bus)
+}
+
+func BenchmarkEventBus(b *testing.B) {
+	bus := NewEventBus(nil)
+	if bus == nil {
+		b.Fatal("there should be a bus")
+	}
+
+	eventbus.Benchmark(b, bus)
 }

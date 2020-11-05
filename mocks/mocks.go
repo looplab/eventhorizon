@@ -356,14 +356,17 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
+func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.EventHandler) error {
 	return nil
 }
 
-// Errors implements the Error method of the eventhorizon.EventBus interface.
+// Errors implements the Errors method of the eventhorizon.EventBus interface.
 func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return make(chan eh.EventBusError)
 }
+
+// Wait implements the Wait method of the eventhorizon.EventBus interface.
+func (b *EventBus) Wait() {}
 
 // Repo is a mocked eventhorizon.ReadRepo, useful in testing.
 type Repo struct {

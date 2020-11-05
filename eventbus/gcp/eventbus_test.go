@@ -15,19 +15,13 @@
 package gcp
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventbus"
-	"github.com/looplab/eventhorizon/mocks"
 )
 
 func TestEventBus(t *testing.T) {
@@ -56,7 +50,7 @@ func TestEventBus(t *testing.T) {
 	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
 }
 
-func TestEventBusMultipleReceivers(t *testing.T) {
+func TestEventBusLoad(t *testing.T) {
 	// Connect to localhost if not running inside docker
 	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
 		os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8793")
@@ -74,35 +68,7 @@ func TestEventBusMultipleReceivers(t *testing.T) {
 		t.Fatal("there should be no error:", err)
 	}
 
-	handlers := make([]*mocks.EventHandler, 100)
-	var wg sync.WaitGroup
-	for i := range handlers {
-		h := mocks.NewEventHandler(fmt.Sprintf("handler-%d", i))
-		if err := bus.AddHandler(eh.MatchAll{}, h); err != nil {
-			t.Error("there should be no error:", err)
-		}
-		wg.Add(1)
-		handlers[i] = h
-		go func() {
-			<-h.Recv
-			wg.Done()
-		}()
-	}
-
-	t.Log("setup complete")
-
-	id := uuid.New()
-	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	ctx := context.Background()
-
-	event1 := eh.NewEventForAggregate(
-		mocks.EventType, &mocks.EventData{Content: "event1"},
-		timestamp, mocks.AggregateType, id, 1)
-	if err := bus.HandleEvent(ctx, event1); err != nil {
-		t.Error("there should be no error:", err)
-	}
-
-	wg.Wait()
+	eventbus.LoadTest(t, bus)
 }
 
 func BenchmarkEventBus(b *testing.B) {
@@ -123,19 +89,5 @@ func BenchmarkEventBus(b *testing.B) {
 		b.Fatal("there should be no error:", err)
 	}
 
-	id := uuid.New()
-	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	ctx := context.Background()
-
-	b.Log("setup complete")
-	b.ResetTimer()
-
-	for n := 0; n < b.N; n++ {
-		event1 := eh.NewEventForAggregate(
-			mocks.EventType, &mocks.EventData{Content: "event1"},
-			timestamp, mocks.AggregateType, id, n+1)
-		if err := bus.HandleEvent(ctx, event1); err != nil {
-			b.Error("there should be no error:", err)
-		}
-	}
+	eventbus.Benchmark(b, bus)
 }

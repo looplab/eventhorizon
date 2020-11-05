@@ -67,8 +67,10 @@ func main() {
 		}
 	}()
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// Add an event logger as an observer.
-	eventBus.AddHandler(eh.MatchAll{},
+	eventBus.AddHandler(ctx, eh.MatchAll{},
 		eh.UseEventHandlerMiddleware(&EventLogger{}, observer.Middleware))
 
 	// Create the repository and wrap in a version repository.
@@ -79,7 +81,7 @@ func main() {
 	todoRepo := version.NewRepo(repo)
 
 	// Setup the Todo domain.
-	todoCommandHandler, err := todo.SetupDomain(eventStore, eventBus, todoRepo)
+	todoCommandHandler, err := todo.SetupDomain(ctx, eventStore, eventBus, todoRepo)
 	if err != nil {
 		log.Fatal("could not setup Todo domain:", err)
 	}
@@ -94,7 +96,7 @@ func main() {
 	commandHandler := eh.UseCommandHandlerMiddleware(todoCommandHandler, loggingMiddleware)
 
 	// Setup the HTTP handler for commands, read repo and events.
-	h, err := handler.NewHandler(commandHandler, eventBus, todoRepo, "frontend")
+	h, err := handler.NewHandler(ctx, commandHandler, eventBus, todoRepo, "frontend")
 	if err != nil {
 		log.Fatal("could not create handler:", err)
 	}
@@ -143,6 +145,11 @@ func main() {
 
 	log.Println("waiting for HTTP request to finish")
 	<-srvClosed
+
+	// Cancel all handlers and wait.
+	cancel()
+	log.Println("waiting for handlers to finish")
+	eventBus.Wait()
 
 	log.Println("exiting")
 }

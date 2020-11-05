@@ -15,6 +15,7 @@
 package guestlist
 
 import (
+	"context"
 	"log"
 
 	"github.com/google/uuid"
@@ -29,6 +30,7 @@ import (
 
 // Setup configures the guestlist.
 func Setup(
+	ctx context.Context,
 	eventStore eh.EventStore,
 	eventBus eh.EventBus,
 	commandBus *bus.CommandHandler,
@@ -36,7 +38,7 @@ func Setup(
 	eventID uuid.UUID) {
 
 	// Add a logger as an observer.
-	eventBus.AddHandler(eh.MatchAll{},
+	eventBus.AddHandler(ctx, eh.MatchAll{},
 		eh.UseEventHandlerMiddleware(&Logger{}, observer.Middleware))
 
 	// Create the aggregate repository.
@@ -61,7 +63,7 @@ func Setup(
 	invitationProjector := projector.NewEventHandler(
 		NewInvitationProjector(), invitationRepo)
 	invitationProjector.SetEntityFactory(func() eh.Entity { return &Invitation{} })
-	eventBus.AddHandler(eh.MatchEvents{
+	eventBus.AddHandler(ctx, eh.MatchEvents{
 		InviteCreatedEvent,
 		InviteAcceptedEvent,
 		InviteDeclinedEvent,
@@ -71,7 +73,7 @@ func Setup(
 
 	// Create and register a read model for a guest list.
 	guestListProjector := NewGuestListProjector(guestListRepo, eventID)
-	eventBus.AddHandler(eh.MatchEvents{
+	eventBus.AddHandler(ctx, eh.MatchEvents{
 		InviteAcceptedEvent,
 		InviteDeclinedEvent,
 		InviteConfirmedEvent,
@@ -81,5 +83,5 @@ func Setup(
 	// Setup the saga that responds to the accepted guests and limits the total
 	// amount of guests, responding with a confirmation or denial.
 	responseSaga := saga.NewEventHandler(NewResponseSaga(2), commandBus)
-	eventBus.AddHandler(eh.MatchEvents{InviteAcceptedEvent}, responseSaga)
+	eventBus.AddHandler(ctx, eh.MatchEvents{InviteAcceptedEvent}, responseSaga)
 }

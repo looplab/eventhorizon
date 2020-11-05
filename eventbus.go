@@ -29,10 +29,13 @@ type EventBus interface {
 	// AddHandler adds a handler for an event. Returns an error if either the
 	// matcher or handler is nil, the handler is already added or there was some
 	// other problem adding the handler (for networked handlers for example).
-	AddHandler(EventMatcher, EventHandler) error
+	AddHandler(context.Context, EventMatcher, EventHandler) error
 
 	// Errors returns an error channel where async handling errors are sent.
 	Errors() <-chan EventBusError
+
+	// Wait wait for all handlers to be cancelled by their context.
+	Wait()
 }
 
 // EventBusError is an async error containing the error returned from a handler
