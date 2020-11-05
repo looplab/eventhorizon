@@ -19,6 +19,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 
 	"github.com/google/uuid"
 
@@ -98,7 +99,7 @@ func main() {
 		log.Fatal("could not create handler:", err)
 	}
 
-	log.Println("Adding a todo list with a few example items")
+	log.Println("adding a todo list with a few example items")
 	id := uuid.New()
 	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
@@ -120,7 +121,30 @@ func main() {
 
 	log.Printf("\n\nTo start, visit http://localhost:8080 in your browser.\n\n")
 
-	log.Fatal(http.ListenAndServe(":8080", h))
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: h,
+	}
+	srvClosed := make(chan struct{})
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+		if err := srv.Shutdown(context.Background()); err != nil {
+			log.Printf("could not shutdown HTTP server: %v", err)
+		}
+		close(srvClosed)
+	}()
+
+	log.Println("serving HTTP on :8080")
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatalf("could not listen HTTP: %v", err)
+	}
+
+	log.Println("waiting for HTTP request to finish")
+	<-srvClosed
+
+	log.Println("exiting")
 }
 
 // EventLogger is a simple event handler for logging all events.
