@@ -19,6 +19,7 @@ import (
 	"errors"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/repo/version"
 )
 
 // EventHandler is a CQRS projection handler to run a Projector implementation.
@@ -83,7 +84,7 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	// Get or create the model, trying to use a waiting find with a min version
 	// if the underlying repo supports it.
-	findCtx, cancel := eh.NewContextWithMinVersionWait(ctx, event.Version()-1)
+	findCtx, cancel := version.NewContextWithMinVersionWait(ctx, event.Version()-1)
 	defer cancel()
 	entity, err := h.repo.Find(findCtx, event.AggregateID())
 	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {

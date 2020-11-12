@@ -47,7 +47,7 @@ func (r *Repo) Parent() eh.ReadRepo {
 // either the version matches or the deadline is reached.
 func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	// If there is no min version set just return the item as normally.
-	minVersion, ok := eh.MinVersionFromContext(ctx)
+	minVersion, ok := MinVersionFromContext(ctx)
 	if !ok || minVersion < 1 {
 		return r.ReadWriteRepo.Find(ctx, id)
 	}

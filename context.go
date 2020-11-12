@@ -40,23 +40,6 @@ func init() {
 		}
 		return ctx
 	})
-
-	// Register the version context.
-	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
-		if v, ok := ctx.Value(minVersionKey).(int); ok {
-			vals[minVersionKeyStr] = v
-		}
-	})
-	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
-		if v, ok := vals[minVersionKeyStr].(int); ok {
-			return NewContextWithMinVersion(ctx, v)
-		}
-		// Support JSON-like marshaling of ints as floats.
-		if v, ok := vals[minVersionKeyStr].(float64); ok {
-			return NewContextWithMinVersion(ctx, int(v))
-		}
-		return ctx
-	})
 }
 
 type contextKey int
@@ -64,13 +47,11 @@ type contextKey int
 // Context keys for namespace and min version.
 const (
 	namespaceKey contextKey = iota
-	minVersionKey
 )
 
 // Strings used to marshal context values.
 const (
-	namespaceKeyStr  = "eh_namespace"
-	minVersionKeyStr = "eh_minversion"
+	namespaceKeyStr = "eh_namespace"
 )
 
 // NamespaceFromContext returns the namespace from the context, or the default
@@ -86,24 +67,6 @@ func NamespaceFromContext(ctx context.Context) string {
 // namespace is used to determine which database.
 func NewContextWithNamespace(ctx context.Context, namespace string) context.Context {
 	return context.WithValue(ctx, namespaceKey, namespace)
-}
-
-// MinVersionFromContext returns the min version from the context.
-func MinVersionFromContext(ctx context.Context) (int, bool) {
-	minVersion, ok := ctx.Value(minVersionKey).(int)
-	return minVersion, ok
-}
-
-// NewContextWithMinVersion returns the context with min version set.
-func NewContextWithMinVersion(ctx context.Context, minVersion int) context.Context {
-	return context.WithValue(ctx, minVersionKey, minVersion)
-}
-
-// NewContextWithMinVersionWait returns the context with min version and a
-// default deadline set.
-func NewContextWithMinVersionWait(ctx context.Context, minVersion int) (c context.Context, cancel func()) {
-	ctx = context.WithValue(ctx, minVersionKey, minVersion)
-	return context.WithTimeout(ctx, DefaultMinVersionDeadline)
 }
 
 // Private context marshaling funcs.
