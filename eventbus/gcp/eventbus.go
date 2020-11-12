@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -206,9 +207,11 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 
 	for {
 		if err := sub.Receive(ctx, b.handler(m, h)); err != nil {
+			err = fmt.Errorf("could not receive: %w", err)
 			select {
-			case b.errCh <- eh.EventBusError{Ctx: ctx, Err: errors.New("could not receive: " + err.Error())}:
+			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
+				log.Printf("missed error in GCP event bus: %s", err)
 			}
 			// Retry the receive loop if there was an error.
 			time.Sleep(time.Second)
@@ -223,9 +226,11 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 		// Decode the raw BSON event data.
 		var e evt
 		if err := bson.Unmarshal(msg.Data, &e); err != nil {
+			err = fmt.Errorf("could not unmarshal event: %w", err)
 			select {
-			case b.errCh <- eh.EventBusError{Err: errors.New("could not unmarshal event: " + err.Error()), Ctx: ctx}:
+			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
+				log.Printf("missed error in GCP event bus: %s", err)
 			}
 			msg.Nack()
 			return
@@ -235,17 +240,21 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 		if len(e.RawData) > 0 {
 			var err error
 			if e.data, err = eh.CreateEventData(e.EventType); err != nil {
+				err = fmt.Errorf("could not create event data: %w", err)
 				select {
-				case b.errCh <- eh.EventBusError{Err: errors.New("could not create event data: " + err.Error()), Ctx: ctx}:
+				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 				default:
+					log.Printf("missed error in GCP event bus: %s", err)
 				}
 				msg.Nack()
 				return
 			}
 			if err := bson.Unmarshal(e.RawData, e.data); err != nil {
+				err = fmt.Errorf("could not unmarshal event data: %w", err)
 				select {
-				case b.errCh <- eh.EventBusError{Err: errors.New("could not unmarshal event data: " + err.Error()), Ctx: ctx}:
+				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 				default:
+					log.Printf("missed error in GCP event bus: %s", err)
 				}
 				msg.Nack()
 				return
@@ -264,9 +273,11 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 
 		// Handle the event if it did match.
 		if err := h.HandleEvent(ctx, event); err != nil {
+			err = fmt.Errorf("could not handle event (%s): %w", h.HandlerType(), err)
 			select {
-			case b.errCh <- eh.EventBusError{Err: fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error()), Ctx: ctx, Event: event}:
+			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
 			default:
+				log.Printf("missed error in GCP event bus: %s", err)
 			}
 			msg.Nack()
 			return
