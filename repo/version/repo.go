@@ -54,7 +54,11 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 
 	// Try to get the correct version, retry with exponentially longer intervals
 	// until the deadline expires. If there is no deadline just try once.
-	delay := &backoff.Backoff{}
+	delay := &backoff.Backoff{
+		Max: 5 * time.Second,
+	}
+	// Skip the first duration, which is always 0.
+	_ = delay.Duration()
 	_, hasDeadline := ctx.Deadline()
 	for {
 		entity, err := r.findMinVersion(ctx, id, minVersion)
@@ -74,6 +78,7 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 			return entity, err
 		}
 
+		// Wait for the next try or cancellation.
 		select {
 		case <-time.After(delay.Duration()):
 		case <-ctx.Done():
