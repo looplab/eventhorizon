@@ -16,6 +16,7 @@ package observer
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -33,18 +34,40 @@ func TestEventHandler(t *testing.T) {
 
 	inner := mocks.NewEventHandler("test")
 
-	// Create a middleware, which should give a unique name.
-	h1 := eh.UseEventHandlerMiddleware(inner, Middleware)
+	// Named group.
+	h1 := eh.UseEventHandlerMiddleware(inner, NewMiddleware(NamedGroup("a")))
 	if err := h1.HandleEvent(context.Background(), event); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if h1.HandlerType() == inner.HandlerType() {
-		t.Error("the handler type should not be the original:", h1.HandlerType())
+	if h1.HandlerType() != inner.HandlerType()+"-a" {
+		t.Error("the handler type should be correct:", h1.HandlerType())
 	}
 
-	// Create another middleware, which should give a new unique name.
-	h2 := eh.UseEventHandlerMiddleware(inner, Middleware)
-	if h2.HandlerType() == h1.HandlerType() {
-		t.Error("the handler type should be unique:", h2.HandlerType())
+	// UUID group.
+	groupID := uuid.New()
+	h2 := eh.UseEventHandlerMiddleware(inner, NewMiddleware(UUIDGroup(groupID)))
+	if h2.HandlerType() != inner.HandlerType()+"-"+eh.EventHandlerType(groupID.String()) {
+		t.Error("the handler type should be correct:", h2.HandlerType())
 	}
+
+	// Random group.
+	h3 := eh.UseEventHandlerMiddleware(inner, NewMiddleware(RandomGroup()))
+	if h3.HandlerType() == inner.HandlerType() {
+		t.Error("the handler type should not be the original:", h3.HandlerType())
+	}
+	h4 := eh.UseEventHandlerMiddleware(inner, NewMiddleware(RandomGroup()))
+	if h4.HandlerType() == h1.HandlerType() {
+		t.Error("the handler type should be unique:", h4.HandlerType())
+	}
+
+	// Hostname group.
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Error("could not get hostname:", err)
+	}
+	h5 := eh.UseEventHandlerMiddleware(inner, NewMiddleware(HostnameGroup()))
+	if h5.HandlerType() != inner.HandlerType()+"-"+eh.EventHandlerType(hostname) {
+		t.Error("the handler type should be correct:", h5.HandlerType())
+	}
+	t.Log(h5.HandlerType())
 }

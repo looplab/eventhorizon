@@ -47,14 +47,18 @@ func (r *Repo) Parent() eh.ReadRepo {
 // either the version matches or the deadline is reached.
 func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	// If there is no min version set just return the item as normally.
-	minVersion, ok := eh.MinVersionFromContext(ctx)
+	minVersion, ok := MinVersionFromContext(ctx)
 	if !ok || minVersion < 1 {
 		return r.ReadWriteRepo.Find(ctx, id)
 	}
 
 	// Try to get the correct version, retry with exponentially longer intervals
 	// until the deadline expires. If there is no deadline just try once.
-	delay := &backoff.Backoff{}
+	delay := &backoff.Backoff{
+		Max: 5 * time.Second,
+	}
+	// Skip the first duration, which is always 0.
+	_ = delay.Duration()
 	_, hasDeadline := ctx.Deadline()
 	for {
 		entity, err := r.findMinVersion(ctx, id, minVersion)
@@ -74,6 +78,7 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 			return entity, err
 		}
 
+		// Wait for the next try or cancellation.
 		select {
 		case <-time.After(delay.Duration()):
 		case <-ctx.Done():

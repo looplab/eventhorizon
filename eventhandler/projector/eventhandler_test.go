@@ -142,7 +142,9 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 func TestEventHandler_UpdateModelWithEventsOutOfOrder(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}
-	handler := NewEventHandler(projector, version.NewRepo(repo))
+	// Out of order events requires waiting, at least if the event bus doesn't
+	// support retries.
+	handler := NewEventHandler(projector, version.NewRepo(repo), WithWait())
 	handler.SetEntityFactory(func() eh.Entity {
 		return &mocks.Model{}
 	})

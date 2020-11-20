@@ -14,50 +14,60 @@
 
 package eventhorizon
 
-// EventMatcher is a func that can match event to a criteria.
-type EventMatcher func(Event) bool
-
-// MatchAny matches any event.
-func MatchAny() EventMatcher {
-	return func(e Event) bool {
-		return true
-	}
+// EventMatcher matches, for example on event types, aggregate types etc.
+type EventMatcher interface {
+	// Match returns true if the matcher matches an event.
+	Match(Event) bool
 }
 
-// MatchEvent matches a specific event type, nil events never match.
-func MatchEvent(t EventType) EventMatcher {
-	return func(e Event) bool {
-		return e != nil && e.EventType() == t
-	}
-}
+// MatchEvents matches any of the event types, nil events never match.
+type MatchEvents []EventType
 
-// MatchAggregate matches a specific aggregate type, nil events never match.
-func MatchAggregate(t AggregateType) EventMatcher {
-	return func(e Event) bool {
-		return e != nil && e.AggregateType() == t
-	}
-}
-
-// MatchAnyOf matches if any of several matchers matches.
-func MatchAnyOf(matchers ...EventMatcher) EventMatcher {
-	return func(e Event) bool {
-		for _, m := range matchers {
-			if m(e) {
-				return true
-			}
+// Match implements the Match method of the EventMatcher interface.
+func (types MatchEvents) Match(e Event) bool {
+	for _, t := range types {
+		if e != nil && e.EventType() == t {
+			return true
 		}
-		return false
 	}
+	return false
 }
 
-// MatchAnyEventOf matches if any of several matchers matches.
-func MatchAnyEventOf(types ...EventType) EventMatcher {
-	return func(e Event) bool {
-		for _, t := range types {
-			if MatchEvent(t)(e) {
-				return true
-			}
+// MatchAggregates matches any of the aggregate types, nil events never match.
+type MatchAggregates []AggregateType
+
+// Match implements the Match method of the EventMatcher interface.
+func (types MatchAggregates) Match(e Event) bool {
+	for _, t := range types {
+		if e != nil && e.AggregateType() == t {
+			return true
 		}
-		return false
 	}
+	return false
+}
+
+// MatchAny matches any of the matchers.
+type MatchAny []EventMatcher
+
+// Match implements the Match method of the EventMatcher interface.
+func (matchers MatchAny) Match(e Event) bool {
+	for _, m := range matchers {
+		if m.Match(e) {
+			return true
+		}
+	}
+	return false
+}
+
+// MatchAll matches all of the matchers.
+type MatchAll []EventMatcher
+
+// Match implements the Match method of the EventMatcher interface.
+func (matchers MatchAll) Match(e Event) bool {
+	for _, m := range matchers {
+		if !m.Match(e) {
+			return false
+		}
+	}
+	return true
 }

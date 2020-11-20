@@ -48,5 +48,46 @@ func TestEventBus(t *testing.T) {
 	}
 
 	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
+}
 
+func TestEventBusLoad(t *testing.T) {
+	// Connect to localhost if not running inside docker
+	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
+		os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8793")
+	}
+
+	// Get a random app ID.
+	bts := make([]byte, 8)
+	if _, err := rand.Read(bts); err != nil {
+		t.Fatal(err)
+	}
+	appID := "app-" + hex.EncodeToString(bts)
+
+	bus, err := NewEventBus("project_id", appID)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	eventbus.LoadTest(t, bus)
+}
+
+func BenchmarkEventBus(b *testing.B) {
+	// Connect to localhost if not running inside docker
+	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
+		os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8793")
+	}
+
+	// Get a random app ID.
+	bts := make([]byte, 8)
+	if _, err := rand.Read(bts); err != nil {
+		b.Fatal(err)
+	}
+	appID := "app-" + hex.EncodeToString(bts)
+
+	bus, err := NewEventBus("project_id", appID)
+	if err != nil {
+		b.Fatal("there should be no error:", err)
+	}
+
+	eventbus.Benchmark(b, bus)
 }

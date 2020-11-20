@@ -19,6 +19,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 
 	"github.com/google/uuid"
 
@@ -66,8 +67,10 @@ func main() {
 		}
 	}()
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// Add an event logger as an observer.
-	eventBus.AddHandler(eh.MatchAny(),
+	eventBus.AddHandler(ctx, eh.MatchAll{},
 		eh.UseEventHandlerMiddleware(&EventLogger{}, observer.Middleware))
 
 	// Create the repository and wrap in a version repository.
@@ -78,7 +81,7 @@ func main() {
 	todoRepo := version.NewRepo(repo)
 
 	// Setup the Todo domain.
-	todoCommandHandler, err := todo.SetupDomain(eventStore, eventBus, todoRepo)
+	todoCommandHandler, err := todo.SetupDomain(ctx, eventStore, eventBus, todoRepo)
 	if err != nil {
 		log.Fatal("could not setup Todo domain:", err)
 	}
@@ -93,12 +96,12 @@ func main() {
 	commandHandler := eh.UseCommandHandlerMiddleware(todoCommandHandler, loggingMiddleware)
 
 	// Setup the HTTP handler for commands, read repo and events.
-	h, err := handler.NewHandler(commandHandler, eventBus, todoRepo, "frontend")
+	h, err := handler.NewHandler(ctx, commandHandler, eventBus, todoRepo, "frontend")
 	if err != nil {
 		log.Fatal("could not create handler:", err)
 	}
 
-	log.Println("Adding a todo list with a few example items")
+	log.Println("adding a todo list with a few example items")
 	id := uuid.New()
 	if err := commandHandler.HandleCommand(context.Background(), &todo.Create{
 		ID: id,
@@ -120,7 +123,35 @@ func main() {
 
 	log.Printf("\n\nTo start, visit http://localhost:8080 in your browser.\n\n")
 
-	log.Fatal(http.ListenAndServe(":8080", h))
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: h,
+	}
+	srvClosed := make(chan struct{})
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+		if err := srv.Shutdown(context.Background()); err != nil {
+			log.Printf("could not shutdown HTTP server: %v", err)
+		}
+		close(srvClosed)
+	}()
+
+	log.Println("serving HTTP on :8080")
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatalf("could not listen HTTP: %v", err)
+	}
+
+	log.Println("waiting for HTTP request to finish")
+	<-srvClosed
+
+	// Cancel all handlers and wait.
+	cancel()
+	log.Println("waiting for handlers to finish")
+	eventBus.Wait()
+
+	log.Println("exiting")
 }
 
 // EventLogger is a simple event handler for logging all events.

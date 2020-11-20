@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -44,6 +46,7 @@ type EventBus struct {
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
+	wg           sync.WaitGroup
 }
 
 // NewEventBus creates an EventBus, with optional GCP connection settings.
@@ -64,6 +67,7 @@ func NewEventBus(projectID, appID string, opts ...option.ClientOption) (*EventBu
 			return nil, err
 		}
 	}
+	topic.EnableMessageOrdering = true
 
 	return &EventBus{
 		appID:      appID,
@@ -76,8 +80,13 @@ func NewEventBus(projectID, appID string, opts ...option.ClientOption) (*EventBu
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandlerType() eh.EventHandlerType {
-	return "event-bus"
+	return "eventbus"
 }
+
+const (
+	aggregateTypeAttribute = "aggregate_type"
+	eventTypeAttribute     = "event_type"
+)
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
@@ -106,6 +115,11 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 
 	res := b.topic.Publish(ctx, &pubsub.Message{
 		Data: data,
+		Attributes: map[string]string{
+			aggregateTypeAttribute:     event.AggregateType().String(),
+			event.EventType().String(): "", // The event type as a key to save space when filtering.
+		},
+		OrderingKey: event.AggregateID().String(),
 	})
 	if _, err := res.Get(ctx); err != nil {
 		return errors.New("could not publish event: " + err.Error())
@@ -115,7 +129,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
+func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.EventHandler) error {
 	if m == nil {
 		return eh.ErrMissingMatcher
 	}
@@ -130,28 +144,49 @@ func (b *EventBus) AddHandler(m eh.EventMatcher, h eh.EventHandler) error {
 		return eh.ErrHandlerAlreadyAdded
 	}
 
+	// Build the subscription filter.
+	filter := createFilter(m)
+	if len(filter) >= 256 {
+		return fmt.Errorf("match filter is longer than 256 chars: %d", len(filter))
+	}
+
 	// Get or create the subscription.
-	subscriptionID := b.appID + "_" + string(h.HandlerType())
+	subscriptionID := b.appID + "_" + h.HandlerType().String()
 	sub := b.client.Subscription(subscriptionID)
-	ctx := context.Background()
 	if ok, err := sub.Exists(ctx); err != nil {
 		return fmt.Errorf("could not check existing subscription: %w", err)
 	} else if !ok {
 		if sub, err = b.client.CreateSubscription(ctx, subscriptionID,
 			pubsub.SubscriptionConfig{
-				Topic:       b.topic,
-				AckDeadline: 60 * time.Second,
+				Topic:                 b.topic,
+				Filter:                filter,
+				EnableMessageOrdering: true,
 			},
 		); err != nil {
 			return fmt.Errorf("could not create subscription: %w", err)
 		}
+	} else if ok {
+		cfg, err := sub.Config(ctx)
+		if err != nil {
+			return fmt.Errorf("could not get subscription config: %w", err)
+		}
+		if cfg.Filter != filter {
+			return fmt.Errorf("the existing filter for '%s' differs, please remove to recreate", h.HandlerType())
+		}
+		if !cfg.EnableMessageOrdering {
+			return fmt.Errorf("message ordering not enabled for subscription '%s', please remove to recreate", h.HandlerType())
+		}
 	}
+	// Default is to use 10 goroutines which is often not needed for multiple
+	// handlers.
+	sub.ReceiveSettings.NumGoroutines = 2
 
 	// Register handler.
 	b.registered[h.HandlerType()] = struct{}{}
 
-	// Handle (forever).
-	go b.handle(m, h, sub)
+	// Handle until context is cancelled.
+	b.wg.Add(1)
+	go b.handle(ctx, m, h, sub)
 
 	return nil
 }
@@ -161,17 +196,28 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return b.errCh
 }
 
+// Wait for all channels to close in the event bus group
+func (b *EventBus) Wait() {
+	b.wg.Wait()
+}
+
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, sub *pubsub.Subscription) {
+func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, sub *pubsub.Subscription) {
+	defer b.wg.Done()
+
 	for {
-		ctx := context.Background()
-		if err := sub.Receive(ctx, b.handler(m, h)); err != context.Canceled {
+		if err := sub.Receive(ctx, b.handler(m, h)); err != nil {
+			err = fmt.Errorf("could not receive: %w", err)
 			select {
-			case b.errCh <- eh.EventBusError{Ctx: ctx, Err: errors.New("could not receive: " + err.Error())}:
+			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
+				log.Printf("missed error in GCP event bus: %s", err)
 			}
+			// Retry the receive loop if there was an error.
+			time.Sleep(time.Second)
+			continue
 		}
-		time.Sleep(time.Second)
+		return
 	}
 }
 
@@ -180,9 +226,11 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 		// Decode the raw BSON event data.
 		var e evt
 		if err := bson.Unmarshal(msg.Data, &e); err != nil {
+			err = fmt.Errorf("could not unmarshal event: %w", err)
 			select {
-			case b.errCh <- eh.EventBusError{Err: errors.New("could not unmarshal event: " + err.Error()), Ctx: ctx}:
+			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
+				log.Printf("missed error in GCP event bus: %s", err)
 			}
 			msg.Nack()
 			return
@@ -192,17 +240,21 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 		if len(e.RawData) > 0 {
 			var err error
 			if e.data, err = eh.CreateEventData(e.EventType); err != nil {
+				err = fmt.Errorf("could not create event data: %w", err)
 				select {
-				case b.errCh <- eh.EventBusError{Err: errors.New("could not create event data: " + err.Error()), Ctx: ctx}:
+				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 				default:
+					log.Printf("missed error in GCP event bus: %s", err)
 				}
 				msg.Nack()
 				return
 			}
 			if err := bson.Unmarshal(e.RawData, e.data); err != nil {
+				err = fmt.Errorf("could not unmarshal event data: %w", err)
 				select {
-				case b.errCh <- eh.EventBusError{Err: errors.New("could not unmarshal event data: " + err.Error()), Ctx: ctx}:
+				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 				default:
+					log.Printf("missed error in GCP event bus: %s", err)
 				}
 				msg.Nack()
 				return
@@ -211,25 +263,60 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 		}
 
 		event := event{evt: e}
-		ctx = eh.UnmarshalContext(e.Context)
+		ctx = eh.UnmarshalContext(ctx, e.Context)
 
 		// Ignore non-matching events.
-		if !m(event) {
+		if !m.Match(event) {
 			msg.Ack()
 			return
 		}
 
 		// Handle the event if it did match.
 		if err := h.HandleEvent(ctx, event); err != nil {
+			err = fmt.Errorf("could not handle event (%s): %w", h.HandlerType(), err)
 			select {
-			case b.errCh <- eh.EventBusError{Err: fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error()), Ctx: ctx, Event: event}:
+			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
 			default:
+				log.Printf("missed error in GCP event bus: %s", err)
 			}
 			msg.Nack()
 			return
 		}
 
 		msg.Ack()
+	}
+}
+
+// Creates a filter in the GCP pub sub filter syntax:
+// https://cloud.google.com/pubsub/docs/filtering
+func createFilter(m eh.EventMatcher) string {
+	switch m := m.(type) {
+	case eh.MatchEvents:
+		s := make([]string, len(m))
+		for i, et := range m {
+			s[i] = fmt.Sprintf(`attributes:"%s"`, et) // Filter event types by key to save space.
+		}
+		return strings.Join(s, " OR ")
+	case eh.MatchAggregates:
+		s := make([]string, len(m))
+		for i, at := range m {
+			s[i] = fmt.Sprintf(`attributes.%s="%s"`, aggregateTypeAttribute, at)
+		}
+		return strings.Join(s, " OR ")
+	case eh.MatchAny:
+		s := make([]string, len(m))
+		for i, sm := range m {
+			s[i] = fmt.Sprintf("(%s)", createFilter(sm))
+		}
+		return strings.Join(s, " OR ")
+	case eh.MatchAll:
+		s := make([]string, len(m))
+		for i, sm := range m {
+			s[i] = fmt.Sprintf("(%s)", createFilter(sm))
+		}
+		return strings.Join(s, " AND ")
+	default:
+		return ""
 	}
 }
 

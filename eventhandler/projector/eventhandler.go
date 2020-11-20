@@ -19,6 +19,7 @@ import (
 	"errors"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/repo/version"
 )
 
 // EventHandler is a CQRS projection handler to run a Projector implementation.
@@ -26,6 +27,7 @@ type EventHandler struct {
 	projector Projector
 	repo      eh.ReadWriteRepo
 	factoryFn func() eh.Entity
+	useWait   bool
 }
 
 var _ = eh.EventHandler(&EventHandler{})
@@ -66,10 +68,24 @@ func (e Error) Error() string {
 var ErrModelNotSet = errors.New("model not set")
 
 // NewEventHandler creates a new EventHandler.
-func NewEventHandler(projector Projector, repo eh.ReadWriteRepo) *EventHandler {
-	return &EventHandler{
+func NewEventHandler(projector Projector, repo eh.ReadWriteRepo, options ...Option) *EventHandler {
+	h := &EventHandler{
 		projector: projector,
 		repo:      repo,
+	}
+	for _, option := range options {
+		option(h)
+	}
+	return h
+}
+
+// Option is an option setter used to configure creation.
+type Option func(*EventHandler)
+
+// WithWait adds waiting for the correct version when projecting.
+func WithWait() Option {
+	return func(h *EventHandler) {
+		h.useWait = true
 	}
 }
 
@@ -79,12 +95,17 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
-// It will try to find the correct version of the model, waiting for it if needed.
+// It will try to find the correct version of the model, waiting for it the projector
+// has the WithWait option set.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
-	// Get or create the model, trying to use a waiting find with a min version
-	// if the underlying repo supports it.
-	findCtx, cancel := eh.NewContextWithMinVersionWait(ctx, event.Version()-1)
-	defer cancel()
+	// Get or create the model, trying to find it with a min version (and optional
+	// retry) if the underlying repo supports it.
+	findCtx := version.NewContextWithMinVersion(ctx, event.Version()-1)
+	if h.useWait {
+		var cancel func()
+		findCtx, cancel = version.NewContextWithMinVersionWait(ctx, event.Version()-1)
+		defer cancel()
+	}
 	entity, err := h.repo.Find(findCtx, event.AggregateID())
 	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
 		if h.factoryFn == nil {

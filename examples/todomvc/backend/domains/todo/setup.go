@@ -1,6 +1,7 @@
 package todo
 
 import (
+	"context"
 	"fmt"
 
 	eh "github.com/looplab/eventhorizon"
@@ -13,6 +14,7 @@ import (
 
 // SetupDomain sets up the Todo domain.
 func SetupDomain(
+	ctx context.Context,
 	eventStore eh.EventStore,
 	eventBus eh.EventBus,
 	todoRepo eh.ReadWriteRepo,
@@ -35,14 +37,14 @@ func SetupDomain(
 	// Create the read model projector.
 	projector := projector.NewEventHandler(&Projector{}, todoRepo)
 	projector.SetEntityFactory(func() eh.Entity { return &TodoList{} })
-	eventBus.AddHandler(eh.MatchAnyEventOf(
+	eventBus.AddHandler(ctx, eh.MatchEvents{
 		Created,
 		Deleted,
 		ItemAdded,
 		ItemRemoved,
 		ItemDescriptionSet,
 		ItemChecked,
-	), projector)
+	}, projector)
 
 	// Create the event sourced aggregate repository.
 	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)

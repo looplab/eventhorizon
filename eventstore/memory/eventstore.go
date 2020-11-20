@@ -58,7 +58,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	// original aggregate version.
 	dbEvents := make([]eh.Event, len(events))
 	aggregateID := events[0].AggregateID()
-	version := originalVersion
 	for i, event := range events {
 		// Only accept events belonging to the same aggregate.
 		if event.AggregateID() != aggregateID {
@@ -69,7 +68,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		}
 
 		// Only accept events that apply to the correct aggregate version.
-		if event.Version() != version+1 {
+		if event.Version() != originalVersion+i+1 {
 			return eh.EventStoreError{
 				Err:       eh.ErrIncorrectEventVersion,
 				Namespace: eh.NamespaceFromContext(ctx),
@@ -82,7 +81,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			return err
 		}
 		dbEvents[i] = e
-		version++
 	}
 
 	ns := s.namespace(ctx)

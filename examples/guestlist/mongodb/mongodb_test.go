@@ -71,18 +71,21 @@ func Example() {
 	}
 	guestListRepo.SetEntityFactory(func() eh.Entity { return &guestlist.GuestList{} })
 
+	// Set the namespace to use.
+	ctx, cancel := context.WithCancel(
+		eh.NewContextWithNamespace(context.Background(), "mongodb"),
+	)
+
 	// Setup the guestlist.
 	eventID := uuid.New()
 	guestlist.Setup(
+		ctx,
 		eventStore,
 		eventBus,
 		commandBus,
 		invitationVersionRepo, guestListRepo,
 		eventID,
 	)
-
-	// Set the namespace to use.
-	ctx := eh.NewContextWithNamespace(context.Background(), "mongodb")
 
 	// Clear DB collections.
 	eventStore.Clear(ctx)
@@ -170,6 +173,10 @@ func Example() {
 		fmt.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 	}
+
+	// Cancel all handlers and wait.
+	cancel()
+	eventBus.Wait()
 
 	// Output:
 	// invitation: Athena - confirmed
