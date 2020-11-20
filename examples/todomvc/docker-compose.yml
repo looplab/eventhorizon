@@ -1,0 +1,33 @@
+version: "3.4"
+
+services:
+  todomvc:
+    build:
+      context: ../../
+      dockerfile: ./examples/todomvc/Dockerfile
+    depends_on:
+      - mongo
+      - gpubsub
+      - tracing
+    ports:
+      - "8080:8080"
+    environment:
+      MONGO_HOST: "mongo:27017"
+      PUBSUB_EMULATOR_HOST: "gpubsub:8793"
+
+  mongo:
+    image: mongo:4.2
+    ports:
+      - "27017:27017"
+
+  gpubsub:
+    image: google/cloud-sdk:318.0.0
+    ports:
+      - "8793:8793"
+    entrypoint:
+      - gcloud
+      - beta
+      - emulators
+      - pubsub
+      - start
+      - "--host-port=0.0.0.0:8793"

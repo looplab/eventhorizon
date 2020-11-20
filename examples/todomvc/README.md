@@ -4,28 +4,28 @@ This is a full example of using Event Horizon, including a frontend in Elm. The 
 
 ## Usage
 
-First run all services from the project root:
-
-```bash
-make run_services
-```
-
-Run the backend which will also compile the frontend:
+To run the example with Docker, which will also compile it:
 
 ```bash
 make run
 ```
 
-Visit http://localhost:8080
+Visit http://localhost:8080 for the TodoMVC app and http://localhost:16686 to view the traces.
 
-To run the tests (requires that MongoDB is runnng):
+Or to run the example locally (requires Elm to be installed):
+
+```bash
+make build_frontend run_services run_backend
+```
+
+To run the tests (requires `make run_services`):
 
 ```bash
 go test ./...
 ```
 
-To stop the services from the project root:
+To stop the services:
 
 ```bash
-make stop_services
+make stop
 ```
