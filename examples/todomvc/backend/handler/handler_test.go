@@ -28,6 +28,7 @@ import (
 	"github.com/google/uuid"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/commandhandler/bus"
 	gcpEventBus "github.com/looplab/eventhorizon/eventbus/gcp"
 	localEventBus "github.com/looplab/eventhorizon/eventbus/local"
 	"github.com/looplab/eventhorizon/eventhandler/waiter"
@@ -730,11 +731,14 @@ func NewTestSession(ctx context.Context) (
 	eh.EventBus,
 	eh.ReadWriteRepo,
 ) {
+	commandBus := bus.NewCommandHandler()
 	eventStore := memoryEventStore.NewEventStore()
 	eventBus := localEventBus.NewEventBus(nil)
 	todoRepo := memory.NewRepo()
-	commandHandler, _ := todo.SetupDomain(ctx, eventStore, eventBus, todoRepo)
-	return commandHandler, eventBus, todoRepo
+	if err := todo.SetupDomain(ctx, commandBus, eventStore, eventBus, todoRepo); err != nil {
+		log.Println("could not setup domain:", err)
+	}
+	return commandBus, eventBus, todoRepo
 }
 
 func NewIntegrationTestSession(ctx context.Context) (
@@ -749,6 +753,8 @@ func NewIntegrationTestSession(ctx context.Context) (
 	}
 	dbURL = "mongodb://" + dbURL
 	dbPrefix := "todomvc-example"
+
+	commandBus := bus.NewCommandHandler()
 
 	eventStore, err := mongoEventStore.NewEventStore(dbURL, dbPrefix)
 	if err != nil {
@@ -780,7 +786,9 @@ func NewIntegrationTestSession(ctx context.Context) (
 		log.Println("could not clear DB:", err)
 	}
 
-	commandHandler, _ := todo.SetupDomain(ctx, eventStore, eventBus, todoRepo)
+	if err := todo.SetupDomain(ctx, commandBus, eventStore, eventBus, todoRepo); err != nil {
+		log.Println("could not setup domain:", err)
+	}
 
-	return commandHandler, eventBus, todoRepo
+	return commandBus, eventBus, todoRepo
 }

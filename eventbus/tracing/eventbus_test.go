@@ -1,0 +1,78 @@
+// Copyright (c) 2020 - The Event Horizon authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tracing
+
+import (
+	"testing"
+	"time"
+
+	"github.com/looplab/eventhorizon/eventbus"
+	"github.com/looplab/eventhorizon/eventbus/local"
+)
+
+func TestEventBus(t *testing.T) {
+	group := local.NewGroup()
+	if group == nil {
+		t.Fatal("there should be a group")
+	}
+	innerBus1 := local.NewEventBus(group)
+	if innerBus1 == nil {
+		t.Fatal("there should be a bus")
+	}
+	innerBus2 := local.NewEventBus(group)
+	if innerBus2 == nil {
+		t.Fatal("there should be a bus")
+	}
+
+	bus1 := NewEventBus(innerBus1)
+	if bus1 == nil {
+		t.Fatal("there should be a bus")
+	}
+
+	bus2 := NewEventBus(innerBus2)
+	if bus2 == nil {
+		t.Fatal("there should be a bus")
+	}
+
+	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
+}
+
+func TestEventBusLoad(t *testing.T) {
+	innerBus := local.NewEventBus(nil)
+	if innerBus == nil {
+		t.Fatal("there should be a bus")
+	}
+
+	bus := NewEventBus(innerBus)
+	if bus == nil {
+		t.Fatal("there should be a bus")
+	}
+
+	eventbus.LoadTest(t, bus)
+}
+
+func BenchmarkEventBus(b *testing.B) {
+	innerBus := local.NewEventBus(nil)
+	if innerBus == nil {
+		b.Fatal("there should be a bus")
+	}
+
+	bus := NewEventBus(innerBus)
+	if bus == nil {
+		b.Fatal("there should be a bus")
+	}
+
+	eventbus.Benchmark(b, bus)
+}
