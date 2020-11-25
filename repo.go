@@ -86,6 +86,11 @@ func (e RepoError) Error() string {
 	return errStr + " (" + e.Namespace + ")"
 }
 
+// Cause returns the cause of this error.
+func (e RepoError) Cause() error {
+	return e.Err
+}
+
 // ErrEntityNotFound is when a entity could not be found.
 var ErrEntityNotFound = errors.New("could not find entity")
 
