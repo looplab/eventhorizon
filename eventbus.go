@@ -51,6 +51,11 @@ func (e EventBusError) Error() string {
 	return fmt.Sprintf("%s: (%s)", e.Err, e.Event)
 }
 
+// Cause returns the cause of this error.
+func (e EventBusError) Cause() error {
+	return e.Err
+}
+
 // ErrMissingMatcher is returned when adding a handler without a matcher.
 var ErrMissingMatcher = errors.New("missing matcher")
 

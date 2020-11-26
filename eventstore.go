@@ -62,6 +62,11 @@ func (e EventStoreError) Error() string {
 	return errStr + " (" + e.Namespace + ")"
 }
 
+// Cause returns the cause of this error.
+func (e EventStoreError) Cause() error {
+	return e.Err
+}
+
 // ErrNoEventsToAppend is when no events are available to append.
 var ErrNoEventsToAppend = errors.New("no events to append")
 

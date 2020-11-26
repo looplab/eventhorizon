@@ -56,6 +56,11 @@ func (a ApplyEventError) Error() string {
 	return "failed to apply event " + a.Event.String() + ": " + a.Err.Error()
 }
 
+// Cause returns the cause of this error.
+func (a ApplyEventError) Cause() error {
+	return a.Err
+}
+
 // NewAggregateStore creates a aggregate store with an event store and an event
 // handler that will handle resulting events (for example by publishing them
 // on an event bus).
