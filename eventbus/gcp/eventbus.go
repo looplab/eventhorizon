@@ -211,7 +211,7 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
-				log.Printf("missed error in GCP event bus: %s", err)
+				log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
 			}
 			// Retry the receive loop if there was an error.
 			time.Sleep(time.Second)
@@ -230,7 +230,7 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
-				log.Printf("missed error in GCP event bus: %s", err)
+				log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
 			}
 			msg.Nack()
 			return
@@ -244,7 +244,7 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 				select {
 				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 				default:
-					log.Printf("missed error in GCP event bus: %s", err)
+					log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
 				}
 				msg.Nack()
 				return
@@ -254,7 +254,7 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 				select {
 				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 				default:
-					log.Printf("missed error in GCP event bus: %s", err)
+					log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
 				}
 				msg.Nack()
 				return
@@ -277,7 +277,7 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
 			default:
-				log.Printf("missed error in GCP event bus: %s", err)
+				log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
 			}
 			msg.Nack()
 			return
