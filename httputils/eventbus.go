@@ -66,7 +66,7 @@ func (h *EventBusHandler) HandleEvent(ctx context.Context, event eh.Event) error
 func (h *EventBusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Print("upgrade:", err)
+		log.Printf("eventhorizon: could not upgrade websocket: %s", err)
 		return
 	}
 	defer c.Close()
@@ -78,7 +78,7 @@ func (h *EventBusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for event := range ch {
 		if err := c.WriteMessage(websocket.TextMessage, []byte(event.String())); err != nil {
-			log.Println("write:", err)
+			log.Printf("eventhorizon: could not write to websocket: %s", err)
 			break
 		}
 	}

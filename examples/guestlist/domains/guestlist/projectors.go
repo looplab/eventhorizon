@@ -58,7 +58,7 @@ func NewInvitationProjector() *InvitationProjector {
 
 // ProjectorType implements the ProjectorType method of the Projector interface.
 func (p *InvitationProjector) ProjectorType() projector.Type {
-	return projector.Type("InvitationProjector")
+	return projector.Type(InvitationAggregateType.String())
 }
 
 // Project implements the Project method of the Projector interface.
@@ -135,7 +135,7 @@ func NewGuestListProjector(repo eh.ReadWriteRepo, eventID uuid.UUID) *GuestListP
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (p *GuestListProjector) HandlerType() eh.EventHandlerType {
-	return eh.EventHandlerType("GuestListProjector")
+	return eh.EventHandlerType("GuestList")
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.

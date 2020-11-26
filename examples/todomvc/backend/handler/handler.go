@@ -39,7 +39,7 @@ func NewHandler(
 
 	// Add the event bus as a websocket that sends the events as JSON.
 	eventBusHandler := httputils.NewEventBusHandler()
-	observerMiddleware := observer.NewMiddleware(observer.NamedGroup("eventbus-observer"))
+	observerMiddleware := observer.NewMiddleware(observer.NamedGroup("todomvc"))
 	eventBus.AddHandler(ctx, eh.MatchAll{},
 		eh.UseEventHandlerMiddleware(eventBusHandler, observerMiddleware))
 	h.Handle("/api/events/", eventBusHandler)

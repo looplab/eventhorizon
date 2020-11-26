@@ -29,7 +29,7 @@ type Projector struct{}
 // ProjectorType implements the ProjectorType method of the
 // eventhorizon.Projector interface.
 func (p *Projector) ProjectorType() projector.Type {
-	return projector.Type(AggregateType.String() + "_projector")
+	return projector.Type(AggregateType.String())
 }
 
 // Project implements the Project method of the eventhorizon.Projector interface.

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package trace
+package recorder
 
 import (
 	"context"
@@ -21,12 +21,12 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// EventStore wraps an EventStore and adds debug tracing.
+// EventStore wraps an EventStore and adds debug event recording.
 type EventStore struct {
 	eh.EventStore
-	tracing bool
-	trace   []eh.Event
-	traceMu sync.RWMutex
+	recording bool
+	record    []eh.Event
+	recordMu  sync.RWMutex
 }
 
 // NewEventStore creates a new EventStore.
@@ -37,7 +37,7 @@ func NewEventStore(eventStore eh.EventStore) *EventStore {
 
 	return &EventStore{
 		EventStore: eventStore,
-		trace:      make([]eh.Event, 0),
+		record:     make([]eh.Event, 0),
 	}
 }
 
@@ -47,44 +47,44 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		return err
 	}
 
-	// Only trace events that are successfully saved.
-	s.traceMu.Lock()
-	defer s.traceMu.Unlock()
-	if s.tracing {
-		s.trace = append(s.trace, events...)
+	// Only record events that are successfully saved.
+	s.recordMu.Lock()
+	defer s.recordMu.Unlock()
+	if s.recording {
+		s.record = append(s.record, events...)
 	}
 
 	return nil
 }
 
-// StartTracing starts the tracing of events.
-func (s *EventStore) StartTracing() {
-	s.traceMu.Lock()
-	defer s.traceMu.Unlock()
+// StartRecording starts recording of handled events.
+func (s *EventStore) StartRecording() {
+	s.recordMu.Lock()
+	defer s.recordMu.Unlock()
 
-	s.tracing = true
+	s.recording = true
 }
 
-// StopTracing stops the tracing of events.
-func (s *EventStore) StopTracing() {
-	s.traceMu.Lock()
-	defer s.traceMu.Unlock()
+// StopRecording stops recording of handled events.
+func (s *EventStore) StopRecording() {
+	s.recordMu.Lock()
+	defer s.recordMu.Unlock()
 
-	s.tracing = false
+	s.recording = false
 }
 
-// GetTrace returns the events that happened during the tracing.
-func (s *EventStore) GetTrace() []eh.Event {
-	s.traceMu.RLock()
-	defer s.traceMu.RUnlock()
+// GetRecord returns the events that happened during the recording.
+func (s *EventStore) GetRecord() []eh.Event {
+	s.recordMu.RLock()
+	defer s.recordMu.RUnlock()
 
-	return s.trace
+	return s.record
 }
 
-// ResetTrace resets the trace.
+// ResetTrace resets the record.
 func (s *EventStore) ResetTrace() {
-	s.traceMu.Lock()
-	defer s.traceMu.Unlock()
+	s.recordMu.Lock()
+	defer s.recordMu.Unlock()
 
-	s.trace = make([]eh.Event, 0)
+	s.record = make([]eh.Event, 0)
 }

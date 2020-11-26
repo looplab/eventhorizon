@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package trace
+package recorder
 
 import (
 	"context"
@@ -33,22 +33,22 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	// Run the actual test suite, with tracing enabled.
-	store.StartTracing()
+	// Run the actual test suite, with recording enabled.
+	store.StartRecording()
 	savedEvents := eventstore.AcceptanceTest(t, context.Background(), store)
-	store.StopTracing()
+	store.StopRecording()
 
-	trace := store.GetTrace()
-	if !reflect.DeepEqual(trace, savedEvents) {
-		t.Error("there should be events traced:", trace)
+	record := store.GetRecord()
+	if !reflect.DeepEqual(record, savedEvents) {
+		t.Error("there should be events recorded:", record)
 	}
 
-	// And then some more tracing specific testing.
+	// And then some more recording specific testing.
 
 	store.ResetTrace()
-	trace = store.GetTrace()
-	if len(trace) != 0 {
-		t.Error("there should be no events traced:", trace)
+	record = store.GetRecord()
+	if len(record) != 0 {
+		t.Error("there should be no events recorded:", record)
 	}
 
 	event1 := savedEvents[0]
@@ -70,12 +70,12 @@ func TestEventStore(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 	aggregate1events = append(aggregate1events, event1)
-	trace = store.GetTrace()
-	if len(trace) != 0 {
-		t.Error("there should be no events traced:", trace)
+	record = store.GetRecord()
+	if len(record) != 0 {
+		t.Error("there should be no events recorded:", record)
 	}
 
-	// Load events without tracing.
+	// Load events without recording.
 	events, err := store.Load(ctx, event1.AggregateID())
 	if err != nil {
 		t.Error("there should be no error:", err)
