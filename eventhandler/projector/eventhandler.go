@@ -124,6 +124,11 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 
 	// The entity should be one version behind the event.
 	if entity, ok := entity.(eh.Versionable); ok {
+		// Ignore old/duplicate events.
+		if entity.AggregateVersion() >= event.Version() {
+			return nil
+		}
+
 		if entity.AggregateVersion()+1 != event.Version() {
 			return Error{
 				Err:       eh.ErrIncorrectEntityVersion,
