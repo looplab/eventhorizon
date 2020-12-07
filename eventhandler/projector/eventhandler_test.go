@@ -99,6 +99,11 @@ func TestEventHandler_UpdateModel(t *testing.T) {
 	if repo.Entity != projector.newEntity {
 		t.Error("the new entity should be correct:", repo.Entity)
 	}
+
+	// Handle event again, should be a no-op.
+	if err := handler.HandleEvent(ctx, event); err != nil {
+		t.Error("there shoud be no error:", err)
+	}
 }
 
 func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
@@ -136,6 +141,11 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 	}
 	if repo.Entity != projector.newEntity {
 		t.Error("the new entity should be correct:", repo.Entity)
+	}
+
+	// Handle event again, should be a no-op.
+	if err := handler.HandleEvent(ctx, event); err != nil {
+		t.Error("there shoud be no error:", err)
 	}
 }
 
