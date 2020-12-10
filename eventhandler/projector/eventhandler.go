@@ -17,6 +17,7 @@ package projector
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/repo/version"
@@ -49,6 +50,10 @@ type Type string
 type Error struct {
 	// Err is the error.
 	Err error
+	// EventVersion is the version of the event.
+	EventVersion int
+	// EntityVersion is the version of the entity.
+	EntityVersion int
 	// BaseErr is an optional underlying error, for example from the DB driver.
 	BaseErr error
 	// Namespace is the namespace for the error.
@@ -61,7 +66,8 @@ func (e Error) Error() string {
 	if e.BaseErr != nil {
 		errStr += ": " + e.BaseErr.Error()
 	}
-	return "projector: " + errStr + " (" + e.Namespace + ")"
+	return fmt.Sprintf("projector: %s, event: v%d, entity: v%d (%s)",
+		errStr, e.EventVersion, e.EntityVersion, e.Namespace)
 }
 
 // ErrModelNotSet is when a model factory is not set on the EventHandler.
@@ -110,20 +116,25 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
 		if h.factoryFn == nil {
 			return Error{
-				Err:       ErrModelNotSet,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err:          ErrModelNotSet,
+				EventVersion: event.Version(),
+				Namespace:    eh.NamespaceFromContext(ctx),
 			}
 		}
 		entity = h.factoryFn()
 	} else if err != nil {
 		return Error{
-			Err:       err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:          err,
+			EventVersion: event.Version(),
+			Namespace:    eh.NamespaceFromContext(ctx),
 		}
 	}
 
 	// The entity should be one version behind the event.
+	entityVersion := 0
 	if entity, ok := entity.(eh.Versionable); ok {
+		entityVersion = entity.AggregateVersion()
+
 		// Ignore old/duplicate events.
 		if entity.AggregateVersion() >= event.Version() {
 			return nil
@@ -131,8 +142,10 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 
 		if entity.AggregateVersion()+1 != event.Version() {
 			return Error{
-				Err:       eh.ErrIncorrectEntityVersion,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err:           eh.ErrIncorrectEntityVersion,
+				EventVersion:  event.Version(),
+				EntityVersion: entityVersion,
+				Namespace:     eh.NamespaceFromContext(ctx),
 			}
 		}
 	}
@@ -141,17 +154,22 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	newEntity, err := h.projector.Project(ctx, event, entity)
 	if err != nil {
 		return Error{
-			Err:       err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           err,
+			EventVersion:  event.Version(),
+			EntityVersion: entityVersion,
+			Namespace:     eh.NamespaceFromContext(ctx),
 		}
 	}
 
 	// The model should now be at the same version as the event.
 	if newEntity, ok := newEntity.(eh.Versionable); ok {
+		entityVersion = newEntity.AggregateVersion()
 		if newEntity.AggregateVersion() != event.Version() {
 			return Error{
-				Err:       eh.ErrIncorrectEntityVersion,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err:           eh.ErrIncorrectEntityVersion,
+				EventVersion:  event.Version(),
+				EntityVersion: entityVersion,
+				Namespace:     eh.NamespaceFromContext(ctx),
 			}
 		}
 	}
@@ -160,15 +178,19 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	if newEntity != nil {
 		if err := h.repo.Save(ctx, newEntity); err != nil {
 			return Error{
-				Err:       err,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err:           err,
+				EventVersion:  event.Version(),
+				EntityVersion: entityVersion,
+				Namespace:     eh.NamespaceFromContext(ctx),
 			}
 		}
 	} else {
 		if err := h.repo.Remove(ctx, event.AggregateID()); err != nil {
 			return Error{
-				Err:       err,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err:           err,
+				EventVersion:  event.Version(),
+				EntityVersion: entityVersion,
+				Namespace:     eh.NamespaceFromContext(ctx),
 			}
 		}
 	}

@@ -255,8 +255,9 @@ func TestEventHandler_LoadError(t *testing.T) {
 	loadErr := errors.New("load error")
 	repo.LoadErr = loadErr
 	expectedErr := Error{
-		Err:       loadErr,
-		Namespace: eh.NamespaceFromContext(ctx),
+		Err:          loadErr,
+		EventVersion: 1,
+		Namespace:    eh.NamespaceFromContext(ctx),
 	}
 	if err := handler.HandleEvent(ctx, event); !reflect.DeepEqual(err, expectedErr) {
 		t.Error("there shoud be an error:", err)
@@ -282,8 +283,9 @@ func TestEventHandler_SaveError(t *testing.T) {
 	saveErr := errors.New("save error")
 	repo.SaveErr = saveErr
 	expectedErr := Error{
-		Err:       saveErr,
-		Namespace: eh.NamespaceFromContext(ctx),
+		Err:          saveErr,
+		EventVersion: 1,
+		Namespace:    eh.NamespaceFromContext(ctx),
 	}
 	if err := handler.HandleEvent(ctx, event); !reflect.DeepEqual(err, expectedErr) {
 		t.Error("there shoud be an error:", err)
@@ -309,8 +311,9 @@ func TestEventHandler_ProjectError(t *testing.T) {
 	projectErr := errors.New("save error")
 	projector.err = projectErr
 	expectedErr := Error{
-		Err:       projectErr,
-		Namespace: eh.NamespaceFromContext(ctx),
+		Err:          projectErr,
+		EventVersion: 1,
+		Namespace:    eh.NamespaceFromContext(ctx),
 	}
 	if err := handler.HandleEvent(ctx, event); !reflect.DeepEqual(err, expectedErr) {
 		t.Error("there shoud be an error:", err)

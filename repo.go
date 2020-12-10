@@ -94,8 +94,14 @@ func (e RepoError) Cause() error {
 // ErrEntityNotFound is when a entity could not be found.
 var ErrEntityNotFound = errors.New("could not find entity")
 
+// ErrCouldNotLoadEntity is when a entity could not be loaded.
+var ErrCouldNotLoadEntity = errors.New("could not load entity")
+
 // ErrCouldNotSaveEntity is when a entity could not be saved.
 var ErrCouldNotSaveEntity = errors.New("could not save entity")
+
+// ErrCouldNotRemoveEntity is when a entity could not be removed.
+var ErrCouldNotRemoveEntity = errors.New("could not remove entity")
 
 // ErrMissingEntityID is when a entity has no ID.
 var ErrMissingEntityID = errors.New("missing entity ID")
