@@ -34,9 +34,6 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// DefaultQueueSize is the default queue size per handler for publishing events.
-var DefaultQueueSize = 10
-
 // EventBus is a local event bus that delegates handling of published events
 // to all matching registered handlers, in order of registration.
 type EventBus struct {
@@ -159,8 +156,12 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 		if sub, err = b.client.CreateSubscription(ctx, subscriptionID,
 			pubsub.SubscriptionConfig{
 				Topic:                 b.topic,
+				AckDeadline:           60 * time.Second,
 				Filter:                filter,
 				EnableMessageOrdering: true,
+				RetryPolicy: &pubsub.RetryPolicy{
+					MinimumBackoff: 3 * time.Second,
+				},
 			},
 		); err != nil {
 			return fmt.Errorf("could not create subscription: %w", err)
@@ -177,9 +178,6 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 			return fmt.Errorf("message ordering not enabled for subscription '%s', please remove to recreate", h.HandlerType())
 		}
 	}
-	// Default is to use 10 goroutines which is often not needed for multiple
-	// handlers.
-	sub.ReceiveSettings.NumGoroutines = 2
 
 	// Register handler.
 	b.registered[h.HandlerType()] = struct{}{}
