@@ -67,7 +67,9 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	id := uuid.New()
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
-		eh.ForAggregate(mocks.AggregateType, id, 1))
+		eh.ForAggregate(mocks.AggregateType, id, 1),
+		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": int32(42)}),
+	)
 	if err := bus1.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
 	}

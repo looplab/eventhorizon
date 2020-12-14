@@ -93,6 +93,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 		EventType:     event.EventType(),
 		Version:       event.Version(),
 		Timestamp:     event.Timestamp(),
+		Metadata:      event.Metadata(),
 		Context:       eh.MarshalContext(ctx),
 	}
 
@@ -274,6 +275,7 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 				aggregateID,
 				e.Version,
 			),
+			eh.WithMetadata(e.Metadata),
 		)
 
 		// Ignore non-matching events.
@@ -340,5 +342,6 @@ type evt struct {
 	AggregateType eh.AggregateType       `bson:"aggregate_type"`
 	AggregateID   string                 `bson:"_id"`
 	Version       int                    `bson:"version"`
+	Metadata      map[string]interface{} `bson:"metadata"`
 	Context       map[string]interface{} `bson:"context"`
 }

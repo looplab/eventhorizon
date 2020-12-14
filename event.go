@@ -48,6 +48,9 @@ type Event interface {
 	// Version of the aggregate for this event (after it has been applied).
 	Version() int
 
+	// Metadata is app-specific metadata such as request ID, originating user etc.
+	Metadata() map[string]interface{}
+
 	// A string representation of the event.
 	String() string
 }
@@ -73,6 +76,22 @@ func ForAggregate(aggregateType AggregateType, aggregateID uuid.UUID, version in
 			evt.aggregateType = aggregateType
 			evt.aggregateID = aggregateID
 			evt.version = version
+		}
+	}
+}
+
+// WithMetadata adds metadata when creating an event.
+// Note that the values types must be supprted by the event marshalers in use.
+func WithMetadata(metadata map[string]interface{}) EventOption {
+	return func(e Event) {
+		if evt, ok := e.(*event); ok {
+			if evt.metadata == nil {
+				evt.metadata = metadata
+			} else {
+				for k, v := range metadata {
+					evt.metadata[k] = v
+				}
+			}
 		}
 	}
 }
@@ -111,6 +130,7 @@ type event struct {
 	aggregateType AggregateType
 	aggregateID   uuid.UUID
 	version       int
+	metadata      map[string]interface{}
 }
 
 // EventType implements the EventType method of the Event interface.
@@ -141,6 +161,11 @@ func (e event) AggregateID() uuid.UUID {
 // Version implements the Version method of the Event interface.
 func (e event) Version() int {
 	return e.version
+}
+
+// Metadata implements the Metadata method of the Event interface.
+func (e event) Metadata() map[string]interface{} {
+	return e.metadata
 }
 
 // String implements the String method of the Event interface.

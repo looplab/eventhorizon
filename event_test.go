@@ -43,7 +43,9 @@ func TestNewEvent(t *testing.T) {
 
 	id := uuid.New()
 	event = NewEvent(TestEventType, &TestEventData{"event1"}, timestamp,
-		ForAggregate(TestAggregateType, id, 3))
+		ForAggregate(TestAggregateType, id, 3),
+		WithMetadata(map[string]interface{}{"meta": "data", "num": 42}),
+	)
 	if event.EventType() != TestEventType {
 		t.Error("the event type should be correct:", event.EventType())
 	}
@@ -61,6 +63,9 @@ func TestNewEvent(t *testing.T) {
 	}
 	if event.Version() != 3 {
 		t.Error("the version should be zero:", event.Version())
+	}
+	if !reflect.DeepEqual(event.Metadata(), map[string]interface{}{"meta": "data", "num": 42}) {
+		t.Error("the metadata should be correct:", event.Metadata())
 	}
 	if event.String() != "TestEvent@3" {
 		t.Error("the string representation should be correct:", event.String())

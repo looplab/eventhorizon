@@ -175,6 +175,7 @@ func (g *Group) publish(ctx context.Context, event eh.Event) error {
 				event.AggregateID(),
 				event.Version(),
 			),
+			eh.WithMetadata(event.Metadata()),
 		)
 		// Marshal and unmarshal the context to both simulate only sending data
 		// that would be sent over a network bus and also break any relationship

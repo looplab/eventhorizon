@@ -67,9 +67,11 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 		t.Error("there should be a ErrIncerrectEventVersion error:", err)
 	}
 
-	// Save event, version 2.
+	// Save event, version 2, with metadata.
 	event2 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event2"}, timestamp,
-		eh.ForAggregate(mocks.AggregateType, id, 2))
+		eh.ForAggregate(mocks.AggregateType, id, 2),
+		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": int32(42)}),
+	)
 	err = store.Save(ctx, []eh.Event{event2}, 1)
 	if err != nil {
 		t.Error("there should be no error:", err)

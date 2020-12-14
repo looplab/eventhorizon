@@ -256,6 +256,7 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 				e.AggregateID,
 				e.Version,
 			),
+			eh.WithMetadata(e.Metadata),
 		)
 		events[i] = event
 	}
@@ -361,13 +362,14 @@ type aggregateRecord struct {
 // evt is the internal event record for the MongoDB event store used
 // to save and load events from the DB.
 type evt struct {
-	EventType     eh.EventType     `bson:"event_type"`
-	RawData       bson.Raw         `bson:"data,omitempty"`
-	data          eh.EventData     `bson:"-"`
-	Timestamp     time.Time        `bson:"timestamp"`
-	AggregateType eh.AggregateType `bson:"aggregate_type"`
-	AggregateID   uuid.UUID        `bson:"_id"`
-	Version       int              `bson:"version"`
+	EventType     eh.EventType           `bson:"event_type"`
+	RawData       bson.Raw               `bson:"data,omitempty"`
+	data          eh.EventData           `bson:"-"`
+	Timestamp     time.Time              `bson:"timestamp"`
+	AggregateType eh.AggregateType       `bson:"aggregate_type"`
+	AggregateID   uuid.UUID              `bson:"_id"`
+	Version       int                    `bson:"version"`
+	Metadata      map[string]interface{} `bson:"metadata"`
 }
 
 // newEvt returns a new evt for an event.
@@ -378,6 +380,7 @@ func newEvt(ctx context.Context, event eh.Event) (*evt, error) {
 		AggregateType: event.AggregateType(),
 		AggregateID:   event.AggregateID(),
 		Version:       event.Version(),
+		Metadata:      event.Metadata(),
 	}
 
 	// Marshal event data if there is any.

@@ -208,6 +208,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 						e.AggregateID(),
 						e.Version(),
 					),
+					eh.WithMetadata(e.Metadata()),
 				)
 			}
 		}
@@ -265,5 +266,6 @@ func copyEvent(ctx context.Context, event eh.Event) (eh.Event, error) {
 			event.AggregateID(),
 			event.Version(),
 		),
+		eh.WithMetadata(event.Metadata()),
 	), nil
 }
