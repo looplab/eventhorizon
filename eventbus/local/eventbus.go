@@ -166,13 +166,15 @@ func (g *Group) publish(ctx context.Context, event eh.Event) error {
 			}
 			copier.Copy(data, event.Data())
 		}
-		eventCopy := eh.NewEventForAggregate(
+		eventCopy := eh.NewEvent(
 			event.EventType(),
 			data,
 			event.Timestamp(),
-			event.AggregateType(),
-			event.AggregateID(),
-			event.Version(),
+			eh.ForAggregate(
+				event.AggregateType(),
+				event.AggregateID(),
+				event.Version(),
+			),
 		)
 		// Marshal and unmarshal the context to both simulate only sending data
 		// that would be sent over a network bus and also break any relationship

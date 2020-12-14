@@ -42,8 +42,8 @@ func TestNewEvent(t *testing.T) {
 	}
 
 	id := uuid.New()
-	event = NewEventForAggregate(TestEventType, &TestEventData{"event1"}, timestamp,
-		TestAggregateType, id, 3)
+	event = NewEvent(TestEventType, &TestEventData{"event1"}, timestamp,
+		ForAggregate(TestAggregateType, id, 3))
 	if event.EventType() != TestEventType {
 		t.Error("the event type should be correct:", event.EventType())
 	}

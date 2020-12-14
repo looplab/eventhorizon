@@ -37,8 +37,8 @@ func TestCommandHandler(t *testing.T) {
 	eh.UseEventHandlerMiddleware(inner2, m)
 
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	expectedEvent := eh.NewEventForAggregate(mocks.EventType, nil, timestamp,
-		mocks.AggregateType, uuid.New(), 1)
+	expectedEvent := eh.NewEvent(mocks.EventType, nil, timestamp,
+		eh.ForAggregate(mocks.AggregateType, uuid.New(), 1))
 
 	// Non-scheduled handling.
 	if err := h.HandleEvent(context.Background(), expectedEvent); err != nil {

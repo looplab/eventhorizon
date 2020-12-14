@@ -247,13 +247,15 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 			e.RawData = nil
 		}
 
-		event := eh.NewEventForAggregate(
+		event := eh.NewEvent(
 			e.EventType,
 			e.data,
 			e.Timestamp,
-			e.AggregateType,
-			e.AggregateID,
-			e.Version,
+			eh.ForAggregate(
+				e.AggregateType,
+				e.AggregateID,
+				e.Version,
+			),
 		)
 		events[i] = event
 	}

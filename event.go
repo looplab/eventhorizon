@@ -63,27 +63,42 @@ func (et EventType) String() string {
 // EventData is any additional data for an event.
 type EventData interface{}
 
+// EventOption is an option to use when creating events.
+type EventOption func(Event)
+
+// ForAggregate adds aggregate data when creating an event.
+func ForAggregate(aggregateType AggregateType, aggregateID uuid.UUID, version int) EventOption {
+	return func(e Event) {
+		if evt, ok := e.(*event); ok {
+			evt.aggregateType = aggregateType
+			evt.aggregateID = aggregateID
+			evt.version = version
+		}
+	}
+}
+
 // NewEvent creates a new event with a type and data, setting its timestamp.
-func NewEvent(eventType EventType, data EventData, timestamp time.Time) Event {
-	return event{
+func NewEvent(eventType EventType, data EventData, timestamp time.Time, options ...EventOption) Event {
+	e := &event{
 		eventType: eventType,
 		data:      data,
 		timestamp: timestamp,
 	}
+	for _, option := range options {
+		if option != nil {
+			option(e)
+		}
+	}
+	return e
 }
 
 // NewEventForAggregate creates a new event with a type and data, setting its
 // timestamp. It also sets the aggregate data on it.
+// DEPRECATED, use NewEvent() with the WithAggregate() option instead.
 func NewEventForAggregate(eventType EventType, data EventData, timestamp time.Time,
-	aggregateType AggregateType, aggregateID uuid.UUID, version int) Event {
-	return event{
-		eventType:     eventType,
-		data:          data,
-		timestamp:     timestamp,
-		aggregateType: aggregateType,
-		aggregateID:   aggregateID,
-		version:       version,
-	}
+	aggregateType AggregateType, aggregateID uuid.UUID, version int, options ...EventOption) Event {
+	options = append(options, ForAggregate(aggregateType, aggregateID, version))
+	return NewEvent(eventType, data, timestamp, options...)
 }
 
 // event is an internal representation of an event, returned when the aggregate

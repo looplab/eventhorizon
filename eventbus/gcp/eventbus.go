@@ -265,13 +265,15 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 		if err != nil {
 			aggregateID = uuid.Nil
 		}
-		event := eh.NewEventForAggregate(
+		event := eh.NewEvent(
 			e.EventType,
 			e.data,
 			e.Timestamp,
-			e.AggregateType,
-			aggregateID,
-			e.Version,
+			eh.ForAggregate(
+				e.AggregateType,
+				aggregateID,
+				e.Version,
+			),
 		)
 
 		// Ignore non-matching events.

@@ -41,8 +41,8 @@ func TestEventHandler_CreateModel(t *testing.T) {
 	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
-		mocks.AggregateType, id, 1)
+	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 1))
 	entity := &mocks.SimpleModel{
 		ID: id,
 	}
@@ -77,8 +77,8 @@ func TestEventHandler_UpdateModel(t *testing.T) {
 	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
-		mocks.AggregateType, id, 1)
+	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 1))
 	entity := &mocks.SimpleModel{
 		ID: id,
 	}
@@ -119,8 +119,8 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
-		mocks.AggregateType, id, 1)
+	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 1))
 	entity := &mocks.Model{
 		ID: id,
 	}
@@ -164,8 +164,8 @@ func TestEventHandler_UpdateModelWithEventsOutOfOrder(t *testing.T) {
 	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
-		mocks.AggregateType, id, 3)
+	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 3))
 	entity := &mocks.Model{
 		ID:      id,
 		Version: 1,
@@ -215,8 +215,8 @@ func TestEventHandler_DeleteModel(t *testing.T) {
 	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
-		mocks.AggregateType, id, 1)
+	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 1))
 	entity := &mocks.SimpleModel{
 		ID: id,
 	}
@@ -250,8 +250,8 @@ func TestEventHandler_LoadError(t *testing.T) {
 	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
-		mocks.AggregateType, id, 1)
+	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 1))
 	loadErr := errors.New("load error")
 	repo.LoadErr = loadErr
 	expectedErr := Error{
@@ -278,8 +278,8 @@ func TestEventHandler_SaveError(t *testing.T) {
 	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
-		mocks.AggregateType, id, 1)
+	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 1))
 	saveErr := errors.New("save error")
 	repo.SaveErr = saveErr
 	expectedErr := Error{
@@ -306,8 +306,8 @@ func TestEventHandler_ProjectError(t *testing.T) {
 	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
-		mocks.AggregateType, id, 1)
+	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 1))
 	projectErr := errors.New("save error")
 	projector.err = projectErr
 	expectedErr := Error{

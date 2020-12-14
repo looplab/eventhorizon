@@ -99,10 +99,13 @@ func (a *AggregateBase) Events() []eh.Event {
 }
 
 // AppendEvent appends an event for later retrieval by Events().
-func (a *AggregateBase) AppendEvent(t eh.EventType, data eh.EventData, timestamp time.Time) eh.Event {
-	e := eh.NewEventForAggregate(t, data, timestamp,
-		a.AggregateType(), a.EntityID(),
-		a.Version()+len(a.events)+1)
+func (a *AggregateBase) AppendEvent(t eh.EventType, data eh.EventData, timestamp time.Time, options ...eh.EventOption) eh.Event {
+	options = append(options, eh.ForAggregate(
+		a.AggregateType(),
+		a.EntityID(),
+		a.Version()+len(a.events)+1),
+	)
+	e := eh.NewEvent(t, data, timestamp, options...)
 	a.events = append(a.events, e)
 	return e
 }

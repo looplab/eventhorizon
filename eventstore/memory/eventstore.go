@@ -199,13 +199,15 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 		for i, e := range aggregate.Events {
 			if e.EventType() == from {
 				// Rename any matching event by duplicating.
-				events[i] = eh.NewEventForAggregate(
+				events[i] = eh.NewEvent(
 					to,
 					e.Data(),
 					e.Timestamp(),
-					e.AggregateType(),
-					e.AggregateID(),
-					e.Version(),
+					eh.ForAggregate(
+						e.AggregateType(),
+						e.AggregateID(),
+						e.Version(),
+					),
 				)
 			}
 		}
@@ -254,12 +256,14 @@ func copyEvent(ctx context.Context, event eh.Event) (eh.Event, error) {
 		copier.Copy(data, event.Data())
 	}
 
-	return eh.NewEventForAggregate(
+	return eh.NewEvent(
 		event.EventType(),
 		data,
 		event.Timestamp(),
-		event.AggregateType(),
-		event.AggregateID(),
-		event.Version(),
+		eh.ForAggregate(
+			event.AggregateType(),
+			event.AggregateID(),
+			event.Version(),
+		),
 	), nil
 }

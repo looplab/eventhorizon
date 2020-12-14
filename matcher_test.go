@@ -62,12 +62,12 @@ func TestMatchAggregates(t *testing.T) {
 		t.Error("match aggregate should not match nil event")
 	}
 
-	e := NewEventForAggregate("test", nil, time.Now(), at, uuid.Nil, 0)
+	e := NewEvent("test", nil, time.Now(), ForAggregate(at, uuid.Nil, 0))
 	if !m.Match(e) {
 		t.Error("match aggregate should match the event")
 	}
 
-	e = NewEventForAggregate("test", nil, time.Now(), "other", uuid.Nil, 0)
+	e = NewEvent("test", nil, time.Now(), ForAggregate("other", uuid.Nil, 0))
 	if m.Match(e) {
 		t.Error("match aggregate should not match the event")
 	}
@@ -78,11 +78,11 @@ func TestMatchAggregates(t *testing.T) {
 	if m.Match(nil) {
 		t.Error("match any event of should not match nil event")
 	}
-	e1 := NewEventForAggregate("test", nil, time.Now(), at1, uuid.Nil, 0)
+	e1 := NewEvent("test", nil, time.Now(), ForAggregate(at1, uuid.Nil, 0))
 	if !m.Match(e1) {
 		t.Error("match any event of should match the first event")
 	}
-	e2 := NewEventForAggregate("test", nil, time.Now(), at2, uuid.Nil, 0)
+	e2 := NewEvent("test", nil, time.Now(), ForAggregate(at2, uuid.Nil, 0))
 	if !m.Match(e2) {
 		t.Error("match any event of should match the second event")
 	}
@@ -96,15 +96,15 @@ func TestMatchAny(t *testing.T) {
 		MatchAggregates{at},
 	}
 
-	e := NewEventForAggregate(et, nil, time.Now(), at, uuid.Nil, 0)
+	e := NewEvent(et, nil, time.Now(), ForAggregate(at, uuid.Nil, 0))
 	if !m.Match(e) {
 		t.Error("match any of should match the event")
 	}
-	e = NewEventForAggregate("not-matched", nil, time.Now(), at, uuid.Nil, 0)
+	e = NewEvent("not-matched", nil, time.Now(), ForAggregate(at, uuid.Nil, 0))
 	if !m.Match(e) {
 		t.Error("match any of should match the event")
 	}
-	e = NewEventForAggregate(et, nil, time.Now(), "not-matched", uuid.Nil, 0)
+	e = NewEvent(et, nil, time.Now(), ForAggregate("not-matched", uuid.Nil, 0))
 	if !m.Match(e) {
 		t.Error("match any of should match the event")
 	}
@@ -118,15 +118,15 @@ func TestMatchAll(t *testing.T) {
 		MatchAggregates{at},
 	}
 
-	e := NewEventForAggregate(et, nil, time.Now(), at, uuid.Nil, 0)
+	e := NewEvent(et, nil, time.Now(), ForAggregate(at, uuid.Nil, 0))
 	if !m.Match(e) {
 		t.Error("match any of should match the event")
 	}
-	e = NewEventForAggregate("not-matched", nil, time.Now(), at, uuid.Nil, 0)
+	e = NewEvent("not-matched", nil, time.Now(), ForAggregate(at, uuid.Nil, 0))
 	if m.Match(e) {
 		t.Error("match any of should not match the event")
 	}
-	e = NewEventForAggregate(et, nil, time.Now(), "not-matched", uuid.Nil, 0)
+	e = NewEvent(et, nil, time.Now(), ForAggregate("not-matched", uuid.Nil, 0))
 	if m.Match(e) {
 		t.Error("match any of should not match the event")
 	}
