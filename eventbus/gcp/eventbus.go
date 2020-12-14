@@ -260,8 +260,19 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 			e.RawData = nil
 		}
 
-		event := event{evt: e}
 		ctx = eh.UnmarshalContext(ctx, e.Context)
+		aggregateID, err := uuid.Parse(e.AggregateID)
+		if err != nil {
+			aggregateID = uuid.Nil
+		}
+		event := eh.NewEventForAggregate(
+			e.EventType,
+			e.data,
+			e.Timestamp,
+			e.AggregateType,
+			aggregateID,
+			e.Version,
+		)
 
 		// Ignore non-matching events.
 		if !m.Match(event) {
@@ -328,49 +339,4 @@ type evt struct {
 	AggregateID   string                 `bson:"_id"`
 	Version       int                    `bson:"version"`
 	Context       map[string]interface{} `bson:"context"`
-}
-
-// event is the private implementation of the eventhorizon.Event interface
-// for a MongoDB event store.
-type event struct {
-	evt
-}
-
-// EventType implements the EventType method of the eventhorizon.Event interface.
-func (e event) EventType() eh.EventType {
-	return e.evt.EventType
-}
-
-// Data implements the Data method of the eventhorizon.Event interface.
-func (e event) Data() eh.EventData {
-	return e.evt.data
-}
-
-// Timestamp implements the Timestamp method of the eventhorizon.Event interface.
-func (e event) Timestamp() time.Time {
-	return e.evt.Timestamp
-}
-
-// AggregateType implements the AggregateType method of the eventhorizon.Event interface.
-func (e event) AggregateType() eh.AggregateType {
-	return e.evt.AggregateType
-}
-
-// AggrgateID implements the AggrgateID method of the eventhorizon.Event interface.
-func (e event) AggregateID() uuid.UUID {
-	id, err := uuid.Parse(e.evt.AggregateID)
-	if err != nil {
-		return uuid.Nil
-	}
-	return id
-}
-
-// Version implements the Version method of the eventhorizon.Event interface.
-func (e event) Version() int {
-	return e.evt.Version
-}
-
-// String implements the String method of the eventhorizon.Event interface.
-func (e event) String() string {
-	return fmt.Sprintf("%s@%d", e.evt.EventType, e.evt.Version)
 }
