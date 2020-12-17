@@ -145,7 +145,8 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 		}
 	} else if err != nil {
 		return nil, eh.RepoError{
-			Err:       err,
+			Err:       eh.ErrCouldNotLoadEntity,
+			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
@@ -167,7 +168,8 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	cursor, err := c.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, eh.RepoError{
-			Err:       err,
+			Err:       eh.ErrCouldNotLoadEntity,
+			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
@@ -177,7 +179,8 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 		entity := r.factoryFn()
 		if err := cursor.Decode(entity); err != nil {
 			return nil, eh.RepoError{
-				Err:       err,
+				Err:       eh.ErrCouldNotLoadEntity,
+				BaseErr:   err,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
@@ -186,7 +189,8 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 
 	if err := cursor.Close(ctx); err != nil {
 		return nil, eh.RepoError{
-			Err:       err,
+			Err:       eh.ErrCouldNotLoadEntity,
+			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
@@ -238,8 +242,8 @@ func (r *Repo) FindCustomIter(ctx context.Context, f func(context.Context, *mong
 	cursor, err := f(ctx, c)
 	if err != nil {
 		return nil, eh.RepoError{
-			BaseErr:   err,
 			Err:       ErrInvalidQuery,
+			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
@@ -274,8 +278,8 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 	cursor, err := f(ctx, c)
 	if err != nil {
 		return nil, eh.RepoError{
-			BaseErr:   err,
 			Err:       ErrInvalidQuery,
+			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
@@ -291,7 +295,8 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 	for cursor.Next(ctx) {
 		if err := cursor.Decode(entity); err != nil {
 			return nil, eh.RepoError{
-				Err:       err,
+				Err:       eh.ErrCouldNotLoadEntity,
+				BaseErr:   err,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}
@@ -300,7 +305,8 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 	}
 	if err := cursor.Close(ctx); err != nil {
 		return nil, eh.RepoError{
-			Err:       err,
+			Err:       eh.ErrCouldNotLoadEntity,
+			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
@@ -344,7 +350,8 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 
 	if r, err := c.DeleteOne(ctx, bson.M{"_id": id.String()}); err != nil {
 		return eh.RepoError{
-			Err:       err,
+			Err:       eh.ErrCouldNotRemoveEntity,
+			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	} else if r.DeletedCount == 0 {
