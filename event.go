@@ -96,6 +96,19 @@ func WithMetadata(metadata map[string]interface{}) EventOption {
 	}
 }
 
+// FromCommand adds metadat for the originating command when crating an event.
+// Currently it adds the command type and optionally a command ID (if the
+// CommandIDer interface is implemented).
+func FromCommand(cmd Command) EventOption {
+	md := map[string]interface{}{
+		"command_type": cmd.CommandType().String(),
+	}
+	if c, ok := cmd.(CommandIDer); ok {
+		md["command_id"] = c.CommandID().String()
+	}
+	return WithMetadata(md)
+}
+
 // NewEvent creates a new event with a type and data, setting its timestamp.
 func NewEvent(eventType EventType, data EventData, timestamp time.Time, options ...EventOption) Event {
 	e := &event{

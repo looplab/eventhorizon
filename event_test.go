@@ -42,8 +42,14 @@ func TestNewEvent(t *testing.T) {
 	}
 
 	id := uuid.New()
+	cmd := TestCommandID{
+		TestID:  id,
+		Content: "content",
+		CmdID:   uuid.New(),
+	}
 	event = NewEvent(TestEventType, &TestEventData{"event1"}, timestamp,
 		ForAggregate(TestAggregateType, id, 3),
+		FromCommand(cmd),
 		WithMetadata(map[string]interface{}{"meta": "data", "num": 42}),
 	)
 	if event.EventType() != TestEventType {
@@ -64,7 +70,12 @@ func TestNewEvent(t *testing.T) {
 	if event.Version() != 3 {
 		t.Error("the version should be zero:", event.Version())
 	}
-	if !reflect.DeepEqual(event.Metadata(), map[string]interface{}{"meta": "data", "num": 42}) {
+	if !reflect.DeepEqual(event.Metadata(), map[string]interface{}{
+		"meta":         "data",
+		"num":          42,
+		"command_type": cmd.CommandType().String(),
+		"command_id":   cmd.CmdID.String(),
+	}) {
 		t.Error("the metadata should be correct:", event.Metadata())
 	}
 	if event.String() != "TestEvent@3" {
@@ -160,3 +171,18 @@ type TestEventRegisterEmptyData struct{}
 type TestEventRegisterTwiceData struct{}
 
 type TestEventUnregisterTwiceData struct{}
+
+type TestCommandID struct {
+	TestID  uuid.UUID
+	Content string
+	CmdID   uuid.UUID
+}
+
+var _ = Command(TestCommandID{})
+
+func (t TestCommandID) AggregateID() uuid.UUID       { return t.TestID }
+func (t TestCommandID) AggregateType() AggregateType { return TestAggregateType }
+func (t TestCommandID) CommandType() CommandType {
+	return CommandType("TestCommandID")
+}
+func (t TestCommandID) CommandID() uuid.UUID { return t.CmdID }
