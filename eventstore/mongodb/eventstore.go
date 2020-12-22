@@ -135,7 +135,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 	// Build all event records, with incrementing versions starting from the
 	// original aggregate version.
-	dbEvents := make([]dbEvent, len(events))
+	dbEvents := make([]evt, len(events))
 	aggregateID := events[0].AggregateID()
 	for i, event := range events {
 		// Only accept events belonging to the same aggregate.
@@ -155,7 +155,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		}
 
 		// Create the event record for the DB.
-		e, err := newDBEvent(ctx, event)
+		e, err := newEvt(ctx, event)
 		if err != nil {
 			return err
 		}
@@ -226,28 +226,39 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	}
 
 	events := make([]eh.Event, len(aggregate.Events))
-	for i, dbEvent := range aggregate.Events {
+	for i, e := range aggregate.Events {
 		// Create an event of the correct type and decode from raw BSON.
-		if len(dbEvent.RawData) > 0 {
+		if len(e.RawData) > 0 {
 			var err error
-			if dbEvent.data, err = eh.CreateEventData(dbEvent.EventType); err != nil {
+			if e.data, err = eh.CreateEventData(e.EventType); err != nil {
 				return nil, eh.EventStoreError{
 					Err:       ErrCouldNotUnmarshalEvent,
 					BaseErr:   err,
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
-			if err := bson.Unmarshal(dbEvent.RawData, dbEvent.data); err != nil {
+			if err := bson.Unmarshal(e.RawData, e.data); err != nil {
 				return nil, eh.EventStoreError{
 					Err:       ErrCouldNotUnmarshalEvent,
 					BaseErr:   err,
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
-			dbEvent.RawData = nil
+			e.RawData = nil
 		}
 
-		events[i] = event{dbEvent: dbEvent}
+		event := eh.NewEvent(
+			e.EventType,
+			e.data,
+			e.Timestamp,
+			eh.ForAggregate(
+				e.AggregateType,
+				e.AggregateID,
+				e.Version,
+			),
+			eh.WithMetadata(e.Metadata),
+		)
+		events[i] = event
 	}
 
 	return events, nil
@@ -269,7 +280,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	}
 
 	// Create the event record for the Database.
-	e, err := newDBEvent(ctx, event)
+	e, err := newEvt(ctx, event)
 	if err != nil {
 		return err
 	}
@@ -343,31 +354,33 @@ func (s *EventStore) Close(ctx context.Context) {
 type aggregateRecord struct {
 	AggregateID uuid.UUID `bson:"_id"`
 	Version     int       `bson:"version"`
-	Events      []dbEvent `bson:"events"`
+	Events      []evt     `bson:"events"`
 	// Type        string        `bson:"type"`
 	// Snapshot    bson.Raw      `bson:"snapshot"`
 }
 
-// dbEvent is the internal event record for the MongoDB event store used
+// evt is the internal event record for the MongoDB event store used
 // to save and load events from the DB.
-type dbEvent struct {
-	EventType     eh.EventType     `bson:"event_type"`
-	RawData       bson.Raw         `bson:"data,omitempty"`
-	data          eh.EventData     `bson:"-"`
-	Timestamp     time.Time        `bson:"timestamp"`
-	AggregateType eh.AggregateType `bson:"aggregate_type"`
-	AggregateID   uuid.UUID        `bson:"_id"`
-	Version       int              `bson:"version"`
+type evt struct {
+	EventType     eh.EventType           `bson:"event_type"`
+	RawData       bson.Raw               `bson:"data,omitempty"`
+	data          eh.EventData           `bson:"-"`
+	Timestamp     time.Time              `bson:"timestamp"`
+	AggregateType eh.AggregateType       `bson:"aggregate_type"`
+	AggregateID   uuid.UUID              `bson:"_id"`
+	Version       int                    `bson:"version"`
+	Metadata      map[string]interface{} `bson:"metadata"`
 }
 
-// newDBEvent returns a new dbEvent for an event.
-func newDBEvent(ctx context.Context, event eh.Event) (*dbEvent, error) {
-	e := &dbEvent{
+// newEvt returns a new evt for an event.
+func newEvt(ctx context.Context, event eh.Event) (*evt, error) {
+	e := &evt{
 		EventType:     event.EventType(),
 		Timestamp:     event.Timestamp(),
 		AggregateType: event.AggregateType(),
 		AggregateID:   event.AggregateID(),
 		Version:       event.Version(),
+		Metadata:      event.Metadata(),
 	}
 
 	// Marshal event data if there is any.
@@ -384,45 +397,4 @@ func newDBEvent(ctx context.Context, event eh.Event) (*dbEvent, error) {
 	}
 
 	return e, nil
-}
-
-// event is the private implementation of the eventhorizon.Event interface
-// for a MongoDB event store.
-type event struct {
-	dbEvent
-}
-
-// AggrgateID implements the AggrgateID method of the eventhorizon.Event interface.
-func (e event) AggregateID() uuid.UUID {
-	return e.dbEvent.AggregateID
-}
-
-// AggregateType implements the AggregateType method of the eventhorizon.Event interface.
-func (e event) AggregateType() eh.AggregateType {
-	return e.dbEvent.AggregateType
-}
-
-// EventType implements the EventType method of the eventhorizon.Event interface.
-func (e event) EventType() eh.EventType {
-	return e.dbEvent.EventType
-}
-
-// Data implements the Data method of the eventhorizon.Event interface.
-func (e event) Data() eh.EventData {
-	return e.dbEvent.data
-}
-
-// Version implements the Version method of the eventhorizon.Event interface.
-func (e event) Version() int {
-	return e.dbEvent.Version
-}
-
-// Timestamp implements the Timestamp method of the eventhorizon.Event interface.
-func (e event) Timestamp() time.Time {
-	return e.dbEvent.Timestamp
-}
-
-// String implements the String method of the eventhorizon.Event interface.
-func (e event) String() string {
-	return fmt.Sprintf("%s@%d", e.dbEvent.EventType, e.dbEvent.Version)
 }

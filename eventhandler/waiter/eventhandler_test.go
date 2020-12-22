@@ -31,9 +31,8 @@ func TestEventHandler(t *testing.T) {
 
 	// Event should match when waiting.
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	expectedEvent := eh.NewEventForAggregate(
-		mocks.EventType, nil, timestamp, mocks.AggregateType, uuid.New(), 1,
-	)
+	expectedEvent := eh.NewEvent(mocks.EventType, nil, timestamp,
+		eh.ForAggregate(mocks.AggregateType, uuid.New(), 1))
 	go func() {
 		time.Sleep(time.Millisecond)
 		h.HandleEvent(context.Background(), expectedEvent)
@@ -58,8 +57,8 @@ func TestEventHandler(t *testing.T) {
 	}
 
 	// Other events should not match.
-	otherEvent := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
-		mocks.AggregateType, uuid.New(), 1)
+	otherEvent := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
+		eh.ForAggregate(mocks.AggregateType, uuid.New(), 1))
 	go func() {
 		time.Sleep(time.Millisecond)
 		h.HandleEvent(context.Background(), otherEvent)

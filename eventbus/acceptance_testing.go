@@ -66,8 +66,10 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	// Without handler.
 	id := uuid.New()
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
-		mocks.AggregateType, id, 1)
+	event1 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 1),
+		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": int32(42)}),
+	)
 	if err := bus1.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -80,8 +82,8 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	// Event without data (tested in its own handler).
 	otherHandler := mocks.NewEventHandler("other-handler")
 	bus1.AddHandler(ctx, eh.MatchEvents{mocks.EventOtherType}, otherHandler)
-	eventWithoutData := eh.NewEventForAggregate(mocks.EventOtherType, nil, timestamp,
-		mocks.AggregateType, uuid.New(), 1)
+	eventWithoutData := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
+		eh.ForAggregate(mocks.AggregateType, uuid.New(), 1))
 	if err := bus1.HandleEvent(ctx, eventWithoutData); err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -232,9 +234,9 @@ func LoadTest(t *testing.T, bus eh.EventBus) {
 	id := uuid.New()
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 
-	event1 := eh.NewEventForAggregate(
-		mocks.EventType, &mocks.EventData{Content: "event1"},
-		timestamp, mocks.AggregateType, id, 1)
+	event1 := eh.NewEvent(
+		mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 1))
 	if err := bus.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -257,9 +259,9 @@ func Benchmark(b *testing.B, bus eh.EventBus) {
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		event1 := eh.NewEventForAggregate(
-			mocks.EventType, &mocks.EventData{Content: "event1"},
-			timestamp, mocks.AggregateType, id, n+1)
+		event1 := eh.NewEvent(
+			mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
+			eh.ForAggregate(mocks.AggregateType, id, n+1))
 		if err := bus.HandleEvent(ctx, event1); err != nil {
 			b.Error("there should be no error:", err)
 		}

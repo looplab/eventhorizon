@@ -37,8 +37,8 @@ func TestEventHandler(t *testing.T) {
 	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event := eh.NewEventForAggregate(mocks.EventType, eventData, timestamp,
-		mocks.AggregateType, id, 1)
+	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 1))
 	saga.commands = []eh.Command{&mocks.Command{ID: uuid.New(), Content: "content"}}
 	handler.HandleEvent(ctx, event)
 	if saga.event != event {

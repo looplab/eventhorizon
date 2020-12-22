@@ -48,6 +48,9 @@ type Event interface {
 	// Version of the aggregate for this event (after it has been applied).
 	Version() int
 
+	// Metadata is app-specific metadata such as request ID, originating user etc.
+	Metadata() map[string]interface{}
+
 	// A string representation of the event.
 	String() string
 }
@@ -63,27 +66,71 @@ func (et EventType) String() string {
 // EventData is any additional data for an event.
 type EventData interface{}
 
+// EventOption is an option to use when creating events.
+type EventOption func(Event)
+
+// ForAggregate adds aggregate data when creating an event.
+func ForAggregate(aggregateType AggregateType, aggregateID uuid.UUID, version int) EventOption {
+	return func(e Event) {
+		if evt, ok := e.(*event); ok {
+			evt.aggregateType = aggregateType
+			evt.aggregateID = aggregateID
+			evt.version = version
+		}
+	}
+}
+
+// WithMetadata adds metadata when creating an event.
+// Note that the values types must be supprted by the event marshalers in use.
+func WithMetadata(metadata map[string]interface{}) EventOption {
+	return func(e Event) {
+		if evt, ok := e.(*event); ok {
+			if evt.metadata == nil {
+				evt.metadata = metadata
+			} else {
+				for k, v := range metadata {
+					evt.metadata[k] = v
+				}
+			}
+		}
+	}
+}
+
+// FromCommand adds metadat for the originating command when crating an event.
+// Currently it adds the command type and optionally a command ID (if the
+// CommandIDer interface is implemented).
+func FromCommand(cmd Command) EventOption {
+	md := map[string]interface{}{
+		"command_type": cmd.CommandType().String(),
+	}
+	if c, ok := cmd.(CommandIDer); ok {
+		md["command_id"] = c.CommandID().String()
+	}
+	return WithMetadata(md)
+}
+
 // NewEvent creates a new event with a type and data, setting its timestamp.
-func NewEvent(eventType EventType, data EventData, timestamp time.Time) Event {
-	return event{
+func NewEvent(eventType EventType, data EventData, timestamp time.Time, options ...EventOption) Event {
+	e := &event{
 		eventType: eventType,
 		data:      data,
 		timestamp: timestamp,
 	}
+	for _, option := range options {
+		if option != nil {
+			option(e)
+		}
+	}
+	return e
 }
 
 // NewEventForAggregate creates a new event with a type and data, setting its
 // timestamp. It also sets the aggregate data on it.
+// DEPRECATED, use NewEvent() with the WithAggregate() option instead.
 func NewEventForAggregate(eventType EventType, data EventData, timestamp time.Time,
-	aggregateType AggregateType, aggregateID uuid.UUID, version int) Event {
-	return event{
-		eventType:     eventType,
-		data:          data,
-		timestamp:     timestamp,
-		aggregateType: aggregateType,
-		aggregateID:   aggregateID,
-		version:       version,
-	}
+	aggregateType AggregateType, aggregateID uuid.UUID, version int, options ...EventOption) Event {
+	options = append(options, ForAggregate(aggregateType, aggregateID, version))
+	return NewEvent(eventType, data, timestamp, options...)
 }
 
 // event is an internal representation of an event, returned when the aggregate
@@ -96,6 +143,7 @@ type event struct {
 	aggregateType AggregateType
 	aggregateID   uuid.UUID
 	version       int
+	metadata      map[string]interface{}
 }
 
 // EventType implements the EventType method of the Event interface.
@@ -126,6 +174,11 @@ func (e event) AggregateID() uuid.UUID {
 // Version implements the Version method of the Event interface.
 func (e event) Version() int {
 	return e.version
+}
+
+// Metadata implements the Metadata method of the Event interface.
+func (e event) Metadata() map[string]interface{} {
+	return e.metadata
 }
 
 // String implements the String method of the Event interface.

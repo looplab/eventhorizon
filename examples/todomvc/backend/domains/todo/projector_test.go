@@ -40,14 +40,17 @@ func TestProjector(t *testing.T) {
 	}{
 		"unhandeled event": {
 			&TodoList{},
-			eh.NewEventForAggregate(eh.EventType("unknown"), nil,
-				TimeNow(), AggregateType, id, 1),
+			eh.NewEvent(eh.EventType("unknown"), nil, TimeNow(),
+				eh.ForAggregate(AggregateType, id, 1),
+			),
 			&TodoList{},
 			errors.New("could not project event: unknown"),
 		},
 		"created": {
 			&TodoList{},
-			eh.NewEventForAggregate(Created, nil, TimeNow(), AggregateType, id, 1),
+			eh.NewEvent(Created, nil, TimeNow(),
+				eh.ForAggregate(AggregateType, id, 1),
+			),
 			&TodoList{
 				ID:        id,
 				Version:   1,
@@ -59,8 +62,9 @@ func TestProjector(t *testing.T) {
 		},
 		"deleted": {
 			&TodoList{},
-			eh.NewEventForAggregate(Deleted, nil,
-				TimeNow(), AggregateType, id, 1),
+			eh.NewEvent(Deleted, nil, TimeNow(),
+				eh.ForAggregate(AggregateType, id, 1),
+			),
 			nil,
 			nil,
 		},
@@ -71,10 +75,12 @@ func TestProjector(t *testing.T) {
 				Items:     []*TodoItem{},
 				CreatedAt: TimeNow(),
 			},
-			eh.NewEventForAggregate(ItemAdded, &ItemAddedData{
+			eh.NewEvent(ItemAdded, &ItemAddedData{
 				ItemID:      1,
 				Description: "desc 1",
-			}, TimeNow(), AggregateType, id, 1),
+			}, TimeNow(),
+				eh.ForAggregate(AggregateType, id, 1),
+			),
 			&TodoList{
 				ID:      id,
 				Version: 2,
@@ -108,9 +114,11 @@ func TestProjector(t *testing.T) {
 				},
 				CreatedAt: TimeNow(),
 			},
-			eh.NewEventForAggregate(ItemRemoved, &ItemRemovedData{
+			eh.NewEvent(ItemRemoved, &ItemRemovedData{
 				ItemID: 2,
-			}, TimeNow(), AggregateType, id, 1),
+			}, TimeNow(),
+				eh.ForAggregate(AggregateType, id, 1),
+			),
 			&TodoList{
 				ID:      id,
 				Version: 2,
@@ -139,9 +147,11 @@ func TestProjector(t *testing.T) {
 				},
 				CreatedAt: TimeNow(),
 			},
-			eh.NewEventForAggregate(ItemRemoved, &ItemRemovedData{
+			eh.NewEvent(ItemRemoved, &ItemRemovedData{
 				ItemID: 1,
-			}, TimeNow(), AggregateType, id, 1),
+			}, TimeNow(),
+				eh.ForAggregate(AggregateType, id, 1),
+			),
 			&TodoList{
 				ID:        id,
 				Version:   2,
@@ -169,10 +179,12 @@ func TestProjector(t *testing.T) {
 				},
 				CreatedAt: TimeNow(),
 			},
-			eh.NewEventForAggregate(ItemDescriptionSet, &ItemDescriptionSetData{
+			eh.NewEvent(ItemDescriptionSet, &ItemDescriptionSetData{
 				ItemID:      2,
 				Description: "new desc",
-			}, TimeNow(), AggregateType, id, 1),
+			}, TimeNow(),
+				eh.ForAggregate(AggregateType, id, 1),
+			),
 			&TodoList{
 				ID:      id,
 				Version: 2,
@@ -211,10 +223,12 @@ func TestProjector(t *testing.T) {
 				},
 				CreatedAt: TimeNow(),
 			},
-			eh.NewEventForAggregate(ItemChecked, &ItemCheckedData{
+			eh.NewEvent(ItemChecked, &ItemCheckedData{
 				ItemID:  2,
 				Checked: true,
-			}, TimeNow(), AggregateType, id, 1),
+			}, TimeNow(),
+				eh.ForAggregate(AggregateType, id, 1),
+			),
 			&TodoList{
 				ID:      id,
 				Version: 2,

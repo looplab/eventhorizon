@@ -53,6 +53,12 @@ func (ct CommandType) String() string {
 	return string(ct)
 }
 
+// CommandIDer provides a unique command ID to be used for request tracking etc.
+type CommandIDer interface {
+	// CommandID returns the ID of the command instance being handled.
+	CommandID() uuid.UUID
+}
+
 // ErrCommandNotRegistered is when no command factory was registered.
 var ErrCommandNotRegistered = errors.New("command not registered")
 

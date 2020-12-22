@@ -35,6 +35,9 @@ func CompareEvents(e1, e2 eh.Event) error {
 	if !reflect.DeepEqual(e1.Data(), e2.Data()) {
 		return fmt.Errorf("incorrect event data: %s (should be %s)", e1.Data(), e2.Data())
 	}
+	if !reflect.DeepEqual(e1.Metadata(), e2.Metadata()) {
+		return fmt.Errorf("incorrect event metadata: %s (should be %s)", e1.Metadata(), e2.Metadata())
+	}
 	return nil
 }
 
@@ -62,6 +65,9 @@ func EqualEvents(evts1, evts2 []eh.Event) bool {
 			return false
 		}
 		if e1.Version() != e2.Version() {
+			return false
+		}
+		if !reflect.DeepEqual(e1.Metadata(), e2.Metadata()) {
 			return false
 		}
 	}
