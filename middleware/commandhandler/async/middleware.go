@@ -40,12 +40,25 @@ func NewMiddleware() (eh.CommandHandlerMiddleware, chan Error) {
 
 // Error is an error containing the error and the command.
 type Error struct {
-	Err     error
-	Ctx     context.Context
+	// Err is the error that happened when handling the command.
+	Err error
+	// Ctx is the context used when the error happened.
+	Ctx context.Context
+	// Command is the command handeled when the error happened.
 	Command eh.Command
 }
 
 // Error implements the Error method of the error interface.
 func (e Error) Error() string {
 	return fmt.Sprintf("%s (%s): %s", e.Command.CommandType(), e.Command.AggregateID(), e.Err.Error())
+}
+
+// Unwrap implements the errors.Unwrap method.
+func (e Error) Unwrap() error {
+	return e.Err
+}
+
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e Error) Cause() error {
+	return e.Unwrap()
 }

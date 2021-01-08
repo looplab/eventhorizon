@@ -45,20 +45,25 @@ var ErrMismatchedEventType = errors.New("mismatched event type and aggregate typ
 // ApplyEventError is when an event could not be applied. It contains the error
 // and the event that caused it.
 type ApplyEventError struct {
-	// Event is the event that caused the error.
-	Event eh.Event
 	// Err is the error that happened when applying the event.
 	Err error
+	// Event is the event being applied when the error happened.
+	Event eh.Event
 }
 
 // Error implements the Error method of the error interface.
-func (a ApplyEventError) Error() string {
-	return "failed to apply event " + a.Event.String() + ": " + a.Err.Error()
+func (e ApplyEventError) Error() string {
+	return "failed to apply event " + e.Event.String() + ": " + e.Err.Error()
 }
 
-// Cause returns the cause of this error.
-func (a ApplyEventError) Cause() error {
-	return a.Err
+// Unwrap implements the errors.Unwrap method.
+func (e ApplyEventError) Unwrap() error {
+	return e.Err
+}
+
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e ApplyEventError) Cause() error {
+	return e.Unwrap()
 }
 
 // NewAggregateStore creates a aggregate store with an event store and an event

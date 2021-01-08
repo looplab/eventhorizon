@@ -48,7 +48,7 @@ type Type string
 
 // Error is an error in the projector, with the namespace.
 type Error struct {
-	// Err is the error.
+	// Err is the error that happened when projecting the event.
 	Err error
 	// EventVersion is the version of the event.
 	EventVersion int
@@ -68,6 +68,16 @@ func (e Error) Error() string {
 	}
 	return fmt.Sprintf("projector: %s, event: v%d, entity: v%d (%s)",
 		errStr, e.EventVersion, e.EntityVersion, e.Namespace)
+}
+
+// Unwrap implements the errors.Unwrap method.
+func (e Error) Unwrap() error {
+	return e.Err
+}
+
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e Error) Cause() error {
+	return e.Unwrap()
 }
 
 // ErrModelNotSet is when a model factory is not set on the EventHandler.
