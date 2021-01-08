@@ -62,9 +62,14 @@ func (e EventStoreError) Error() string {
 	return errStr + " (" + e.Namespace + ")"
 }
 
-// Cause returns the cause of this error.
-func (e EventStoreError) Cause() error {
+// Unwrap implements the errors.Unwrap method.
+func (e EventStoreError) Unwrap() error {
 	return e.Err
+}
+
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e EventStoreError) Cause() error {
+	return e.Unwrap()
 }
 
 // ErrNoEventsToAppend is when no events are available to append.

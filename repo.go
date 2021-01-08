@@ -86,9 +86,14 @@ func (e RepoError) Error() string {
 	return errStr + " (" + e.Namespace + ")"
 }
 
-// Cause returns the cause of this error.
-func (e RepoError) Cause() error {
+// Unwrap implements the errors.Unwrap method.
+func (e RepoError) Unwrap() error {
 	return e.Err
+}
+
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e RepoError) Cause() error {
+	return e.Unwrap()
 }
 
 // ErrEntityNotFound is when a entity could not be found.

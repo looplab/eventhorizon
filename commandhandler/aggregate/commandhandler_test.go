@@ -38,7 +38,7 @@ func TestNewCommandHandler(t *testing.T) {
 	}
 
 	h, err = NewCommandHandler(mocks.AggregateType, nil)
-	if err != ErrNilAggregateStore {
+	if !errors.Is(err, ErrNilAggregateStore) {
 		t.Error("there should be a ErrNilAggregateStore error:", err)
 	}
 	if h != nil {
@@ -84,7 +84,7 @@ func TestCommandHandler_AggregateNotFound(t *testing.T) {
 		Content: "command1",
 	}
 	err = h.HandleCommand(context.Background(), cmd)
-	if err != eh.ErrAggregateNotFound {
+	if !errors.Is(err, eh.ErrAggregateNotFound) {
 		t.Error("there should be a command error:", err)
 	}
 }
@@ -92,13 +92,15 @@ func TestCommandHandler_AggregateNotFound(t *testing.T) {
 func TestCommandHandler_ErrorInHandler(t *testing.T) {
 	a, h, _ := createAggregateAndHandler(t)
 
-	a.Err = errors.New("command error")
+	commandErr := errors.New("command error")
+	a.Err = commandErr
 	cmd := &mocks.Command{
 		ID:      a.EntityID(),
 		Content: "command1",
 	}
 	err := h.HandleCommand(context.Background(), cmd)
-	if err == nil || err.Error() != "command error" {
+	var aggregateErr eh.AggregateError
+	if !errors.As(err, &aggregateErr) || !errors.Is(err, commandErr) {
 		t.Error("there should be a command error:", err)
 	}
 	if !reflect.DeepEqual(a.Commands, []eh.Command{}) {
@@ -109,13 +111,14 @@ func TestCommandHandler_ErrorInHandler(t *testing.T) {
 func TestCommandHandler_ErrorWhenSaving(t *testing.T) {
 	a, h, store := createAggregateAndHandler(t)
 
-	store.Err = errors.New("save error")
+	saveErr := errors.New("save error")
+	store.Err = saveErr
 	cmd := &mocks.Command{
 		ID:      a.EntityID(),
 		Content: "command1",
 	}
 	err := h.HandleCommand(context.Background(), cmd)
-	if err == nil || err.Error() != "save error" {
+	if !errors.Is(err, saveErr) {
 		t.Error("there should be a command error:", err)
 	}
 }
@@ -128,7 +131,7 @@ func TestCommandHandler_NoHandlers(t *testing.T) {
 		Content: "command1",
 	}
 	err := h.HandleCommand(context.Background(), cmd)
-	if err != eh.ErrAggregateNotFound {
+	if !errors.Is(err, eh.ErrAggregateNotFound) {
 		t.Error("there should be a ErrAggregateNotFound error:", nil)
 	}
 }

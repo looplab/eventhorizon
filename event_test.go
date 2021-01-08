@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -85,7 +86,7 @@ func TestNewEvent(t *testing.T) {
 
 func TestCreateEventData(t *testing.T) {
 	data, err := CreateEventData(TestEventRegisterType)
-	if err != ErrEventDataNotRegistered {
+	if !errors.Is(err, ErrEventDataNotRegistered) {
 		t.Error("there should be a event not registered error:", err)
 	}
 

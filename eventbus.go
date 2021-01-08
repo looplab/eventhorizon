@@ -41,8 +41,11 @@ type EventBus interface {
 // EventBusError is an async error containing the error returned from a handler
 // and the event that it happened on.
 type EventBusError struct {
-	Err   error
-	Ctx   context.Context
+	// Err is the error.
+	Err error
+	// Ctx is the context used when the error happened.
+	Ctx context.Context
+	// Event is the event handeled when the error happened.
 	Event Event
 }
 
@@ -51,16 +54,21 @@ func (e EventBusError) Error() string {
 	return fmt.Sprintf("%s: (%s)", e.Err, e.Event)
 }
 
-// Cause returns the cause of this error.
-func (e EventBusError) Cause() error {
+// Unwrap implements the errors.Unwrap method.
+func (e EventBusError) Unwrap() error {
 	return e.Err
 }
 
-// ErrMissingMatcher is returned when adding a handler without a matcher.
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e EventBusError) Cause() error {
+	return e.Unwrap()
+}
+
+// ErrMissingMatcher is returned when calling AddHandler without a matcher.
 var ErrMissingMatcher = errors.New("missing matcher")
 
-// ErrMissingHandler is returned when adding a handler with a nil handler.
+// ErrMissingHandler is returned when calling AddHandler with a nil handler.
 var ErrMissingHandler = errors.New("missing handler")
 
-// ErrHandlerAlreadyAdded is returned when adding the same handler twice.
+// ErrHandlerAlreadyAdded is returned when calling AddHandler weth the same handler twice.
 var ErrHandlerAlreadyAdded = errors.New("handler already added")

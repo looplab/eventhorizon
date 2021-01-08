@@ -16,6 +16,7 @@ package bus
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -35,7 +36,7 @@ func TestCommandHandler(t *testing.T) {
 	t.Log("handle with no handler")
 	cmd := &mocks.Command{ID: uuid.New(), Content: "command1"}
 	err := bus.HandleCommand(ctx, cmd)
-	if err != ErrHandlerNotFound {
+	if !errors.Is(err, ErrHandlerNotFound) {
 		t.Error("there should be a ErrHandlerNotFound error:", err)
 	}
 
@@ -59,7 +60,7 @@ func TestCommandHandler(t *testing.T) {
 	}
 
 	err = bus.SetHandler(handler, mocks.CommandType)
-	if err != ErrHandlerAlreadySet {
+	if !errors.Is(err, ErrHandlerAlreadySet) {
 		t.Error("there should be a ErrHandlerAlreadySet error:", err)
 	}
 }

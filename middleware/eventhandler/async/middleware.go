@@ -48,8 +48,11 @@ func (h *eventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 
 // Error is an async error containing the error and the event.
 type Error struct {
-	Err   error
-	Ctx   context.Context
+	// Err is the error that happened when handling the event.
+	Err error
+	// Ctx is the context used when the error happened.
+	Ctx context.Context
+	// Event is the event handeled when the error happened.
 	Event eh.Event
 }
 

@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ import (
 
 func TestCreateCommand(t *testing.T) {
 	cmd, err := CreateCommand(TestCommandRegisterType)
-	if err != ErrCommandNotRegistered {
+	if !errors.Is(err, ErrCommandNotRegistered) {
 		t.Error("there should be a command not registered error:", err)
 	}
 
