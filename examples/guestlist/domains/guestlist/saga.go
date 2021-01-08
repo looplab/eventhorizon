@@ -48,7 +48,7 @@ func (s *ResponseSaga) SagaType() saga.Type {
 }
 
 // RunSaga implements the Run saga method of the Saga interface.
-func (s *ResponseSaga) RunSaga(ctx context.Context, event eh.Event) []eh.Command {
+func (s *ResponseSaga) RunSaga(ctx context.Context, event eh.Event, h eh.CommandHandler) error {
 	switch event.EventType() {
 	case InviteAcceptedEvent:
 		// Do nothing for already accepted guests.
@@ -61,9 +61,9 @@ func (s *ResponseSaga) RunSaga(ctx context.Context, event eh.Event) []eh.Command
 
 		// Deny the invite if the guest list is full.
 		if len(s.acceptedGuests) >= s.guestLimit {
-			return []eh.Command{
+			return h.HandleCommand(ctx,
 				&DenyInvite{ID: event.AggregateID()},
-			}
+			)
 		}
 
 		// Confirm the invite when there is space left.
@@ -71,9 +71,9 @@ func (s *ResponseSaga) RunSaga(ctx context.Context, event eh.Event) []eh.Command
 		s.acceptedGuests[event.AggregateID()] = true
 		s.acceptedGuestsMu.Unlock()
 
-		return []eh.Command{
+		return h.HandleCommand(ctx,
 			&ConfirmInvite{ID: event.AggregateID()},
-		}
+		)
 	}
 
 	return nil

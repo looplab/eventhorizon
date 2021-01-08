@@ -16,7 +16,7 @@ package saga
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	eh "github.com/looplab/eventhorizon"
 )
@@ -37,7 +37,8 @@ type Saga interface {
 	SagaType() Type
 
 	// RunSaga handles an event in the saga that can return commands.
-	RunSaga(context.Context, eh.Event) []eh.Command
+	// If an error is returned from the saga, the event will be run again.
+	RunSaga(context.Context, eh.Event, eh.CommandHandler) error
 }
 
 // Type is the type of a saga, used as its unique identifier.
@@ -46,6 +47,32 @@ type Type string
 // String returns the string representation of a saga type.
 func (t Type) String() string {
 	return string(t)
+}
+
+// Error is an error in the projector, with the namespace.
+type Error struct {
+	// Err is the error that happened when projecting the event.
+	Err error
+	// Saga is the saga where the error happened.
+	Saga string
+	// Namespace is the namespace for the error.
+	Namespace string
+}
+
+// Error implements the Error method of the errors.Error interface.
+func (e Error) Error() string {
+	return fmt.Sprintf("%s: %s (%s)",
+		e.Saga, e.Err, e.Namespace)
+}
+
+// Unwrap implements the errors.Unwrap method.
+func (e Error) Unwrap() error {
+	return e.Err
+}
+
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e Error) Cause() error {
+	return e.Unwrap()
 }
 
 // NewEventHandler creates a new EventHandler.
@@ -63,15 +90,12 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
-	// Run the saga and collect commands.
-	cmds := h.saga.RunSaga(ctx, event)
-
-	// Dispatch commands back on the command bus.
-	for _, cmd := range cmds {
-		if err := h.commandHandler.HandleCommand(ctx, cmd); err != nil {
-			return errors.New("could not handle command '" +
-				cmd.CommandType().String() + "' from saga '" +
-				h.saga.SagaType().String() + "': " + err.Error())
+	// Run the saga which can issue commands on the provided command handler.
+	if err := h.saga.RunSaga(ctx, event, h.commandHandler); err != nil {
+		return Error{
+			Err:       err,
+			Saga:      h.saga.SagaType().String(),
+			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
 
