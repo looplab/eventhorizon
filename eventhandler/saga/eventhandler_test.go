@@ -63,8 +63,11 @@ func (m *TestSaga) SagaType() Type {
 	return TestSagaType
 }
 
-func (m *TestSaga) RunSaga(ctx context.Context, event eh.Event) []eh.Command {
+func (m *TestSaga) RunSaga(ctx context.Context, event eh.Event, h eh.CommandHandler) error {
 	m.event = event
 	m.context = ctx
-	return m.commands
+	for _, cmd := range m.commands {
+		return h.HandleCommand(ctx, cmd)
+	}
+	return nil
 }
