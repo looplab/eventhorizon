@@ -64,6 +64,27 @@ var ErrAggregateNotFound = errors.New("aggregate not found")
 // ErrAggregateNotRegistered is when no aggregate factory was registered.
 var ErrAggregateNotRegistered = errors.New("aggregate not registered")
 
+// AggregateError is an error caused in the aggregate when handling a command.
+type AggregateError struct {
+	// Err is the error.
+	Err error
+}
+
+// Error implements the Error method of the errors.Error interface.
+func (e AggregateError) Error() string {
+	return "aggregate error: " + e.Err.Error()
+}
+
+// Unwrap implements the errors.Unwrap method.
+func (e AggregateError) Unwrap() error {
+	return e.Err
+}
+
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e AggregateError) Cause() error {
+	return e.Unwrap()
+}
+
 // RegisterAggregate registers an aggregate factory for a type. The factory is
 // used to create concrete aggregate types when loading from the database.
 //

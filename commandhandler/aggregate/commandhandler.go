@@ -67,7 +67,7 @@ func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) erro
 	}
 
 	if err = a.HandleCommand(ctx, cmd); err != nil {
-		return err
+		return eh.AggregateError{Err: err}
 	}
 
 	return h.store.Save(ctx, a)

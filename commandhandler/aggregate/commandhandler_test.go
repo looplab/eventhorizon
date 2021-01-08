@@ -92,13 +92,15 @@ func TestCommandHandler_AggregateNotFound(t *testing.T) {
 func TestCommandHandler_ErrorInHandler(t *testing.T) {
 	a, h, _ := createAggregateAndHandler(t)
 
-	a.Err = errors.New("command error")
+	commandErr := errors.New("command error")
+	a.Err = commandErr
 	cmd := &mocks.Command{
 		ID:      a.EntityID(),
 		Content: "command1",
 	}
 	err := h.HandleCommand(context.Background(), cmd)
-	if err == nil || err.Error() != "command error" {
+	var aggregateErr eh.AggregateError
+	if !errors.As(err, &aggregateErr) || !errors.Is(err, commandErr) {
 		t.Error("there should be a command error:", err)
 	}
 	if !reflect.DeepEqual(a.Commands, []eh.Command{}) {
