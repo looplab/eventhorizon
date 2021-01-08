@@ -35,7 +35,7 @@ func TestNewAggregateStore(t *testing.T) {
 	}
 
 	store, err := NewAggregateStore(nil, bus)
-	if err != ErrInvalidEventStore {
+	if !errors.Is(err, ErrInvalidEventStore) {
 		t.Error("there should be a ErrInvalidEventStore error:", err)
 	}
 	if store != nil {
@@ -43,7 +43,7 @@ func TestNewAggregateStore(t *testing.T) {
 	}
 
 	store, err = NewAggregateStore(eventStore, nil)
-	if err != ErrInvalidEventBus {
+	if !errors.Is(err, ErrInvalidEventBus) {
 		t.Error("there should be a ErrInvalidEventBus error:", err)
 	}
 	if store != nil {
@@ -114,10 +114,11 @@ func TestAggregateStore_LoadEvents(t *testing.T) {
 	}
 
 	// Store error.
-	eventStore.Err = errors.New("error")
+	storeErr := errors.New("error")
+	eventStore.Err = storeErr
 	_, err = store.Load(ctx, TestAggregateType, id)
-	if err == nil || err.Error() != "error" {
-		t.Error("there should be an error named 'error':", err)
+	if !errors.Is(err, storeErr) {
+		t.Error("the error should be correct:", err)
 	}
 	eventStore.Err = nil
 }
@@ -143,7 +144,7 @@ func TestAggregateStore_LoadEvents_MismatchedEventType(t *testing.T) {
 	}
 
 	loaded, err := store.Load(ctx, TestAggregateType, otherAggregateID)
-	if err != ErrMismatchedEventType {
+	if !errors.Is(err, ErrMismatchedEventType) {
 		t.Fatal("there should be a ErrMismatchedEventType error:", err)
 	}
 	if loaded != nil {
@@ -193,10 +194,11 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 
 	// Store error.
 	event1 = agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
-	eventStore.Err = errors.New("aggregate error")
+	aggregateErr := errors.New("aggregate error")
+	eventStore.Err = aggregateErr
 	err = store.Save(ctx, agg)
-	if err == nil || err.Error() != "aggregate error" {
-		t.Error("there should be an error named 'error':", err)
+	if !errors.Is(err, aggregateErr) {
+		t.Error("the error should be correct:", err)
 	}
 	eventStore.Err = nil
 
@@ -211,10 +213,11 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 
 	// Bus error.
 	event1 = agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
-	bus.Err = errors.New("bus error")
+	busErr := errors.New("bus error")
+	bus.Err = busErr
 	err = store.Save(ctx, agg)
-	if err == nil || err.Error() != "bus error" {
-		t.Error("there should be an error named 'error':", err)
+	if !errors.Is(err, busErr) {
+		t.Error("the error should be correct:", err)
 	}
 }
 
@@ -225,7 +228,7 @@ func TestAggregateStore_AggregateNotRegistered(t *testing.T) {
 
 	id := uuid.New()
 	agg, err := store.Load(ctx, "TestAggregate3", id)
-	if err != eh.ErrAggregateNotRegistered {
+	if !errors.Is(err, eh.ErrAggregateNotRegistered) {
 		t.Error("there should be a eventhorizon.ErrAggregateNotRegistered error:", err)
 	}
 	if agg != nil {

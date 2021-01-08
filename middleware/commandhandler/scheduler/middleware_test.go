@@ -138,7 +138,8 @@ func TestCommandHandler_ContextCanceled(t *testing.T) {
 	case err = <-errCh:
 	case <-time.After(10 * time.Millisecond):
 	}
-	if err.Err == nil || err.Err.Error() != "context canceled" {
+	canceledErr := context.Canceled
+	if !errors.Is(err, canceledErr) {
 		t.Error("there should be an error:", err)
 	}
 }
@@ -168,7 +169,8 @@ func TestCommandHandler_ContextDeadline(t *testing.T) {
 	case err = <-errCh:
 	case <-time.After(10 * time.Millisecond):
 	}
-	if err.Err == nil || err.Err.Error() != "context deadline exceeded" {
+	deadlineExceededErr := context.DeadlineExceeded
+	if !errors.Is(err, deadlineExceededErr) {
 		t.Error("there should be an error:", err)
 	}
 }

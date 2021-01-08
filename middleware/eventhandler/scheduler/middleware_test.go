@@ -16,6 +16,7 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -92,7 +93,7 @@ func TestCommandHandler(t *testing.T) {
 	cancelScheduler()
 	if err := scheduler.ScheduleEvent(context.Background(), "* * * * * * *", func(t time.Time) eh.Event {
 		return nil
-	}); err != context.Canceled {
+	}); !errors.Is(err, context.Canceled) {
 		t.Error("there should be a context canceled error:", err)
 	}
 }

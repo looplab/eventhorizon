@@ -33,7 +33,7 @@ func TestNewAggregateStore(t *testing.T) {
 	}
 
 	store, err := NewAggregateStore(nil, nil)
-	if err != ErrInvalidRepo {
+	if !errors.Is(err, ErrInvalidRepo) {
 		t.Error("there should be a ErrInvalidRepo error:", err)
 	}
 	if store != nil {
@@ -82,10 +82,11 @@ func TestAggregateStore_Load(t *testing.T) {
 	}
 
 	// Store error.
-	repo.LoadErr = errors.New("error")
+	storeErr := errors.New("error")
+	repo.LoadErr = storeErr
 	_, err = store.Load(ctx, AggregateType, id)
-	if err == nil || err.Error() != "error" {
-		t.Error("there should be an error named 'error':", err)
+	if !errors.Is(err, storeErr) {
+		t.Error("the error should be correct:", err)
 	}
 	repo.LoadErr = nil
 }
@@ -104,7 +105,7 @@ func TestAggregateStore_Load_InvalidAggregate(t *testing.T) {
 	}
 
 	loadedAgg, err := store.Load(ctx, AggregateType, id)
-	if err != ErrInvalidAggregate {
+	if !errors.Is(err, ErrInvalidAggregate) {
 		t.Fatal("there should be a ErrInvalidAggregate error:", err)
 	}
 	if loadedAgg != nil {
@@ -128,10 +129,11 @@ func TestAggregateStore_Save(t *testing.T) {
 	}
 
 	// Store error.
-	repo.SaveErr = errors.New("aggregate error")
+	aggregateErr := errors.New("aggregate error")
+	repo.SaveErr = aggregateErr
 	err = store.Save(ctx, agg)
-	if err == nil || err.Error() != "aggregate error" {
-		t.Error("there should be an error named 'error':", err)
+	if !errors.Is(err, aggregateErr) {
+		t.Error("the error should be correct:", err)
 	}
 	repo.SaveErr = nil
 }
@@ -164,11 +166,12 @@ func TestAggregateStore_SaveWithPublish(t *testing.T) {
 	}
 
 	// Simulate a bus error.
-	bus.Err = errors.New("bus error")
+	busErr := errors.New("bus error")
+	bus.Err = busErr
 	agg.AppendEvent(event)
 	err = store.Save(ctx, agg)
-	if err == nil || err.Error() != "bus error" {
-		t.Error("there should be an error named 'error':", err)
+	if !errors.Is(err, busErr) {
+		t.Error("the error should be correct:", err)
 	}
 	if len(agg.SliceEventSource) != 0 {
 		t.Error("there should be no events to publish")

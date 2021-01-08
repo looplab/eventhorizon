@@ -16,6 +16,7 @@ package version
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -70,7 +71,8 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 	// Find with min version without version.
 	ctxVersion := NewContextWithMinVersion(ctx, 1)
 	model, err := r.Find(ctxVersion, simpleModel.ID)
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityHasNoVersion {
+	var repoErr eh.RepoError
+	if !errors.As(err, &repoErr) || !errors.Is(err, eh.ErrEntityHasNoVersion) {
 		t.Error("there should be a model has no version error:", err)
 	}
 
@@ -92,7 +94,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 	// Find with min version, too low.
 	ctxVersion = NewContextWithMinVersion(ctx, 2)
 	model, err = r.Find(ctxVersion, m1.ID)
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrIncorrectEntityVersion {
+	if !errors.As(err, &repoErr) || !errors.Is(err, eh.ErrIncorrectEntityVersion) {
 		t.Error("there should be a incorrect model version error:", err)
 	}
 
@@ -223,7 +225,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 	ctxVersion, cancel = context.WithTimeout(ctxVersion, 10*time.Millisecond)
 	defer cancel()
 	model, err = r.Find(ctxVersion, m3.ID)
-	if err != context.DeadlineExceeded {
+	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Error("there should be a deadline exceeded error:", err)
 	}
 

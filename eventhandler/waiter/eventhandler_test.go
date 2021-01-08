@@ -16,6 +16,7 @@ package waiter
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -67,7 +68,8 @@ func TestEventHandler(t *testing.T) {
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 	event, err = l.Wait(ctx)
-	if err == nil || err.Error() != "context deadline exceeded" {
+	deadlineExceededErr := context.DeadlineExceeded
+	if !errors.Is(err, deadlineExceededErr) {
 		t.Error("there should be a context deadline exceeded error")
 	}
 	if event != nil {

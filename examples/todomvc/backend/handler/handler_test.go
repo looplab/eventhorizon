@@ -16,6 +16,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -226,7 +227,8 @@ func TestDelete(t *testing.T) {
 	cancelTimeout()
 
 	_, err = todoRepo.Find(ctx, id)
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {
+	var repoErr eh.RepoError
+	if !errors.As(err, &repoErr) || !errors.Is(err, eh.ErrEntityNotFound) {
 		t.Error("there should be a not found error:", err)
 	}
 

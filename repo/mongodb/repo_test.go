@@ -16,6 +16,7 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"os"
 	"reflect"
 	"testing"
@@ -100,7 +101,8 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 	result, err = r.FindCustom(ctx, func(ctx context.Context, c *mongo.Collection) (*mongo.Cursor, error) {
 		return nil, nil
 	})
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != ErrInvalidQuery {
+	var repoErr eh.RepoError
+	if !errors.As(err, &repoErr) || !errors.Is(err, ErrInvalidQuery) {
 		t.Error("there should be a invalid query error:", err)
 	}
 
@@ -114,7 +116,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 		// Be sure to return nil to not execute the query again in FindCustom.
 		return nil, nil
 	})
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != ErrInvalidQuery {
+	if !errors.As(err, &repoErr) || !errors.Is(err, ErrInvalidQuery) {
 		t.Error("there should be a invalid query error:", err)
 	}
 	if count != 2 {

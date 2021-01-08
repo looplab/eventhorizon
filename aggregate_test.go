@@ -16,6 +16,7 @@ package eventhorizon
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -24,7 +25,7 @@ import (
 func TestCreateAggregate(t *testing.T) {
 	id := uuid.New()
 	aggregate, err := CreateAggregate(TestAggregateRegisterType, id)
-	if err != ErrAggregateNotRegistered {
+	if !errors.Is(err, ErrAggregateNotRegistered) {
 		t.Error("there should be a aggregate not registered error:", err)
 	}
 

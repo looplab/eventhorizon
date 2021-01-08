@@ -61,7 +61,7 @@ func TestCommandHandler(t *testing.T) {
 	}
 	select {
 	case err := <-errCh:
-		if err.Err != handlingErr {
+		if !errors.Is(err, handlingErr) {
 			t.Error("the error should be correct:", err.Err)
 		}
 		if err.Ctx != ctx {
