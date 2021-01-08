@@ -131,7 +131,7 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 		Content: "version 1",
 	}
 	if err := handler.HandleEvent(ctx, event); err != nil {
-		t.Error("there shoud be no error:", err)
+		t.Error("there should be no error:", err)
 	}
 	if projector.event != event {
 		t.Error("the handled event should be correct:", projector.event)
@@ -256,10 +256,12 @@ func TestEventHandler_LoadError(t *testing.T) {
 	repo.LoadErr = loadErr
 	expectedErr := Error{
 		Err:          loadErr,
-		EventVersion: 1,
+		Projector:    TestProjectorType.String(),
 		Namespace:    eh.NamespaceFromContext(ctx),
+		EventVersion: 1,
 	}
-	if err := handler.HandleEvent(ctx, event); !reflect.DeepEqual(err, expectedErr) {
+	err := handler.HandleEvent(ctx, event)
+	if !errors.Is(err, expectedErr) {
 		t.Error("there shoud be an error:", err)
 	}
 }
@@ -284,10 +286,12 @@ func TestEventHandler_SaveError(t *testing.T) {
 	repo.SaveErr = saveErr
 	expectedErr := Error{
 		Err:          saveErr,
-		EventVersion: 1,
+		Projector:    TestProjectorType.String(),
 		Namespace:    eh.NamespaceFromContext(ctx),
+		EventVersion: 1,
 	}
-	if err := handler.HandleEvent(ctx, event); !reflect.DeepEqual(err, expectedErr) {
+	err := handler.HandleEvent(ctx, event)
+	if !errors.Is(err, expectedErr) {
 		t.Error("there shoud be an error:", err)
 	}
 }
@@ -312,10 +316,12 @@ func TestEventHandler_ProjectError(t *testing.T) {
 	projector.err = projectErr
 	expectedErr := Error{
 		Err:          projectErr,
-		EventVersion: 1,
+		Projector:    TestProjectorType.String(),
 		Namespace:    eh.NamespaceFromContext(ctx),
+		EventVersion: 1,
 	}
-	if err := handler.HandleEvent(ctx, event); !reflect.DeepEqual(err, expectedErr) {
+	err := handler.HandleEvent(ctx, event)
+	if !errors.Is(err, expectedErr) {
 		t.Error("there shoud be an error:", err)
 	}
 }

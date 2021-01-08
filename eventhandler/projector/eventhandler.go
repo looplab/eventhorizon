@@ -35,39 +35,40 @@ var _ = eh.EventHandler(&EventHandler{})
 
 // Projector is a projector of events onto models.
 type Projector interface {
+	// ProjectorType returns the type of the projector.
+	ProjectorType() Type
+
 	// Project projects an event onto a model and returns the updated model or
 	// an error.
 	Project(context.Context, eh.Event, eh.Entity) (eh.Entity, error)
-
-	// ProjectorType returns the type of the projector.
-	ProjectorType() Type
 }
 
 // Type is the type of a projector, used as its unique identifier.
 type Type string
 
+// String returns the string representation of a projector type.
+func (t Type) String() string {
+	return string(t)
+}
+
 // Error is an error in the projector, with the namespace.
 type Error struct {
 	// Err is the error that happened when projecting the event.
 	Err error
+	// Projector is the projector where the error happened.
+	Projector string
+	// Namespace is the namespace for the error.
+	Namespace string
 	// EventVersion is the version of the event.
 	EventVersion int
 	// EntityVersion is the version of the entity.
 	EntityVersion int
-	// BaseErr is an optional underlying error, for example from the DB driver.
-	BaseErr error
-	// Namespace is the namespace for the error.
-	Namespace string
 }
 
 // Error implements the Error method of the errors.Error interface.
 func (e Error) Error() string {
-	errStr := e.Err.Error()
-	if e.BaseErr != nil {
-		errStr += ": " + e.BaseErr.Error()
-	}
-	return fmt.Sprintf("projector: %s, event: v%d, entity: v%d (%s)",
-		errStr, e.EventVersion, e.EntityVersion, e.Namespace)
+	return fmt.Sprintf("%s: %s, event: v%d, entity: v%d (%s)",
+		e.Projector, e.Err, e.EventVersion, e.EntityVersion, e.Namespace)
 }
 
 // Unwrap implements the errors.Unwrap method.
@@ -127,16 +128,18 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		if h.factoryFn == nil {
 			return Error{
 				Err:          ErrModelNotSet,
-				EventVersion: event.Version(),
+				Projector:    h.projector.ProjectorType().String(),
 				Namespace:    eh.NamespaceFromContext(ctx),
+				EventVersion: event.Version(),
 			}
 		}
 		entity = h.factoryFn()
 	} else if err != nil {
 		return Error{
 			Err:          err,
-			EventVersion: event.Version(),
+			Projector:    h.projector.ProjectorType().String(),
 			Namespace:    eh.NamespaceFromContext(ctx),
+			EventVersion: event.Version(),
 		}
 	}
 
@@ -153,9 +156,10 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		if entity.AggregateVersion()+1 != event.Version() {
 			return Error{
 				Err:           eh.ErrIncorrectEntityVersion,
+				Projector:     h.projector.ProjectorType().String(),
+				Namespace:     eh.NamespaceFromContext(ctx),
 				EventVersion:  event.Version(),
 				EntityVersion: entityVersion,
-				Namespace:     eh.NamespaceFromContext(ctx),
 			}
 		}
 	}
@@ -165,9 +169,10 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	if err != nil {
 		return Error{
 			Err:           err,
+			Projector:     h.projector.ProjectorType().String(),
+			Namespace:     eh.NamespaceFromContext(ctx),
 			EventVersion:  event.Version(),
 			EntityVersion: entityVersion,
-			Namespace:     eh.NamespaceFromContext(ctx),
 		}
 	}
 
@@ -177,9 +182,10 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		if newEntity.AggregateVersion() != event.Version() {
 			return Error{
 				Err:           eh.ErrIncorrectEntityVersion,
+				Projector:     h.projector.ProjectorType().String(),
+				Namespace:     eh.NamespaceFromContext(ctx),
 				EventVersion:  event.Version(),
 				EntityVersion: entityVersion,
-				Namespace:     eh.NamespaceFromContext(ctx),
 			}
 		}
 	}
@@ -189,18 +195,20 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		if err := h.repo.Save(ctx, newEntity); err != nil {
 			return Error{
 				Err:           err,
+				Projector:     h.projector.ProjectorType().String(),
+				Namespace:     eh.NamespaceFromContext(ctx),
 				EventVersion:  event.Version(),
 				EntityVersion: entityVersion,
-				Namespace:     eh.NamespaceFromContext(ctx),
 			}
 		}
 	} else {
 		if err := h.repo.Remove(ctx, event.AggregateID()); err != nil {
 			return Error{
 				Err:           err,
+				Projector:     h.projector.ProjectorType().String(),
+				Namespace:     eh.NamespaceFromContext(ctx),
 				EventVersion:  event.Version(),
 				EntityVersion: entityVersion,
-				Namespace:     eh.NamespaceFromContext(ctx),
 			}
 		}
 	}
