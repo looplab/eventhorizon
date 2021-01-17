@@ -39,7 +39,7 @@ If you find a bug report it by creating a new Github issue.
 
 ### Pull Requests
 
-* Fill in [the required template](PULL_REQUEST_TEMPLATE.md)
+* Fill in [the required template](.github/PULL_REQUEST_TEMPLATE.md)
 * Follow the [Golang Styleguide](#golang-styleguide)
 * Document new code based on the [Documentation Styleguide](#documentation-styleguide)
 * End all files with a newline
