@@ -271,22 +271,48 @@ func LoadTest(t *testing.T, bus eh.EventBus) {
 func Benchmark(b *testing.B, bus eh.EventBus) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	id := uuid.New()
-	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	h := mocks.NewEventHandler("handler")
+	if err := bus.AddHandler(ctx, eh.MatchAll{}, h); err != nil {
+		b.Fatal("there should be no error:", err)
+	}
 
+	time.Sleep(3 * time.Second) // Need to wait here for handler to be added.
 	b.Log("setup complete")
+	b.Log("num iterations:", b.N)
 	b.ResetTimer()
 
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Wait for all events in batch.
+		for n := 0; n < b.N; n++ {
+			select {
+			case <-h.Recv:
+				continue
+			case <-ctx.Done():
+				return
+			case <-time.After(30 * time.Second):
+				b.Error("did not receive message within timeout")
+				return
+			}
+		}
+	}()
+
+	id := uuid.New()
 	for n := 0; n < b.N; n++ {
-		event1 := eh.NewEvent(
-			mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
+		e := eh.NewEvent(
+			mocks.EventType, &mocks.EventData{Content: fmt.Sprintf("event%d", n)}, time.Now(),
 			eh.ForAggregate(mocks.AggregateType, id, n+1))
-		if err := bus.HandleEvent(ctx, event1); err != nil {
+		if err := bus.HandleEvent(ctx, e); err != nil {
 			b.Error("there should be no error:", err)
 		}
 	}
 
-	// Cancel all handlers and wait.
+	wg.Wait() // Wait for all events to be received.
+	b.StopTimer()
+
+	// Cancel handler and wait.
 	cancel()
 	bus.Wait()
 }
