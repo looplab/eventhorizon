@@ -190,11 +190,12 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 	defer b.wg.Done()
 
 	msgHandler := b.handler(m, h, groupName)
+	readOpt := ">"
 	for {
 		streams, err := b.client.XReadGroup(ctx, &redis.XReadGroupArgs{
 			Group:    groupName,
 			Consumer: groupName + "_" + b.clientID,
-			Streams:  []string{b.streamName, ">"},
+			Streams:  []string{b.streamName, readOpt},
 		}).Result()
 		if err != nil && err != context.Canceled {
 			err = fmt.Errorf("could not receive: %w", err)
@@ -218,6 +219,13 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 			for _, msg := range stream.Messages {
 				msgHandler(ctx, &msg)
 			}
+		}
+
+		// Flip flop the read option to read new and non-acked messages every other time.
+		if readOpt == ">" {
+			readOpt = "0"
+		} else {
+			readOpt = ">"
 		}
 	}
 }
@@ -253,14 +261,19 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, groupName strin
 
 		// Handle the event if it did match.
 		if err := h.HandleEvent(ctx, event); err != nil {
+			// Retryable errors are not logged and will be retried.
+			if _, ok := err.(eh.RetryableEventError); ok {
+				// TODO: Nack if possible.
+				return
+			}
+
+			// Log unhandled events, they will NOT be retried.
 			err = fmt.Errorf("could not handle event (%s): %w", h.HandlerType(), err)
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
 			default:
 				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
 			}
-			// TODO: Nack if possible.
-			return
 		}
 
 		_, err = b.client.XAck(ctx, b.streamName, groupName, msg.ID).Result()

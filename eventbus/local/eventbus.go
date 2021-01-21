@@ -137,7 +137,7 @@ type evt struct {
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte) {
+func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, ch chan []byte) {
 	defer b.wg.Done()
 
 	for {
@@ -161,7 +161,19 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 
 			// Handle the event if it did match.
 			if err := h.HandleEvent(ctx, event); err != nil {
-				err = fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error())
+				// Retryable errors are not logged and will be retried.
+				if _, ok := err.(eh.RetryableEventError); ok {
+					select {
+					case ch <- data:
+					// Retry event by putting it back on the bus.
+					default:
+						log.Printf("eventhorizon: publish queue full for retry in local event bus")
+					}
+					continue
+				}
+
+				// Log unhandled events, they will NOT be retried.
+				err = fmt.Errorf("could not handle event (%s): %w", h.HandlerType(), err)
 				select {
 				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
 				default:
@@ -187,7 +199,7 @@ func NewGroup() *Group {
 	}
 }
 
-func (g *Group) channel(id string) <-chan []byte {
+func (g *Group) channel(id string) chan []byte {
 	g.busMu.Lock()
 	defer g.busMu.Unlock()
 

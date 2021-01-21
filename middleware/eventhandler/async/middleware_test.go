@@ -55,7 +55,7 @@ func TestEventHandler(t *testing.T) {
 	m, errCh = NewMiddleware()
 	h = eh.UseEventHandlerMiddleware(inner, m)
 	handlingErr := errors.New("handling error")
-	inner.Err = handlingErr
+	inner.ErrOnce = handlingErr
 	ctx := context.Background()
 	if err := h.HandleEvent(ctx, event); err != nil {
 		t.Error("there should never be an error:", err)

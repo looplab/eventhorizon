@@ -16,6 +16,7 @@ package version
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,6 +28,9 @@ import (
 type Repo struct {
 	eh.ReadWriteRepo
 }
+
+// ErrIncorrectLoadedEntityVersion is when an entity has an incorrect version.
+var ErrIncorrectLoadedEntityVersion = errors.New("incorrect loaded entity version")
 
 // NewRepo creates a new Repo.
 func NewRepo(repo eh.ReadWriteRepo) *Repo {
@@ -62,8 +66,8 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	_, hasDeadline := ctx.Deadline()
 	for {
 		entity, err := r.findMinVersion(ctx, id, minVersion)
-		if rrErr, ok := err.(eh.RepoError); ok &&
-			(rrErr.Err == eh.ErrIncorrectEntityVersion || rrErr.Err == eh.ErrEntityNotFound) {
+		if errors.Is(err, ErrIncorrectLoadedEntityVersion) ||
+			errors.Is(err, eh.ErrEntityNotFound) {
 			// Try again for incorrect version or if the entity was not found.
 		} else if err != nil {
 			// Return any real error.
@@ -104,8 +108,9 @@ func (r *Repo) findMinVersion(ctx context.Context, id uuid.UUID, minVersion int)
 
 	if versionable.AggregateVersion() < minVersion {
 		return nil, eh.RepoError{
-			Err:       eh.ErrIncorrectEntityVersion,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:           ErrIncorrectLoadedEntityVersion,
+			EntityVersion: versionable.AggregateVersion(),
+			Namespace:     eh.NamespaceFromContext(ctx),
 		}
 	}
 

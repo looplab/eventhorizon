@@ -253,14 +253,19 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 
 		// Handle the event if it did match.
 		if err := h.HandleEvent(ctx, event); err != nil {
+			// Retryable errors are not logged and will be retried.
+			if _, ok := err.(eh.RetryableEventError); ok {
+				msg.Nack()
+				return
+			}
+
+			// Log unhandled events, they will NOT be retried.
 			err = fmt.Errorf("could not handle event (%s): %w", h.HandlerType(), err)
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
 			default:
 				log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
 			}
-			msg.Nack()
-			return
 		}
 
 		msg.Ack()

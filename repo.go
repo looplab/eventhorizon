@@ -17,6 +17,7 @@ package eventhorizon
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -56,6 +57,9 @@ type Versionable interface {
 	AggregateVersion() int
 }
 
+// ErrEntityHasNoVersion is when an entity has no aggregate version.
+var ErrEntityHasNoVersion = errors.New("entity has no version")
+
 // Iter is a stateful iterator object that when called Next() readies the next
 // value that can be retrieved from Value(). Enables incremental object retrieval
 // from repos that support it. You must call Close() on each Iter even when
@@ -78,16 +82,14 @@ var (
 	ErrCouldNotRemoveEntity = errors.New("could not remove entity")
 	// ErrMissingEntityID is when a entity has no ID.
 	ErrMissingEntityID = errors.New("missing entity ID")
-	// ErrEntityHasNoVersion is when an entity has no version number.
-	ErrEntityHasNoVersion = errors.New("entity has no version")
-	// ErrIncorrectEntityVersion is when an entity has an incorrect version.
-	ErrIncorrectEntityVersion = errors.New("incorrect entity version")
 )
 
 // RepoError is an error in the read repository, with the namespace.
 type RepoError struct {
 	// Err is the error.
 	Err error
+	// EntityVersion is the version of the entity.
+	EntityVersion int
 	// BaseErr is an optional underlying error, for example from the DB driver.
 	BaseErr error
 	// Namespace is the namespace for the error.
@@ -100,7 +102,11 @@ func (e RepoError) Error() string {
 	if e.BaseErr != nil {
 		errStr += ": " + e.BaseErr.Error()
 	}
-	return errStr + " (" + e.Namespace + ")"
+	if e.EntityVersion > 0 {
+		return fmt.Sprintf("%s, v%d (%s)",
+			errStr, e.EntityVersion, e.Namespace)
+	}
+	return fmt.Sprintf("%s (%s)", errStr, e.Namespace)
 }
 
 // Unwrap implements the errors.Unwrap method.

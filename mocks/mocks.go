@@ -197,13 +197,14 @@ func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) erro
 type EventHandler struct {
 	sync.RWMutex
 
-	Type    string
-	Events  []eh.Event
-	Context context.Context
-	Time    time.Time
-	Recv    chan eh.Event
+	Type           string
+	Events         []eh.Event
+	Context        context.Context
+	Time           time.Time
+	Recv           chan eh.Event
+	NumHandleEvent int
 	// Used to simulate errors when publishing.
-	Err error
+	ErrOnce error
 }
 
 var _ = eh.EventHandler(&EventHandler{})
@@ -228,8 +229,12 @@ func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	m.Lock()
 	defer m.Unlock()
 
-	if m.Err != nil {
-		return m.Err
+	m.NumHandleEvent++
+
+	if m.ErrOnce != nil {
+		err := m.ErrOnce
+		m.ErrOnce = nil
+		return err
 	}
 	m.Events = append(m.Events, event)
 	m.Context = ctx
