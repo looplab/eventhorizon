@@ -16,6 +16,7 @@ package httputils
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"path"
 
@@ -53,7 +54,7 @@ func QueryHandler(repo eh.ReadRepo) http.Handler {
 			}
 
 			if data, err = repo.Find(r.Context(), id); err != nil {
-				if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
+				if errors.Is(err, eh.ErrEntityNotFound) {
 					http.Error(w, "could not find item", http.StatusNotFound)
 					return
 				}
