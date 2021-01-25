@@ -29,3 +29,18 @@ services:
       - pubsub
       - start
       - "--host-port=0.0.0.0:8793"
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_HOST_NAME: localhost
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

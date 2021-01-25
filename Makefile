@@ -20,12 +20,24 @@ publish_cover: cover
 	gover
 	@goveralls -coverprofile=gover.coverprofile -service=travis-ci -repotoken=$(COVERALLS_TOKEN)
 
-.PHONY: run_services
-run_services:
-	docker-compose up -d mongo gpubsub
+.PHONY: run
+run:
+	docker-compose up -d
 
-.PHONY: stop_services
-stop_services:
+.PHONY: run_mongodb
+run_mongodb:
+	docker-compose up -d mongo
+
+.PHONY: run_gpubsub
+run_gpubsub:
+	docker-compose up -d gpubsub
+
+.PHONY: run_kafka
+run_kafka:
+	docker-compose up -d zookeeper kafka
+
+.PHONY: stop
+stop:
 	docker-compose down
 
 .PHONY: clean
