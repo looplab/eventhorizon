@@ -77,6 +77,9 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	// Event without data (tested in its own handler).
 	otherHandler := mocks.NewEventHandler("other-handler")
 	bus1.AddHandler(ctx, eh.MatchEvents{mocks.EventOtherType}, otherHandler)
+
+	time.Sleep(timeout) // Need to wait here for handlers to be added.
+
 	eventWithoutData := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
 		eh.ForAggregate(mocks.AggregateType, uuid.New(), 1))
 	if err := bus1.HandleEvent(ctx, eventWithoutData); err != nil {
@@ -111,6 +114,8 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	// Add observers using the observer middleware.
 	bus1.AddHandler(ctx, eh.MatchAll{}, eh.UseEventHandlerMiddleware(observerBus1, observer.Middleware))
 	bus2.AddHandler(ctx, eh.MatchAll{}, eh.UseEventHandlerMiddleware(observerBus2, observer.Middleware))
+
+	time.Sleep(timeout) // Need to wait here for handlers to be added.
 
 	// Event with data.
 	event2 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event2"}, timestamp,
@@ -195,6 +200,9 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	errorHandler := mocks.NewEventHandler("error_handler")
 	errorHandler.Err = errors.New("handler error")
 	bus1.AddHandler(ctx, eh.MatchAll{}, errorHandler)
+
+	time.Sleep(timeout) // Need to wait here for handlers to be added.
+
 	event3 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event3"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 3),
 		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": int32(42)}),
@@ -203,7 +211,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 		t.Error("there should be no error:", err)
 	}
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(timeout):
 		t.Error("there should be an async error")
 	case err := <-bus1.Errors():
 		// Good case.
