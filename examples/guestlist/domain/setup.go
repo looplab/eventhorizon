@@ -38,7 +38,6 @@ func Setup(
 	eventBus.AddObserver(eh.MatchAny(), &Logger{})
 	options := events.Options{
 		Store:         eventStore,
-		Bus:           eventBus,
 		SnapshotStore: store,
 	}
 	// Create the aggregate repository.
@@ -48,7 +47,7 @@ func Setup(
 	}
 
 	// Create the aggregate command handler and register the commands it handles.
-	invitationHandler, err := aggregate.NewCommandHandler(InvitationAggregateType, aggregateStore)
+	invitationHandler, err := aggregate.NewCommandHandler(InvitationAggregateType, aggregateStore, eventBus)
 	if err != nil {
 		log.Fatalf("could not create command handler: %s", err)
 	}
@@ -103,7 +102,7 @@ func Setup2(
 	}
 
 	// Create the aggregate command handler and register the commands it handles.
-	invitationHandler, err := aggregate.NewCommandHandler(InvitationAggregateType, aggregateStore)
+	invitationHandler, err := aggregate.NewCommandHandler(InvitationAggregateType, aggregateStore, eventBus)
 	if err != nil {
 		log.Fatalf("could not create command handler: %s", err)
 	}

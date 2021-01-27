@@ -90,12 +90,10 @@ type Aggregate interface {
 type AggregateStore struct {
 	store         eh.EventStore
 	snapshotStore eh.SnapshotStore
-	bus           eh.EventBus
 }
 
 type Options struct {
 	Store         eh.EventStore
-	Bus           eh.EventBus
 	SnapshotStore eh.SnapshotStore
 }
 
@@ -106,13 +104,8 @@ func NewAggregateStore(store eh.EventStore, bus eh.EventBus) (*AggregateStore, e
 		return nil, ErrInvalidEventStore
 	}
 
-	if bus == nil {
-		return nil, ErrInvalidEventBus
-	}
-
 	d := &AggregateStore{
 		store: store,
-		bus:   bus,
 	}
 	return d, nil
 }
@@ -122,17 +115,12 @@ func NewAggregateStoreOptions(options Options) (*AggregateStore, error) {
 		return nil, ErrInvalidEventStore
 	}
 
-	if options.Bus == nil {
-		return nil, ErrInvalidEventBus
-	}
-
 	if options.SnapshotStore == nil {
 		return nil, ErrInvalidSnapshot
 	}
 
 	d := &AggregateStore{
 		store:         options.Store,
-		bus:           options.Bus,
 		snapshotStore: options.SnapshotStore,
 	}
 	return d, nil
@@ -234,12 +222,6 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 	//if err := r.applyEvents(ctx, a, events); err != nil {
 	//	return err
 	//}
-
-	for _, e := range events {
-		if err := r.bus.PublishEvent(ctx, e); err != nil {
-			return err
-		}
-	}
 
 	return nil
 }

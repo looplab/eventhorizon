@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	eh "github.com/firawe/eventhorizon"
+	"github.com/firawe/eventhorizon/aggregatestore/events"
 )
 
 // ErrNilAggregateStore is when a dispatcher is created with a nil aggregate store.
@@ -35,10 +36,11 @@ var ErrNilAggregateStore = errors.New("aggregate store is nil")
 type CommandHandler struct {
 	t     eh.AggregateType
 	store eh.AggregateStore
+	bus eh.EventBus
 }
 
 // NewCommandHandler creates a new CommandHandler for an aggregate type.
-func NewCommandHandler(t eh.AggregateType, store eh.AggregateStore) (*CommandHandler, error) {
+func NewCommandHandler(t eh.AggregateType, store eh.AggregateStore, bus eh.EventBus) (*CommandHandler, error) {
 	if store == nil {
 		return nil, ErrNilAggregateStore
 	}
@@ -46,6 +48,7 @@ func NewCommandHandler(t eh.AggregateType, store eh.AggregateStore) (*CommandHan
 	h := &CommandHandler{
 		t:     t,
 		store: store,
+		bus: bus,
 	}
 	return h, nil
 }
@@ -68,5 +71,20 @@ func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) erro
 		return err
 	}
 
-	return h.store.Save(ctx, a)
+	err = h.store.Save(ctx, a)
+	if err != nil {
+		return err
+	}
+
+	// publish events
+	agg, ok := a.(events.Aggregate)
+	if !ok {
+		return events.ErrInvalidAggregateType
+	}
+	for _, e := range agg.Events() {
+		if err := h.bus.PublishEvent(ctx, e); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -100,7 +100,7 @@ func NewHandler() (*Handler, error) {
 	}
 
 	// Create the aggregate command handler.
-	aggregateCommandHandler, err := aggregate.NewCommandHandler(domain.AggregateType, aggregateStore)
+	aggregateCommandHandler, err := aggregate.NewCommandHandler(domain.AggregateType, aggregateStore, eventBus)
 	if err != nil {
 		return nil, fmt.Errorf("could not create command handler: %s", err)
 	}

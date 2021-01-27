@@ -29,7 +29,8 @@ func TestNewCommandHandler(t *testing.T) {
 	store := &mocks.AggregateStore{
 		Aggregates: make(map[string]eh.Aggregate),
 	}
-	h, err := NewCommandHandler(mocks.AggregateType, store)
+	bus := &mocks.EventBus{}
+	h, err := NewCommandHandler(mocks.AggregateType, store, bus)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -37,7 +38,7 @@ func TestNewCommandHandler(t *testing.T) {
 		t.Error("there should be a handler")
 	}
 
-	h, err = NewCommandHandler(mocks.AggregateType, nil)
+	h, err = NewCommandHandler(mocks.AggregateType, nil, bus)
 	if err != ErrNilAggregateStore {
 		t.Error("there should be a ErrNilAggregateStore error:", err)
 	}
@@ -71,7 +72,8 @@ func TestCommandHandler_AggregateNotFound(t *testing.T) {
 	store := &mocks.AggregateStore{
 		Aggregates: map[string]eh.Aggregate{},
 	}
-	h, err := NewCommandHandler(mocks.AggregateType, store)
+	bus := &mocks.EventBus{}
+	h, err := NewCommandHandler(mocks.AggregateType, store, bus)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -140,7 +142,8 @@ func BenchmarkCommandHandler(b *testing.B) {
 			a.EntityID(): a,
 		},
 	}
-	h, err := NewCommandHandler(mocks.AggregateType, store)
+	bus := &mocks.EventBus{}
+	h, err := NewCommandHandler(mocks.AggregateType, store, bus)
 	if err != nil {
 		b.Fatal("there should be no error:", err)
 	}
@@ -166,7 +169,8 @@ func createAggregateAndHandler(t *testing.T) (*mocks.Aggregate, *CommandHandler,
 			a.EntityID(): a,
 		},
 	}
-	h, err := NewCommandHandler(mocks.AggregateType, store)
+	bus := &mocks.EventBus{}
+	h, err := NewCommandHandler(mocks.AggregateType, store, bus)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
