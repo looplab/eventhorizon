@@ -126,6 +126,8 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 	if err := r.store.Save(ctx, events, a.Version()); err != nil {
 		return err
 	}
+	// Clear events after successful store.
+	a.ClearEvents()
 
 	// Apply the events in case the aggregate needs to be further used
 	// after this save. Currently it is not reused.

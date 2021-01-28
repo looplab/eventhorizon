@@ -17,7 +17,8 @@ package eventhorizon
 // EventSource is a source of events, used for getting events for handling,
 // storing, publishing etc. Mostly used in the aggregate stores.
 type EventSource interface {
-	// Events returns events. It should only return any new events since its
-	// last invocation.
+	// Events returns the events.
 	Events() []Event
+	// ClearEvents clears the events from the source after being handeled.
+	ClearEvents()
 }

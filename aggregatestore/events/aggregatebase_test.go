@@ -96,9 +96,10 @@ func TestAggregateEvents(t *testing.T) {
 		t.Error("there should be two events provided:", len(events))
 	}
 
+	agg.ClearEvents()
 	event3 := agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
 	if event3.Version() != 1 {
-		t.Error("the version should be 1 after clearing uncommitted events (without applying any):", event3.Version())
+		t.Error("the version should be 1 after clearing events (without applying any):", event3.Version())
 	}
 	events = agg.Events()
 	if len(events) != 1 {
