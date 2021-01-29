@@ -26,7 +26,7 @@ jobs:
 
     - name: "Test (unit with coverage)"
       if: type != pull_request
-      script: make cover publish_cover
+      script: make test_cover publish_cover
       env:
         - GO111MODULE=on
 
