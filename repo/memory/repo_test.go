@@ -23,6 +23,7 @@ import (
 	"github.com/looplab/eventhorizon/repo"
 )
 
+// NOTE: Not named "Integration" to enable running with the unit tests.
 func TestReadRepo(t *testing.T) {
 	r := NewRepo()
 	if r == nil {

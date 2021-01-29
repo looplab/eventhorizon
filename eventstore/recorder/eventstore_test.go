@@ -26,6 +26,7 @@ import (
 	"github.com/looplab/eventhorizon/mocks"
 )
 
+// NOTE: Not named "Integration" to enable running with the unit tests.
 func TestEventStore(t *testing.T) {
 	baseStore := memory.NewEventStore()
 	store := NewEventStore(baseStore)

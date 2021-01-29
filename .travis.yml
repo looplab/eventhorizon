@@ -12,15 +12,26 @@ cache:
 
 jobs:
   include:
-    - stage: test
+    - name: "Test (unit)"
       if: type == pull_request
-      script: make run test
+      script: make test
       env:
         - GO111MODULE=on
 
-    - stage: test_and_cover
-      name: "Test (with coverage)"
+    - name: "Test (integration)"
+      if: type == pull_request
+      script: make run test_integration
+      env:
+        - GO111MODULE=on
+
+    - name: "Test (unit with coverage)"
       if: type != pull_request
-      script: make run cover publish_cover
+      script: make cover publish_cover
+      env:
+        - GO111MODULE=on
+
+    - name: "Test (integration)"
+      if: type != pull_request
+      script: make run test_integration
       env:
         - GO111MODULE=on

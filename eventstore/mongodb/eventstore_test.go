@@ -23,7 +23,11 @@ import (
 	"github.com/looplab/eventhorizon/eventstore"
 )
 
-func TestEventStore(t *testing.T) {
+func TestEventStoreIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
 	// Use MongoDB in Docker with fallback to localhost.
 	url := os.Getenv("MONGO_HOST")
 	if url == "" {

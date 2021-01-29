@@ -3,9 +3,6 @@ version: "3.4"
 services:
   golang:
     image: golang:1.15
-    depends_on:
-      - mongo
-      - gpubsub
     environment:
       MONGO_HOST: "mongo:27017"
       PUBSUB_EMULATOR_HOST: "gpubsub:8793"
@@ -37,6 +34,8 @@ services:
 
   kafka:
     image: wurstmeister/kafka
+    depends_on:
+      - zookeeper
     ports:
       - "9092:9092"
     environment:

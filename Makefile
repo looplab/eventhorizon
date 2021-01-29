@@ -1,19 +1,35 @@
-default: run_services test
+default: test
 
 .PHONY: test
 test:
-	go test -race ./...
+	go test -race -short ./...
 
 .PHONY: test_docker
 test_docker:
 	docker-compose run --rm golang make test
 
-.PHONY: cover
-cover:
-	go list -f '{{if len .TestGoFiles}}"go test -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
+.PHONY: test_integration
+test_integration:
+	go test -race -run Integration ./...
+
+.PHONY: test_integration_docker
+test_integration_docker: run
+	docker-compose run --rm golang make test_integration
+
+.PHONY: test_loadtest
+test_loadtest:
+	go test -race -v -run Loadtest ./...
+
+.PHONY: test_loadtest_docker
+test_loadtest_docker: run
+	docker-compose run --rm golang make test_loadtest
+
+.PHONY: test_cover
+test_cover:
+	go list -f '{{if len .TestGoFiles}}"go test -short -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
 
 .PHONY: publish_cover
-publish_cover: cover
+publish_cover:
 	go get -d golang.org/x/tools/cmd/cover
 	go get github.com/modocache/gover
 	go get github.com/mattn/goveralls
@@ -22,7 +38,8 @@ publish_cover: cover
 
 .PHONY: run
 run:
-	docker-compose up -d
+	docker-compose up -d mongo gpubsub kafka
+	sleep 15
 
 .PHONY: run_mongodb
 run_mongodb:
@@ -34,7 +51,7 @@ run_gpubsub:
 
 .PHONY: run_kafka
 run_kafka:
-	docker-compose up -d zookeeper kafka
+	docker-compose up -d kafka
 
 .PHONY: stop
 stop:
