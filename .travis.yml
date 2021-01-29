@@ -25,13 +25,22 @@ jobs:
         - GO111MODULE=on
 
     - name: "Test (unit with coverage)"
+      stage: "Test"
       if: type != pull_request
-      script: make test_cover publish_cover
+      script: make test_cover
       env:
         - GO111MODULE=on
 
-    - name: "Test (integration)"
+    - name: "Test (integration with coverage)"
+      stage: "Test"
       if: type != pull_request
-      script: make run test_integration
+      script: make run test_integration_cover
+      env:
+        - GO111MODULE=on
+
+    - name: "Publish coverage"
+      stage: "Publish coverage"
+      if: type != pull_request
+      script: make test_cover publish_cover
       env:
         - GO111MODULE=on

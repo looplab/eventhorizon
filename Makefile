@@ -8,6 +8,10 @@ test:
 test_docker:
 	docker-compose run --rm golang make test
 
+.PHONY: test_cover
+test_cover:
+	go list -f '{{if len .TestGoFiles}}"go test -race -short -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
+
 .PHONY: test_integration
 test_integration:
 	go test -race -run Integration ./...
@@ -16,6 +20,10 @@ test_integration:
 test_integration_docker: run
 	docker-compose run --rm golang make test_integration
 
+.PHONY: test_integration_cover
+test_integration_cover:
+	go list -f '{{if len .TestGoFiles}}"go test -race -run Integration -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
+
 .PHONY: test_loadtest
 test_loadtest:
 	go test -race -v -run Loadtest ./...
@@ -23,10 +31,6 @@ test_loadtest:
 .PHONY: test_loadtest_docker
 test_loadtest_docker: run
 	docker-compose run --rm golang make test_loadtest
-
-.PHONY: test_cover
-test_cover:
-	go list -f '{{if len .TestGoFiles}}"go test -short -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
 
 .PHONY: publish_cover
 publish_cover:
