@@ -1,6 +1,6 @@
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/looplab/eventhorizon)](https://pkg.go.dev/github.com/looplab/eventhorizon)
 [![Build Status](https://travis-ci.com/looplab/eventhorizon.svg?branch=master)](https://travis-ci.com/looplab/eventhorizon)
 [![Coverage Status](https://img.shields.io/coveralls/looplab/eventhorizon.svg)](https://coveralls.io/r/looplab/eventhorizon)
-[![GoDoc](https://godoc.org/github.com/looplab/eventhorizon?status.svg)](https://godoc.org/github.com/looplab/eventhorizon)
 [![Go Report Card](https://goreportcard.com/badge/looplab/eventhorizon)](https://goreportcard.com/report/looplab/eventhorizon)
 
 # Event Horizon
@@ -88,29 +88,31 @@ https://github.com/v0id3r/eh-nats
 
 To develop Event Horizon you need to have Docker and Docker Compose installed.
 
-To start all needed services and run all tests, simply run make:
+To run all unit tests:
 
 ```bash
-make
-```
-
-To manualy run the services and stop them:
-
-```bash
-make run_services
-make stop_services
-```
-
-When the services are running testing can be done either locally or with Docker:
-
-```bash
-go test ./...
 make test
-make test_docker
-make cover
 ```
 
-The difference between `make test` and `go test ./...` is that `make test` also does race detection.
+To run and stop services for integration tests:
+
+```bash
+make run
+make stop
+```
+
+To run all integration tests:
+
+```bash
+make test_integration
+```
+
+Testing can also be done in docker:
+
+```bash
+make test_docker
+make test_integration_docker
+```
 
 # Get Involved
 
