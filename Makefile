@@ -32,13 +32,13 @@ test_loadtest:
 test_loadtest_docker: run
 	docker-compose run --rm golang make test_loadtest
 
-.PHONY: publish_cover
-publish_cover:
+.PHONY: upload_cover
+upload_cover:
 	go get -d golang.org/x/tools/cmd/cover
-	go get github.com/modocache/gover
+	go get github.com/sozorogami/gover
 	go get github.com/mattn/goveralls
 	gover
-	goveralls -coverprofile=gover.coverprofile -service=travis-ci -repotoken="$$COVERALLS_TOKEN"
+	goveralls -coverprofile=gover.coverprofile -repotoken="$$COVERALLS_TOKEN"
 
 .PHONY: run
 run:

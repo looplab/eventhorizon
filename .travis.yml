@@ -10,6 +10,12 @@ cache:
   directories:
     - ${GOPATH}/pkg/mod
 
+notifications:
+  webhooks:
+    if: type != pull_request
+    urls:
+      - https://coveralls.io/webhook?repo_token=COVERALLS_TOKEN
+
 jobs:
   include:
     - name: "Unit test"
@@ -25,22 +31,13 @@ jobs:
         - GO111MODULE=on
 
     - name: "Unit test (with coverage)"
-      stage: "Testing"
       if: type != pull_request
-      script: make test_cover
+      script: make test_cover upload_cover
       env:
         - GO111MODULE=on
 
     - name: "Integration test (with coverage)"
-      stage: "Testing"
       if: type != pull_request
-      script: make run test_integration_cover
-      env:
-        - GO111MODULE=on
-
-    - name: "Coverage"
-      stage: "Reporting"
-      if: type != pull_request
-      script: make publish_cover
+      script: make run test_integration_cover upload_cover
       env:
         - GO111MODULE=on
