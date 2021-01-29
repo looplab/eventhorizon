@@ -20,6 +20,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,7 +33,11 @@ import (
 	"github.com/looplab/eventhorizon/repo/version"
 )
 
-func Example() {
+func ExampleIntegration() {
+	if testing.Short() {
+		os.Exit(0)
+	}
+
 	// Use MongoDB in Docker with fallback to localhost.
 	url := os.Getenv("MONGO_HOST")
 	if url == "" {

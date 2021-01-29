@@ -16,11 +16,12 @@ package memory
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/copier"
+
 	eh "github.com/looplab/eventhorizon"
 )
 
@@ -32,7 +33,7 @@ var ErrModelNotSet = errors.New("model not set")
 // Repo implements an in memory repository of read models.
 type Repo struct {
 	// The outer map is with namespace as key, the inner with aggregate ID.
-	db   map[namespace]map[uuid.UUID]eh.Entity
+	db   map[namespace]map[uuid.UUID][]byte
 	dbMu sync.RWMutex
 
 	// A list of all item ids, only the order is used.
@@ -45,7 +46,7 @@ type Repo struct {
 func NewRepo() *Repo {
 	r := &Repo{
 		ids: map[namespace][]uuid.UUID{},
-		db:  map[namespace]map[uuid.UUID]eh.Entity{},
+		db:  map[namespace]map[uuid.UUID][]byte{},
 	}
 	return r
 }
@@ -68,15 +69,25 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 
 	r.dbMu.RLock()
 	defer r.dbMu.RUnlock()
-	item, ok := r.db[ns][id]
+
+	// Fetch entity.
+	b, ok := r.db[ns][id]
 	if !ok {
 		return nil, eh.RepoError{
 			Err:       eh.ErrEntityNotFound,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
+
+	// Unmarshal.
 	entity := r.factoryFn()
-	copier.Copy(entity, item)
+	if err := json.Unmarshal(b, &entity); err != nil {
+		return nil, eh.RepoError{
+			Err:       eh.ErrCouldNotLoadEntity,
+			BaseErr:   err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
 
 	return entity, nil
 }
@@ -96,9 +107,15 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	defer r.dbMu.RUnlock()
 	result := []eh.Entity{}
 	for _, id := range r.ids[ns] {
-		if item, ok := r.db[ns][id]; ok {
+		if b, ok := r.db[ns][id]; ok {
 			entity := r.factoryFn()
-			copier.Copy(entity, item)
+			if err := json.Unmarshal(b, &entity); err != nil {
+				return nil, eh.RepoError{
+					Err:       eh.ErrCouldNotLoadEntity,
+					BaseErr:   err,
+					Namespace: eh.NamespaceFromContext(ctx),
+				}
+			}
 			result = append(result, entity)
 		}
 	}
@@ -128,12 +145,22 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
 	id := entity.EntityID()
+
+	// Insert entity.
+	b, err := json.Marshal(entity)
+	if err != nil {
+		return eh.RepoError{
+			Err:       eh.ErrCouldNotSaveEntity,
+			BaseErr:   err,
+			Namespace: eh.NamespaceFromContext(ctx),
+		}
+	}
+
+	// Update ID index if the item is new.
 	if _, ok := r.db[ns][id]; !ok {
 		r.ids[ns] = append(r.ids[ns], id)
 	}
-	toInsert := r.factoryFn()
-	copier.Copy(toInsert, entity)
-	r.db[ns][id] = toInsert
+	r.db[ns][id] = b
 
 	return nil
 }
@@ -177,7 +204,7 @@ func (r *Repo) namespace(ctx context.Context) namespace {
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
 	if _, ok := r.db[ns]; !ok {
-		r.db[ns] = map[uuid.UUID]eh.Entity{}
+		r.db[ns] = map[uuid.UUID][]byte{}
 		r.ids[ns] = []uuid.UUID{}
 	}
 

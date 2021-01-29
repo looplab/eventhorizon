@@ -22,6 +22,7 @@ import (
 	"github.com/looplab/eventhorizon/eventbus/local"
 )
 
+// NOTE: Not named "Integration" to enable running with the unit tests.
 func TestEventBus(t *testing.T) {
 	group := local.NewGroup()
 	if group == nil {
@@ -49,7 +50,7 @@ func TestEventBus(t *testing.T) {
 	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
 }
 
-func TestEventBusLoad(t *testing.T) {
+func TestEventBusLoadtest(t *testing.T) {
 	innerBus := local.NewEventBus(nil)
 	if innerBus == nil {
 		t.Fatal("there should be a bus")

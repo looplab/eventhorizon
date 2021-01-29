@@ -31,7 +31,11 @@ import (
 	"github.com/looplab/eventhorizon/repo"
 )
 
-func TestReadRepo(t *testing.T) {
+func TestReadRepoIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
 	// Local Mongo testing with Docker
 	url := os.Getenv("MONGO_HOST")
 

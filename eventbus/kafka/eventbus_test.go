@@ -24,7 +24,11 @@ import (
 	"github.com/looplab/eventhorizon/eventbus"
 )
 
-func TestEventBus(t *testing.T) {
+func TestEventBusIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
 	// Connect to localhost if not running inside docker
 	broker := os.Getenv("KAFKA_BROKER_HOST")
 	if broker == "" {
@@ -55,7 +59,11 @@ func TestEventBus(t *testing.T) {
 	eventbus.AcceptanceTest(t, bus1, bus2, 10*time.Second)
 }
 
-func TestEventBusLoad(t *testing.T) {
+func TestEventBusLoadtest(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
 	// Connect to localhost if not running inside docker
 	broker := os.Getenv("KAFKA_BROKER_HOST")
 	if broker == "" {

@@ -30,6 +30,7 @@ import (
 	repo "github.com/looplab/eventhorizon/repo/memory"
 )
 
+// NOTE: Not named "Integration" to enable running with the unit tests.
 func Example() {
 	// Create the event store.
 	eventStore := eventstore.NewEventStore()
