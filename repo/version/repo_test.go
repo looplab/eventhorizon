@@ -86,7 +86,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 		ID:        uuid.New(),
 		Version:   1,
 		Content:   "m1",
-		CreatedAt: time.Now().Round(time.Millisecond),
+		CreatedAt: time.Now().Round(time.Microsecond).UTC(),
 	}
 	if err := r.Save(ctx, m1); err != nil {
 		t.Error("there should be no error:", err)
@@ -168,7 +168,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 		ID:        uuid.New(),
 		Version:   1,
 		Content:   "m2",
-		CreatedAt: time.Now().Round(time.Millisecond),
+		CreatedAt: time.Now().Round(time.Microsecond).UTC(),
 	}
 	if err := r.Save(ctx, m2); err != nil {
 		t.Error("there should be no error:", err)
@@ -195,7 +195,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 		ID:        uuid.New(),
 		Version:   1,
 		Content:   "m3",
-		CreatedAt: time.Now().Round(time.Millisecond),
+		CreatedAt: time.Now().Round(time.Microsecond).UTC(),
 	}
 	go func() {
 		<-time.After(100 * time.Millisecond)
@@ -235,7 +235,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 		ID:        uuid.New(),
 		Version:   4,
 		Content:   "modelMinVersion",
-		CreatedAt: time.Now().Round(time.Millisecond),
+		CreatedAt: time.Now().Round(time.Microsecond).UTC(),
 	}
 	go func() {
 		<-time.After(100 * time.Millisecond)
