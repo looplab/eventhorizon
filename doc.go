@@ -1,4 +1,4 @@
-// Copyright (c) 2017 - The Event Horizon authors.
+// Copyright (c) 2021 - The Event Horizon authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package eventhorizon is a CQRS/ES toolkit for Go.
 package eventhorizon
-
-import "github.com/google/uuid"
-
-// Entity is an item which is identified by an ID.
-//
-// From http://cqrs.nu/Faq:
-// "Entities or reference types are characterized by having an identity that's
-// not tied to their attribute values. All attributes in an entity can change
-// and it's still "the same" entity. Conversely, two entities might be
-// equivalent in all their attributes, but will still be distinct."
-type Entity interface {
-	// EntityID returns the ID of the entity.
-	EntityID() uuid.UUID
-}

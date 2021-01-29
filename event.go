@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package eventhorizon is a CQRS/ES toolkit.
 package eventhorizon
 
 import (
