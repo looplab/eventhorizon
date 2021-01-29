@@ -34,7 +34,7 @@ publish_cover:
 	go get github.com/modocache/gover
 	go get github.com/mattn/goveralls
 	gover
-	@goveralls -coverprofile=gover.coverprofile -service=travis-ci -repotoken=$(COVERALLS_TOKEN)
+	goveralls -coverprofile=gover.coverprofile -service=travis-ci -repotoken="$$COVERALLS_TOKEN"
 
 .PHONY: run
 run:
