@@ -20,6 +20,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -81,6 +82,17 @@ func ExampleIntegration() {
 		eh.NewContextWithNamespace(context.Background(), "mongodb"),
 	)
 
+	// Setup a test utility waiter that waits for all 11 events to occur before
+	// evaluating results.
+	var wg sync.WaitGroup
+	wg.Add(11)
+	eventBus.AddHandler(ctx, eh.MatchAll{}, eh.EventHandlerFunc(
+		func(ctx context.Context, e eh.Event) error {
+			wg.Done()
+			return nil
+		},
+	))
+
 	// Setup the guestlist.
 	eventID := uuid.New()
 	guestlist.Setup(
@@ -118,7 +130,6 @@ func ExampleIntegration() {
 	if err := commandBus.HandleCommand(ctx, &guestlist.CreateInvite{ID: poseidonID, Name: "Poseidon"}); err != nil {
 		log.Println("error:", err)
 	}
-	time.Sleep(100 * time.Millisecond)
 
 	// The invited guests accept and decline the event.
 	// Note that Athena tries to decline the event after first accepting, but
@@ -138,15 +149,14 @@ func ExampleIntegration() {
 		log.Println("error:", err)
 	}
 
-	// Poseidon is a bit late to the party...
-	// TODO: Remove sleeps.
-	time.Sleep(100 * time.Millisecond)
+	// Poseidon is a bit late to the party, will not be accepted...
 	if err := commandBus.HandleCommand(ctx, &guestlist.AcceptInvite{ID: poseidonID}); err != nil {
 		log.Println("error:", err)
 	}
 
 	// Wait for simulated eventual consistency before reading.
-	time.Sleep(100 * time.Millisecond)
+	wg.Wait()
+	time.Sleep(1000 * time.Millisecond)
 
 	// Read all invites.
 	invitationStrs := []string{}
