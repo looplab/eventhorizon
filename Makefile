@@ -68,4 +68,4 @@ clean:
 
 .PHONY: mongo_shell
 mongo_shell:
-	docker run -it --network eventhorizon_default --rm mongo:4.2 mongo --host mongo test
+	docker run -it --network eventhorizon_default --rm mongo:4.4 mongo --host mongo test
