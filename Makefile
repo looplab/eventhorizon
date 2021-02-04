@@ -42,12 +42,12 @@ upload_cover:
 
 .PHONY: run
 run:
-	docker-compose up -d mongo gpubsub kafka
+	docker-compose up -d mongodb gpubsub kafka
 	sleep 15
 
 .PHONY: run_mongodb
 run_mongodb:
-	docker-compose up -d mongo
+	docker-compose up -d mongodb
 
 .PHONY: run_gpubsub
 run_gpubsub:
@@ -66,6 +66,6 @@ clean:
 	@find . -name \.coverprofile -type f -delete
 	@rm -f gover.coverprofile
 
-.PHONY: mongo_shell
-mongo_shell:
-	docker run -it --network eventhorizon_default --rm mongo:4.4 mongo --host mongo test
+.PHONY: mongodb_shell
+mongodb_shell:
+	docker run -it --network eventhorizon_default --rm mongo:4.4 mongo --host mongodb test

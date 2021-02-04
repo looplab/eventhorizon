@@ -749,7 +749,7 @@ func NewIntegrationTestSession(ctx context.Context) (
 	eh.ReadWriteRepo,
 ) {
 	// Use MongoDB in Docker with fallback to localhost.
-	dbURL := os.Getenv("MONGO_HOST")
+	dbURL := os.Getenv("MONGODB_HOST")
 	if dbURL == "" {
 		dbURL = "localhost:27017"
 	}
