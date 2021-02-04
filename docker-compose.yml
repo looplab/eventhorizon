@@ -16,7 +16,7 @@ services:
       - "27017:27017"
 
   gpubsub:
-    image: google/cloud-sdk:318.0.0
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:326.0.0-emulators
     ports:
       - "8793:8793"
     entrypoint:
