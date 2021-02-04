@@ -39,7 +39,7 @@ func ExampleIntegration() {
 	}
 
 	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGO_HOST")
+	url := os.Getenv("MONGODB_HOST")
 	if url == "" {
 		url = "localhost:27017"
 	}

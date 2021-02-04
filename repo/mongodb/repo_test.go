@@ -37,7 +37,7 @@ func TestReadRepoIntegration(t *testing.T) {
 	}
 
 	// Local Mongo testing with Docker
-	url := os.Getenv("MONGO_HOST")
+	url := os.Getenv("MONGODB_HOST")
 
 	if url == "" {
 		// Default to localhost
@@ -180,7 +180,7 @@ func TestRepository(t *testing.T) {
 	}
 
 	// Local Mongo testing with Docker
-	url := os.Getenv("MONGO_HOST")
+	url := os.Getenv("MONGODB_HOST")
 	if url == "" {
 		// Default to localhost
 		url = "localhost:27017"
