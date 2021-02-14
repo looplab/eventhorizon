@@ -68,7 +68,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 1),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": int32(42)}),
+		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
 	)
 	if err := bus1.HandleEvent(ctx, event1); err != nil {
 		t.Error("there should be no error:", err)
@@ -120,7 +120,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	// Event with data.
 	event2 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event2"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 2),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": int32(42)}),
+		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
 	)
 	if err := bus1.HandleEvent(ctx, event2); err != nil {
 		t.Error("there should be no error:", err)
@@ -205,7 +205,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 
 	event3 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event3"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 3),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": int32(42)}),
+		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
 	)
 	if err := bus1.HandleEvent(ctx, event3); err != nil {
 		t.Error("there should be no error:", err)

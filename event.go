@@ -116,9 +116,10 @@ func NewEvent(eventType EventType, data EventData, timestamp time.Time, options 
 		timestamp: timestamp,
 	}
 	for _, option := range options {
-		if option != nil {
-			option(e)
+		if option == nil {
+			continue
 		}
+		option(e)
 	}
 	return e
 }

@@ -53,7 +53,7 @@ func ExampleIntegration() {
 	}
 
 	// Create the event bus that distributes events.
-	eventBus := eventbus.NewEventBus(nil)
+	eventBus := eventbus.NewEventBus()
 	go func() {
 		for e := range eventBus.Errors() {
 			log.Printf("eventbus: %s", e.Error())

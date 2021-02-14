@@ -24,14 +24,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/api/option"
 
-	// Register uuid.UUID as BSON type.
-	_ "github.com/looplab/eventhorizon/types/mongodb"
-
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/codec/json"
 )
 
 // EventBus is a local event bus that delegates handling of published events
@@ -39,40 +35,74 @@ import (
 type EventBus struct {
 	appID        string
 	client       *pubsub.Client
+	clientOpts   []option.ClientOption
 	topic        *pubsub.Topic
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
 	wg           sync.WaitGroup
+	codec        eh.EventCodec
 }
 
 // NewEventBus creates an EventBus, with optional GCP connection settings.
-func NewEventBus(projectID, appID string, opts ...option.ClientOption) (*EventBus, error) {
+func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) {
+	b := &EventBus{
+		appID:      appID,
+		registered: map[eh.EventHandlerType]struct{}{},
+		errCh:      make(chan eh.EventBusError, 100),
+		codec:      &json.EventCodec{},
+	}
+
+	// Apply configuration options.
+	for _, option := range options {
+		if option == nil {
+			continue
+		}
+		if err := option(b); err != nil {
+			return nil, fmt.Errorf("error while applying option: %v", err)
+		}
+	}
+
+	// Create the GCP pubsub client.
 	ctx := context.Background()
-	client, err := pubsub.NewClient(ctx, projectID, opts...)
+	var err error
+	b.client, err = pubsub.NewClient(ctx, projectID, b.clientOpts...)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get or create the topic.
 	name := appID + "_events"
-	topic := client.Topic(name)
-	if ok, err := topic.Exists(ctx); err != nil {
+	b.topic = b.client.Topic(name)
+	if ok, err := b.topic.Exists(ctx); err != nil {
 		return nil, err
 	} else if !ok {
-		if topic, err = client.CreateTopic(ctx, name); err != nil {
+		if b.topic, err = b.client.CreateTopic(ctx, name); err != nil {
 			return nil, err
 		}
 	}
-	topic.EnableMessageOrdering = true
+	b.topic.EnableMessageOrdering = true
 
-	return &EventBus{
-		appID:      appID,
-		client:     client,
-		topic:      topic,
-		registered: map[eh.EventHandlerType]struct{}{},
-		errCh:      make(chan eh.EventBusError, 100),
-	}, nil
+	return b, nil
+}
+
+// Option is an option setter used to configure creation.
+type Option func(*EventBus) error
+
+// WithCodec uses the specified codec for encoding events.
+func WithCodec(codec eh.EventCodec) Option {
+	return func(b *EventBus) error {
+		b.codec = codec
+		return nil
+	}
+}
+
+// WithPubSubOptions adds the GCP pubsub options to the underlying client.
+func WithPubSubOptions(opts ...option.ClientOption) Option {
+	return func(b *EventBus) error {
+		b.clientOpts = opts
+		return nil
+	}
 }
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
@@ -87,28 +117,9 @@ const (
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
-	e := evt{
-		AggregateID:   event.AggregateID().String(),
-		AggregateType: event.AggregateType(),
-		EventType:     event.EventType(),
-		Version:       event.Version(),
-		Timestamp:     event.Timestamp(),
-		Metadata:      event.Metadata(),
-		Context:       eh.MarshalContext(ctx),
-	}
-
-	// Marshal event data if there is any.
-	if event.Data() != nil {
-		var err error
-		if e.RawData, err = bson.Marshal(event.Data()); err != nil {
-			return errors.New("could not marshal event data: " + err.Error())
-		}
-	}
-
-	// Marshal the event (using BSON for now).
-	data, err := bson.Marshal(e)
+	data, err := b.codec.MarshalEvent(ctx, event)
 	if err != nil {
-		return errors.New("could not marshal event: " + err.Error())
+		return fmt.Errorf("could not marshal event: %w", err)
 	}
 
 	res := b.topic.Publish(ctx, &pubsub.Message{
@@ -119,6 +130,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 		},
 		OrderingKey: event.AggregateID().String(),
 	})
+
 	if _, err := res.Get(ctx); err != nil {
 		return errors.New("could not publish event: " + err.Error())
 	}
@@ -222,9 +234,8 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 
 func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx context.Context, msg *pubsub.Message) {
 	return func(ctx context.Context, msg *pubsub.Message) {
-		// Decode the raw BSON event data.
-		var e evt
-		if err := bson.Unmarshal(msg.Data, &e); err != nil {
+		event, ctx, err := b.codec.UnmarshalEvent(ctx, msg.Data)
+		if err != nil {
 			err = fmt.Errorf("could not unmarshal event: %w", err)
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
@@ -234,49 +245,6 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 			msg.Nack()
 			return
 		}
-
-		// Create an event of the correct type and decode from raw BSON.
-		if len(e.RawData) > 0 {
-			var err error
-			if e.data, err = eh.CreateEventData(e.EventType); err != nil {
-				err = fmt.Errorf("could not create event data: %w", err)
-				select {
-				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
-				default:
-					log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
-				}
-				msg.Nack()
-				return
-			}
-			if err := bson.Unmarshal(e.RawData, e.data); err != nil {
-				err = fmt.Errorf("could not unmarshal event data: %w", err)
-				select {
-				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
-				default:
-					log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
-				}
-				msg.Nack()
-				return
-			}
-			e.RawData = nil
-		}
-
-		ctx = eh.UnmarshalContext(ctx, e.Context)
-		aggregateID, err := uuid.Parse(e.AggregateID)
-		if err != nil {
-			aggregateID = uuid.Nil
-		}
-		event := eh.NewEvent(
-			e.EventType,
-			e.data,
-			e.Timestamp,
-			eh.ForAggregate(
-				e.AggregateType,
-				aggregateID,
-				e.Version,
-			),
-			eh.WithMetadata(e.Metadata),
-		)
 
 		// Ignore non-matching events.
 		if !m.Match(event) {
@@ -331,17 +299,4 @@ func createFilter(m eh.EventMatcher) string {
 	default:
 		return ""
 	}
-}
-
-// evt is the internal event used on the wire only.
-type evt struct {
-	EventType     eh.EventType           `bson:"event_type"`
-	RawData       bson.Raw               `bson:"data,omitempty"`
-	data          eh.EventData           `bson:"-"`
-	Timestamp     time.Time              `bson:"timestamp"`
-	AggregateType eh.AggregateType       `bson:"aggregate_type"`
-	AggregateID   string                 `bson:"_id"`
-	Version       int                    `bson:"version"`
-	Metadata      map[string]interface{} `bson:"metadata"`
-	Context       map[string]interface{} `bson:"context"`
 }
