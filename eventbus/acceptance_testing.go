@@ -89,7 +89,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	if !otherHandler.Wait(timeout) {
 		t.Error("did not receive event in time")
 	}
-	if !mocks.EqualEvents(otherHandler.Events, expectedEvents) {
+	if !eh.CompareEventSlices(otherHandler.Events, expectedEvents) {
 		t.Error("the events were incorrect:")
 		t.Log(otherHandler.Events)
 		if len(otherHandler.Events) == 1 {
@@ -131,8 +131,8 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	if !(handlerBus1.Wait(timeout) || handlerBus2.Wait(timeout)) {
 		t.Error("did not receive event in time")
 	}
-	if !(mocks.EqualEvents(handlerBus1.Events, expectedEvents) ||
-		mocks.EqualEvents(handlerBus2.Events, expectedEvents)) {
+	if !(eh.CompareEventSlices(handlerBus1.Events, expectedEvents) ||
+		eh.CompareEventSlices(handlerBus2.Events, expectedEvents)) {
 		t.Error("the events were incorrect:")
 		t.Log(handlerBus1.Events)
 		t.Log(handlerBus2.Events)
@@ -143,7 +143,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 			t.Log(pretty.Sprint(handlerBus2.Events[0]))
 		}
 	}
-	if mocks.EqualEvents(handlerBus1.Events, handlerBus2.Events) {
+	if eh.CompareEventSlices(handlerBus1.Events, handlerBus2.Events) {
 		t.Error("only one handler should receive the events")
 	}
 	correctCtx1 := false
@@ -162,7 +162,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	if !anotherHandlerBus2.Wait(timeout) {
 		t.Error("did not receive event in time")
 	}
-	if !mocks.EqualEvents(anotherHandlerBus2.Events, expectedEvents) {
+	if !eh.CompareEventSlices(anotherHandlerBus2.Events, expectedEvents) {
 		t.Error("the events were incorrect:")
 		t.Log(anotherHandlerBus2.Events)
 	}
@@ -175,7 +175,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 		t.Error("did not receive event in time")
 	}
 	for i, event := range observerBus1.Events {
-		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
+		if err := eh.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
 	}
@@ -188,7 +188,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 		t.Error("did not receive event in time")
 	}
 	for i, event := range observerBus2.Events {
-		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
+		if err := eh.CompareEvents(event, expectedEvents[i]); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
 	}

@@ -131,7 +131,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 		event4, event5, event6, // Version 4, 5 and 6
 	}
 	for i, event := range events {
-		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
+		if err := eh.CompareEvents(event, expectedEvents[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
 		if event.Version() != i+1 {
@@ -146,7 +146,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	}
 	expectedEvents = []eh.Event{event7}
 	for i, event := range events {
-		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
+		if err := eh.CompareEvents(event, expectedEvents[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
 		if event.Version() != i+1 {
@@ -213,7 +213,7 @@ func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventS
 		event3,    // Version 3
 	}
 	for i, event := range events {
-		if err := mocks.CompareEvents(event, expectedEvents[i]); err != nil {
+		if err := eh.CompareEvents(event, expectedEvents[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
 		if event.Version() != i+1 {
@@ -250,7 +250,7 @@ func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventS
 	if len(events) != 1 {
 		t.Fatal("there should be one event")
 	}
-	if err := mocks.CompareEvents(events[0], newEvent1); err != nil {
+	if err := eh.CompareEvents(events[0], newEvent1); err != nil {
 		t.Error("the event was incorrect:", err)
 	}
 	events, err = store.Load(ctx, id2)
@@ -262,7 +262,7 @@ func MaintainerAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventS
 	if len(events) != 1 {
 		t.Fatal("there should be one event")
 	}
-	if err := mocks.CompareEvents(events[0], newEvent2); err != nil {
+	if err := eh.CompareEvents(events[0], newEvent2); err != nil {
 		t.Error("the event was incorrect:", err)
 	}
 }
