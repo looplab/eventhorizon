@@ -29,11 +29,12 @@ type AggregateStore struct {
 	eventHandler eh.EventHandler
 }
 
-// ErrInvalidRepo is when a dispatcher is created with a nil repo.
-var ErrInvalidRepo = errors.New("invalid repo")
-
-// ErrInvalidAggregate occurs when a loaded aggregate is not an aggregate.
-var ErrInvalidAggregate = errors.New("invalid aggregate")
+var (
+	// ErrInvalidRepo is when a dispatcher is created with a nil repo.
+	ErrInvalidRepo = errors.New("invalid repo")
+	// ErrInvalidAggregate occurs when a loaded aggregate is not an aggregate.
+	ErrInvalidAggregate = errors.New("invalid aggregate")
+)
 
 // NewAggregateStore creates an aggregate store with a read write repo and an
 // event handler that can handle any resulting events (for example by publishing

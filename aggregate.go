@@ -58,11 +58,12 @@ type AggregateStore interface {
 	Save(context.Context, Aggregate) error
 }
 
-// ErrAggregateNotFound is when no aggregate can be found.
-var ErrAggregateNotFound = errors.New("aggregate not found")
-
-// ErrAggregateNotRegistered is when no aggregate factory was registered.
-var ErrAggregateNotRegistered = errors.New("aggregate not registered")
+var (
+	// ErrAggregateNotFound is when no aggregate can be found.
+	ErrAggregateNotFound = errors.New("aggregate not found")
+	// ErrAggregateNotRegistered is when no aggregate factory was registered.
+	ErrAggregateNotRegistered = errors.New("aggregate not registered")
+)
 
 // AggregateError is an error caused in the aggregate when handling a command.
 type AggregateError struct {

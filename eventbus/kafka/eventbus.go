@@ -22,14 +22,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
-	"go.mongodb.org/mongo-driver/bson"
-
-	// Register uuid.UUID as BSON type.
-	_ "github.com/looplab/eventhorizon/types/mongodb"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/codec/json"
 )
 
 // EventBus is a local event bus that delegates handling of published events
@@ -45,12 +41,32 @@ type EventBus struct {
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
 	wg           sync.WaitGroup
+	codec        eh.EventCodec
 }
 
 // NewEventBus creates an EventBus, with optional GCP connection settings.
-func NewEventBus(broker string, appID string) (*EventBus, error) {
-	ctx := context.Background()
+func NewEventBus(broker string, appID string, options ...Option) (*EventBus, error) {
 	topic := appID + "_events"
+	b := &EventBus{
+		broker:     broker,
+		appID:      appID,
+		topic:      topic,
+		registered: map[eh.EventHandlerType]struct{}{},
+		errCh:      make(chan eh.EventBusError, 100),
+		codec:      &json.EventCodec{},
+	}
+
+	// Apply configuration options.
+	for _, option := range options {
+		if option == nil {
+			continue
+		}
+		if err := option(b); err != nil {
+			return nil, fmt.Errorf("error while applying option: %v", err)
+		}
+	}
+
+	ctx := context.Background()
 	partition := 0
 
 	// Will create the topic if server is configured for auto create.
@@ -63,7 +79,7 @@ func NewEventBus(broker string, appID string) (*EventBus, error) {
 	}
 	// TODO: Wait for topic to be created.
 
-	w := &kafka.Writer{
+	b.writer = &kafka.Writer{
 		Addr:         kafka.TCP(broker),
 		Topic:        topic,
 		Balancer:     &kafka.LeastBytes{},
@@ -71,14 +87,18 @@ func NewEventBus(broker string, appID string) (*EventBus, error) {
 		RequiredAcks: kafka.RequireOne, // Stronger consistency.
 	}
 
-	return &EventBus{
-		broker:     broker,
-		appID:      appID,
-		topic:      topic,
-		writer:     w,
-		registered: map[eh.EventHandlerType]struct{}{},
-		errCh:      make(chan eh.EventBusError, 100),
-	}, nil
+	return b, nil
+}
+
+// Option is an option setter used to configure creation.
+type Option func(*EventBus) error
+
+// WithCodec uses the specified codec for encoding events.
+func WithCodec(codec eh.EventCodec) Option {
+	return func(b *EventBus) error {
+		b.codec = codec
+		return nil
+	}
 }
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
@@ -93,26 +113,7 @@ const (
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
-	e := evt{
-		AggregateID:   event.AggregateID().String(),
-		AggregateType: event.AggregateType(),
-		EventType:     event.EventType(),
-		Version:       event.Version(),
-		Timestamp:     event.Timestamp(),
-		Metadata:      event.Metadata(),
-		Context:       eh.MarshalContext(ctx),
-	}
-
-	// Marshal event data if there is any.
-	if event.Data() != nil {
-		var err error
-		if e.RawData, err = bson.Marshal(event.Data()); err != nil {
-			return fmt.Errorf("could not marshal event data: %w", err)
-		}
-	}
-
-	// Marshal the event (using BSON for now).
-	data, err := bson.Marshal(e)
+	data, err := b.codec.MarshalEvent(ctx, event)
 	if err != nil {
 		return fmt.Errorf("could not marshal event: %w", err)
 	}
@@ -220,58 +221,16 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 
 func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) {
 	return func(ctx context.Context, msg kafka.Message) {
-		// Decode the raw BSON event data.
-		var e evt
-		if err := bson.Unmarshal(msg.Value, &e); err != nil {
+		event, ctx, err := b.codec.UnmarshalEvent(ctx, msg.Value)
+		if err != nil {
 			err = fmt.Errorf("could not unmarshal event: %w", err)
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
-				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+				log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
 			}
 			return
 		}
-
-		// Create an event of the correct type and decode from raw BSON.
-		if len(e.RawData) > 0 {
-			var err error
-			if e.data, err = eh.CreateEventData(e.EventType); err != nil {
-				err = fmt.Errorf("could not create event data: %w", err)
-				select {
-				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
-				default:
-					log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
-				}
-				return
-			}
-			if err := bson.Unmarshal(e.RawData, e.data); err != nil {
-				err = fmt.Errorf("could not unmarshal event data: %w", err)
-				select {
-				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
-				default:
-					log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
-				}
-				return
-			}
-			e.RawData = nil
-		}
-
-		ctx = eh.UnmarshalContext(ctx, e.Context)
-		aggregateID, err := uuid.Parse(e.AggregateID)
-		if err != nil {
-			aggregateID = uuid.Nil
-		}
-		event := eh.NewEvent(
-			e.EventType,
-			e.data,
-			e.Timestamp,
-			eh.ForAggregate(
-				e.AggregateType,
-				aggregateID,
-				e.Version,
-			),
-			eh.WithMetadata(e.Metadata),
-		)
 
 		// Ignore non-matching events.
 		if !m.Match(event) {
@@ -292,17 +251,4 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader
 
 		r.CommitMessages(ctx, msg)
 	}
-}
-
-// evt is the internal event used on the wire only.
-type evt struct {
-	EventType     eh.EventType           `bson:"event_type"`
-	RawData       bson.Raw               `bson:"data,omitempty"`
-	data          eh.EventData           `bson:"-"`
-	Timestamp     time.Time              `bson:"timestamp"`
-	AggregateType eh.AggregateType       `bson:"aggregate_type"`
-	AggregateID   string                 `bson:"_id"`
-	Version       int                    `bson:"version"`
-	Metadata      map[string]interface{} `bson:"metadata"`
-	Context       map[string]interface{} `bson:"context"`
 }

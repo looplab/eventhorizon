@@ -82,7 +82,7 @@ func TestEventStore(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 	for i, event := range events {
-		if err := mocks.CompareEvents(event, aggregate1events[i]); err != nil {
+		if err := eh.CompareEvents(event, aggregate1events[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
 		if event.Version() != i+1 {

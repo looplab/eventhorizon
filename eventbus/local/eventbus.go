@@ -17,10 +17,11 @@ package local
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
-	"github.com/jinzhu/copier"
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/codec/json"
 )
 
 // DefaultQueueSize is the default queue size per handler for publishing events.
@@ -34,17 +35,43 @@ type EventBus struct {
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
 	wg           sync.WaitGroup
+	codec        eh.EventCodec
 }
 
 // NewEventBus creates a EventBus.
-func NewEventBus(g *Group) *EventBus {
-	if g == nil {
-		g = NewGroup()
-	}
-	return &EventBus{
-		group:      g,
+func NewEventBus(options ...Option) *EventBus {
+	b := &EventBus{
+		group:      NewGroup(),
 		registered: map[eh.EventHandlerType]struct{}{},
 		errCh:      make(chan eh.EventBusError, 100),
+		codec:      &json.EventCodec{},
+	}
+
+	// Apply configuration options.
+	for _, option := range options {
+		if option == nil {
+			continue
+		}
+		option(b)
+	}
+
+	return b
+}
+
+// Option is an option setter used to configure creation.
+type Option func(*EventBus)
+
+// WithCodec uses the specified codec for encoding events.
+func WithCodec(codec eh.EventCodec) Option {
+	return func(b *EventBus) {
+		b.codec = codec
+	}
+}
+
+// WithGroup uses a specified group for transmitting events.
+func WithGroup(g *Group) Option {
+	return func(b *EventBus) {
+		b.group = g
 	}
 }
 
@@ -55,7 +82,12 @@ func (b *EventBus) HandlerType() eh.EventHandlerType {
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
-	return b.group.publish(ctx, event)
+	data, err := b.codec.MarshalEvent(ctx, event)
+	if err != nil {
+		return fmt.Errorf("could not marshal event: %w", err)
+	}
+
+	return b.group.publish(ctx, data)
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
@@ -105,20 +137,35 @@ type evt struct {
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, ch <-chan evt) {
+func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte) {
 	defer b.wg.Done()
 
 	for {
 		select {
-		case e := <-ch:
-			ctx := eh.UnmarshalContext(ctx, e.ctxVals)
-			if !m.Match(e.event) {
+		case data := <-ch:
+			event, ctx, err := b.codec.UnmarshalEvent(ctx, data)
+			if err != nil {
+				err = fmt.Errorf("could not unmarshal event: %w", err)
+				select {
+				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
+				default:
+					log.Printf("eventhorizon: missed error in local event bus: %s", err)
+				}
+				return
+			}
+
+			// Ignore non-matching events.
+			if !m.Match(event) {
 				continue
 			}
-			if err := h.HandleEvent(ctx, e.event); err != nil {
+
+			// Handle the event if it did match.
+			if err := h.HandleEvent(ctx, event); err != nil {
+				err = fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error())
 				select {
-				case b.errCh <- eh.EventBusError{Err: fmt.Errorf("could not handle event (%s): %s", h.HandlerType(), err.Error()), Ctx: ctx, Event: e.event}:
+				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
 				default:
+					log.Printf("eventhorizon: missed error in local event bus: %s", err)
 				}
 			}
 		case <-ctx.Done():
@@ -129,18 +176,18 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 
 // Group is a publishing group shared by multiple event busses locally, if needed.
 type Group struct {
-	bus   map[string]chan evt
+	bus   map[string]chan []byte
 	busMu sync.RWMutex
 }
 
 // NewGroup creates a Group.
 func NewGroup() *Group {
 	return &Group{
-		bus: map[string]chan evt{},
+		bus: map[string]chan []byte{},
 	}
 }
 
-func (g *Group) channel(id string) <-chan evt {
+func (g *Group) channel(id string) <-chan []byte {
 	g.busMu.Lock()
 	defer g.busMu.Unlock()
 
@@ -148,42 +195,23 @@ func (g *Group) channel(id string) <-chan evt {
 		return ch
 	}
 
-	ch := make(chan evt, DefaultQueueSize)
+	ch := make(chan []byte, DefaultQueueSize)
 	g.bus[id] = ch
 	return ch
 }
 
-func (g *Group) publish(ctx context.Context, event eh.Event) error {
+func (g *Group) publish(ctx context.Context, b []byte) error {
 	g.busMu.RLock()
 	defer g.busMu.RUnlock()
 
 	for _, ch := range g.bus {
-		var data eh.EventData
-		if event.Data() != nil {
-			var err error
-			if data, err = eh.CreateEventData(event.EventType()); err != nil {
-				return fmt.Errorf("could not create event data: %w", err)
-			}
-			copier.Copy(data, event.Data())
-		}
-		eventCopy := eh.NewEvent(
-			event.EventType(),
-			data,
-			event.Timestamp(),
-			eh.ForAggregate(
-				event.AggregateType(),
-				event.AggregateID(),
-				event.Version(),
-			),
-			eh.WithMetadata(event.Metadata()),
-		)
 		// Marshal and unmarshal the context to both simulate only sending data
 		// that would be sent over a network bus and also break any relationship
 		// with the old context.
 		select {
-		case ch <- evt{eh.MarshalContext(ctx), eventCopy}:
+		case ch <- b:
 		default:
-			// TODO: Maybe log here because queue is full.
+			log.Printf("eventhorizon: publish queue full in local event bus")
 		}
 	}
 

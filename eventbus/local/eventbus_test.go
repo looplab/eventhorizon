@@ -28,12 +28,12 @@ func TestEventBus(t *testing.T) {
 		t.Fatal("there should be a group")
 	}
 
-	bus1 := NewEventBus(group)
+	bus1 := NewEventBus(WithGroup(group))
 	if bus1 == nil {
 		t.Fatal("there should be a bus")
 	}
 
-	bus2 := NewEventBus(group)
+	bus2 := NewEventBus(WithGroup(group))
 	if bus2 == nil {
 		t.Fatal("there should be a bus")
 	}
@@ -42,7 +42,7 @@ func TestEventBus(t *testing.T) {
 }
 
 func TestEventBusLoadtest(t *testing.T) {
-	bus := NewEventBus(nil)
+	bus := NewEventBus()
 	if bus == nil {
 		t.Fatal("there should be a bus")
 	}
@@ -51,7 +51,7 @@ func TestEventBusLoadtest(t *testing.T) {
 }
 
 func BenchmarkEventBus(b *testing.B) {
-	bus := NewEventBus(nil)
+	bus := NewEventBus()
 	if bus == nil {
 		b.Fatal("there should be a bus")
 	}

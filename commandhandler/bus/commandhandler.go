@@ -22,11 +22,12 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// ErrHandlerAlreadySet is when a handler is already registered for a command.
-var ErrHandlerAlreadySet = errors.New("handler is already set")
-
-// ErrHandlerNotFound is when no handler can be found.
-var ErrHandlerNotFound = errors.New("no handlers for command")
+var (
+	// ErrHandlerAlreadySet is when a handler is already registered for a command.
+	ErrHandlerAlreadySet = errors.New("handler is already set")
+	// ErrHandlerNotFound is when no handler can be found.
+	ErrHandlerNotFound = errors.New("no handlers for command")
+)
 
 // CommandHandler is a command handler that handles commands by routing to the
 // registered CommandHandlers.

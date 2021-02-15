@@ -735,7 +735,7 @@ func NewTestSession(ctx context.Context) (
 ) {
 	commandBus := bus.NewCommandHandler()
 	eventStore := memoryEventStore.NewEventStore()
-	eventBus := localEventBus.NewEventBus(nil)
+	eventBus := localEventBus.NewEventBus()
 	todoRepo := memory.NewRepo()
 	if err := todo.SetupDomain(ctx, commandBus, eventStore, eventBus, todoRepo); err != nil {
 		log.Println("could not setup domain:", err)
