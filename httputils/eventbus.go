@@ -16,13 +16,14 @@ package httputils
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
 
 	"github.com/gorilla/websocket"
+
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/codec/json"
 )
 
 // EventBusHandler is a simple event handler for observing events.
@@ -31,11 +32,14 @@ type EventBusHandler struct {
 	upgrader websocket.Upgrader
 	chs      []chan eh.Event
 	chsMu    sync.RWMutex
+	codec    eh.EventCodec
 }
 
 // NewEventBusHandler creates a new EventBusHandler.
 func NewEventBusHandler() *EventBusHandler {
-	return &EventBusHandler{}
+	return &EventBusHandler{
+		codec: &json.EventCodec{},
+	}
 }
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
@@ -53,7 +57,7 @@ func (h *EventBusHandler) HandleEvent(ctx context.Context, event eh.Event) error
 		select {
 		case ch <- event:
 		default:
-			return fmt.Errorf("missed event: %s", event)
+			log.Printf("eventhorizon: publish queue full in websocket event bus: %s", event)
 		}
 	}
 
@@ -62,7 +66,6 @@ func (h *EventBusHandler) HandleEvent(ctx context.Context, event eh.Event) error
 
 // ServeHTTP implements the ServeHTTP method of the http.Handler interface
 // by upgrading requests to websocket connections which will receive all events.
-// TODO: Send events as JSON.
 func (h *EventBusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -77,7 +80,13 @@ func (h *EventBusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.chsMu.Unlock()
 
 	for event := range ch {
-		if err := c.WriteMessage(websocket.TextMessage, []byte(event.String())); err != nil {
+		data, err := h.codec.MarshalEvent(context.Background(), event)
+		if err != nil {
+			log.Printf("eventhorizon: could not marshal websocket event: %s", err)
+			break
+		}
+
+		if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
 			log.Printf("eventhorizon: could not write to websocket: %s", err)
 			break
 		}
