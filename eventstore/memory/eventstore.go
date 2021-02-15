@@ -21,14 +21,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/copier"
+
 	eh "github.com/looplab/eventhorizon"
 )
 
-// ErrCouldNotSaveAggregate is when an aggregate could not be saved.
-var ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
-
-// ErrCouldNotCreateEvent is when event data could not be created.
-var ErrCouldNotCreateEvent = errors.New("could not create event")
+var (
+	// ErrCouldNotSaveAggregate is when an aggregate could not be saved.
+	ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
+	// ErrCouldNotCreateEvent is when event data could not be created.
+	ErrCouldNotCreateEvent = errors.New("could not create event")
+)
 
 // EventStore implements EventStore as an in memory structure.
 type EventStore struct {

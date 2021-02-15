@@ -34,26 +34,22 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// ErrCouldNotDialDB is when the database could not be dialed.
-var ErrCouldNotDialDB = errors.New("could not dial database")
-
-// ErrNoDBClient is when no database client is set.
-var ErrNoDBClient = errors.New("no database client")
-
-// ErrCouldNotClearDB is when the database could not be cleared.
-var ErrCouldNotClearDB = errors.New("could not clear database")
-
-// ErrCouldNotMarshalEvent is when an event could not be marshaled into BSON.
-var ErrCouldNotMarshalEvent = errors.New("could not marshal event")
-
-// ErrCouldNotUnmarshalEvent is when an event could not be unmarshaled into a concrete type.
-var ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
-
-// ErrCouldNotLoadAggregate is when an aggregate could not be loaded.
-var ErrCouldNotLoadAggregate = errors.New("could not load aggregate")
-
-// ErrCouldNotSaveAggregate is when an aggregate could not be saved.
-var ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
+var (
+	// ErrCouldNotDialDB is when the database could not be dialed.
+	ErrCouldNotDialDB = errors.New("could not dial database")
+	// ErrNoDBClient is when no database client is set.
+	ErrNoDBClient = errors.New("no database client")
+	// ErrCouldNotClearDB is when the database could not be cleared.
+	ErrCouldNotClearDB = errors.New("could not clear database")
+	// ErrCouldNotMarshalEvent is when an event could not be marshaled into BSON.
+	ErrCouldNotMarshalEvent = errors.New("could not marshal event")
+	// ErrCouldNotUnmarshalEvent is when an event could not be unmarshaled into a concrete type.
+	ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
+	// ErrCouldNotLoadAggregate is when an aggregate could not be loaded.
+	ErrCouldNotLoadAggregate = errors.New("could not load aggregate")
+	// ErrCouldNotSaveAggregate is when an aggregate could not be saved.
+	ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
+)
 
 // EventStore implements an EventStore for MongoDB.
 type EventStore struct {

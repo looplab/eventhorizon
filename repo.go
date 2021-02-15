@@ -67,6 +67,23 @@ type Iter interface {
 	Close(context.Context) error
 }
 
+var (
+	// ErrEntityNotFound is when a entity could not be found.
+	ErrEntityNotFound = errors.New("could not find entity")
+	// ErrCouldNotLoadEntity is when a entity could not be loaded.
+	ErrCouldNotLoadEntity = errors.New("could not load entity")
+	// ErrCouldNotSaveEntity is when a entity could not be saved.
+	ErrCouldNotSaveEntity = errors.New("could not save entity")
+	// ErrCouldNotRemoveEntity is when a entity could not be removed.
+	ErrCouldNotRemoveEntity = errors.New("could not remove entity")
+	// ErrMissingEntityID is when a entity has no ID.
+	ErrMissingEntityID = errors.New("missing entity ID")
+	// ErrEntityHasNoVersion is when an entity has no version number.
+	ErrEntityHasNoVersion = errors.New("entity has no version")
+	// ErrIncorrectEntityVersion is when an entity has an incorrect version.
+	ErrIncorrectEntityVersion = errors.New("incorrect entity version")
+)
+
 // RepoError is an error in the read repository, with the namespace.
 type RepoError struct {
 	// Err is the error.
@@ -95,24 +112,3 @@ func (e RepoError) Unwrap() error {
 func (e RepoError) Cause() error {
 	return e.Unwrap()
 }
-
-// ErrEntityNotFound is when a entity could not be found.
-var ErrEntityNotFound = errors.New("could not find entity")
-
-// ErrCouldNotLoadEntity is when a entity could not be loaded.
-var ErrCouldNotLoadEntity = errors.New("could not load entity")
-
-// ErrCouldNotSaveEntity is when a entity could not be saved.
-var ErrCouldNotSaveEntity = errors.New("could not save entity")
-
-// ErrCouldNotRemoveEntity is when a entity could not be removed.
-var ErrCouldNotRemoveEntity = errors.New("could not remove entity")
-
-// ErrMissingEntityID is when a entity has no ID.
-var ErrMissingEntityID = errors.New("missing entity ID")
-
-// ErrEntityHasNoVersion is when an entity has no version number.
-var ErrEntityHasNoVersion = errors.New("entity has no version")
-
-// ErrIncorrectEntityVersion is when an entity has an incorrect version.
-var ErrIncorrectEntityVersion = errors.New("incorrect entity version")

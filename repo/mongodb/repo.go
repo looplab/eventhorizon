@@ -34,20 +34,18 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// ErrCouldNotDialDB is when the database could not be dialed.
-var ErrCouldNotDialDB = errors.New("could not dial database")
-
-// ErrNoDBClient is when no database client is set.
-var ErrNoDBClient = errors.New("no database client")
-
-// ErrCouldNotClearDB is when the database could not be cleared.
-var ErrCouldNotClearDB = errors.New("could not clear database")
-
-// ErrModelNotSet is when an model factory is not set on the Repo.
-var ErrModelNotSet = errors.New("model not set")
-
-// ErrInvalidQuery is when a query was not returned from the callback to FindCustom.
-var ErrInvalidQuery = errors.New("invalid query")
+var (
+	// ErrCouldNotDialDB is when the database could not be dialed.
+	ErrCouldNotDialDB = errors.New("could not dial database")
+	// ErrNoDBClient is when no database client is set.
+	ErrNoDBClient = errors.New("no database client")
+	// ErrCouldNotClearDB is when the database could not be cleared.
+	ErrCouldNotClearDB = errors.New("could not clear database")
+	// ErrModelNotSet is when an model factory is not set on the Repo.
+	ErrModelNotSet = errors.New("model not set")
+	// ErrInvalidQuery is when a query was not returned from the callback to FindCustom.
+	ErrInvalidQuery = errors.New("invalid query")
+)
 
 // Repo implements an MongoDB repository for entities.
 type Repo struct {

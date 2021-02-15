@@ -30,17 +30,16 @@ type AggregateStore struct {
 	eventHandler eh.EventHandler
 }
 
-// ErrInvalidEventStore is when a dispatcher is created with a nil event store.
-var ErrInvalidEventStore = errors.New("invalid event store")
-
-// ErrInvalidEventBus is when a dispatcher is created with a nil event bus.
-var ErrInvalidEventBus = errors.New("invalid event bus")
-
-// ErrInvalidAggregateType is when  the aggregate does not implement event.Aggregte.
-var ErrInvalidAggregateType = errors.New("invalid aggregate type")
-
-// ErrMismatchedEventType occurs when loaded events from ID does not match aggregate type.
-var ErrMismatchedEventType = errors.New("mismatched event type and aggregate type")
+var (
+	// ErrInvalidEventStore is when a dispatcher is created with a nil event store.
+	ErrInvalidEventStore = errors.New("invalid event store")
+	// ErrInvalidEventBus is when a dispatcher is created with a nil event bus.
+	ErrInvalidEventBus = errors.New("invalid event bus")
+	// ErrInvalidAggregateType is when  the aggregate does not implement event.Aggregte.
+	ErrInvalidAggregateType = errors.New("invalid aggregate type")
+	// ErrMismatchedEventType occurs when loaded events from ID does not match aggregate type.
+	ErrMismatchedEventType = errors.New("mismatched event type and aggregate type")
+)
 
 // ApplyEventError is when an event could not be applied. It contains the error
 // and the event that caused it.
