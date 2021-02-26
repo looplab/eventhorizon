@@ -59,7 +59,7 @@ func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) 
 			continue
 		}
 		if err := option(b); err != nil {
-			return nil, fmt.Errorf("error while applying option: %v", err)
+			return nil, fmt.Errorf("error while applying option: %w", err)
 		}
 	}
 

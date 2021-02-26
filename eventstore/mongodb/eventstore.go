@@ -92,7 +92,7 @@ func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, options ...O
 	for _, option := range options {
 		err := option(s)
 		if err != nil {
-			return nil, fmt.Errorf("error while applying option: %v", err)
+			return nil, fmt.Errorf("error while applying option: %w", err)
 		}
 	}
 

@@ -90,7 +90,7 @@ func NewRepoWithClient(client *mongo.Client, dbPrefix, collection string, option
 
 	for _, option := range options {
 		if err := option(r); err != nil {
-			return nil, fmt.Errorf("error while applying option: %v", err)
+			return nil, fmt.Errorf("error while applying option: %w", err)
 		}
 	}
 
