@@ -2,7 +2,7 @@ default: test
 
 .PHONY: test
 test:
-	go test -race -short ./...
+	go test -race -short -test.paniconexit0 ./...
 
 .PHONY: test_docker
 test_docker:
@@ -10,7 +10,7 @@ test_docker:
 
 .PHONY: test_cover
 test_cover:
-	go list -f '{{if len .TestGoFiles}}"go test -race -short -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
+	go list -f '{{if len .TestGoFiles}}"go test -race -short -test.paniconexit0 -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
 
 .PHONY: test_integration
 test_integration:
