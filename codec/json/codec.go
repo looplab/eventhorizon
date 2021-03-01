@@ -17,7 +17,6 @@ package json
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -46,14 +45,14 @@ func (c *EventCodec) MarshalEvent(ctx context.Context, event eh.Event) ([]byte, 
 	if event.Data() != nil {
 		var err error
 		if e.RawData, err = json.Marshal(event.Data()); err != nil {
-			return nil, errors.New("could not marshal event data: " + err.Error())
+			return nil, fmt.Errorf("could not marshal event data: %w", err)
 		}
 	}
 
 	// Marshal the event (using JSON for now).
 	b, err := json.Marshal(e)
 	if err != nil {
-		return nil, errors.New("could not marshal event: " + err.Error())
+		return nil, fmt.Errorf("could not marshal event: %w", err)
 	}
 
 	return b, nil

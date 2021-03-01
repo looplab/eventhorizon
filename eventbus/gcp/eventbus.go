@@ -16,7 +16,6 @@ package gcp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -132,7 +131,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	})
 
 	if _, err := res.Get(ctx); err != nil {
-		return errors.New("could not publish event: " + err.Error())
+		return fmt.Errorf("could not publish event: %w", err)
 	}
 
 	return nil
