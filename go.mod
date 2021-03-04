@@ -5,6 +5,7 @@ go 1.16
 require (
 	cloud.google.com/go/pubsub v1.8.3
 	github.com/HdrHistogram/hdrhistogram-go v1.0.0 // indirect
+	github.com/go-redis/redis/v8 v8.6.0
 	github.com/google/uuid v1.1.2
 	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75
 	github.com/gorilla/websocket v1.4.2
