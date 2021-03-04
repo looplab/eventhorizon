@@ -26,7 +26,7 @@ jobs:
 
     - name: "Integration test"
       if: type == pull_request
-      script: make run test_integration
+      script: make run && sleep 15 && make test_integration
       env:
         - GO111MODULE=on
 
@@ -38,6 +38,6 @@ jobs:
 
     - name: "Integration test (with coverage)"
       if: type != pull_request
-      script: make run test_integration_cover upload_cover
+      script: make run && sleep 15 && test_integration_cover upload_cover
       env:
         - GO111MODULE=on

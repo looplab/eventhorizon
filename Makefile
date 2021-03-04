@@ -43,7 +43,6 @@ upload_cover:
 .PHONY: run
 run:
 	docker-compose up -d mongodb gpubsub kafka redis jetstream
-	sleep 15
 
 .PHONY: run_mongodb
 run_mongodb:
