@@ -46,6 +46,7 @@ services:
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
+<<<<<<< HEAD
 
   redis:
     image: redis:6.2-alpine3.13
@@ -62,3 +63,18 @@ services:
       - "8222:8222"
     command:
       - server
+||||||| parent of bfc0381 (WIP: NATS/NAST Streaming event bus (left for ref))
+=======
+
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  stan:
+    image: nats-streaming:0.20.0-alpine3.12
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+>>>>>>> bfc0381 (WIP: NATS/NAST Streaming event bus (left for ref))
