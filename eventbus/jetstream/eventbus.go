@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package redis
+package jetstream
 
 import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/nats-io/nats.go"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/codec/json"
@@ -32,10 +31,11 @@ import (
 // to all matching registered handlers, in order of registration.
 type EventBus struct {
 	appID        string
-	clientID     string
 	streamName   string
-	client       *redis.Client
-	clientOpts   *redis.Options
+	conn         *nats.Conn
+	js           nats.JetStreamContext
+	stream       *nats.StreamInfo
+	connOpts     []nats.Option
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
@@ -43,11 +43,10 @@ type EventBus struct {
 	codec        eh.EventCodec
 }
 
-// NewEventBus creates an EventBus, with optional settings.
-func NewEventBus(appID, clientID string, redisAddr string, options ...Option) (*EventBus, error) {
+// NewEventBus creates an EventBus, with optional GCP connection settings.
+func NewEventBus(url, appID string, options ...Option) (*EventBus, error) {
 	b := &EventBus{
 		appID:      appID,
-		clientID:   clientID,
 		streamName: appID + "_events",
 		registered: map[eh.EventHandlerType]struct{}{},
 		errCh:      make(chan eh.EventBusError, 100),
@@ -64,18 +63,26 @@ func NewEventBus(appID, clientID string, redisAddr string, options ...Option) (*
 		}
 	}
 
-	// Default client options.
-	if b.clientOpts == nil {
-		b.clientOpts = &redis.Options{
-			Addr: redisAddr,
-		}
+	// Create the NATS connection.
+	var err error
+	if b.conn, err = nats.Connect(url, b.connOpts...); err != nil {
+		return nil, fmt.Errorf("could not create NATS connection: %w", err)
 	}
 
-	// Create client and check connection.
-	b.client = redis.NewClient(b.clientOpts)
-	ctx := context.Background()
-	if res, err := b.client.Ping(ctx).Result(); err != nil || res != "PONG" {
-		return nil, fmt.Errorf("could not check Redis server: %w", err)
+	// Create Jetstream context.
+	if b.js, err = b.conn.JetStream(); err != nil {
+		return nil, fmt.Errorf("could not create Jetstream context: %w", err)
+	}
+
+	// Create the stream, which stores messages received on the subject.
+	subjects := b.streamName + ".*.*"
+	cfg := &nats.StreamConfig{
+		Name:     b.streamName,
+		Subjects: []string{subjects},
+		Storage:  nats.FileStorage,
+	}
+	if b.stream, err = b.js.AddStream(cfg); err != nil {
+		return nil, fmt.Errorf("could not create Jetstream stream: %w", err)
 	}
 
 	return b, nil
@@ -92,10 +99,10 @@ func WithCodec(codec eh.EventCodec) Option {
 	}
 }
 
-// WithRedisOptions uses the Redis options for the underlying client, instead of the defaults.
-func WithRedisOptions(opts *redis.Options) Option {
+// WithNATSOptions adds the NATS options to the underlying client.
+func WithNATSOptions(opts ...nats.Option) Option {
 	return func(b *EventBus) error {
-		b.clientOpts = opts
+		b.connOpts = opts
 		return nil
 	}
 }
@@ -105,12 +112,6 @@ func (b *EventBus) HandlerType() eh.EventHandlerType {
 	return "eventbus"
 }
 
-const (
-	aggregateTypeKey = "aggregate_type"
-	eventTypeKey     = "event_type"
-	dataKey          = "data"
-)
-
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	data, err := b.codec.MarshalEvent(ctx, event)
@@ -118,15 +119,8 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 		return fmt.Errorf("could not marshal event: %w", err)
 	}
 
-	args := &redis.XAddArgs{
-		Stream: b.streamName,
-		Values: map[string]interface{}{
-			aggregateTypeKey: event.AggregateType().String(),
-			eventTypeKey:     event.EventType().String(),
-			dataKey:          data,
-		},
-	}
-	if _, err := b.client.XAdd(ctx, args).Result(); err != nil {
+	subject := fmt.Sprintf("%s.%s.%s", b.streamName, event.AggregateType(), event.EventType())
+	if _, err := b.js.Publish(subject, data); err != nil {
 		return fmt.Errorf("could not publish event: %w", err)
 	}
 
@@ -149,17 +143,18 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 		return eh.ErrHandlerAlreadyAdded
 	}
 
-	// Get or create the subscription.
-	// TODO: Filter subscription.
-	groupName := fmt.Sprintf("%s_%s", b.appID, h.HandlerType())
-	res, err := b.client.XGroupCreateMkStream(ctx, b.streamName, groupName, "$").Result()
+	// Create a consumer.
+	subject := createConsumerSubject(b.streamName, m)
+	consumerName := fmt.Sprintf("%s_%s", b.appID, h.HandlerType())
+	sub, err := b.js.QueueSubscribe(subject, consumerName, b.handler(ctx, m, h),
+		nats.Durable(consumerName),
+		nats.DeliverNew(),
+		nats.AckExplicit(),
+		nats.AckWait(60*time.Second),
+		nats.MaxDeliver(10),
+	)
 	if err != nil {
-		// Ignore group exists non-errors.
-		if !strings.HasPrefix(err.Error(), "BUSYGROUP") {
-			return fmt.Errorf("could not create consumer group: %w", err)
-		}
-	} else if res != "OK" {
-		return fmt.Errorf("could not create consumer group: %s", res)
+		return fmt.Errorf("could not subscribe to queue: %w", err)
 	}
 
 	// Register handler.
@@ -167,7 +162,8 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 
 	// Handle until context is cancelled.
 	b.wg.Add(1)
-	go b.handle(ctx, m, h, groupName)
+	// go b.handle(ctx, m, h, consumer)
+	go b.handle(ctx, sub)
 
 	return nil
 }
@@ -180,74 +176,41 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 // Wait for all channels to close in the event bus group
 func (b *EventBus) Wait() {
 	b.wg.Wait()
-	if err := b.client.Close(); err != nil {
-		log.Printf("eventhorizon: failed to close Redis client: %s", err)
-	}
+	b.conn.Close()
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, groupName string) {
+func (b *EventBus) handle(ctx context.Context, sub *nats.Subscription) {
 	defer b.wg.Done()
 
-	msgHandler := b.handler(m, h, groupName)
 	for {
-		streams, err := b.client.XReadGroup(ctx, &redis.XReadGroupArgs{
-			Group:    groupName,
-			Consumer: groupName + "_" + b.clientID,
-			Streams:  []string{b.streamName, ">"},
-		}).Result()
-		if err != nil && err != context.Canceled {
-			err = fmt.Errorf("could not receive: %w", err)
-			select {
-			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
-			default:
-				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
+		select {
+		case <-ctx.Done():
+			if ctx.Err() != context.Canceled {
+				log.Printf("eventhorizon: context error in Jetstream event bus: %s", ctx.Err())
 			}
-			// Retry the receive loop if there was an error.
-			time.Sleep(time.Second)
-			continue
-		} else if err == context.Canceled {
 			return
-		}
-
-		// Handle all messages from group read.
-		for _, stream := range streams {
-			if stream.Stream != b.streamName {
-				continue
-			}
-			for _, msg := range stream.Messages {
-				msgHandler(ctx, &msg)
-			}
 		}
 	}
 }
 
-func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, groupName string) func(ctx context.Context, msg *redis.XMessage) {
-	return func(ctx context.Context, msg *redis.XMessage) {
-		data := msg.Values[dataKey].(string)
-		event, ctx, err := b.codec.UnmarshalEvent(ctx, []byte(data))
+func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHandler) func(msg *nats.Msg) {
+	return func(msg *nats.Msg) {
+		event, ctx, err := b.codec.UnmarshalEvent(ctx, msg.Data)
 		if err != nil {
 			err = fmt.Errorf("could not unmarshal event: %w", err)
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
-				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
+				log.Printf("eventhorizon: missed error in Jetstream event bus: %s", err)
 			}
-			// TODO: Nack if possible.
+			msg.Nak()
 			return
 		}
 
 		// Ignore non-matching events.
 		if !m.Match(event) {
-			_, err := b.client.XAck(ctx, b.streamName, groupName, msg.ID).Result()
-			if err != nil {
-				err = fmt.Errorf("could not ack event: %w", err)
-				select {
-				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
-				default:
-					log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
-				}
-			}
+			msg.AckSync()
 			return
 		}
 
@@ -257,20 +220,33 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, groupName strin
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
 			default:
-				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
+				log.Printf("eventhorizon: missed error in Jetstream event bus: %s", err)
 			}
-			// TODO: Nack if possible.
+			msg.Nak()
 			return
 		}
 
-		_, err = b.client.XAck(ctx, b.streamName, groupName, msg.ID).Result()
-		if err != nil {
-			err = fmt.Errorf("could not ack event: %w", err)
-			select {
-			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
-			default:
-				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
-			}
-		}
+		msg.AckSync()
 	}
+}
+
+func createConsumerSubject(streamName string, m eh.EventMatcher) string {
+	aggregateMatch := "*"
+	eventMatch := "*"
+	switch m := m.(type) {
+	case eh.MatchEvents:
+		// Supports only matching one event, otherwise its wildcard.
+		if len(m) == 1 {
+			eventMatch = m[0].String()
+		}
+	case eh.MatchAggregates:
+		// Supports only matching one aggregate, otherwise its wildcard.
+		if len(m) == 1 {
+			aggregateMatch = m[0].String()
+		}
+		// case eh.MatchAny:
+		// case eh.MatchAll:
+		// TODO: Support eh.MatchAll in one level with aggregate and event.
+	}
+	return fmt.Sprintf("%s.%s.%s", streamName, aggregateMatch, eventMatch)
 }

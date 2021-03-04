@@ -12,11 +12,15 @@ require (
 	github.com/jinzhu/copier v0.0.0-20201025035756-632e723a6687
 	github.com/jpillora/backoff v1.0.0
 	github.com/kr/pretty v0.2.1
+	github.com/nats-io/nats-server/v2 v2.1.9 // indirect
+	github.com/nats-io/nats.go v1.10.1-0.20210301010025-9faf9b2e34ea
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/segmentio/kafka-go v0.4.8
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
 	go.mongodb.org/mongo-driver v1.4.2
 	go.uber.org/atomic v1.7.0 // indirect
+	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
+	golang.org/x/tools v0.0.0-20210106214847-113979e3529a // indirect
 	google.golang.org/api v0.35.0
 )

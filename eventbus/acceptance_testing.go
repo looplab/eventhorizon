@@ -55,7 +55,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 
 	// Error on multiple registrations.
 	if err := bus1.AddHandler(ctx, eh.MatchAll{}, mocks.NewEventHandler("multi")); err != nil {
-		t.Error("there should be no errer:", err)
+		t.Fatal("there should be no error:", err)
 	}
 	if err := bus1.AddHandler(ctx, eh.MatchAll{}, mocks.NewEventHandler("multi")); err != eh.ErrHandlerAlreadyAdded {
 		t.Error("the error should be correct:", err)
@@ -76,7 +76,9 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 
 	// Event without data (tested in its own handler).
 	otherHandler := mocks.NewEventHandler("other-handler")
-	bus1.AddHandler(ctx, eh.MatchEvents{mocks.EventOtherType}, otherHandler)
+	if err := bus1.AddHandler(ctx, eh.MatchEvents{mocks.EventOtherType}, otherHandler); err != nil {
+		t.Fatal("there should be no error:", err)
+	}
 
 	time.Sleep(timeout) // Need to wait here for handlers to be added.
 
@@ -105,15 +107,26 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	// Add handlers and observers.
 	handlerBus1 := mocks.NewEventHandler(handlerName)
 	handlerBus2 := mocks.NewEventHandler(handlerName)
+	if err := bus1.AddHandler(ctx, eh.MatchEvents{mocks.EventType}, handlerBus1); err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	if err := bus2.AddHandler(ctx, eh.MatchEvents{mocks.EventType}, handlerBus2); err != nil {
+		t.Fatal("there should be no error:", err)
+	}
 	anotherHandlerBus2 := mocks.NewEventHandler("another_handler")
+	if err := bus2.AddHandler(ctx, eh.MatchEvents{mocks.EventType}, anotherHandlerBus2); err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	// Add observers using the observer middleware.
 	observerBus1 := mocks.NewEventHandler(observerName)
 	observerBus2 := mocks.NewEventHandler(observerName)
-	bus1.AddHandler(ctx, eh.MatchEvents{mocks.EventType}, handlerBus1)
-	bus2.AddHandler(ctx, eh.MatchEvents{mocks.EventType}, handlerBus2)
-	bus2.AddHandler(ctx, eh.MatchEvents{mocks.EventType}, anotherHandlerBus2)
-	// Add observers using the observer middleware.
-	bus1.AddHandler(ctx, eh.MatchAll{}, eh.UseEventHandlerMiddleware(observerBus1, observer.Middleware))
-	bus2.AddHandler(ctx, eh.MatchAll{}, eh.UseEventHandlerMiddleware(observerBus2, observer.Middleware))
+	if err := bus1.AddHandler(ctx, eh.MatchAll{}, eh.UseEventHandlerMiddleware(observerBus1, observer.Middleware)); err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	if err := bus2.AddHandler(ctx, eh.MatchAll{}, eh.UseEventHandlerMiddleware(observerBus2, observer.Middleware)); err != nil {
+		t.Fatal("there should be no error:", err)
+	}
 
 	time.Sleep(timeout) // Need to wait here for handlers to be added.
 
@@ -145,6 +158,8 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	}
 	if eh.CompareEventSlices(handlerBus1.Events, handlerBus2.Events) {
 		t.Error("only one handler should receive the events")
+		t.Log(handlerBus1.Events)
+		t.Log(handlerBus2.Events)
 	}
 	correctCtx1 := false
 	if val, ok := mocks.ContextOne(handlerBus1.Context); ok && val == "testval" {
@@ -199,7 +214,9 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	// Test async errors from handlers.
 	errorHandler := mocks.NewEventHandler("error_handler")
 	errorHandler.Err = errors.New("handler error")
-	bus1.AddHandler(ctx, eh.MatchAll{}, errorHandler)
+	if err := bus1.AddHandler(ctx, eh.MatchAll{}, errorHandler); err != nil {
+		t.Fatal("there should be no error:", err)
+	}
 
 	time.Sleep(timeout) // Need to wait here for handlers to be added.
 
