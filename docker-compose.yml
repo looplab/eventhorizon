@@ -54,3 +54,11 @@ services:
     entrypoint:
       - redis-server
       - "--appendonly yes"
+
+  jetstream:
+    image: synadia/jsm:nightly
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command:
+      - server
