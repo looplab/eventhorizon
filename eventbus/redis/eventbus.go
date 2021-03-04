@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -153,9 +154,11 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	groupName := fmt.Sprintf("%s_%s", b.appID, h.HandlerType())
 	res, err := b.client.XGroupCreateMkStream(ctx, b.streamName, groupName, "$").Result()
 	if err != nil {
-		return fmt.Errorf("could not create consumer group: %w", err)
-	}
-	if res != "OK" {
+		// Ignore group exists non-errors.
+		if !strings.HasPrefix(err.Error(), "BUSYGROUP") {
+			return fmt.Errorf("could not create consumer group: %w", err)
+		}
+	} else if res != "OK" {
 		return fmt.Errorf("could not create consumer group: %s", res)
 	}
 
