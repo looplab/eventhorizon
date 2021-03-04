@@ -34,55 +34,34 @@ Suggestions are welcome!
 
 See the example folder for a few examples to get you started.
 
-# Storage drivers
+# Storage implementations
 
-These are the drivers for storage of events and entities.
+### Official
 
-### Local / in memory
+- Local / in memory
+- MongoDB (beware of the 16MB document size limit that can affect large aggregates)
 
-There are simple in memory implementations of an event store and entity repo. These are meant for testing/experimentation.
+### Contributions / 3rd party
 
-### MongoDB
+- AWS DynamoDB: https://github.com/seedboxtech/eh-dynamo
+- MongoDB-DPE (supporting larger aggregates): https://github.com/gjongenelen/eh-mongodb
+- Postgress: https://github.com/giautm/eh-pg
+- Redis: https://github.com/TerraSkye/eh-redis
 
-Fairly mature, used in production.
-_Note: This implementation has a document size limit of 16MB, which could lead to errors for large aggregates. If needed use the alternative version below_
+# Event Bus Implementations
 
-### MongoDB-DPE (supporting larger aggregates)
+### Official
 
-MongoDB-**D**ocument **P**er **E**vent is an alternative to the MongoDB driver mentioned above. In the MongoDB-DPE driver, events for an aggregate are each saved in a separate document. This allows aggregate event histories larger than the maximum document size of MongoDB, which is [16MB](https://docs.mongodb.com/manual/reference/limits/).
-[https://github.com/gjongenelen/eh-mongodb](https://github.com/gjongenelen/eh-mongodb)
+- GCP Cloud Pub/Sub
+- Jetstream (NATS), uses nightly build of NATS/Jetstream
+- Kafka
+- Local / in memory, useful for testing/experimentation.
+- Redis
 
-### AWS DynamoDB
+### Contributions / 3rd party
 
-https://github.com/seedboxtech/eh-dynamo
-
-### Postgress
-
-https://github.com/giautm/eh-pg
-
-### Redis
-
-https://github.com/TerraSkye/eh-redis
-
-# Messaging drivers
-
-These are the drivers for messaging, currently only publishers.
-
-### Local / in memory
-
-Fully synchrounos. Useful for testing/experimentation.
-
-### GCP Cloud Pub/Sub
-
-Experimental driver.
-
-### Kafka
-
-https://github.com/Kistler-Group/eh-kafka
-
-### NATS Streaming
-
-https://github.com/v0id3r/eh-nats
+- Kafka: https://github.com/Kistler-Group/eh-kafka
+- NATS Streaming: https://github.com/v0id3r/eh-nats
 
 ## Development
 
