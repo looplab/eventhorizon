@@ -32,7 +32,7 @@ func TestEventBusIntegration(t *testing.T) {
 	// Connect to localhost if not running inside docker
 	broker := os.Getenv("KAFKA_BROKER_HOST")
 	if broker == "" {
-		broker = "localhost:9092"
+		broker = "localhost:9093"
 	}
 
 	// Get a random app ID.
@@ -67,7 +67,7 @@ func TestEventBusLoadtest(t *testing.T) {
 	// Connect to localhost if not running inside docker
 	broker := os.Getenv("KAFKA_BROKER_HOST")
 	if broker == "" {
-		broker = "localhost:9092"
+		broker = "localhost:9093"
 	}
 
 	// Get a random app ID.
@@ -92,7 +92,7 @@ func BenchmarkEventBus(b *testing.B) {
 	// Connect to localhost if not running inside docker
 	broker := os.Getenv("KAFKA_BROKER_HOST")
 	if broker == "" {
-		broker = "localhost:9092"
+		broker = "localhost:9093"
 	}
 
 	// Get a random app ID.

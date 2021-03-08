@@ -1,14 +1,25 @@
 version: "3.4"
 
 services:
-  golang:
-    image: golang:1.15
+  eventhorizon-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      - mongodb
+      - gpubsub
+      - kafka
+      - redis
+      - jetstream
     environment:
       MONGODB_HOST: "mongodb:27017"
       PUBSUB_EMULATOR_HOST: "gpubsub:8793"
-    volumes:
-      - .:/eventhorizon
-    working_dir: /eventhorizon
+      KAFKA_BROKER_HOST: "kafka:9092"
+      REDIS_ADDR: "redis:6379"
+      NATS_URL: "jetstream:4222"
+    command:
+      - -c
+      - make test test_integration
 
   mongodb:
     image: mongo:4.4
@@ -40,12 +51,15 @@ services:
       - zookeeper
     ports:
       - "9092:9092"
+      - "9093:9093"
     environment:
       - KAFKA_BROKER_ID=1
-      - KAFKA_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
+      - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
 
   redis:
     image: redis:6.2-alpine3.13
