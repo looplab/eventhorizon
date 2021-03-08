@@ -44,7 +44,7 @@ type EventBus struct {
 }
 
 // NewEventBus creates an EventBus, with optional settings.
-func NewEventBus(appID, clientID string, redisAddr string, options ...Option) (*EventBus, error) {
+func NewEventBus(addr, appID, clientID string, options ...Option) (*EventBus, error) {
 	b := &EventBus{
 		appID:      appID,
 		clientID:   clientID,
@@ -67,7 +67,7 @@ func NewEventBus(appID, clientID string, redisAddr string, options ...Option) (*
 	// Default client options.
 	if b.clientOpts == nil {
 		b.clientOpts = &redis.Options{
-			Addr: redisAddr,
+			Addr: addr,
 		}
 	}
 

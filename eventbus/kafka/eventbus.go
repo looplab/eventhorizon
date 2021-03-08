@@ -32,7 +32,7 @@ import (
 // to all matching registered handlers, in order of registration.
 type EventBus struct {
 	// TODO: Support multiple brokers.
-	broker       string
+	addr         string
 	appID        string
 	topic        string
 	conn         *kafka.Conn
@@ -45,10 +45,10 @@ type EventBus struct {
 }
 
 // NewEventBus creates an EventBus, with optional GCP connection settings.
-func NewEventBus(broker string, appID string, options ...Option) (*EventBus, error) {
+func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 	topic := appID + "_events"
 	b := &EventBus{
-		broker:     broker,
+		addr:       addr,
 		appID:      appID,
 		topic:      topic,
 		registered: map[eh.EventHandlerType]struct{}{},
@@ -70,7 +70,7 @@ func NewEventBus(broker string, appID string, options ...Option) (*EventBus, err
 	partition := 0
 
 	// Will create the topic if server is configured for auto create.
-	conn, err := kafka.DialLeader(ctx, "tcp", broker, topic, partition)
+	conn, err := kafka.DialLeader(ctx, "tcp", addr, topic, partition)
 	if err != nil {
 		return nil, fmt.Errorf("could not dial Kafka: %w", err)
 	}
@@ -80,7 +80,7 @@ func NewEventBus(broker string, appID string, options ...Option) (*EventBus, err
 	// TODO: Wait for topic to be created.
 
 	b.writer = &kafka.Writer{
-		Addr:         kafka.TCP(broker),
+		Addr:         kafka.TCP(addr),
 		Topic:        topic,
 		Balancer:     &kafka.LeastBytes{},
 		BatchSize:    1,                // NOTE: Used to get predictable tests/benchmarks.
@@ -156,7 +156,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Get or create the subscription.
 	groupID := b.appID + "_" + h.HandlerType().String()
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:               []string{b.broker},
+		Brokers:               []string{b.addr},
 		Topic:                 b.topic,
 		GroupID:               groupID, // Send messages to only one subscriber per group.
 		MinBytes:              10,      // 10B

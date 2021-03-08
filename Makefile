@@ -4,10 +4,6 @@ default: test
 test:
 	go test -race -short -test.paniconexit0 ./...
 
-.PHONY: test_docker
-test_docker:
-	docker-compose run --rm golang make test
-
 .PHONY: test_cover
 test_cover:
 	go list -f '{{if len .TestGoFiles}}"go test -race -short -test.paniconexit0 -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
@@ -15,10 +11,6 @@ test_cover:
 .PHONY: test_integration
 test_integration:
 	go test -race -run Integration ./...
-
-.PHONY: test_integration_docker
-test_integration_docker: run
-	docker-compose run --rm golang make test_integration
 
 .PHONY: test_integration_cover
 test_integration_cover:
@@ -28,9 +20,9 @@ test_integration_cover:
 test_loadtest:
 	go test -race -v -run Loadtest ./...
 
-.PHONY: test_loadtest_docker
-test_loadtest_docker: run
-	docker-compose run --rm golang make test_loadtest
+.PHONY: test_all_docker
+test_all_docker:
+	docker-compose up --build --force-recreate eventhorizon-test
 
 .PHONY: upload_cover
 upload_cover:
