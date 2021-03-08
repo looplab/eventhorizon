@@ -31,9 +31,9 @@ func TestEventBusIntegration(t *testing.T) {
 	}
 
 	// Connect to localhost if not running inside docker
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
+	addr := os.Getenv("REDIS_ADDR")
+	if addr == "" {
+		addr = "localhost:6379"
 	}
 
 	// Get a random app ID.
@@ -43,12 +43,12 @@ func TestEventBusIntegration(t *testing.T) {
 	}
 	appID := "app-" + hex.EncodeToString(b)
 
-	bus1, err := NewEventBus(appID, "client1", redisAddr)
+	bus1, err := NewEventBus(addr, appID, "client1")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 
-	bus2, err := NewEventBus(appID, "client2", redisAddr)
+	bus2, err := NewEventBus(addr, appID, "client2")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -62,13 +62,13 @@ func TestEventBusLoadtest(t *testing.T) {
 	}
 
 	// Connect to localhost if not running inside docker
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
+	addr := os.Getenv("REDIS_ADDR")
+	if addr == "" {
+		addr = "localhost:6379"
 	}
 
 	opts := &redis.Options{
-		Addr:     redisAddr,
+		Addr:     addr,
 		PoolSize: 200,
 	}
 
@@ -79,7 +79,7 @@ func TestEventBusLoadtest(t *testing.T) {
 	}
 	appID := "app-" + hex.EncodeToString(bts)
 
-	bus, err := NewEventBus(appID, "client", redisAddr, WithRedisOptions(opts))
+	bus, err := NewEventBus(addr, appID, "client", WithRedisOptions(opts))
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -89,13 +89,13 @@ func TestEventBusLoadtest(t *testing.T) {
 
 func BenchmarkEventBus(b *testing.B) {
 	// Connect to localhost if not running inside docker
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
+	addr := os.Getenv("REDIS_ADDR")
+	if addr == "" {
+		addr = "localhost:6379"
 	}
 
 	opts := &redis.Options{
-		Addr:     redisAddr,
+		Addr:     addr,
 		PoolSize: 200,
 	}
 
@@ -106,7 +106,7 @@ func BenchmarkEventBus(b *testing.B) {
 	}
 	appID := "app-" + hex.EncodeToString(bts)
 
-	bus, err := NewEventBus(appID, "client", redisAddr, WithRedisOptions(opts))
+	bus, err := NewEventBus(addr, appID, "client", WithRedisOptions(opts))
 	if err != nil {
 		b.Fatal("there should be no error:", err)
 	}

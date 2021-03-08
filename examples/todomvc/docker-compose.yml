@@ -12,7 +12,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      MONGODB_HOST: "mongodb:27017"
+      MONGODB_ADDR: "mongodb:27017"
       PUBSUB_EMULATOR_HOST: "gpubsub:8793"
       TRACING_URL: "tracing"
 

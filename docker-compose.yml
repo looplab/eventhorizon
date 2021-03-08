@@ -12,11 +12,11 @@ services:
       - redis
       - jetstream
     environment:
-      MONGODB_HOST: "mongodb:27017"
+      MONGODB_ADDR: "mongodb:27017"
       PUBSUB_EMULATOR_HOST: "gpubsub:8793"
-      KAFKA_BROKER_HOST: "kafka:9092"
+      KAFKA_ADDR: "kafka:9092"
       REDIS_ADDR: "redis:6379"
-      NATS_URL: "jetstream:4222"
+      NATS_ADDR: "jetstream:4222"
     command:
       - -c
       - make test test_integration

@@ -30,11 +30,11 @@ func TestEventBusIntegration(t *testing.T) {
 	}
 
 	// Enable testing with Docker, default to local testing.
-	url := os.Getenv("NATS_URL")
-	if url == "" {
-		url = "localhost:4222"
+	addr := os.Getenv("NATS_ADDR")
+	if addr == "" {
+		addr = "localhost:4222"
 	}
-	url = "nats://" + url
+	url := "nats://" + addr
 
 	// Get a random app ID.
 	b := make([]byte, 4)
@@ -62,11 +62,11 @@ func TestEventBusLoadtest(t *testing.T) {
 	}
 
 	// Enable testing with Docker, default to local testing.
-	url := os.Getenv("NATS_URL")
-	if url == "" {
-		url = "localhost:4222"
+	addr := os.Getenv("NATS_ADDR")
+	if addr == "" {
+		addr = "localhost:4222"
 	}
-	url = "nats://" + url
+	url := "nats://" + addr
 
 	// Get a random app ID.
 	bts := make([]byte, 4)
@@ -85,11 +85,11 @@ func TestEventBusLoadtest(t *testing.T) {
 
 func BenchmarkEventBus(b *testing.B) {
 	// Enable testing with Docker, default to local testing.
-	url := os.Getenv("NATS_URL")
-	if url == "" {
-		url = "localhost:4222"
+	addr := os.Getenv("NATS_ADDR")
+	if addr == "" {
+		addr = "localhost:4222"
 	}
-	url = "nats://" + url
+	url := "nats://" + addr
 
 	// Get a random app ID.
 	bts := make([]byte, 4)

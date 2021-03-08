@@ -36,14 +36,12 @@ func TestReadRepoIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	// Local Mongo testing with Docker
-	url := os.Getenv("MONGODB_HOST")
-
-	if url == "" {
-		// Default to localhost
-		url = "localhost:27017"
+	// Use MongoDB in Docker with fallback to localhost.
+	addr := os.Getenv("MONGODB_ADDR")
+	if addr == "" {
+		addr = "localhost:27017"
 	}
-	url = "mongodb://" + url
+	url := "mongodb://" + addr
 
 	r, err := NewRepo(url, "test", "mocks.Model")
 	if err != nil {
@@ -179,13 +177,12 @@ func TestRepository(t *testing.T) {
 		t.Error("the parent repository should be nil:", r)
 	}
 
-	// Local Mongo testing with Docker
-	url := os.Getenv("MONGODB_HOST")
-	if url == "" {
-		// Default to localhost
-		url = "localhost:27017"
+	// Use MongoDB in Docker with fallback to localhost.
+	addr := os.Getenv("MONGODB_ADDR")
+	if addr == "" {
+		addr = "localhost:27017"
 	}
-	url = "mongodb://" + url
+	url := "mongodb://" + addr
 
 	repo, err := NewRepo(url, "test", "mocks.Model")
 	if err != nil {

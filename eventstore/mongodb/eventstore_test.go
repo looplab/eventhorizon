@@ -29,11 +29,11 @@ func TestEventStoreIntegration(t *testing.T) {
 	}
 
 	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGODB_HOST")
-	if url == "" {
-		url = "localhost:27017"
+	addr := os.Getenv("MONGODB_ADDR")
+	if addr == "" {
+		addr = "localhost:27017"
 	}
-	url = "mongodb://" + url
+	url := "mongodb://" + addr
 
 	store, err := NewEventStore(url, "test")
 	if err != nil {
