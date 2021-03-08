@@ -2,19 +2,23 @@ default: test
 
 .PHONY: test
 test:
-	go test -race -short -test.paniconexit0 ./...
+	go test -v -race -short ./...
 
 .PHONY: test_cover
 test_cover:
-	go list -f '{{if len .TestGoFiles}}"go test -race -short -test.paniconexit0 -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
+	go list -f '{{if len .TestGoFiles}}"cd {{.Dir}} && go test -v -race -short -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
+	go run ./hack/coverage/coverage.go . unit.coverprofile
+	@find . -name \.coverprofile -type f -delete
 
 .PHONY: test_integration
 test_integration:
-	go test -race -run Integration ./...
+	go test -v -race -run Integration ./...
 
 .PHONY: test_integration_cover
 test_integration_cover:
-	go list -f '{{if len .TestGoFiles}}"go test -race -run Integration -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
+	go list -f '{{if len .TestGoFiles}}"cd {{.Dir}} && go test -v -race -run Integration -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
+	go run ./hack/coverage/coverage.go . integration.coverprofile
+	@find . -name \.coverprofile -type f -delete
 
 .PHONY: test_loadtest
 test_loadtest:
@@ -24,13 +28,13 @@ test_loadtest:
 test_all_docker:
 	docker-compose up --build --force-recreate eventhorizon-test
 
-.PHONY: upload_cover
-upload_cover:
-	go get -d golang.org/x/tools/cmd/cover
-	go get github.com/sozorogami/gover
-	go get github.com/mattn/goveralls
-	gover
-	goveralls -coverprofile=gover.coverprofile -repotoken="$$COVERALLS_TOKEN"
+.PHONY: merge_coverage
+merge_coverage:
+	go run ./hack/coverage/coverage.go .
+
+.PHONY: upload_coverage
+upload_coverage:
+	go run github.com/mattn/goveralls -coverprofile=coverage.out -repotoken="$$COVERALLS_TOKEN"
 
 .PHONY: run
 run:
@@ -63,7 +67,7 @@ stop:
 .PHONY: clean
 clean:
 	@find . -name \.coverprofile -type f -delete
-	@rm -f gover.coverprofile
+	@rm -f coverage.out
 
 .PHONY: mongodb_shell
 mongodb_shell:

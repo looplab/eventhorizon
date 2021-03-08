@@ -1,0 +1,88 @@
+name: Main
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Test
+        shell: bash
+        run: |
+          make test_cover
+
+      - name: Store coverage
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage
+          path: unit.coverprofile
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Services
+        shell: bash
+        run: |
+          make run && sleep 15
+
+      - name: Test
+        shell: bash
+        run: |
+          make test_integration_cover
+
+      - name: Store coverage
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage
+          path: integration.coverprofile
+
+  finish:
+    runs-on: ubuntu-latest
+    needs: [unit, integration]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Load coverage
+        uses: actions/download-artifact@v2
+        with:
+          name: coverage
+
+      - name: Merge coverage
+        shell: bash
+        run: |
+          make merge_coverage
+
+      - name: Convert coverage
+        uses: jandelgado/gcov2lcov-action@v1.0.5
+        with:
+          infile: coverage.out
+          outfile: coverage.lcov
+
+      - name: Upload coverage
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.github_token }}
+          path-to-lcov: coverage.lcov
