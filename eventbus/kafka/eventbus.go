@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,24 +67,32 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 		}
 	}
 
+	// Get or create the topic.
 	ctx := context.Background()
-	partition := 0
-
-	// Will create the topic if server is configured for auto create.
-	conn, err := kafka.DialLeader(ctx, "tcp", addr, topic, partition)
+	client := &kafka.Client{
+		Addr: kafka.TCP(addr),
+	}
+	resp, err := client.CreateTopics(ctx, &kafka.CreateTopicsRequest{
+		Topics: []kafka.TopicConfig{{
+			Topic:             topic,
+			NumPartitions:     2,
+			ReplicationFactor: 1,
+		}},
+	})
 	if err != nil {
-		return nil, fmt.Errorf("could not dial Kafka: %w", err)
+		return nil, fmt.Errorf("could not get/create Kafka topic: %w", err)
 	}
-	if err := conn.Close(); err != nil {
-		log.Fatal("failed to close Kafka:", err)
+	if topicErr, ok := resp.Errors[topic]; ok && topicErr != nil {
+		if !errors.Is(topicErr, kafka.TopicAlreadyExists) {
+			return nil, fmt.Errorf("invalid Kafka topic: %w", err)
+		}
 	}
-	// TODO: Wait for topic to be created.
 
 	b.writer = &kafka.Writer{
 		Addr:         kafka.TCP(addr),
 		Topic:        topic,
 		Balancer:     &kafka.LeastBytes{},
-		BatchSize:    1,                // NOTE: Used to get predictable tests/benchmarks.
+		BatchSize:    1,                // Write every event to the bus without delay.
 		RequiredAcks: kafka.RequireOne, // Stronger consistency.
 	}
 
@@ -119,6 +128,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	}
 
 	if err := b.writer.WriteMessages(ctx, kafka.Message{
+		Key:   []byte(event.AggregateID().String()),
 		Value: data,
 		Headers: []kafka.Header{
 			{
@@ -154,17 +164,34 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	}
 
 	// Get or create the subscription.
+	joined := make(chan struct{})
 	groupID := b.appID + "_" + h.HandlerType().String()
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:               []string{b.addr},
-		Topic:                 b.topic,
-		GroupID:               groupID, // Send messages to only one subscriber per group.
-		MinBytes:              10,      // 10B
-		MaxBytes:              10e3,    // 10KB
-		WatchPartitionChanges: true,
-		StartOffset:           kafka.LastOffset, // Don't read old messages.
+		Brokers:                []string{b.addr},
+		Topic:                  b.topic,
+		GroupID:                groupID,     // Send messages to only one subscriber per group.
+		MaxBytes:               100e3,       // 100KB
+		MaxWait:                time.Second, // Allow to exit readloop in max 1s.
+		PartitionWatchInterval: time.Second,
+		WatchPartitionChanges:  true,
+		StartOffset:            kafka.LastOffset, // Don't read old messages.
+		Logger: kafka.LoggerFunc(func(msg string, args ...interface{}) {
+			// NOTE: Hacky way to use logger to find out when the reader is ready.
+			if strings.HasPrefix(msg, "Joined group") {
+				select {
+				case <-joined:
+				default:
+					close(joined) // Close once.
+				}
+			}
+		}),
 	})
-	// TODO: Wait for group/partition to be created.
+
+	select {
+	case <-joined:
+	case <-time.After(10 * time.Second):
+		return fmt.Errorf("did not join group in time")
+	}
 
 	// Register handler.
 	b.registered[h.HandlerType()] = struct{}{}

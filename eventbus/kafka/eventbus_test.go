@@ -52,11 +52,7 @@ func TestEventBusIntegration(t *testing.T) {
 		t.Fatal("there should be no error:", err)
 	}
 
-	// Need to wait here for the topic to be created.
-	time.Sleep(3 * time.Second)
-
-	// NOTE: Long timeout needed to accommodate for topic creation times.
-	eventbus.AcceptanceTest(t, bus1, bus2, 10*time.Second)
+	eventbus.AcceptanceTest(t, bus1, bus2, 2*time.Second)
 }
 
 func TestEventBusLoadtest(t *testing.T) {
@@ -82,9 +78,6 @@ func TestEventBusLoadtest(t *testing.T) {
 		t.Fatal("there should be no error:", err)
 	}
 
-	// Need to wait here for the topic to be created.
-	time.Sleep(3 * time.Second)
-
 	eventbus.LoadTest(t, bus)
 }
 
@@ -106,9 +99,6 @@ func BenchmarkEventBus(b *testing.B) {
 	if err != nil {
 		b.Fatal("there should be no error:", err)
 	}
-
-	// Need to wait here for the topic to be created.
-	time.Sleep(3 * time.Second)
 
 	eventbus.Benchmark(b, bus)
 }

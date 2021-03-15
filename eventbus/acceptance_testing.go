@@ -211,6 +211,10 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 		t.Error("the context should be correct:", observerBus2.Context)
 	}
 
+	// Check and clear all errors before the error tests.
+	checkBusErrors(t, bus1)
+	checkBusErrors(t, bus2)
+
 	// Test async errors from handlers.
 	errorHandler := mocks.NewEventHandler("error_handler")
 	errorHandler.Err = errors.New("handler error")
@@ -241,6 +245,20 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	cancel()
 	bus1.Wait()
 	bus2.Wait()
+}
+
+func checkBusErrors(t *testing.T, bus eh.EventBus) {
+	t.Helper()
+	for {
+		select {
+		case err := <-bus.Errors():
+			if err.Err != nil {
+				t.Error("there should be no previous error:", err)
+			}
+		default:
+			return
+		}
+	}
 }
 
 // LoadTest is a load test for an event bus implementation.
