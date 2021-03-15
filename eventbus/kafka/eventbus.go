@@ -66,24 +66,32 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 		}
 	}
 
+	// Get or create the topic.
 	ctx := context.Background()
-	partition := 0
-
-	// Will create the topic if server is configured for auto create.
-	conn, err := kafka.DialLeader(ctx, "tcp", addr, topic, partition)
+	client := &kafka.Client{
+		Addr: kafka.TCP(addr),
+	}
+	resp, err := client.CreateTopics(ctx, &kafka.CreateTopicsRequest{
+		Topics: []kafka.TopicConfig{{
+			Topic:             topic,
+			NumPartitions:     2,
+			ReplicationFactor: 1,
+		}},
+	})
 	if err != nil {
-		return nil, fmt.Errorf("could not dial Kafka: %w", err)
+		return nil, fmt.Errorf("could not get/create Kafka topic: %w", err)
 	}
-	if err := conn.Close(); err != nil {
-		log.Fatal("failed to close Kafka:", err)
+	if topicErr, ok := resp.Errors[topic]; ok && topicErr != nil {
+		if !errors.Is(topicErr, kafka.TopicAlreadyExists) {
+			return nil, fmt.Errorf("invalid Kafka topic: %w", err)
+		}
 	}
-	// TODO: Wait for topic to be created.
 
 	b.writer = &kafka.Writer{
 		Addr:         kafka.TCP(addr),
 		Topic:        topic,
 		Balancer:     &kafka.LeastBytes{},
-		BatchSize:    1,                // NOTE: Used to get predictable tests/benchmarks.
+		BatchSize:    1,                // Write every event to the bus without delay.
 		RequiredAcks: kafka.RequireOne, // Stronger consistency.
 	}
 
