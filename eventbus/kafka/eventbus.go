@@ -127,6 +127,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	}
 
 	if err := b.writer.WriteMessages(ctx, kafka.Message{
+		Key:   []byte(event.AggregateID().String()),
 		Value: data,
 		Headers: []kafka.Header{
 			{
