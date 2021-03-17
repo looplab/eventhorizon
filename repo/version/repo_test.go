@@ -179,7 +179,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 	// Meassure the time it takes, it should not wait > 100ms (the first retry).
 	t1 := time.Now()
 	model, err = r.Find(ctxVersion, m2.ID)
-	dt := time.Now().Sub(t1)
+	dt := time.Since(t1)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
