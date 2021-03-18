@@ -93,9 +93,12 @@ func (a *AggregateBase) IncrementVersion() {
 
 // Events implements the Events method of the eh.EventSource interface.
 func (a *AggregateBase) Events() []eh.Event {
-	events := a.events
+	return a.events
+}
+
+// ClearEvents implements the ClearEvents method of the eh.EventSource interface.
+func (a *AggregateBase) ClearEvents() {
 	a.events = nil
-	return events
 }
 
 // AppendEvent appends an event for later retrieval by Events().

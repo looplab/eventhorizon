@@ -28,7 +28,10 @@ func (a *SliceEventSource) AppendEvent(e eh.Event) {
 
 // Events implements the Events method of the eh.EventSource interface.
 func (a *SliceEventSource) Events() []eh.Event {
-	events := *a
+	return *a
+}
+
+// ClearEvents implements the ClearEvents method of the eh.EventSource interface.
+func (a *SliceEventSource) ClearEvents() {
 	*a = nil
-	return events
 }
