@@ -94,6 +94,12 @@ func TestCheckCommand(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
+	// Missing required UUID value.
+	err = CheckCommand(&TestCommandUUIDValue{TestID: uuid.New()})
+	if err == nil || err.Error() != "missing field: Content" {
+		t.Error("there should be a missing field error:", err)
+	}
+
 	// Missing required string value.
 	err = CheckCommand(&TestCommandStringValue{TestID: uuid.New()})
 	if err == nil || err.Error() != "missing field: Content" {
@@ -224,6 +230,19 @@ func (t TestCommandFields) AggregateID() uuid.UUID       { return t.TestID }
 func (t TestCommandFields) AggregateType() AggregateType { return TestAggregateType }
 func (t TestCommandFields) CommandType() CommandType {
 	return CommandType("TestCommandFields")
+}
+
+type TestCommandUUIDValue struct {
+	TestID  uuid.UUID
+	Content uuid.UUID
+}
+
+var _ = Command(TestCommandUUIDValue{})
+
+func (t TestCommandUUIDValue) AggregateID() uuid.UUID       { return t.TestID }
+func (t TestCommandUUIDValue) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandUUIDValue) CommandType() CommandType {
+	return CommandType("TestCommandUUIDValue")
 }
 
 type TestCommandStringValue struct {

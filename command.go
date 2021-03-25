@@ -161,6 +161,11 @@ func isZero(v reflect.Value) bool {
 	case reflect.Map, reflect.Slice:
 		return v.IsNil()
 	case reflect.Array:
+		// Special case to check zero values of UUIDs.
+		switch obj := v.Interface().(type) {
+		case uuid.UUID:
+			return obj == uuid.Nil
+		}
 		for i := 0; i < v.Len(); i++ {
 			if !isZero(v.Index(i)) {
 				return false
