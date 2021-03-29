@@ -42,7 +42,7 @@ func Setup(
 		eh.UseEventHandlerMiddleware(&Logger{}, observer.Middleware))
 
 	// Create the aggregate repository.
-	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)
+	aggregateStore, err := events.NewAggregateStore(eventStore)
 	if err != nil {
 		log.Fatalf("could not create aggregate store: %s", err)
 	}

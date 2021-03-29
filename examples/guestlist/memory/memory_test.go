@@ -33,9 +33,6 @@ import (
 
 // NOTE: Not named "Integration" to enable running with the unit tests.
 func Example() {
-	// Create the event store.
-	eventStore := eventstore.NewEventStore()
-
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
 	go func() {
@@ -43,6 +40,11 @@ func Example() {
 			log.Printf("eventbus: %s", e.Error())
 		}
 	}()
+
+	// Create the event store.
+	eventStore, _ := eventstore.NewEventStore(
+		eventstore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+	)
 
 	// Create the command bus.
 	commandBus := bus.NewCommandHandler()

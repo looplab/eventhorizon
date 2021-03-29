@@ -52,12 +52,6 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	}
 	url := "mongodb://" + addr
 
-	// Create the event store.
-	eventStore, err := eventstore.NewEventStore(url, "demo")
-	if err != nil {
-		log.Fatalf("could not create event store: %s", err)
-	}
-
 	// Create the event bus that distributes events.
 	eventBus := eventbus.NewEventBus()
 	go func() {
@@ -65,6 +59,14 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 			log.Printf("eventbus: %s", e.Error())
 		}
 	}()
+
+	// Create the event store.
+	eventStore, err := eventstore.NewEventStore(url, "demo",
+		eventstore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+	)
+	if err != nil {
+		log.Fatalf("could not create event store: %s", err)
+	}
 
 	// Create the command bus.
 	commandBus := bus.NewCommandHandler()

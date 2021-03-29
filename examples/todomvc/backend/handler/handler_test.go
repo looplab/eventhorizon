@@ -734,8 +734,10 @@ func NewTestSession(ctx context.Context) (
 	eh.ReadWriteRepo,
 ) {
 	commandBus := bus.NewCommandHandler()
-	eventStore := memoryEventStore.NewEventStore()
-	eventBus := localEventBus.NewEventBus()
+	eventBus := localEventBus.NewEventBus(nil)
+	eventStore, _ := memoryEventStore.NewEventStore(
+		memoryEventStore.WithEventHandler(eventBus),
+	)
 	todoRepo := memory.NewRepo()
 	if err := todo.SetupDomain(ctx, commandBus, eventStore, eventBus, todoRepo); err != nil {
 		log.Println("could not setup domain:", err)
@@ -758,11 +760,6 @@ func NewIntegrationTestSession(ctx context.Context) (
 
 	commandBus := bus.NewCommandHandler()
 
-	eventStore, err := mongoEventStore.NewEventStore(dbURL, dbPrefix)
-	if err != nil {
-		log.Fatalf("could not create event store: %s", err)
-	}
-
 	eventBus, err := gcpEventBus.NewEventBus("project-id", dbPrefix)
 	if err != nil {
 		log.Fatalf("could not create event bus: %s", err)
@@ -772,6 +769,13 @@ func NewIntegrationTestSession(ctx context.Context) (
 			log.Printf("eventbus: %s", e.Error())
 		}
 	}()
+
+	eventStore, err := mongoEventStore.NewEventStore(dbURL, dbPrefix,
+		mongoEventStore.WithEventHandler(eventBus),
+	)
+	if err != nil {
+		log.Fatalf("could not create event store: %s", err)
+	}
 
 	repo, err := mongodb.NewRepo(dbURL, dbPrefix, "todos")
 	if err != nil {

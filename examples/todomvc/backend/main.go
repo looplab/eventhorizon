@@ -70,13 +70,6 @@ func main() {
 	// Create an event bus.
 	commandBus := bus.NewCommandHandler()
 
-	// Create the event store.
-	var eventStore eh.EventStore
-	if eventStore, err = mongoEventStore.NewEventStore(dbURL, dbPrefix); err != nil {
-		log.Fatal("could not create event store: ", err)
-	}
-	eventStore = tracingEventStore.NewEventStore(eventStore)
-
 	// Create the event bus that distributes events.
 	var eventBus eh.EventBus
 	if eventBus, err = gcpEventBus.NewEventBus("project-id", dbPrefix); err != nil {
@@ -90,6 +83,15 @@ func main() {
 
 	// Wrap the event bus to add tracing.
 	eventBus = tracingEventBus.NewEventBus(eventBus)
+
+	// Create the event store.
+	var eventStore eh.EventStore
+	if eventStore, err = mongoEventStore.NewEventStore(dbURL, dbPrefix,
+		mongoEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+	); err != nil {
+		log.Fatal("could not create event store: ", err)
+	}
+	eventStore = tracingEventStore.NewEventStore(eventStore)
 
 	ctx, cancel := context.WithCancel(context.Background())
 

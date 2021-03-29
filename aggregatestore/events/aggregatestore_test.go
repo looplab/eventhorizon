@@ -30,11 +30,8 @@ func TestNewAggregateStore(t *testing.T) {
 	eventStore := &mocks.EventStore{
 		Events: make([]eh.Event, 0),
 	}
-	bus := &mocks.EventBus{
-		Events: make([]eh.Event, 0),
-	}
 
-	store, err := NewAggregateStore(nil, bus)
+	store, err := NewAggregateStore(nil)
 	if !errors.Is(err, ErrInvalidEventStore) {
 		t.Error("there should be a ErrInvalidEventStore error:", err)
 	}
@@ -42,15 +39,7 @@ func TestNewAggregateStore(t *testing.T) {
 		t.Error("there should be no aggregate store:", store)
 	}
 
-	store, err = NewAggregateStore(eventStore, nil)
-	if !errors.Is(err, ErrInvalidEventBus) {
-		t.Error("there should be a ErrInvalidEventBus error:", err)
-	}
-	if store != nil {
-		t.Error("there should be no aggregate store:", store)
-	}
-
-	store, err = NewAggregateStore(eventStore, bus)
+	store, err = NewAggregateStore(eventStore)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -60,7 +49,7 @@ func TestNewAggregateStore(t *testing.T) {
 }
 
 func TestAggregateStore_LoadNoEvents(t *testing.T) {
-	store, _, _ := createStore(t)
+	store, _ := createStore(t)
 
 	ctx := context.Background()
 
@@ -82,7 +71,7 @@ func TestAggregateStore_LoadNoEvents(t *testing.T) {
 }
 
 func TestAggregateStore_LoadEvents(t *testing.T) {
-	store, eventStore, _ := createStore(t)
+	store, eventStore := createStore(t)
 
 	ctx := context.Background()
 
@@ -124,7 +113,7 @@ func TestAggregateStore_LoadEvents(t *testing.T) {
 }
 
 func TestAggregateStore_LoadEvents_MismatchedEventType(t *testing.T) {
-	store, eventStore, _ := createStore(t)
+	store, eventStore := createStore(t)
 
 	ctx := context.Background()
 
@@ -153,7 +142,7 @@ func TestAggregateStore_LoadEvents_MismatchedEventType(t *testing.T) {
 }
 
 func TestAggregateStore_SaveEvents(t *testing.T) {
-	store, eventStore, bus := createStore(t)
+	store, eventStore := createStore(t)
 
 	ctx := context.Background()
 
@@ -188,12 +177,8 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 		t.Error("the version should be 1:", agg.Version())
 	}
 
-	if !reflect.DeepEqual(bus.Events, []eh.Event{event1}) {
-		t.Error("there should be an event on the bus:", bus.Events)
-	}
-
 	// Store error.
-	event1 = agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
+	agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
 	aggregateErr := errors.New("aggregate error")
 	eventStore.Err = aggregateErr
 	err = store.Save(ctx, agg)
@@ -203,26 +188,17 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 	eventStore.Err = nil
 
 	// Aggregate error.
-	event1 = agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
+	agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
 	agg.err = errors.New("error")
 	err = store.Save(ctx, agg)
 	if _, ok := err.(ApplyEventError); !ok {
 		t.Error("there should be an error of type ApplyEventError:", err)
 	}
 	agg.err = nil
-
-	// Bus error.
-	event1 = agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
-	busErr := errors.New("bus error")
-	bus.Err = busErr
-	err = store.Save(ctx, agg)
-	if !errors.Is(err, busErr) {
-		t.Error("the error should be correct:", err)
-	}
 }
 
 func TestAggregateStore_AggregateNotRegistered(t *testing.T) {
-	store, _, _ := createStore(t)
+	store, _ := createStore(t)
 
 	ctx := context.Background()
 
@@ -236,21 +212,18 @@ func TestAggregateStore_AggregateNotRegistered(t *testing.T) {
 	}
 }
 
-func createStore(t *testing.T) (*AggregateStore, *mocks.EventStore, *mocks.EventBus) {
+func createStore(t *testing.T) (*AggregateStore, *mocks.EventStore) {
 	eventStore := &mocks.EventStore{
 		Events: make([]eh.Event, 0),
 	}
-	bus := &mocks.EventBus{
-		Events: make([]eh.Event, 0),
-	}
-	store, err := NewAggregateStore(eventStore, bus)
+	store, err := NewAggregateStore(eventStore)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 	if store == nil {
 		t.Fatal("there should be a aggregate store")
 	}
-	return store, eventStore, bus
+	return store, eventStore
 }
 
 func init() {

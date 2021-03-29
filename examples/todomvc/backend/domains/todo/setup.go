@@ -43,7 +43,7 @@ func SetupDomain(
 	}, projector)
 
 	// Create the event sourced aggregate repository.
-	aggregateStore, err := events.NewAggregateStore(eventStore, eventBus)
+	aggregateStore, err := events.NewAggregateStore(eventStore)
 	if err != nil {
 		return fmt.Errorf("could not create aggregate store: %w", err)
 	}
