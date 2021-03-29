@@ -25,16 +25,16 @@ import (
 	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/commandhandler/bus"
-	eventbus "github.com/looplab/eventhorizon/eventbus/local"
-	eventstore "github.com/looplab/eventhorizon/eventstore/memory"
+	localEventBus "github.com/looplab/eventhorizon/eventbus/local"
+	memoryEventStore "github.com/looplab/eventhorizon/eventstore/memory"
 	"github.com/looplab/eventhorizon/examples/guestlist/domains/guestlist"
-	repo "github.com/looplab/eventhorizon/repo/memory"
+	"github.com/looplab/eventhorizon/repo/memory"
 )
 
 // NOTE: Not named "Integration" to enable running with the unit tests.
 func Example() {
 	// Create the event bus that distributes events.
-	eventBus := eventbus.NewEventBus()
+	eventBus := localEventBus.NewEventBus()
 	go func() {
 		for e := range eventBus.Errors() {
 			log.Printf("eventbus: %s", e.Error())
@@ -42,17 +42,20 @@ func Example() {
 	}()
 
 	// Create the event store.
-	eventStore, _ := eventstore.NewEventStore(
-		eventstore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+	eventStore, err := memoryEventStore.NewEventStore(
+		memoryEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
 	)
+	if err != nil {
+		log.Fatalf("could not create event store: %s", err)
+	}
 
 	// Create the command bus.
 	commandBus := bus.NewCommandHandler()
 
 	// Create the read repositories.
-	invitationRepo := repo.NewRepo()
+	invitationRepo := memory.NewRepo()
 	invitationRepo.SetEntityFactory(func() eh.Entity { return &guestlist.Invitation{} })
-	guestListRepo := repo.NewRepo()
+	guestListRepo := memory.NewRepo()
 	guestListRepo.SetEntityFactory(func() eh.Entity { return &guestlist.GuestList{} })
 
 	// Set the namespace to use.

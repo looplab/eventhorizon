@@ -733,15 +733,23 @@ func NewTestSession(ctx context.Context) (
 	eh.EventBus,
 	eh.ReadWriteRepo,
 ) {
-	commandBus := bus.NewCommandHandler()
+	// Create the event bus that distributes events.
 	eventBus := localEventBus.NewEventBus(nil)
+
+	// Create the event store.
 	eventStore, _ := memoryEventStore.NewEventStore(
-		memoryEventStore.WithEventHandler(eventBus),
+		memoryEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
 	)
+
+	// Create the command bus.
+	commandBus := bus.NewCommandHandler()
+
+	// Create the read repositories.
 	todoRepo := memory.NewRepo()
 	if err := todo.SetupDomain(ctx, commandBus, eventStore, eventBus, todoRepo); err != nil {
 		log.Println("could not setup domain:", err)
 	}
+
 	return commandBus, eventBus, todoRepo
 }
 
@@ -751,11 +759,11 @@ func NewIntegrationTestSession(ctx context.Context) (
 	eh.ReadWriteRepo,
 ) {
 	// Use MongoDB in Docker with fallback to localhost.
-	dbAddr := os.Getenv("MONGODB_ADDR")
-	if dbAddr == "" {
-		dbAddr = "localhost:27017"
+	addr := os.Getenv("MONGODB_ADDR")
+	if addr == "" {
+		addr = "localhost:27017"
 	}
-	dbURL := "mongodb://" + dbAddr
+	url := "mongodb://" + addr
 	dbPrefix := "todomvc-example"
 
 	commandBus := bus.NewCommandHandler()
@@ -770,14 +778,14 @@ func NewIntegrationTestSession(ctx context.Context) (
 		}
 	}()
 
-	eventStore, err := mongoEventStore.NewEventStore(dbURL, dbPrefix,
-		mongoEventStore.WithEventHandler(eventBus),
+	eventStore, err := mongoEventStore.NewEventStore(url, dbPrefix,
+		mongoEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
 	)
 	if err != nil {
 		log.Fatalf("could not create event store: %s", err)
 	}
 
-	repo, err := mongodb.NewRepo(dbURL, dbPrefix, "todos")
+	repo, err := mongodb.NewRepo(url, dbPrefix, "todos")
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
@@ -792,6 +800,7 @@ func NewIntegrationTestSession(ctx context.Context) (
 		log.Println("could not clear DB:", err)
 	}
 
+	// Setup the todo domain.
 	if err := todo.SetupDomain(ctx, commandBus, eventStore, eventBus, todoRepo); err != nil {
 		log.Println("could not setup domain:", err)
 	}

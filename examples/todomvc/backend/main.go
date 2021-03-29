@@ -34,7 +34,6 @@ import (
 	mongoRepo "github.com/looplab/eventhorizon/repo/mongodb"
 	tracingRepo "github.com/looplab/eventhorizon/repo/tracing"
 	"github.com/looplab/eventhorizon/repo/version"
-	versionRepo "github.com/looplab/eventhorizon/repo/version"
 
 	"github.com/looplab/eventhorizon/examples/todomvc/backend/domains/todo"
 	"github.com/looplab/eventhorizon/examples/todomvc/backend/handler"
@@ -44,11 +43,11 @@ func main() {
 	log.Println("starting TodoMVC backend")
 
 	// Use MongoDB in Docker with fallback to localhost.
-	dbAddr := os.Getenv("MONGODB_ADDR")
-	if dbAddr == "" {
-		dbAddr = "localhost:27017"
+	addr := os.Getenv("MONGODB_ADDR")
+	if addr == "" {
+		addr = "localhost:27017"
 	}
-	dbURL := "mongodb://" + dbAddr
+	url := "mongodb://" + addr
 	dbPrefix := "todomvc-example"
 
 	// Connect to localhost if not running inside docker
@@ -86,7 +85,7 @@ func main() {
 
 	// Create the event store.
 	var eventStore eh.EventStore
-	if eventStore, err = mongoEventStore.NewEventStore(dbURL, dbPrefix,
+	if eventStore, err = mongoEventStore.NewEventStore(url, dbPrefix,
 		mongoEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
 	); err != nil {
 		log.Fatal("could not create event store: ", err)
@@ -107,10 +106,10 @@ func main() {
 
 	// Create the repository and wrap in a version repository.
 	var todoRepo eh.ReadWriteRepo
-	if todoRepo, err = mongoRepo.NewRepo(dbURL, dbPrefix, "todos"); err != nil {
+	if todoRepo, err = mongoRepo.NewRepo(url, dbPrefix, "todos"); err != nil {
 		log.Fatal("could not create invitation repository: ", err)
 	}
-	todoRepo = versionRepo.NewRepo(todoRepo)
+	todoRepo = version.NewRepo(todoRepo)
 	todoRepo = tracingRepo.NewRepo(todoRepo)
 
 	// Setup the Todo domain.
