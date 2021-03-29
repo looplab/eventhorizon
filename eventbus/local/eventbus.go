@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/codec/json"
@@ -143,6 +144,9 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 	for {
 		select {
 		case data := <-ch:
+			// Artificial delay to simulate network.
+			time.Sleep(10 * time.Millisecond)
+
 			event, ctx, err := b.codec.UnmarshalEvent(ctx, data)
 			if err != nil {
 				err = fmt.Errorf("could not unmarshal event: %w", err)
