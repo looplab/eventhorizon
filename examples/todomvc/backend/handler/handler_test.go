@@ -739,6 +739,7 @@ func NewTestSession(ctx context.Context) (
 	// Create the event store.
 	eventStore, _ := memoryEventStore.NewEventStore(
 		memoryEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+		memoryEventStore.WithTransactions(),         // Run storing and publishing in a transaction.
 	)
 
 	// Create the command bus.
@@ -780,6 +781,7 @@ func NewIntegrationTestSession(ctx context.Context) (
 
 	eventStore, err := mongoEventStore.NewEventStore(url, dbPrefix,
 		mongoEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+		mongoEventStore.WithTransactions(),         // Run storing and publishing in a transaction.
 	)
 	if err != nil {
 		log.Fatalf("could not create event store: %s", err)

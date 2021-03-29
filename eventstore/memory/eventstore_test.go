@@ -16,6 +16,7 @@ package memory
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -86,5 +87,71 @@ func TestWithEventHandler(t *testing.T) {
 		if event.Version() != i+1 {
 			t.Error("the event version should be correct:", event, event.Version())
 		}
+	}
+}
+
+func TestWithEventHandlerWithTransactions(t *testing.T) {
+	h := &mocks.EventBus{}
+
+	store, err := NewEventStore(
+		WithEventHandler(h), WithTransactions())
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+	if store == nil {
+		t.Fatal("there should be a store")
+	}
+
+	ctx := context.Background()
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+
+	// The event handler should be called.
+	id1 := uuid.New()
+	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
+		timestamp, mocks.AggregateType, id1, 1)
+	if err := store.Save(ctx, []eh.Event{event1}, 0); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	expected := []eh.Event{event1}
+	// The saved events should be ok.
+	events, err := store.Load(ctx, id1)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	// The stored events should be ok.
+	for i, event := range events {
+		if err := eh.CompareEvents(event, expected[i], eh.IgnoreVersion()); err != nil {
+			t.Error("the stored event was incorrect:", err)
+		}
+		if event.Version() != i+1 {
+			t.Error("the event version should be correct:", event, event.Version())
+		}
+	}
+	// The handeled events should be ok.
+	for i, event := range h.Events {
+		if err := eh.CompareEvents(event, expected[i], eh.IgnoreVersion()); err != nil {
+			t.Error("the handeled event was incorrect:", err)
+		}
+		if event.Version() != i+1 {
+			t.Error("the event version should be correct:", event, event.Version())
+		}
+	}
+
+	// No event should be saved if there is an error in the event handler.
+	handlerErr := errors.New("handler error")
+	h.Err = handlerErr
+	id2 := uuid.New()
+	event2 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
+		timestamp, mocks.AggregateType, id2, 1)
+	err = store.Save(ctx, []eh.Event{event2}, 0)
+	if aggErr, ok := err.(eh.EventStoreError); !ok || aggErr.BaseErr != handlerErr {
+		t.Error("there should be an error:", err)
+	}
+	events, err = store.Load(ctx, id2)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if len(events) != 0 {
+		t.Error("there should be no saved events")
 	}
 }

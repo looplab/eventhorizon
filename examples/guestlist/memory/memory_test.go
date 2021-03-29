@@ -44,6 +44,7 @@ func Example() {
 	// Create the event store.
 	eventStore, err := memoryEventStore.NewEventStore(
 		memoryEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+		memoryEventStore.WithTransactions(),         // Run storing and publishing in a transaction.
 	)
 	if err != nil {
 		log.Fatalf("could not create event store: %s", err)

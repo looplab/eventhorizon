@@ -66,6 +66,7 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	// Create the event store.
 	eventStore, err := mongoEventStore.NewEventStore(url, dbPrefix,
 		mongoEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+		mongoEventStore.WithTransactions(),         // Run storing and publishing in a transaction.
 	)
 	if err != nil {
 		log.Fatalf("could not create event store: %s", err)

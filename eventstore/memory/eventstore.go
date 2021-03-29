@@ -34,9 +34,10 @@ var (
 // EventStore implements EventStore as an in memory structure.
 type EventStore struct {
 	// The outer map is with namespace as key, the inner with aggregate ID.
-	db           map[string]map[uuid.UUID]aggregateRecord
-	dbMu         sync.RWMutex
-	eventHandler eh.EventHandler
+	db              map[string]map[uuid.UUID]aggregateRecord
+	dbMu            sync.RWMutex
+	eventHandler    eh.EventHandler
+	useTransactions bool
 }
 
 // NewEventStore creates a new EventStore using memory as storage.
@@ -64,8 +65,19 @@ func WithEventHandler(h eh.EventHandler) Option {
 	}
 }
 
+// WithTransactions will run the save operation and optional event handler in
+// in a transaction. This means that the event handler must succeed for the save
+// to be successful.
+// Requires MongoDB to be configured as a replica set.
+func WithTransactions() Option {
+	return func(s *EventStore) error {
+		s.useTransactions = true
+		return nil
+	}
+}
+
 // Save implements the Save method of the eventhorizon.EventStore interface.
-func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
+func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) (saveErr error) {
 	if len(events) == 0 {
 		return eh.EventStoreError{
 			Err:       eh.ErrNoEventsToAppend,
@@ -104,19 +116,17 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 	ns := s.namespace(ctx)
 
-	s.dbMu.Lock()
-	defer s.dbMu.Unlock()
-
-	// Either insert a new aggregate or append to an existing.
-	if originalVersion == 0 {
-		aggregate := aggregateRecord{
-			AggregateID: aggregateID,
-			Version:     len(dbEvents),
-			Events:      dbEvents,
-		}
-
+	insertFn := func(aggregate aggregateRecord) error {
+		s.dbMu.Lock()
 		s.db[ns][aggregateID] = aggregate
-	} else {
+		s.dbMu.Unlock()
+		return nil
+	}
+	insert := insertFn
+
+	updateFn := func(aggregateID uuid.UUID, events []eh.Event) error {
+		s.dbMu.Lock()
+		defer s.dbMu.Unlock()
 		// Increment aggregate version on insert of new event record, and
 		// only insert if version of aggregate is matching (ie not changed
 		// since loading the aggregate).
@@ -128,11 +138,72 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
-
 			aggregate.Version += len(dbEvents)
 			aggregate.Events = append(aggregate.Events, dbEvents...)
-
 			s.db[ns][aggregateID] = aggregate
+		}
+		return nil
+	}
+	update := updateFn
+
+	if s.useTransactions {
+		// Simulate DB commit by wrapping insert/update in a
+		// goroutines with a blocking channel triggered when exiting Save().
+		commit := make(chan struct{})
+		commitErr := make(chan error)
+		insert = func(aggregate aggregateRecord) error {
+			go func() {
+				<-commit
+				commitErr <- insertFn(aggregate)
+			}()
+			return nil
+		}
+		update = func(aggregateID uuid.UUID, events []eh.Event) error {
+			go func() {
+				<-commit
+				commitErr <- updateFn(aggregateID, events)
+			}()
+			return nil
+		}
+
+		// "Commit" the insert/update when exiting Save().
+		defer func() {
+			if saveErr == nil {
+				commit <- struct{}{}
+				if err := <-commitErr; err != nil {
+					saveErr = eh.EventStoreError{
+						Err:       eh.ErrCouldNotSaveEvents,
+						BaseErr:   err,
+						Namespace: eh.NamespaceFromContext(ctx),
+					}
+				}
+			}
+		}()
+	}
+
+	// Either insert a new aggregate or append to an existing.
+	if originalVersion == 0 {
+		aggregate := aggregateRecord{
+			AggregateID: aggregateID,
+			Version:     len(dbEvents),
+			Events:      dbEvents,
+		}
+		if err := insert(aggregate); err != nil {
+			saveErr = eh.EventStoreError{
+				Err:       eh.ErrCouldNotSaveEvents,
+				BaseErr:   err,
+				Namespace: eh.NamespaceFromContext(ctx),
+			}
+			return
+		}
+	} else {
+		if err := update(aggregateID, dbEvents); err != nil {
+			saveErr = eh.EventStoreError{
+				Err:       eh.ErrCouldNotSaveEvents,
+				BaseErr:   err,
+				Namespace: eh.NamespaceFromContext(ctx),
+			}
+			return
 		}
 	}
 
@@ -141,11 +212,12 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	if s.eventHandler != nil {
 		for _, e := range events {
 			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
-				return eh.EventStoreError{
+				saveErr = eh.EventStoreError{
 					Err:       eh.ErrCouldNotHandleEvents,
 					BaseErr:   err,
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
+				return
 			}
 		}
 	}
