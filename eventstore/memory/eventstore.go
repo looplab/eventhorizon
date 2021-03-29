@@ -17,6 +17,7 @@ package memory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -26,8 +27,6 @@ import (
 )
 
 var (
-	// ErrCouldNotSaveAggregate is when an aggregate could not be saved.
-	ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
 	// ErrCouldNotCreateEvent is when event data could not be created.
 	ErrCouldNotCreateEvent = errors.New("could not create event")
 )
@@ -35,16 +34,34 @@ var (
 // EventStore implements EventStore as an in memory structure.
 type EventStore struct {
 	// The outer map is with namespace as key, the inner with aggregate ID.
-	db   map[string]map[uuid.UUID]aggregateRecord
-	dbMu sync.RWMutex
+	db           map[string]map[uuid.UUID]aggregateRecord
+	dbMu         sync.RWMutex
+	eventHandler eh.EventHandler
 }
 
 // NewEventStore creates a new EventStore using memory as storage.
-func NewEventStore() *EventStore {
+func NewEventStore(options ...Option) (*EventStore, error) {
 	s := &EventStore{
 		db: map[string]map[uuid.UUID]aggregateRecord{},
 	}
-	return s
+	for _, option := range options {
+		if err := option(s); err != nil {
+			return nil, fmt.Errorf("error while applying option: %v", err)
+		}
+	}
+	return s, nil
+}
+
+// Option is an option setter used to configure creation.
+type Option func(*EventStore) error
+
+// WithEventHandler adds an event handler that will be called when saving events.
+// An example would be to add an event bus to publish events.
+func WithEventHandler(h eh.EventHandler) Option {
+	return func(s *EventStore) error {
+		s.eventHandler = h
+		return nil
+	}
 }
 
 // Save implements the Save method of the eventhorizon.EventStore interface.
@@ -106,7 +123,8 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if aggregate, ok := s.db[ns][aggregateID]; ok {
 			if aggregate.Version != originalVersion {
 				return eh.EventStoreError{
-					Err:       ErrCouldNotSaveAggregate,
+					Err:       eh.ErrCouldNotSaveEvents,
+					BaseErr:   fmt.Errorf("invalid original version %d", originalVersion),
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
@@ -115,6 +133,20 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			aggregate.Events = append(aggregate.Events, dbEvents...)
 
 			s.db[ns][aggregateID] = aggregate
+		}
+	}
+
+	// Let the optional event handler handle the events. Aborts the transaction
+	// in case of error.
+	if s.eventHandler != nil {
+		for _, e := range events {
+			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
+				return eh.EventStoreError{
+					Err:       eh.ErrCouldNotHandleEvents,
+					BaseErr:   err,
+					Namespace: eh.NamespaceFromContext(ctx),
+				}
+			}
 		}
 	}
 

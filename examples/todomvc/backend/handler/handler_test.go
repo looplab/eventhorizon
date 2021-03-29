@@ -733,13 +733,23 @@ func NewTestSession(ctx context.Context) (
 	eh.EventBus,
 	eh.ReadWriteRepo,
 ) {
+	// Create the event bus that distributes events.
+	eventBus := localEventBus.NewEventBus(nil)
+
+	// Create the event store.
+	eventStore, _ := memoryEventStore.NewEventStore(
+		memoryEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+	)
+
+	// Create the command bus.
 	commandBus := bus.NewCommandHandler()
-	eventStore := memoryEventStore.NewEventStore()
-	eventBus := localEventBus.NewEventBus()
+
+	// Create the read repositories.
 	todoRepo := memory.NewRepo()
 	if err := todo.SetupDomain(ctx, commandBus, eventStore, eventBus, todoRepo); err != nil {
 		log.Println("could not setup domain:", err)
 	}
+
 	return commandBus, eventBus, todoRepo
 }
 
@@ -749,19 +759,14 @@ func NewIntegrationTestSession(ctx context.Context) (
 	eh.ReadWriteRepo,
 ) {
 	// Use MongoDB in Docker with fallback to localhost.
-	dbAddr := os.Getenv("MONGODB_ADDR")
-	if dbAddr == "" {
-		dbAddr = "localhost:27017"
+	addr := os.Getenv("MONGODB_ADDR")
+	if addr == "" {
+		addr = "localhost:27017"
 	}
-	dbURL := "mongodb://" + dbAddr
+	url := "mongodb://" + addr
 	dbPrefix := "todomvc-example"
 
 	commandBus := bus.NewCommandHandler()
-
-	eventStore, err := mongoEventStore.NewEventStore(dbURL, dbPrefix)
-	if err != nil {
-		log.Fatalf("could not create event store: %s", err)
-	}
 
 	eventBus, err := gcpEventBus.NewEventBus("project-id", dbPrefix)
 	if err != nil {
@@ -773,7 +778,14 @@ func NewIntegrationTestSession(ctx context.Context) (
 		}
 	}()
 
-	repo, err := mongodb.NewRepo(dbURL, dbPrefix, "todos")
+	eventStore, err := mongoEventStore.NewEventStore(url, dbPrefix,
+		mongoEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+	)
+	if err != nil {
+		log.Fatalf("could not create event store: %s", err)
+	}
+
+	repo, err := mongodb.NewRepo(url, dbPrefix, "todos")
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
@@ -788,6 +800,7 @@ func NewIntegrationTestSession(ctx context.Context) (
 		log.Println("could not clear DB:", err)
 	}
 
+	// Setup the todo domain.
 	if err := todo.SetupDomain(ctx, commandBus, eventStore, eventBus, todoRepo); err != nil {
 		log.Println("could not setup domain:", err)
 	}

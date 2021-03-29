@@ -25,13 +25,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/commandhandler/bus"
-	eventbus "github.com/looplab/eventhorizon/eventbus/local"
-	eventstore "github.com/looplab/eventhorizon/eventstore/mongodb"
-	"github.com/looplab/eventhorizon/examples/guestlist/domains/guestlist"
-	repo "github.com/looplab/eventhorizon/repo/mongodb"
+	localEventBus "github.com/looplab/eventhorizon/eventbus/local"
+	mongoEventStore "github.com/looplab/eventhorizon/eventstore/mongodb"
+	"github.com/looplab/eventhorizon/repo/mongodb"
 	"github.com/looplab/eventhorizon/repo/version"
+
+	"github.com/looplab/eventhorizon/examples/guestlist/domains/guestlist"
 )
 
 func ExampleIntegration() {
@@ -51,33 +53,37 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 		addr = "localhost:27017"
 	}
 	url := "mongodb://" + addr
-
-	// Create the event store.
-	eventStore, err := eventstore.NewEventStore(url, "demo")
-	if err != nil {
-		log.Fatalf("could not create event store: %s", err)
-	}
+	dbPrefix := "guestlist-example"
 
 	// Create the event bus that distributes events.
-	eventBus := eventbus.NewEventBus()
+	eventBus := localEventBus.NewEventBus(nil)
 	go func() {
 		for e := range eventBus.Errors() {
 			log.Printf("eventbus: %s", e.Error())
 		}
 	}()
 
+	// Create the event store.
+	eventStore, err := mongoEventStore.NewEventStore(url, dbPrefix,
+		mongoEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+	)
+	if err != nil {
+		log.Fatalf("could not create event store: %s", err)
+	}
+
 	// Create the command bus.
 	commandBus := bus.NewCommandHandler()
 
 	// Create the read repositories.
-	invitationRepo, err := repo.NewRepo(url, "demo", "invitations")
+	invitationRepo, err := mongodb.NewRepo(url, dbPrefix, "invitations")
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
 	invitationRepo.SetEntityFactory(func() eh.Entity { return &guestlist.Invitation{} })
 	// A version repo is needed for the projector to handle eventual consistency.
 	invitationVersionRepo := version.NewRepo(invitationRepo)
-	guestListRepo, err := repo.NewRepo(url, "demo", "guest_lists")
+
+	guestListRepo, err := mongodb.NewRepo(url, dbPrefix, "guest_lists")
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}

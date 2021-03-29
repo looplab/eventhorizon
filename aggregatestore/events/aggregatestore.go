@@ -26,15 +26,12 @@ import (
 // uses an event store for loading and saving events used to build the aggregate
 // and an event handler to handle resulting events.
 type AggregateStore struct {
-	store        eh.EventStore
-	eventHandler eh.EventHandler
+	store eh.EventStore
 }
 
 var (
 	// ErrInvalidEventStore is when a dispatcher is created with a nil event store.
 	ErrInvalidEventStore = errors.New("invalid event store")
-	// ErrInvalidEventBus is when a dispatcher is created with a nil event bus.
-	ErrInvalidEventBus = errors.New("invalid event bus")
 	// ErrInvalidAggregateType is when  the aggregate does not implement event.Aggregte.
 	ErrInvalidAggregateType = errors.New("invalid aggregate type")
 	// ErrMismatchedEventType occurs when loaded events from ID does not match aggregate type.
@@ -68,18 +65,12 @@ func (e ApplyEventError) Cause() error {
 // NewAggregateStore creates a aggregate store with an event store and an event
 // handler that will handle resulting events (for example by publishing them
 // on an event bus).
-func NewAggregateStore(store eh.EventStore, eventHandler eh.EventHandler) (*AggregateStore, error) {
+func NewAggregateStore(store eh.EventStore) (*AggregateStore, error) {
 	if store == nil {
 		return nil, ErrInvalidEventStore
 	}
-
-	if eventHandler == nil {
-		return nil, ErrInvalidEventBus
-	}
-
 	d := &AggregateStore{
-		store:        store,
-		eventHandler: eventHandler,
+		store: store,
 	}
 	return d, nil
 }
@@ -131,12 +122,6 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 	// after this save. Currently it is not reused.
 	if err := r.applyEvents(ctx, a, events); err != nil {
 		return err
-	}
-
-	for _, e := range events {
-		if err := r.eventHandler.HandleEvent(ctx, e); err != nil {
-			return err
-		}
 	}
 
 	return nil
