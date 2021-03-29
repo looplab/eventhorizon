@@ -87,6 +87,7 @@ func main() {
 	var eventStore eh.EventStore
 	if eventStore, err = mongoEventStore.NewEventStore(url, dbPrefix,
 		mongoEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
+		mongoEventStore.WithTransactions(),         // Run storing and publishing in a transaction.
 	); err != nil {
 		log.Fatal("could not create event store: ", err)
 	}

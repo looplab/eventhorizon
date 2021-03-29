@@ -1,5 +1,8 @@
 version: "3.4"
 
+volumes:
+  mongodb:
+
 services:
   eventhorizon-test:
     build:
@@ -21,10 +24,30 @@ services:
       - -c
       - make test test_integration
 
+  # MongoDB replica set setup.
   mongodb:
     image: mongo:4.4
+    restart: on-failure
+    depends_on:
+      - mongodb-rs
+    networks:
+      default:
+    entrypoint: ["bash", "/scripts/mongodb-rs-setup.sh"]
+    volumes:
+      - ./scripts/mongodb-rs-setup.sh:/scripts/mongodb-rs-setup.sh
+
+  mongodb-rs:
+    image: mongo:4.4
+    restart: always
     ports:
       - "27017:27017"
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    healthcheck:
+      test: test $$(echo "rs.status().ok" | mongo --quiet) -eq 1
+      interval: 10s
+      start_period: 30s
+    volumes:
+      - mongodb:/data/db
 
   gpubsub:
     image: gcr.io/google.com/cloudsdktool/cloud-sdk:326.0.0-emulators

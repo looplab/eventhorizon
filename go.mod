@@ -6,7 +6,6 @@ require (
 	cloud.google.com/go/pubsub v1.10.1
 	github.com/HdrHistogram/hdrhistogram-go v1.0.1 // indirect
 	github.com/go-redis/redis/v8 v8.7.1
-	github.com/golangci/golangci-lint v1.31.0 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75
 	github.com/gorilla/websocket v1.4.2
@@ -22,6 +21,5 @@ require (
 	go.mongodb.org/mongo-driver v1.4.6
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
-	golang.org/x/tools v0.1.0 // indirect
 	google.golang.org/api v0.40.0
 )
