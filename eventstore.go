@@ -72,11 +72,15 @@ func (e EventStoreError) Cause() error {
 	return e.Unwrap()
 }
 
-// ErrNoEventsToAppend is when no events are available to append.
-var ErrNoEventsToAppend = errors.New("no events to append")
-
-// ErrInvalidEvent is when an event does not implement the Event interface.
-var ErrInvalidEvent = errors.New("invalid event")
-
-// ErrIncorrectEventVersion is when an event is for an other version of the aggregate.
-var ErrIncorrectEventVersion = errors.New("mismatching event version")
+var (
+	// ErrNoEventsToAppend is when no events are available to append.
+	ErrNoEventsToAppend = errors.New("no events to append")
+	// ErrInvalidEvent is when an event does not implement the Event interface.
+	ErrInvalidEvent = errors.New("invalid event")
+	// ErrIncorrectEventVersion is when an event is for an other version of the aggregate.
+	ErrIncorrectEventVersion = errors.New("mismatching event version")
+	// ErrCouldNotSaveEvents is when events could not be saved.
+	ErrCouldNotSaveEvents = errors.New("could not save events")
+	// ErrCouldNotHandleEvents is when the events could not be handeled after saving.
+	ErrCouldNotHandleEvents = errors.New("could not handle events")
+)

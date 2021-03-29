@@ -27,12 +27,8 @@ import (
 )
 
 var (
-	// ErrCouldNotSaveAggregate is when an aggregate could not be saved.
-	ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
 	// ErrCouldNotCreateEvent is when event data could not be created.
 	ErrCouldNotCreateEvent = errors.New("could not create event")
-	// ErrCouldNotHandleEvents is when the events could not be handeled after saving.
-	ErrCouldNotHandleEvents = errors.New("could not handle events")
 )
 
 // EventStore implements EventStore as an in memory structure.
@@ -127,7 +123,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if aggregate, ok := s.db[ns][aggregateID]; ok {
 			if aggregate.Version != originalVersion {
 				return eh.EventStoreError{
-					Err:       ErrCouldNotSaveAggregate,
+					Err:       eh.ErrCouldNotSaveEvents,
 					BaseErr:   fmt.Errorf("invalid original version %d", originalVersion),
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
@@ -146,7 +142,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		for _, e := range events {
 			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
 				return eh.EventStoreError{
-					Err:       ErrCouldNotHandleEvents,
+					Err:       eh.ErrCouldNotHandleEvents,
 					BaseErr:   err,
 					Namespace: eh.NamespaceFromContext(ctx),
 				}

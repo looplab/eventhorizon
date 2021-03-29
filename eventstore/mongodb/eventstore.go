@@ -45,12 +45,6 @@ var (
 	ErrCouldNotMarshalEvent = errors.New("could not marshal event")
 	// ErrCouldNotUnmarshalEvent is when an event could not be unmarshaled into a concrete type.
 	ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
-	// ErrCouldNotLoadAggregate is when an aggregate could not be loaded.
-	ErrCouldNotLoadAggregate = errors.New("could not load aggregate")
-	// ErrCouldNotSaveAggregate is when an aggregate could not be saved.
-	ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
-	// ErrCouldNotHandleEvents is when the events could not be handeled after saving.
-	ErrCouldNotHandleEvents = errors.New("could not handle events")
 )
 
 // EventStore implements an EventStore for MongoDB.
@@ -181,7 +175,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 		if _, err := c.InsertOne(ctx, aggregate); err != nil {
 			return eh.EventStoreError{
-				Err:       ErrCouldNotSaveAggregate,
+				Err:       eh.ErrCouldNotSaveEvents,
 				BaseErr:   err,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
@@ -201,13 +195,13 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			},
 		); err != nil {
 			return eh.EventStoreError{
-				Err:       ErrCouldNotSaveAggregate,
+				Err:       eh.ErrCouldNotSaveEvents,
 				BaseErr:   err,
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		} else if r.MatchedCount == 0 {
 			return eh.EventStoreError{
-				Err:       ErrCouldNotSaveAggregate,
+				Err:       eh.ErrCouldNotSaveEvents,
 				BaseErr:   fmt.Errorf("invalid original version %d", originalVersion),
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
@@ -219,7 +213,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		for _, e := range events {
 			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
 				return eh.EventStoreError{
-					Err:       ErrCouldNotHandleEvents,
+					Err:       eh.ErrCouldNotHandleEvents,
 					BaseErr:   err,
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
@@ -316,7 +310,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 		},
 	); err != nil {
 		return eh.EventStoreError{
-			Err:       ErrCouldNotSaveAggregate,
+			Err:       eh.ErrCouldNotSaveEvents,
 			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
@@ -342,7 +336,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 		},
 	); err != nil {
 		return eh.EventStoreError{
-			Err:       ErrCouldNotSaveAggregate,
+			Err:       eh.ErrCouldNotSaveEvents,
 			BaseErr:   err,
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
