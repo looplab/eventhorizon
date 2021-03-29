@@ -28,7 +28,10 @@ import (
 
 // NOTE: Not named "Integration" to enable running with the unit tests.
 func TestEventStore(t *testing.T) {
-	baseStore := memory.NewEventStore()
+	baseStore, err := memory.NewEventStore()
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
 	store := NewEventStore(baseStore)
 	if store == nil {
 		t.Fatal("there should be a store")
@@ -66,7 +69,7 @@ func TestEventStore(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event7 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, event1.AggregateID(), 7))
-	err := store.Save(ctx, []eh.Event{event7}, 6)
+	err = store.Save(ctx, []eh.Event{event7}, 6)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

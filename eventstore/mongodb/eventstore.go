@@ -49,13 +49,16 @@ var (
 	ErrCouldNotLoadAggregate = errors.New("could not load aggregate")
 	// ErrCouldNotSaveAggregate is when an aggregate could not be saved.
 	ErrCouldNotSaveAggregate = errors.New("could not save aggregate")
+	// ErrCouldNotHandleEvents is when the events could not be handeled after saving.
+	ErrCouldNotHandleEvents = errors.New("could not handle events")
 )
 
 // EventStore implements an EventStore for MongoDB.
 type EventStore struct {
-	client   *mongo.Client
-	dbPrefix string
-	dbName   func(ctx context.Context) string
+	client       *mongo.Client
+	dbPrefix     string
+	dbName       func(ctx context.Context) string
+	eventHandler eh.EventHandler
 }
 
 // NewEventStore creates a new EventStore with a MongoDB URI: `mongodb://hostname`.
@@ -90,8 +93,7 @@ func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, options ...O
 	}
 
 	for _, option := range options {
-		err := option(s)
-		if err != nil {
+		if err := option(s); err != nil {
 			return nil, fmt.Errorf("error while applying option: %w", err)
 		}
 	}
@@ -116,6 +118,15 @@ func WithPrefixAsDBName() Option {
 func WithDBName(dbName func(context.Context) string) Option {
 	return func(s *EventStore) error {
 		s.dbName = dbName
+		return nil
+	}
+}
+
+// WithEventHandler adds an event handler that will be called when saving events.
+// An example would be to add an event bus to publish events.
+func WithEventHandler(h eh.EventHandler) Option {
+	return func(s *EventStore) error {
+		s.eventHandler = h
 		return nil
 	}
 }
@@ -199,6 +210,19 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 				Err:       ErrCouldNotSaveAggregate,
 				BaseErr:   fmt.Errorf("invalid original version %d", originalVersion),
 				Namespace: eh.NamespaceFromContext(ctx),
+			}
+		}
+	}
+
+	// Let the optional event handler handle the events.
+	if s.eventHandler != nil {
+		for _, e := range events {
+			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
+				return eh.EventStoreError{
+					Err:       ErrCouldNotHandleEvents,
+					BaseErr:   err,
+					Namespace: eh.NamespaceFromContext(ctx),
+				}
 			}
 		}
 	}

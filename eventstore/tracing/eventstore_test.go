@@ -25,7 +25,10 @@ import (
 
 // NOTE: Not named "Integration" to enable running with the unit tests.
 func TestEventStore(t *testing.T) {
-	innerStore := memory.NewEventStore()
+	innerStore, err := memory.NewEventStore()
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
 	if innerStore == nil {
 		t.Fatal("there should be a store")
 	}
