@@ -17,6 +17,7 @@ package memory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -107,6 +108,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			if aggregate.Version != originalVersion {
 				return eh.EventStoreError{
 					Err:       ErrCouldNotSaveAggregate,
+					BaseErr:   fmt.Errorf("invalid original version %d", originalVersion),
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
