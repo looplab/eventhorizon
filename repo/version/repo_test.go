@@ -95,7 +95,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 	// Find with min version, too low.
 	ctxVersion = NewContextWithMinVersion(ctx, 2)
 	model, err = r.Find(ctxVersion, m1.ID)
-	if !errors.As(err, &repoErr) || !errors.Is(err, eh.ErrIncorrectEntityVersion) {
+	if !errors.As(err, &repoErr) || !errors.Is(err, ErrIncorrectLoadedEntityVersion) {
 		t.Error("there should be a incorrect model version error:", err)
 	}
 

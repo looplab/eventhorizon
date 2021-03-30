@@ -79,7 +79,9 @@ func (r *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error
 
 	// Handle any events optionally provided by the aggregate.
 	if a, ok := aggregate.(eh.EventSource); ok && r.eventHandler != nil {
-		for _, e := range a.Events() {
+		events := a.Events()
+		a.ClearEvents()
+		for _, e := range events {
 			if err := r.eventHandler.HandleEvent(ctx, e); err != nil {
 				return err
 			}

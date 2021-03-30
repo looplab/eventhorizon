@@ -84,6 +84,12 @@ func (e Error) Cause() error {
 // ErrModelNotSet is when a model factory is not set on the EventHandler.
 var ErrModelNotSet = errors.New("model not set")
 
+// ErrIncorrectEntityVersion is when an entity has an incorrect version.
+var ErrIncorrectEntityVersion = errors.New("incorrect entity version")
+
+// ErrIncorrectProjectedEntityVersion is when an entity has an incorrect version after projection.
+var ErrIncorrectProjectedEntityVersion = errors.New("incorrect projected entity version")
+
 // NewEventHandler creates a new EventHandler.
 func NewEventHandler(projector Projector, repo eh.ReadWriteRepo, options ...Option) *EventHandler {
 	h := &EventHandler{
@@ -124,22 +130,37 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		defer cancel()
 	}
 	entity, err := h.repo.Find(findCtx, event.AggregateID())
-	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
-		if h.factoryFn == nil {
+	if err != nil {
+		if errors.Is(err, eh.ErrEntityNotFound) {
+			// Create the model if there was no previous.
+			// TODO: Consider that the event can still have been projected elsewhere
+			// but not yet available in this find. Handle this before/when saving!
+			if h.factoryFn == nil {
+				return Error{
+					Err:          ErrModelNotSet,
+					Projector:    h.projector.ProjectorType().String(),
+					Namespace:    eh.NamespaceFromContext(ctx),
+					EventVersion: event.Version(),
+				}
+			}
+			entity = h.factoryFn()
+		} else if errors.Is(err, version.ErrIncorrectLoadedEntityVersion) {
+			// Retry handling the event if model had the incorrect version.
+			return eh.RetryableEventError{
+				Err: Error{
+					Err:          err,
+					Projector:    h.projector.ProjectorType().String(),
+					Namespace:    eh.NamespaceFromContext(ctx),
+					EventVersion: event.Version(),
+				},
+			}
+		} else {
 			return Error{
-				Err:          ErrModelNotSet,
+				Err:          err,
 				Projector:    h.projector.ProjectorType().String(),
 				Namespace:    eh.NamespaceFromContext(ctx),
 				EventVersion: event.Version(),
 			}
-		}
-		entity = h.factoryFn()
-	} else if err != nil {
-		return Error{
-			Err:          err,
-			Projector:    h.projector.ProjectorType().String(),
-			Namespace:    eh.NamespaceFromContext(ctx),
-			EventVersion: event.Version(),
 		}
 	}
 
@@ -149,17 +170,19 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		entityVersion = entity.AggregateVersion()
 
 		// Ignore old/duplicate events.
-		if entity.AggregateVersion() >= event.Version() {
+		if event.Version() <= entity.AggregateVersion() {
 			return nil
 		}
 
-		if entity.AggregateVersion()+1 != event.Version() {
-			return Error{
-				Err:           eh.ErrIncorrectEntityVersion,
-				Projector:     h.projector.ProjectorType().String(),
-				Namespace:     eh.NamespaceFromContext(ctx),
-				EventVersion:  event.Version(),
-				EntityVersion: entityVersion,
+		if event.Version() != entity.AggregateVersion()+1 {
+			return eh.RetryableEventError{
+				Err: Error{
+					Err:           ErrIncorrectEntityVersion,
+					Projector:     h.projector.ProjectorType().String(),
+					Namespace:     eh.NamespaceFromContext(ctx),
+					EventVersion:  event.Version(),
+					EntityVersion: entityVersion,
+				},
 			}
 		}
 	}
@@ -181,7 +204,7 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		entityVersion = newEntity.AggregateVersion()
 		if newEntity.AggregateVersion() != event.Version() {
 			return Error{
-				Err:           eh.ErrIncorrectEntityVersion,
+				Err:           ErrIncorrectProjectedEntityVersion,
 				Projector:     h.projector.ProjectorType().String(),
 				Namespace:     eh.NamespaceFromContext(ctx),
 				EventVersion:  event.Version(),
@@ -203,12 +226,14 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		}
 	} else {
 		if err := h.repo.Remove(ctx, event.AggregateID()); err != nil {
-			return Error{
-				Err:           err,
-				Projector:     h.projector.ProjectorType().String(),
-				Namespace:     eh.NamespaceFromContext(ctx),
-				EventVersion:  event.Version(),
-				EntityVersion: entityVersion,
+			return eh.RetryableEventError{
+				Err: Error{
+					Err:           err,
+					Projector:     h.projector.ProjectorType().String(),
+					Namespace:     eh.NamespaceFromContext(ctx),
+					EventVersion:  event.Version(),
+					EntityVersion: entityVersion,
+				},
 			}
 		}
 	}

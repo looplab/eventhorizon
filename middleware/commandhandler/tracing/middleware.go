@@ -29,17 +29,16 @@ func NewMiddleware() eh.CommandHandlerMiddleware {
 		return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
 			opName := fmt.Sprintf("Command(%s)", cmd.CommandType())
 			sp, ctx := opentracing.StartSpanFromContext(ctx, opName)
-
-			err := h.HandleCommand(ctx, cmd)
-
 			sp.SetTag("eh.command_type", cmd.CommandType())
 			sp.SetTag("eh.aggregate_type", cmd.AggregateType())
 			sp.SetTag("eh.aggregate_id", cmd.AggregateID())
+
+			err := h.HandleCommand(ctx, cmd)
 			if err != nil {
 				ext.LogError(sp, err)
 			}
-			sp.Finish()
 
+			sp.Finish()
 			return err
 		})
 	})

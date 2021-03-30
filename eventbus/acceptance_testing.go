@@ -217,7 +217,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 
 	// Test async errors from handlers.
 	errorHandler := mocks.NewEventHandler("error_handler")
-	errorHandler.Err = errors.New("handler error")
+	errorHandler.ErrOnce = errors.New("handler error")
 	if err := bus1.AddHandler(ctx, eh.MatchAll{}, errorHandler); err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -238,8 +238,34 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 		// Good case.
 		if err.Error() != "could not handle event (error_handler): handler error: (Event@3)" {
 			t.Error("incorrect error sent on event bus:", err)
+			t.Logf("%#v", err.Event)
 		}
 	}
+
+	// Retryable events.
+	retryHandler := mocks.NewEventHandler("retry_handler")
+	retryHandler.ErrOnce = eh.RetryableEventError{Err: errors.New("retryable error")}
+	bus1.AddHandler(ctx, eh.MatchAll{}, retryHandler)
+
+	time.Sleep(timeout) // Need to wait here for handlers to be added.
+
+	event4 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event4"}, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 4),
+		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": int32(42)}),
+	)
+	if err := bus1.HandleEvent(ctx, event4); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	select {
+	case <-time.After(timeout):
+		t.Error("there should be a retried event in time")
+	case <-retryHandler.Recv:
+	}
+	retryHandler.Lock()
+	if retryHandler.NumHandleEvent != 2 {
+		t.Error("the handler should have been called twice")
+	}
+	retryHandler.Unlock()
 
 	// Cancel all handlers and wait.
 	cancel()

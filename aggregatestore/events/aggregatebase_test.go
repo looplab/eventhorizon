@@ -79,7 +79,7 @@ func TestAggregateEvents(t *testing.T) {
 	if event1.String() != "TestAggregateEvent@1" {
 		t.Error("the string representation should be correct:", event1.String())
 	}
-	events := agg.events
+	events := agg.Events()
 	if len(events) != 1 {
 		t.Fatal("there should be one event provided:", len(events))
 	}
@@ -95,6 +95,7 @@ func TestAggregateEvents(t *testing.T) {
 	if len(events) != 2 {
 		t.Error("there should be two events provided:", len(events))
 	}
+	agg.ClearEvents()
 
 	event3 := agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
 	if event3.Version() != 1 {
@@ -104,11 +105,12 @@ func TestAggregateEvents(t *testing.T) {
 	if len(events) != 1 {
 		t.Error("there should be one new event provided:", len(events))
 	}
+	agg.ClearEvents()
 
 	agg = NewTestAggregate(uuid.New())
 	event1 = agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
 	event2 = agg.AppendEvent(TestAggregateEventType, &TestEventData{"event2"}, timestamp)
-	events = agg.events
+	events = agg.Events()
 	if len(events) != 2 {
 		t.Fatal("there should be 2 events provided:", len(events))
 	}

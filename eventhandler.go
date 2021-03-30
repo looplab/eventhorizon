@@ -16,6 +16,7 @@ package eventhorizon
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"runtime"
 	"strings"
@@ -38,6 +39,24 @@ type EventHandler interface {
 
 	// HandleEvent handles an event.
 	HandleEvent(context.Context, Event) error
+}
+
+// RetryableEventError is a "soft" error that handlers should return if they want the
+// handler to be retried. This will often be the case when handling events (for
+// example in a saga) where related read models have not yet been projected.
+// NOTE: The retry behavior is dependent on the eventbus implementation used.
+type RetryableEventError struct {
+	Err error
+}
+
+// Error implements the Error method of the error interface.
+func (e RetryableEventError) Error() string {
+	return fmt.Sprintf("retryable: %s", e.Err)
+}
+
+// Cause returns the cause of this error.
+func (e RetryableEventError) Cause() error {
+	return e.Err
 }
 
 // EventHandlerFunc is a function that can be used as a event handler.

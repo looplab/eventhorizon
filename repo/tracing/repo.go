@@ -16,9 +16,11 @@ package tracing
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/repo/version"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 )
@@ -43,16 +45,19 @@ func (r *Repo) Parent() eh.ReadRepo {
 // Find implements the Find method of the eventhorizon.ReadModel interface.
 func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Repo.Find")
+	sp.SetTag("eh.aggregate_id", id)
 
 	entity, err := r.ReadWriteRepo.Find(ctx, id)
-
-	sp.SetTag("eh.aggregate_id", id)
-	if rrErr, ok := err.(eh.RepoError); err != nil &&
-		!(ok && rrErr.Err == eh.ErrEntityNotFound) {
-		ext.LogError(sp, err)
+	if err != nil {
+		if errors.Is(err, eh.ErrEntityNotFound) ||
+			errors.Is(err, version.ErrIncorrectLoadedEntityVersion) {
+			// Ignore logging as error.
+		} else {
+			ext.LogError(sp, err)
+		}
 	}
-	sp.Finish()
 
+	sp.Finish()
 	return entity, err
 }
 
@@ -61,42 +66,39 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Repo.FindAll")
 
 	entities, err := r.ReadWriteRepo.FindAll(ctx)
-
 	if err != nil {
 		ext.LogError(sp, err)
 	}
-	sp.Finish()
 
+	sp.Finish()
 	return entities, err
 }
 
 // Save implements the Save method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Repo.Save")
+	sp.SetTag("eh.aggregate_id", entity.EntityID())
 
 	err := r.ReadWriteRepo.Save(ctx, entity)
-
-	sp.SetTag("eh.aggregate_id", entity.EntityID())
 	if err != nil {
 		ext.LogError(sp, err)
 	}
-	sp.Finish()
 
+	sp.Finish()
 	return err
 }
 
 // Remove implements the Remove method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Repo.Remove")
+	sp.SetTag("eh.aggregate_id", id)
 
 	err := r.ReadWriteRepo.Remove(ctx, id)
-
-	sp.SetTag("eh.aggregate_id", id)
 	if err != nil {
 		ext.LogError(sp, err)
 	}
-	sp.Finish()
 
+	sp.Finish()
 	return err
 }
 

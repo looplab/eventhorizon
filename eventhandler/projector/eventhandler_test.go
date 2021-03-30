@@ -282,6 +282,13 @@ func TestEventHandler_SaveError(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 1))
+	repo.LoadErr = eh.RepoError{
+		Err: eh.ErrEntityNotFound,
+	}
+	projector.newEntity = &mocks.SimpleModel{
+		ID: id,
+	}
+
 	saveErr := errors.New("save error")
 	repo.SaveErr = saveErr
 	expectedErr := Error{
