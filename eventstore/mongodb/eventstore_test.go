@@ -61,7 +61,6 @@ func TestEventStoreIntegration(t *testing.T) {
 	// Run the actual test suite, both for default and custom namespace.
 	eventstore.AcceptanceTest(t, context.Background(), store)
 	eventstore.AcceptanceTest(t, customNamespaceCtx, store)
-	eventstore.MaintainerAcceptanceTest(t, context.Background(), store)
 }
 
 func TestWithEventHandlerIntegration(t *testing.T) {
