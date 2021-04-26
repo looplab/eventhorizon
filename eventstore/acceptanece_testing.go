@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 )
@@ -130,6 +131,9 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 		event3,                 // Version 3
 		event4, event5, event6, // Version 4, 5 and 6
 	}
+	if len(events) != len(expectedEvents) {
+		t.Errorf("incorrect number of loaded events: %d", len(events))
+	}
 	for i, event := range events {
 		if err := eh.CompareEvents(event, expectedEvents[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the event was incorrect:", err)
@@ -145,6 +149,9 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 		t.Error("there should be no error:", err)
 	}
 	expectedEvents = []eh.Event{event7}
+	if len(events) != len(expectedEvents) {
+		t.Errorf("incorrect number of loaded events: %d", len(events))
+	}
 	for i, event := range events {
 		if err := eh.CompareEvents(event, expectedEvents[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the event was incorrect:", err)

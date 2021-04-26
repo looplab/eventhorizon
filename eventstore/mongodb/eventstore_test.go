@@ -105,6 +105,9 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 	// The stored events should be ok.
+	if len(events) != len(expected) {
+		t.Errorf("incorrect number of loaded events: %d", len(events))
+	}
 	for i, event := range events {
 		if err := eh.CompareEvents(event, expected[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the stored event was incorrect:", err)
@@ -114,6 +117,9 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 		}
 	}
 	// The handled events should be ok.
+	if len(h.Events) != len(expected) {
+		t.Errorf("incorrect number of loaded events: %d", len(events))
+	}
 	for i, event := range h.Events {
 		if err := eh.CompareEvents(event, expected[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the handeled event was incorrect:", err)
