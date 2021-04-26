@@ -160,7 +160,9 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 func eventsToString(events []eh.Event) string {
 	parts := make([]string, len(events))
 	for i, e := range events {
-		parts[i] = fmt.Sprintf("%s:%s (%s)", e.AggregateType(), e.EventType(), e.AggregateID())
+		parts[i] = fmt.Sprintf("%s:%s (%s@%d)",
+			e.AggregateType(), e.EventType(),
+			e.AggregateID(), e.Version())
 	}
 	return strings.Join(parts, ", ")
 }

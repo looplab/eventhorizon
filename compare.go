@@ -64,15 +64,15 @@ func CompareEvents(e1, e2 Event, options ...CompareOption) error {
 			return fmt.Errorf("incorrect timestamp: %s (should be %s)", e1.Timestamp(), e2.Timestamp())
 		}
 	}
-	if e1.AggregateID() != e2.AggregateID() {
-		return fmt.Errorf("incorrect aggregate ID: %s (should be %s)", e1.AggregateID(), e2.AggregateID())
-	}
 	if e1.AggregateType() != e2.AggregateType() {
 		return fmt.Errorf("incorrect aggregate type: %s (should be %s)", e1.AggregateType(), e2.AggregateType())
 	}
+	if e1.AggregateID() != e2.AggregateID() {
+		return fmt.Errorf("incorrect aggregate ID: %s (should be %s)", e1.AggregateID(), e2.AggregateID())
+	}
 	if !opts.ignoreVersion {
 		if e1.Version() != e2.Version() {
-			return fmt.Errorf("incorrect aggregate version: %d (should be %d)", e1.Version(), e2.Version())
+			return fmt.Errorf("incorrect version: %d (should be %d)", e1.Version(), e2.Version())
 		}
 	}
 	if !reflect.DeepEqual(e1.Metadata(), e2.Metadata()) {

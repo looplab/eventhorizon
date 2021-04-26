@@ -81,14 +81,14 @@ func (a *AggregateBase) AggregateType() eh.AggregateType {
 	return a.t
 }
 
-// Version implements the Version method of the Aggregate interface.
-func (a *AggregateBase) Version() int {
+// AggregateVersion implements the AggregateVersion method of the Aggregate interface.
+func (a *AggregateBase) AggregateVersion() int {
 	return a.v
 }
 
-// IncrementVersion implements the IncrementVersion method of the Aggregate interface.
-func (a *AggregateBase) IncrementVersion() {
-	a.v++
+// SetAggregateVersion implements the SetAggregateVersion method of the Aggregate interface.
+func (a *AggregateBase) SetAggregateVersion(v int) {
+	a.v = v
 }
 
 // UncommittedEvents implements the UncommittedEvents method of the eh.EventSource
@@ -108,7 +108,7 @@ func (a *AggregateBase) AppendEvent(t eh.EventType, data eh.EventData, timestamp
 	options = append(options, eh.ForAggregate(
 		a.AggregateType(),
 		a.EntityID(),
-		a.Version()+len(a.events)+1),
+		a.AggregateVersion()+len(a.events)+1), // TODO: This will probably not work with a global version.
 	)
 	e := eh.NewEvent(t, data, timestamp, options...)
 	a.events = append(a.events, e)
