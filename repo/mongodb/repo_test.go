@@ -16,6 +16,8 @@ package mongodb
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"os"
 	"reflect"
@@ -43,13 +45,22 @@ func TestReadRepoIntegration(t *testing.T) {
 	}
 	url := "mongodb://" + addr
 
-	r, err := NewRepo(url, "test", "mocks.Model")
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	db := "test-" + hex.EncodeToString(b)
+	t.Log("using DB:", db)
+
+	r, err := NewRepo(url, db, "mocks.Model")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	if r == nil {
 		t.Error("there should be a repository")
 	}
+	defer r.Close(context.Background())
 
 	r.SetEntityFactory(func() eh.Entity {
 		return &mocks.Model{}
@@ -60,21 +71,10 @@ func TestReadRepoIntegration(t *testing.T) {
 
 	customNamespaceCtx := eh.NewContextWithNamespace(context.Background(), "ns")
 
-	defer r.Close(context.Background())
-	defer func() {
-		if err = r.Clear(context.Background()); err != nil {
-			t.Fatal("there should be no error:", err)
-		}
-		if err = r.Clear(customNamespaceCtx); err != nil {
-			t.Fatal("there should be no error:", err)
-		}
-	}()
-
 	repo.AcceptanceTest(t, context.Background(), r)
 	extraRepoTests(t, context.Background(), r)
 	repo.AcceptanceTest(t, customNamespaceCtx, r)
 	extraRepoTests(t, customNamespaceCtx, r)
-
 }
 
 func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
@@ -164,7 +164,6 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-
 }
 
 func TestRepository(t *testing.T) {

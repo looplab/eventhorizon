@@ -16,11 +16,14 @@ package mongodb
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventstore"
 	"github.com/looplab/eventhorizon/mocks"
@@ -38,25 +41,24 @@ func TestEventStoreIntegration(t *testing.T) {
 	}
 	url := "mongodb://" + addr
 
-	store, err := NewEventStore(url, "test")
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	db := "test-" + hex.EncodeToString(b)
+	t.Log("using DB:", db)
+
+	store, err := NewEventStore(url, db)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
+	defer store.Close(context.Background())
 
 	customNamespaceCtx := eh.NewContextWithNamespace(context.Background(), "ns")
-
-	defer store.Close(context.Background())
-	defer func() {
-		if err = store.Clear(context.Background()); err != nil {
-			t.Fatal("there should be no error:", err)
-		}
-		if err = store.Clear(customNamespaceCtx); err != nil {
-			t.Fatal("there should be no error:", err)
-		}
-	}()
 
 	// Run the actual test suite, both for default and custom namespace.
 	eventstore.AcceptanceTest(t, context.Background(), store)
@@ -75,9 +77,17 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 	}
 	url = "mongodb://" + url
 
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	db := "test-" + hex.EncodeToString(b)
+	t.Log("using DB:", db)
+
 	h := &mocks.EventBus{}
 
-	store, err := NewEventStore(url, "test",
+	store, err := NewEventStore(url, db,
 		WithEventHandler(h),
 	)
 	if err != nil {
@@ -86,6 +96,7 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
+	defer store.Close(context.Background())
 
 	ctx := context.Background()
 
