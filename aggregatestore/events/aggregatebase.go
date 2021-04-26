@@ -91,11 +91,16 @@ func (a *AggregateBase) IncrementVersion() {
 	a.v++
 }
 
-// Events implements the Events method of the eh.EventSource interface.
-func (a *AggregateBase) Events() []eh.Event {
-	events := a.events
+// UncommittedEvents implements the UncommittedEvents method of the eh.EventSource
+// interface.
+func (a *AggregateBase) UncommittedEvents() []eh.Event {
+	return a.events
+}
+
+// ClearUncommittedEvents implements the ClearUncommittedEvents method of the eh.EventSource
+// interface.
+func (a *AggregateBase) ClearUncommittedEvents() {
 	a.events = nil
-	return events
 }
 
 // AppendEvent appends an event for later retrieval by Events().

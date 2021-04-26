@@ -170,12 +170,13 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 	if events[0] != event1 {
 		t.Error("the stored event should be correct:", events[0])
 	}
-	if len(agg.Events()) != 0 {
-		t.Error("there should be no uncommitted events:", agg.Events())
+	if len(agg.UncommittedEvents()) != 0 {
+		t.Error("there should be no uncommitted events:", agg.UncommittedEvents())
 	}
 	if agg.Version() != 1 {
 		t.Error("the version should be 1:", agg.Version())
 	}
+	agg.ClearUncommittedEvents()
 
 	// Store error.
 	agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)

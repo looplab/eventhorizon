@@ -110,13 +110,14 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 	}
 
 	// Retrieve any new events to store.
-	events := a.Events()
+	events := a.UncommittedEvents()
 	if len(events) == 0 {
 		return nil
 	}
 	if err := r.store.Save(ctx, events, a.Version()); err != nil {
 		return err
 	}
+	a.ClearUncommittedEvents()
 
 	// Apply the events in case the aggregate needs to be further used
 	// after this save. Currently it is not reused.

@@ -438,7 +438,7 @@ func TestAggregateHandleCommand(t *testing.T) {
 				t.Log("exp:", tc.expectedErr)
 				t.Log("got:", err)
 			}
-			events := tc.agg.Events()
+			events := tc.agg.UncommittedEvents()
 			if !reflect.DeepEqual(events, tc.expectedEvents) {
 				t.Errorf("test case '%s': incorrect events", name)
 				t.Log("exp:\n", pretty.Sprint(tc.expectedEvents))
