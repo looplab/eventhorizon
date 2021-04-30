@@ -19,10 +19,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventstore"
 	"github.com/looplab/eventhorizon/mocks"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 func TestEventStore(t *testing.T) {

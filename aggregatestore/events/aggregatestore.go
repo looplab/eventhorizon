@@ -18,8 +18,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // AggregateStore is an aggregate store using event sourcing. It

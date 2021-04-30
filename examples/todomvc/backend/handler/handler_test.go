@@ -26,8 +26,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/commandhandler/bus"
 	gcpEventBus "github.com/looplab/eventhorizon/eventbus/gcp"
@@ -39,6 +37,7 @@ import (
 	"github.com/looplab/eventhorizon/repo/memory"
 	"github.com/looplab/eventhorizon/repo/mongodb"
 	"github.com/looplab/eventhorizon/repo/version"
+	"github.com/looplab/eventhorizon/uuid"
 
 	"github.com/looplab/eventhorizon/examples/todomvc/backend/domains/todo"
 )

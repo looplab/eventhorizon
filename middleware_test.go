@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 func TestCommandHandlerMiddleware(t *testing.T) {

@@ -21,8 +21,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/google/uuid"
-
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/commandhandler/bus"
 	gcpEventBus "github.com/looplab/eventhorizon/eventbus/gcp"
@@ -34,6 +32,7 @@ import (
 	mongoRepo "github.com/looplab/eventhorizon/repo/mongodb"
 	tracingRepo "github.com/looplab/eventhorizon/repo/tracing"
 	"github.com/looplab/eventhorizon/repo/version"
+	"github.com/looplab/eventhorizon/uuid"
 
 	"github.com/looplab/eventhorizon/examples/todomvc/backend/domains/todo"
 	"github.com/looplab/eventhorizon/examples/todomvc/backend/handler"

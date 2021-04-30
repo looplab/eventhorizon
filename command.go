@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // Command is a domain command that is sent to a Dispatcher.

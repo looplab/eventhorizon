@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/uuid"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // Aggregate is an interface representing a versioned data entity created from

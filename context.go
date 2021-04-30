@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // DefaultNamespace is the namespace to use if not set in the context.
