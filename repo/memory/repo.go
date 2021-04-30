@@ -20,9 +20,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/google/uuid"
-
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 type namespace string

@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/google/uuid"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // EventStore is an interface for an event sourcing event store.

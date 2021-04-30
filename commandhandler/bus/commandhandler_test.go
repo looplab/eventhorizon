@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 func TestCommandHandler(t *testing.T) {

@@ -18,9 +18,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jpillora/backoff"
+
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // Repo is a middleware that adds version checking to a read repository.

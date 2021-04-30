@@ -17,9 +17,8 @@ package memory
 import (
 	"context"
 
-	"github.com/google/uuid"
-
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // Replace implements the Replace method of the eventhorizon.EventStore interface.

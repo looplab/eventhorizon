@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
@@ -32,6 +31,7 @@ import (
 	_ "github.com/looplab/eventhorizon/codec/bson"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 var (

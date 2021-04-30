@@ -18,7 +18,6 @@ import (
 	"context"
 	"log"
 
-	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/aggregatestore/events"
 	"github.com/looplab/eventhorizon/commandhandler/aggregate"
@@ -26,6 +25,7 @@ import (
 	"github.com/looplab/eventhorizon/eventhandler/projector"
 	"github.com/looplab/eventhorizon/eventhandler/saga"
 	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // Setup configures the guestlist.

@@ -21,9 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kr/pretty"
+
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 func TestProjector(t *testing.T) {

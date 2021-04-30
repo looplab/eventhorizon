@@ -17,10 +17,11 @@ package tracing
 import (
 	"context"
 
-	"github.com/google/uuid"
-	eh "github.com/looplab/eventhorizon"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+
+	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // EventStore is a EventStore that adds tracing.

@@ -21,11 +21,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kr/pretty"
+
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/aggregatestore/events"
 	"github.com/looplab/eventhorizon/mocks"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 func TestAggregateHandleCommand(t *testing.T) {

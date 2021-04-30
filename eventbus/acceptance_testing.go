@@ -22,12 +22,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kr/pretty"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
 	"github.com/looplab/eventhorizon/mocks"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // AcceptanceTest is the acceptance test that all implementations of EventBus

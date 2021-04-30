@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // Group provides groupings of observers by different criteria.

@@ -19,10 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // MaintenanceAcceptanceTest is the acceptance test that all implementations of

@@ -22,13 +22,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/commandhandler/bus"
 	localEventBus "github.com/looplab/eventhorizon/eventbus/local"
 	memoryEventStore "github.com/looplab/eventhorizon/eventstore/memory"
-	"github.com/looplab/eventhorizon/examples/guestlist/domains/guestlist"
 	"github.com/looplab/eventhorizon/repo/memory"
+	"github.com/looplab/eventhorizon/uuid"
+
+	"github.com/looplab/eventhorizon/examples/guestlist/domains/guestlist"
 )
 
 // NOTE: Not named "Integration" to enable running with the unit tests.

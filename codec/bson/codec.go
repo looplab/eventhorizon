@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // EventCodec is a codec for marshaling and unmarshaling events
