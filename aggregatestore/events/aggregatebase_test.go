@@ -36,20 +36,20 @@ func TestNewAggregateBase(t *testing.T) {
 	if agg.EntityID() != id {
 		t.Error("the entity ID should be correct: ", agg.EntityID(), id)
 	}
-	if agg.Version() != 0 {
-		t.Error("the version should be 0:", agg.Version())
+	if agg.AggregateVersion() != 0 {
+		t.Error("the version should be 0:", agg.AggregateVersion())
 	}
 }
 
 func TestAggregateVersion(t *testing.T) {
 	agg := NewAggregateBase(TestAggregateType, uuid.New())
-	if agg.Version() != 0 {
-		t.Error("the version should be 0:", agg.Version())
+	if agg.AggregateVersion() != 0 {
+		t.Error("the version should be 0:", agg.AggregateVersion())
 	}
 
-	agg.IncrementVersion()
-	if agg.Version() != 1 {
-		t.Error("the version should be 1:", agg.Version())
+	agg.SetAggregateVersion(51)
+	if agg.AggregateVersion() != 51 {
+		t.Error("the version should be 1:", agg.AggregateVersion())
 	}
 }
 
@@ -67,14 +67,14 @@ func TestAggregateEvents(t *testing.T) {
 	if !event1.Timestamp().Equal(timestamp) {
 		t.Error("the timestamp should not be zero:", event1.Timestamp())
 	}
-	if event1.Version() != 1 {
-		t.Error("the version should be 1:", event1.Version())
-	}
 	if event1.AggregateType() != TestAggregateType {
 		t.Error("the aggregate type should be correct:", event1.AggregateType())
 	}
 	if event1.AggregateID() != id {
-		t.Error("the aggregate id should be correct:", event1.AggregateID())
+		t.Error("the aggregate ID should be correct:", event1.AggregateID())
+	}
+	if event1.Version() != 1 {
+		t.Error("the version should be 1:", event1.Version())
 	}
 	if event1.String() != "TestAggregateEvent@1" {
 		t.Error("the string representation should be correct:", event1.String())
@@ -91,19 +91,21 @@ func TestAggregateEvents(t *testing.T) {
 	if event2.Version() != 2 {
 		t.Error("the version should be 2:", event2.Version())
 	}
-	events = agg.Events()
+	events = agg.UncommittedEvents()
 	if len(events) != 2 {
 		t.Error("there should be two events provided:", len(events))
 	}
+	agg.ClearUncommittedEvents()
 
 	event3 := agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
 	if event3.Version() != 1 {
 		t.Error("the version should be 1 after clearing uncommitted events (without applying any):", event3.Version())
 	}
-	events = agg.Events()
+	events = agg.UncommittedEvents()
 	if len(events) != 1 {
 		t.Error("there should be one new event provided:", len(events))
 	}
+	agg.ClearUncommittedEvents()
 
 	agg = NewTestAggregate(uuid.New())
 	event1 = agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
@@ -154,7 +156,7 @@ type TestAggregate struct {
 	event eh.Event
 }
 
-var _ = Aggregate(&TestAggregate{})
+var _ = VersionedAggregate(&TestAggregate{})
 
 func NewTestAggregate(id uuid.UUID) *TestAggregate {
 	return &TestAggregate{

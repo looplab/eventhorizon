@@ -38,7 +38,6 @@ func TestEventStore(t *testing.T) {
 	eventstore.AcceptanceTest(t, context.Background(), store)
 	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
 	eventstore.AcceptanceTest(t, ctx, store)
-	eventstore.MaintainerAcceptanceTest(t, context.Background(), store)
 }
 
 func TestWithEventHandler(t *testing.T) {

@@ -26,9 +26,13 @@ func (a *SliceEventSource) AppendEvent(e eh.Event) {
 	*a = append(*a, e)
 }
 
-// Events implements the Events method of the eh.EventSource interface.
-func (a *SliceEventSource) Events() []eh.Event {
-	events := *a
+// UncommittedEvents implements the UncommittedEvents method of the eh.EventSource interface.
+func (a *SliceEventSource) UncommittedEvents() []eh.Event {
+	return *a
+}
+
+// ClearUncommittedEvents implements the ClearUncommittedEvents method of the eh.EventSource
+// interface.
+func (a *SliceEventSource) ClearUncommittedEvents() {
 	*a = nil
-	return events
 }

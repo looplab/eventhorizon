@@ -58,15 +58,15 @@ func TestAggregateStore_LoadNoEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	a, ok := agg.(Aggregate)
+	a, ok := agg.(VersionedAggregate)
 	if !ok {
 		t.Fatal("the aggregate shoud be of correct type")
 	}
 	if a.EntityID() != id {
 		t.Error("the aggregate ID should be correct: ", a.EntityID(), id)
 	}
-	if a.Version() != 0 {
-		t.Error("the version should be 0:", a.Version())
+	if a.AggregateVersion() != 0 {
+		t.Error("the aggregate version should be 0:", a.AggregateVersion())
 	}
 }
 
@@ -88,15 +88,15 @@ func TestAggregateStore_LoadEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
-	a, ok := loaded.(Aggregate)
+	a, ok := loaded.(VersionedAggregate)
 	if !ok {
-		t.Fatal("the aggregate shoud be of correct type")
+		t.Fatal("the aggregate should be of correct type")
 	}
 	if a.EntityID() != id {
 		t.Error("the aggregate ID should be correct: ", a.EntityID(), id)
 	}
-	if a.Version() != 1 {
-		t.Error("the version should be 1:", a.Version())
+	if a.AggregateVersion() != 1 {
+		t.Error("the aggregate version should be 1:", a.AggregateVersion())
 	}
 	if !reflect.DeepEqual(a.(*TestAggregate).event, event1) {
 		t.Error("the event should be correct:", a.(*TestAggregate).event)
@@ -170,12 +170,13 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 	if events[0] != event1 {
 		t.Error("the stored event should be correct:", events[0])
 	}
-	if len(agg.Events()) != 0 {
-		t.Error("there should be no uncommitted events:", agg.Events())
+	if len(agg.UncommittedEvents()) != 0 {
+		t.Error("there should be no uncommitted events:", agg.UncommittedEvents())
 	}
-	if agg.Version() != 1 {
-		t.Error("the version should be 1:", agg.Version())
+	if agg.AggregateVersion() != 1 {
+		t.Error("the aggregate version should be 1:", agg.AggregateVersion())
 	}
+	agg.ClearUncommittedEvents()
 
 	// Store error.
 	agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
@@ -239,7 +240,7 @@ type TestAggregateOther struct {
 	err error
 }
 
-var _ = Aggregate(&TestAggregateOther{})
+var _ = VersionedAggregate(&TestAggregateOther{})
 
 func NewTestAggregateOther(id uuid.UUID) *TestAggregateOther {
 	return &TestAggregateOther{

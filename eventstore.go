@@ -30,19 +30,6 @@ type EventStore interface {
 	Load(context.Context, uuid.UUID) ([]Event, error)
 }
 
-// EventStoreMaintainer is an interface for a maintainer of an EventStore.
-// NOTE: Should not be used in apps, useful for migration tools etc.
-type EventStoreMaintainer interface {
-	EventStore
-
-	// Replace an event, the version must match. Useful for maintenance actions.
-	// Returns ErrAggregateNotFound if there is no aggregate.
-	Replace(context.Context, Event) error
-
-	// RenameEvent renames all instances of the event type.
-	RenameEvent(ctx context.Context, from, to EventType) error
-}
-
 // EventStoreError is an error in the event store, with the namespace.
 type EventStoreError struct {
 	// Err is the error.

@@ -32,8 +32,8 @@ type AggregateStore struct {
 var (
 	// ErrInvalidEventStore is when a dispatcher is created with a nil event store.
 	ErrInvalidEventStore = errors.New("invalid event store")
-	// ErrInvalidAggregateType is when  the aggregate does not implement event.Aggregte.
-	ErrInvalidAggregateType = errors.New("invalid aggregate type")
+	// ErrAggregateNotVersioned is when the aggregate does not implement the VersionedAggregte interface.
+	ErrAggregateNotVersioned = errors.New("aggregate is not versioned")
 	// ErrMismatchedEventType occurs when loaded events from ID does not match aggregate type.
 	ErrMismatchedEventType = errors.New("mismatched event type and aggregate type")
 )
@@ -84,9 +84,9 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 	if err != nil {
 		return nil, err
 	}
-	a, ok := agg.(Aggregate)
+	a, ok := agg.(VersionedAggregate)
 	if !ok {
-		return nil, ErrInvalidAggregateType
+		return nil, ErrAggregateNotVersioned
 	}
 
 	events, err := r.store.Load(ctx, a.EntityID())
@@ -104,19 +104,20 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 // Save implements the Save method of the eventhorizon.AggregateStore interface.
 // It saves all uncommitted events from an aggregate to the event store.
 func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
-	a, ok := agg.(Aggregate)
+	a, ok := agg.(VersionedAggregate)
 	if !ok {
-		return ErrInvalidAggregateType
+		return ErrAggregateNotVersioned
 	}
 
 	// Retrieve any new events to store.
-	events := a.Events()
+	events := a.UncommittedEvents()
 	if len(events) == 0 {
 		return nil
 	}
-	if err := r.store.Save(ctx, events, a.Version()); err != nil {
+	if err := r.store.Save(ctx, events, a.AggregateVersion()); err != nil {
 		return err
 	}
+	a.ClearUncommittedEvents()
 
 	// Apply the events in case the aggregate needs to be further used
 	// after this save. Currently it is not reused.
@@ -127,7 +128,7 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 	return nil
 }
 
-func (r *AggregateStore) applyEvents(ctx context.Context, a Aggregate, events []eh.Event) error {
+func (r *AggregateStore) applyEvents(ctx context.Context, a VersionedAggregate, events []eh.Event) error {
 	for _, event := range events {
 		if event.AggregateType() != a.AggregateType() {
 			return ErrMismatchedEventType
@@ -139,7 +140,7 @@ func (r *AggregateStore) applyEvents(ctx context.Context, a Aggregate, events []
 				Err:   err,
 			}
 		}
-		a.IncrementVersion()
+		a.SetAggregateVersion(event.Version())
 	}
 
 	return nil

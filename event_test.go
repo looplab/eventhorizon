@@ -69,7 +69,7 @@ func TestNewEvent(t *testing.T) {
 		t.Error("the aggregate ID should be correct:", event.AggregateID())
 	}
 	if event.Version() != 3 {
-		t.Error("the version should be zero:", event.Version())
+		t.Error("the version should be correct:", event.Version())
 	}
 	if !reflect.DeepEqual(event.Metadata(), map[string]interface{}{
 		"meta":         "data",
@@ -88,6 +88,9 @@ func TestCreateEventData(t *testing.T) {
 	data, err := CreateEventData(TestEventRegisterType)
 	if !errors.Is(err, ErrEventDataNotRegistered) {
 		t.Error("there should be a event not registered error:", err)
+	}
+	if data != nil {
+		t.Error("the data should be nil")
 	}
 
 	RegisterEventData(TestEventRegisterType, func() EventData {

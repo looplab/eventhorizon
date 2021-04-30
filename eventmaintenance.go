@@ -1,4 +1,4 @@
-// Copyright (c) 2020 - The Event Horizon authors.
+// Copyright (c) 2014 - The Event Horizon authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,17 @@
 
 package eventhorizon
 
-// EventSource is a source of events, used for getting events for handling,
-// storing, publishing etc. Mostly used in the aggregate stores.
-type EventSource interface {
-	// UncommittedEvents returns events that are not committed to the event store,
-	// or handeled in other ways (depending on the caller).
-	UncommittedEvents() []Event
-	// ClearUncommittedEvents clears uncommitted events, used after they have been
-	// committed to the event store or handled in other ways (depending on the caller).
-	ClearUncommittedEvents()
+import (
+	"context"
+)
+
+// EventStoreMaintenance is an interface with maintenance tools for an EventStore.
+// NOTE: Should not be used in apps, useful for migration tools etc.
+type EventStoreMaintenance interface {
+	// Replace an event, the version must match. Useful for maintenance actions.
+	// Returns ErrAggregateNotFound if there is no aggregate.
+	Replace(context.Context, Event) error
+
+	// RenameEvent renames all instances of the event type.
+	RenameEvent(ctx context.Context, from, to EventType) error
 }

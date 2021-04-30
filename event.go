@@ -38,13 +38,12 @@ type Event interface {
 	// Timestamp of when the event was created.
 	Timestamp() time.Time
 
-	// AggregateType returns the type of the aggregate that the event can be
+	// AggregateType is the type of the aggregate that the event can be
 	// applied to.
 	AggregateType() AggregateType
-	// AggregateID returns the ID of the aggregate that the event should be
-	// applied to.
+	// AggregateID is the ID of the aggregate that the event belongs to.
 	AggregateID() uuid.UUID
-	// Version of the aggregate for this event (after it has been applied).
+	// Version is the version of the aggregate after the event has been applied.
 	Version() int
 
 	// Metadata is app-specific metadata such as request ID, originating user etc.
@@ -166,7 +165,7 @@ func (e event) AggregateType() AggregateType {
 	return e.aggregateType
 }
 
-// AggrgateID implements the AggrgateID method of the Event interface.
+// AggregateID implements the AggregateID method of the Event interface.
 func (e event) AggregateID() uuid.UUID {
 	return e.aggregateID
 }

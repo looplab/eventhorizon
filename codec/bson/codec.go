@@ -32,11 +32,11 @@ type EventCodec struct{}
 // MarshalEvent marshals an event into bytes in BSON format.
 func (c *EventCodec) MarshalEvent(ctx context.Context, event eh.Event) ([]byte, error) {
 	e := evt{
-		AggregateID:   event.AggregateID().String(),
-		AggregateType: event.AggregateType(),
 		EventType:     event.EventType(),
-		Version:       event.Version(),
 		Timestamp:     event.Timestamp(),
+		AggregateType: event.AggregateType(),
+		AggregateID:   event.AggregateID().String(),
+		Version:       event.Version(),
 		Metadata:      event.Metadata(),
 		Context:       eh.MarshalContext(ctx),
 	}
