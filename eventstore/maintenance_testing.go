@@ -35,7 +35,8 @@ import (
 //   }
 //
 func MaintenanceAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore, storeMaintenance eh.EventStoreMaintenance) {
-	ctx = context.WithValue(ctx, "testkey", "testval")
+	type contextKey string
+	ctx = context.WithValue(ctx, contextKey("testkey"), "testval")
 
 	// Save some events.
 	id := uuid.New()

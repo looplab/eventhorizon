@@ -51,7 +51,7 @@ func TestEventHandler_CreateModel(t *testing.T) {
 	}
 	projector.newEntity = entity
 	if err := handler.HandleEvent(ctx, event); err != nil {
-		t.Error("there shoud be no error:", err)
+		t.Error("there should be no error:", err)
 	}
 	if projector.event != event {
 		t.Error("the handled event should be correct:", projector.event)
@@ -88,7 +88,7 @@ func TestEventHandler_UpdateModel(t *testing.T) {
 		Content: "updated",
 	}
 	if err := handler.HandleEvent(ctx, event); err != nil {
-		t.Error("there shoud be no error:", err)
+		t.Error("there should be no error:", err)
 	}
 	if projector.event != event {
 		t.Error("the handled event should be correct:", projector.event)
@@ -102,7 +102,7 @@ func TestEventHandler_UpdateModel(t *testing.T) {
 
 	// Handle event again, should be a no-op.
 	if err := handler.HandleEvent(ctx, event); err != nil {
-		t.Error("there shoud be no error:", err)
+		t.Error("there should be no error:", err)
 	}
 }
 
@@ -145,7 +145,7 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 
 	// Handle event again, should be a no-op.
 	if err := handler.HandleEvent(ctx, event); err != nil {
-		t.Error("there shoud be no error:", err)
+		t.Error("there should be no error:", err)
 	}
 }
 
@@ -189,7 +189,7 @@ func TestEventHandler_UpdateModelWithEventsOutOfOrder(t *testing.T) {
 		repo.Unlock()
 	}()
 	if err := handler.HandleEvent(ctx, event); err != nil {
-		t.Error("there shoud be no error:", err)
+		t.Error("there should be no error:", err)
 	}
 	if projector.event != event {
 		t.Error("the handled event should be correct:", projector.event)
@@ -223,7 +223,7 @@ func TestEventHandler_DeleteModel(t *testing.T) {
 	repo.Entity = entity
 	projector.newEntity = nil
 	if err := handler.HandleEvent(ctx, event); err != nil {
-		t.Error("there shoud be no error:", err)
+		t.Error("there should be no error:", err)
 	}
 	if projector.event != event {
 		t.Error("the handled event should be correct:", projector.event)
@@ -262,7 +262,7 @@ func TestEventHandler_LoadError(t *testing.T) {
 	}
 	err := handler.HandleEvent(ctx, event)
 	if !errors.Is(err, expectedErr) {
-		t.Error("there shoud be an error:", err)
+		t.Error("there should be an error:", err)
 	}
 }
 
@@ -292,7 +292,7 @@ func TestEventHandler_SaveError(t *testing.T) {
 	}
 	err := handler.HandleEvent(ctx, event)
 	if !errors.Is(err, expectedErr) {
-		t.Error("there shoud be an error:", err)
+		t.Error("there should be an error:", err)
 	}
 }
 
@@ -322,7 +322,7 @@ func TestEventHandler_ProjectError(t *testing.T) {
 	}
 	err := handler.HandleEvent(ctx, event)
 	if !errors.Is(err, expectedErr) {
-		t.Error("there shoud be an error:", err)
+		t.Error("there should be an error:", err)
 	}
 }
 

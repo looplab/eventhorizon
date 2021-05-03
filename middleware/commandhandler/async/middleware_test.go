@@ -45,7 +45,7 @@ func TestCommandHandler(t *testing.T) {
 	}
 	inner.RLock()
 	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
-		t.Error("the command shoud have been handeled:", inner.Commands)
+		t.Error("the command should have been handeled:", inner.Commands)
 	}
 	inner.RUnlock()
 
@@ -74,6 +74,6 @@ func TestCommandHandler(t *testing.T) {
 		t.Error("there should be an error")
 	}
 	if !reflect.DeepEqual(inner.Commands, []eh.Command(nil)) {
-		t.Error("the command shoud not have been handeled:", inner.Commands)
+		t.Error("the command should not have been handeled:", inner.Commands)
 	}
 }

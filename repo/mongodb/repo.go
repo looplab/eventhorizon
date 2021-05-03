@@ -82,7 +82,7 @@ func NewRepoWithClient(client *mongo.Client, dbPrefix, collection string, option
 		collection: collection,
 	}
 
-	// Use the a prefix and namespcae from the context for DB name.
+	// Use the a prefix and namespace from the context for DB name.
 	r.dbName = func(ctx context.Context) string {
 		ns := eh.NamespaceFromContext(ctx)
 		return dbPrefix + "_" + ns

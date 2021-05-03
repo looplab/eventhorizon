@@ -32,7 +32,7 @@ type AggregateStore struct {
 var (
 	// ErrInvalidEventStore is when a dispatcher is created with a nil event store.
 	ErrInvalidEventStore = errors.New("invalid event store")
-	// ErrAggregateNotVersioned is when the aggregate does not implement the VersionedAggregte interface.
+	// ErrAggregateNotVersioned is when the aggregate does not implement the VersionedAggregate interface.
 	ErrAggregateNotVersioned = errors.New("aggregate is not versioned")
 	// ErrMismatchedEventType occurs when loaded events from ID does not match aggregate type.
 	ErrMismatchedEventType = errors.New("mismatched event type and aggregate type")

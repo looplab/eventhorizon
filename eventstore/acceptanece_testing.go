@@ -39,12 +39,13 @@ import (
 func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh.Event {
 	savedEvents := []eh.Event{}
 
-	ctx = context.WithValue(ctx, "testkey", "testval")
+	type contextKey string
+	ctx = context.WithValue(ctx, contextKey("testkey"), "testval")
 
 	// Save no events.
 	err := store.Save(ctx, []eh.Event{}, 0)
 	if esErr, ok := err.(eh.EventStoreError); !ok || esErr.Err != eh.ErrNoEventsToAppend {
-		t.Error("there shoud be a ErrNoEventsToAppend error:", err)
+		t.Error("there should be a ErrNoEventsToAppend error:", err)
 	}
 
 	// Save event, version 1.
@@ -64,7 +65,7 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 	// Try to save same event twice.
 	err = store.Save(ctx, []eh.Event{event1}, 1)
 	if esErr, ok := err.(eh.EventStoreError); !ok || esErr.Err != eh.ErrIncorrectEventVersion {
-		t.Error("there should be a ErrIncerrectEventVersion error:", err)
+		t.Error("there should be a ErrIncorrectEventVersion error:", err)
 	}
 
 	// Save event, version 2, with metadata.

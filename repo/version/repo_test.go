@@ -71,7 +71,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 
 	// Find with min version without version.
 	ctxVersion := NewContextWithMinVersion(ctx, 1)
-	model, err := r.Find(ctxVersion, simpleModel.ID)
+	_, err := r.Find(ctxVersion, simpleModel.ID)
 	var repoErr eh.RepoError
 	if !errors.As(err, &repoErr) || !errors.Is(err, eh.ErrEntityHasNoVersion) {
 		t.Error("there should be a model has no version error:", err)
@@ -94,7 +94,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 
 	// Find with min version, too low.
 	ctxVersion = NewContextWithMinVersion(ctx, 2)
-	model, err = r.Find(ctxVersion, m1.ID)
+	_, err = r.Find(ctxVersion, m1.ID)
 	if !errors.As(err, &repoErr) || !errors.Is(err, eh.ErrIncorrectEntityVersion) {
 		t.Error("there should be a incorrect model version error:", err)
 	}
@@ -105,7 +105,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 		t.Error("there should be no error:", err)
 	}
 	ctxVersion = NewContextWithMinVersion(ctx, 2)
-	model, err = r.Find(ctxVersion, m1.ID)
+	model, err := r.Find(ctxVersion, m1.ID)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -179,7 +179,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 	// Meassure the time it takes, it should not wait > 100ms (the first retry).
 	t1 := time.Now()
 	model, err = r.Find(ctxVersion, m2.ID)
-	dt := time.Now().Sub(t1)
+	dt := time.Since(t1)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -225,7 +225,7 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 	ctxVersion = NewContextWithMinVersion(ctx, 6)
 	ctxVersion, cancel = context.WithTimeout(ctxVersion, 10*time.Millisecond)
 	defer cancel()
-	model, err = r.Find(ctxVersion, m3.ID)
+	_, err = r.Find(ctxVersion, m3.ID)
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Error("there should be a deadline exceeded error:", err)
 	}

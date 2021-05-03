@@ -25,11 +25,11 @@ import (
 
 // CommandHandler is a HTTP handler for eventhorizon.Commands. Commands must be
 // registered with eventhorizon.RegisterCommand(). It expects a POST with a JSON
-// body that will be unmarshalled into the command.
+// body that will be unmarshaled into the command.
 func CommandHandler(commandHandler eh.CommandHandler, commandType eh.CommandType) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			http.Error(w, "unsuported method: "+r.Method, http.StatusMethodNotAllowed)
+			http.Error(w, "unsupported method: "+r.Method, http.StatusMethodNotAllowed)
 			return
 		}
 

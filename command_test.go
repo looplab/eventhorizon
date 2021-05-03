@@ -23,14 +23,14 @@ import (
 )
 
 func TestCreateCommand(t *testing.T) {
-	cmd, err := CreateCommand(TestCommandRegisterType)
+	_, err := CreateCommand(TestCommandRegisterType)
 	if !errors.Is(err, ErrCommandNotRegistered) {
 		t.Error("there should be a command not registered error:", err)
 	}
 
 	RegisterCommand(func() Command { return &TestCommandRegister{} })
 
-	cmd, err = CreateCommand(TestCommandRegisterType)
+	cmd, err := CreateCommand(TestCommandRegisterType)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -161,13 +161,13 @@ func TestCheckCommand(t *testing.T) {
 	}
 
 	// Check all array fields.
-	err = CheckCommand(&TestCommandArray{uuid.New(), [1]string{"string"}, [1]int{0}, [1]struct{ Test string }{struct{ Test string }{"struct"}}})
+	err = CheckCommand(&TestCommandArray{uuid.New(), [1]string{"string"}, [1]int{0}, [1]struct{ Test string }{{"struct"}}})
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 
 	// Empty array field.
-	err = CheckCommand(&TestCommandArray{uuid.New(), [1]string{""}, [1]int{0}, [1]struct{ Test string }{struct{ Test string }{"struct"}}})
+	err = CheckCommand(&TestCommandArray{uuid.New(), [1]string{""}, [1]int{0}, [1]struct{ Test string }{{"struct"}}})
 	if err == nil || err.Error() != "missing field: StringArray" {
 		t.Error("there should be a missing field error:", err)
 	}

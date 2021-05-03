@@ -31,7 +31,7 @@ func NewMiddleware() (eh.CommandHandlerMiddleware, chan Error) {
 			// Delayed command execution if there is time set.
 			if c, ok := cmd.(Command); ok && !c.ExecuteAt().IsZero() {
 				go func() {
-					t := time.NewTimer(c.ExecuteAt().Sub(time.Now()))
+					t := time.NewTimer(time.Until(c.ExecuteAt()))
 					defer t.Stop()
 
 					var err error

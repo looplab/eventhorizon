@@ -303,9 +303,7 @@ func (m *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	if m.Err != nil {
 		return m.Err
 	}
-	for _, event := range events {
-		m.Events = append(m.Events, event)
-	}
+	m.Events = append(m.Events, events...)
 	m.Context = ctx
 	return nil
 }

@@ -24,7 +24,7 @@ import (
 
 func TestCreateAggregate(t *testing.T) {
 	id := uuid.New()
-	aggregate, err := CreateAggregate(TestAggregateRegisterType, id)
+	_, err := CreateAggregate(TestAggregateRegisterType, id)
 	if !errors.Is(err, ErrAggregateNotRegistered) {
 		t.Error("there should be a aggregate not registered error:", err)
 	}
@@ -33,7 +33,7 @@ func TestCreateAggregate(t *testing.T) {
 		return &TestAggregateRegister{id: id}
 	})
 
-	aggregate, err = CreateAggregate(TestAggregateRegisterType, id)
+	aggregate, err := CreateAggregate(TestAggregateRegisterType, id)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

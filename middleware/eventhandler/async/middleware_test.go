@@ -75,6 +75,6 @@ func TestEventHandler(t *testing.T) {
 		t.Error("there should be an error")
 	}
 	if !reflect.DeepEqual(inner.Events, []eh.Event{}) {
-		t.Error("the event shoud not have been handeled:", inner.Events)
+		t.Error("the event should not have been handeled:", inner.Events)
 	}
 }

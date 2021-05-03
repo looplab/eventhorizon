@@ -68,7 +68,7 @@ func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, options ...O
 		dbPrefix: dbPrefix,
 	}
 
-	// Use the a prefix and namespcae from the context for DB name.
+	// Use the a prefix and namespace from the context for DB name.
 	s.dbName = func(ctx context.Context) string {
 		ns := eh.NamespaceFromContext(ctx)
 		return dbPrefix + "_" + ns
