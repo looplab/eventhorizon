@@ -94,7 +94,15 @@ func WithMetadata(metadata map[string]interface{}) EventOption {
 	}
 }
 
-// FromCommand adds metadat for the originating command when crating an event.
+// WithGlobalPosition sets the global event position in the metadata.
+func WithGlobalPosition(position int) EventOption {
+	md := map[string]interface{}{
+		"position": position,
+	}
+	return WithMetadata(md)
+}
+
+// FromCommand adds metadata for the originating command when crating an event.
 // Currently it adds the command type and optionally a command ID (if the
 // CommandIDer interface is implemented).
 func FromCommand(cmd Command) EventOption {

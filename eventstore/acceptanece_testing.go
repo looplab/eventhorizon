@@ -135,7 +135,10 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 		t.Errorf("incorrect number of loaded events: %d", len(events))
 	}
 	for i, event := range events {
-		if err := eh.CompareEvents(event, expectedEvents[i], eh.IgnoreVersion()); err != nil {
+		if err := eh.CompareEvents(event, expectedEvents[i],
+			eh.IgnoreVersion(),
+			eh.IgnorePositionMetadata(),
+		); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
 		if event.Version() != i+1 {
@@ -153,7 +156,10 @@ func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh
 		t.Errorf("incorrect number of loaded events: %d", len(events))
 	}
 	for i, event := range events {
-		if err := eh.CompareEvents(event, expectedEvents[i], eh.IgnoreVersion()); err != nil {
+		if err := eh.CompareEvents(event, expectedEvents[i],
+			eh.IgnoreVersion(),
+			eh.IgnorePositionMetadata(),
+		); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
 		if event.Version() != i+1 {

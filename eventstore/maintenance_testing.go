@@ -81,7 +81,10 @@ func MaintenanceAcceptanceTest(t *testing.T, ctx context.Context, store eh.Event
 		event3,    // Version 3
 	}
 	for i, event := range events {
-		if err := eh.CompareEvents(event, expectedEvents[i], eh.IgnoreVersion()); err != nil {
+		if err := eh.CompareEvents(event, expectedEvents[i],
+			eh.IgnoreVersion(),
+			eh.IgnorePositionMetadata(),
+		); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
 		if event.Version() != i+1 {
@@ -118,7 +121,9 @@ func MaintenanceAcceptanceTest(t *testing.T, ctx context.Context, store eh.Event
 	if len(events) != 1 {
 		t.Fatal("there should be one event")
 	}
-	if err := eh.CompareEvents(events[0], newEvent1); err != nil {
+	if err := eh.CompareEvents(events[0], newEvent1,
+		eh.IgnorePositionMetadata(),
+	); err != nil {
 		t.Error("the event was incorrect:", err)
 	}
 	events, err = store.Load(ctx, id2)
@@ -130,7 +135,9 @@ func MaintenanceAcceptanceTest(t *testing.T, ctx context.Context, store eh.Event
 	if len(events) != 1 {
 		t.Fatal("there should be one event")
 	}
-	if err := eh.CompareEvents(events[0], newEvent2); err != nil {
+	if err := eh.CompareEvents(events[0], newEvent2,
+		eh.IgnorePositionMetadata(),
+	); err != nil {
 		t.Error("the event was incorrect:", err)
 	}
 }

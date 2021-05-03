@@ -23,6 +23,7 @@ import (
 type CompareConfig struct {
 	ignoreTimestamp bool
 	ignoreVersion   bool
+	ignorePosition  bool
 }
 
 // CompareOption is an option setter used to configure comparing of events.
@@ -39,6 +40,13 @@ func IgnoreTimestamp() CompareOption {
 func IgnoreVersion() CompareOption {
 	return func(o *CompareConfig) {
 		o.ignoreVersion = true
+	}
+}
+
+// IgnorePositionMetadata ignores the position in metadata when comparing events.
+func IgnorePositionMetadata() CompareOption {
+	return func(o *CompareConfig) {
+		o.ignorePosition = true
 	}
 }
 
@@ -75,8 +83,26 @@ func CompareEvents(e1, e2 Event, options ...CompareOption) error {
 			return fmt.Errorf("incorrect version: %d (should be %d)", e1.Version(), e2.Version())
 		}
 	}
-	if !reflect.DeepEqual(e1.Metadata(), e2.Metadata()) {
-		return fmt.Errorf("incorrect event metadata: %s (should be %s)", e1.Metadata(), e2.Metadata())
+	m1 := e1.Metadata()
+	m2 := e2.Metadata()
+	if opts.ignorePosition {
+		m1 = map[string]interface{}{}
+		for k, v := range e1.Metadata() {
+			if k == "position" {
+				continue
+			}
+			m1[k] = v
+		}
+		m2 = map[string]interface{}{}
+		for k, v := range e2.Metadata() {
+			if k == "position" {
+				continue
+			}
+			m2[k] = v
+		}
+	}
+	if !reflect.DeepEqual(m1, m2) {
+		return fmt.Errorf("incorrect event metadata: %s (should be %s)", m1, m2)
 	}
 	return nil
 }
