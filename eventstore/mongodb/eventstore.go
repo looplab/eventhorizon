@@ -16,7 +16,6 @@ package mongodb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -34,20 +33,9 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-var (
-	// ErrCouldNotDialDB is when the database could not be dialed.
-	ErrCouldNotDialDB = errors.New("could not dial database")
-	// ErrNoDBClient is when no database client is set.
-	ErrNoDBClient = errors.New("no database client")
-	// ErrCouldNotClearDB is when the database could not be cleared.
-	ErrCouldNotClearDB = errors.New("could not clear database")
-	// ErrCouldNotMarshalEvent is when an event could not be marshaled into BSON.
-	ErrCouldNotMarshalEvent = errors.New("could not marshal event")
-	// ErrCouldNotUnmarshalEvent is when an event could not be unmarshaled into a concrete type.
-	ErrCouldNotUnmarshalEvent = errors.New("could not unmarshal event")
-)
-
-// EventStore implements an EventStore for MongoDB.
+// EventStore implements an eventhorizon.EventStore for MongoDB using a single
+// collection with one document per aggregate/stream which holds its events
+// as values.
 type EventStore struct {
 	client       *mongo.Client
 	dbPrefix     string
@@ -63,7 +51,7 @@ func NewEventStore(uri, dbPrefix string, options ...Option) (*EventStore, error)
 	opts.SetReadPreference(readpref.Primary())
 	client, err := mongo.Connect(context.TODO(), opts)
 	if err != nil {
-		return nil, ErrCouldNotDialDB
+		return nil, fmt.Errorf("could not connect to DB: %w", err)
 	}
 
 	return NewEventStoreWithClient(client, dbPrefix, options...)
@@ -72,7 +60,7 @@ func NewEventStore(uri, dbPrefix string, options ...Option) (*EventStore, error)
 // NewEventStoreWithClient creates a new EventStore with a client.
 func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, options ...Option) (*EventStore, error) {
 	if client == nil {
-		return nil, ErrNoDBClient
+		return nil, fmt.Errorf("missing DB client")
 	}
 
 	s := &EventStore{
@@ -234,7 +222,7 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 		return []eh.Event{}, nil
 	} else if err != nil {
 		return nil, eh.EventStoreError{
-			Err:       err,
+			Err:       fmt.Errorf("could not find event: %w", err),
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}
@@ -246,15 +234,13 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 			var err error
 			if e.data, err = eh.CreateEventData(e.EventType); err != nil {
 				return nil, eh.EventStoreError{
-					Err:       ErrCouldNotUnmarshalEvent,
-					BaseErr:   err,
+					Err:       fmt.Errorf("could not create event data: %w", err),
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
 			if err := bson.Unmarshal(e.RawData, e.data); err != nil {
 				return nil, eh.EventStoreError{
-					Err:       ErrCouldNotUnmarshalEvent,
-					BaseErr:   err,
+					Err:       fmt.Errorf("could not unmarshal event data: %w", err),
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
@@ -279,8 +265,11 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 }
 
 // Close closes the database client.
-func (s *EventStore) Close(ctx context.Context) {
-	s.client.Disconnect(ctx)
+func (s *EventStore) Close(ctx context.Context) error {
+	if err := s.client.Disconnect(ctx); err != nil {
+		return fmt.Errorf("could not close DB connection: %w", err)
+	}
+	return nil
 }
 
 // aggregateRecord is the Database representation of an aggregate.
@@ -322,8 +311,7 @@ func newEvt(ctx context.Context, event eh.Event) (*evt, error) {
 		e.RawData, err = bson.Marshal(event.Data())
 		if err != nil {
 			return nil, eh.EventStoreError{
-				Err:       ErrCouldNotMarshalEvent,
-				BaseErr:   err,
+				Err:       fmt.Errorf("could not marshal event data: %w", err),
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}

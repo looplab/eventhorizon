@@ -24,7 +24,7 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-// EventStore is a EventStore that adds tracing.
+// EventStore is an eventhorizon.EventStore that adds tracing with Open Tracing.
 type EventStore struct {
 	eh.EventStore
 }

@@ -21,7 +21,7 @@ import (
 	eh "github.com/looplab/eventhorizon"
 )
 
-// EventStore wraps an EventStore and adds debug event recording.
+// EventStore wraps an eventhorizon.EventStore and adds debug event recording.
 type EventStore struct {
 	eh.EventStore
 	recording bool
