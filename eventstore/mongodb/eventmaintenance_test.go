@@ -16,6 +16,8 @@ package mongodb
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"testing"
 
@@ -34,20 +36,22 @@ func TestEventStoreMaintenanceIntegration(t *testing.T) {
 	}
 	url := "mongodb://" + addr
 
-	store, err := NewEventStore(url, "test")
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	db := "test-" + hex.EncodeToString(b)
+	t.Log("using DB:", db)
+
+	store, err := NewEventStore(url, db)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
-
 	defer store.Close(context.Background())
-	defer func() {
-		if err = store.Clear(context.Background()); err != nil {
-			t.Fatal("there should be no error:", err)
-		}
-	}()
 
 	// Additional tests for the maintenance, implemented by the store.
 	eventstore.MaintenanceAcceptanceTest(t, context.Background(), store, store)

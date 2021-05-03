@@ -183,7 +183,15 @@ func TestRepository(t *testing.T) {
 	}
 	url := "mongodb://" + addr
 
-	repo, err := NewRepo(url, "test", "mocks.Model")
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	db := "test-" + hex.EncodeToString(b)
+	t.Log("using DB:", db)
+
+	repo, err := NewRepo(url, db, "mocks.Model")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
