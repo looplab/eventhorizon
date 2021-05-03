@@ -87,3 +87,15 @@ func TestWithEventHandler(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkEventStore(b *testing.B) {
+	store, err := NewEventStore()
+	if err != nil {
+		b.Fatal("there should be no error:", err)
+	}
+	if store == nil {
+		b.Fatal("there should be a store")
+	}
+
+	eventstore.Benchmark(b, store)
+}
