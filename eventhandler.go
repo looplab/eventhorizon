@@ -16,6 +16,7 @@ package eventhorizon
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"runtime"
 	"strings"
@@ -56,4 +57,38 @@ func (f EventHandlerFunc) HandlerType() EventHandlerType {
 	parts := strings.Split(fullName, "/")                              // Split URL.
 	name := parts[len(parts)-1]                                        // Take only the last part: package.Function.
 	return EventHandlerType(strings.ReplaceAll(name, ".", "-"))        // Use - as separator.
+}
+
+// CouldNotHandleEventError is an error returned when an event could not be
+// handled by an event handler.
+type CouldNotHandleEventError struct {
+	// Err is the error.
+	Err error
+	// Event is the event that failed to be handled.
+	Event Event
+	// Namespace is the namespace for the error.
+	Namespace string
+}
+
+// Error implements the Error method of the errors.Error interface.
+func (e CouldNotHandleEventError) Error() string {
+	eventStr := ""
+	if e.Event != nil {
+		eventStr += " '" + e.Event.String() + "'"
+	}
+	errStr := fmt.Sprintf("could not handle event%s: %s", eventStr, e.Err)
+	if e.Namespace != "" {
+		errStr += " (" + e.Namespace + ")"
+	}
+	return errStr
+}
+
+// Unwrap implements the errors.Unwrap method.
+func (e CouldNotHandleEventError) Unwrap() error {
+	return e.Err
+}
+
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e CouldNotHandleEventError) Cause() error {
+	return e.Unwrap()
 }

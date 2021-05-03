@@ -141,9 +141,9 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	if s.eventHandler != nil {
 		for _, e := range events {
 			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
-				return eh.EventStoreError{
-					Err:       eh.ErrCouldNotHandleEvents,
-					BaseErr:   err,
+				return eh.CouldNotHandleEventError{
+					Err:       err,
+					Event:     e,
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
