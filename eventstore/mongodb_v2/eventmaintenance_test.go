@@ -53,6 +53,5 @@ func TestEventStoreMaintenanceIntegration(t *testing.T) {
 	}
 	defer store.Close(context.Background())
 
-	// Additional tests for the maintenance, implemented by the store.
-	eventstore.MaintenanceAcceptanceTest(t, context.Background(), store, store)
+	eventstore.MaintenanceAcceptanceTest(t, store, store, context.Background())
 }

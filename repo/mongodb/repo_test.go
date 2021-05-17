@@ -65,19 +65,17 @@ func TestReadRepoIntegration(t *testing.T) {
 	r.SetEntityFactory(func() eh.Entity {
 		return &mocks.Model{}
 	})
-	if r.Parent() != nil {
-		t.Error("the parent repo should be nil")
+	if r.InnerRepo(context.Background()) != nil {
+		t.Error("the inner repo should be nil")
 	}
 
-	customNamespaceCtx := eh.NewContextWithNamespace(context.Background(), "ns")
-
-	repo.AcceptanceTest(t, context.Background(), r)
-	extraRepoTests(t, context.Background(), r)
-	repo.AcceptanceTest(t, customNamespaceCtx, r)
-	extraRepoTests(t, customNamespaceCtx, r)
+	repo.AcceptanceTest(t, r, context.Background())
+	extraRepoTests(t, r)
 }
 
-func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
+func extraRepoTests(t *testing.T, r *Repo) {
+	ctx := context.Background()
+
 	// Insert a custom item.
 	modelCustom := &mocks.Model{
 		ID:        uuid.New(),
@@ -166,14 +164,14 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo) {
 	}
 }
 
-func TestRepository(t *testing.T) {
-	if r := Repository(nil); r != nil {
-		t.Error("the parent repository should be nil:", r)
+func TestIntoRepo(t *testing.T) {
+	if r := IntoRepo(context.Background(), nil); r != nil {
+		t.Error("the repository should be nil:", r)
 	}
 
-	inner := &mocks.Repo{}
-	if r := Repository(inner); r != nil {
-		t.Error("the parent repository should be nil:", r)
+	other := &mocks.Repo{}
+	if r := IntoRepo(context.Background(), other); r != nil {
+		t.Error("the repository should be correct:", r)
 	}
 
 	// Use MongoDB in Docker with fallback to localhost.
@@ -191,14 +189,14 @@ func TestRepository(t *testing.T) {
 	db := "test-" + hex.EncodeToString(b)
 	t.Log("using DB:", db)
 
-	repo, err := NewRepo(url, db, "mocks.Model")
+	inner, err := NewRepo(url, db, "mocks.Model")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	defer repo.Close(context.Background())
+	defer inner.Close(context.Background())
 
-	outer := &mocks.Repo{ParentRepo: repo}
-	if r := Repository(outer); r != repo {
-		t.Error("the parent repository should be correct:", r)
+	outer := &mocks.Repo{ParentRepo: inner}
+	if r := IntoRepo(context.Background(), outer); r != inner {
+		t.Error("the repository should be correct:", r)
 	}
 }

@@ -381,8 +381,8 @@ type Repo struct {
 
 var _ = eh.ReadWriteRepo(&Repo{})
 
-// Parent implements the Parent method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Parent() eh.ReadRepo {
+// InnerRepo implements the InnerRepo method of the eventhorizon.ReadRepo interface.
+func (r *Repo) InnerRepo(ctx context.Context) eh.ReadRepo {
 	return r.ParentRepo
 }
 

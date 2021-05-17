@@ -57,11 +57,7 @@ func TestEventStoreIntegration(t *testing.T) {
 	}
 	defer store.Close(context.Background())
 
-	customNamespaceCtx := eh.NewContextWithNamespace(context.Background(), "ns")
-
-	// Run the actual test suite, both for default and custom namespace.
-	eventstore.AcceptanceTest(t, context.Background(), store)
-	eventstore.AcceptanceTest(t, customNamespaceCtx, store)
+	eventstore.AcceptanceTest(t, store, context.Background())
 }
 
 func TestWithEventHandlerIntegration(t *testing.T) {

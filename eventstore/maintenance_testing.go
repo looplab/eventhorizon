@@ -29,12 +29,11 @@ import (
 // case in each implementation:
 //
 //   func TestEventStore(t *testing.T) {
-//       ctx := context.Background() // Or other when testing namespaces.
 //       store := NewEventStore()
-//       eventstore.AcceptanceTest(t, ctx, store)
+//       eventstore.AcceptanceTest(t, store, context.Background())
 //   }
 //
-func MaintenanceAcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore, storeMaintenance eh.EventStoreMaintenance) {
+func MaintenanceAcceptanceTest(t *testing.T, store eh.EventStore, storeMaintenance eh.EventStoreMaintenance, ctx context.Context) {
 	type contextKey string
 	ctx = context.WithValue(ctx, contextKey("testkey"), "testval")
 

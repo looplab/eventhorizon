@@ -46,7 +46,6 @@ func init() {
 
 type contextKey int
 
-// Context keys for namespace and min version.
 const (
 	minVersionKey contextKey = iota
 )

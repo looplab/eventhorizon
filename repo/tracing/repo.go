@@ -36,9 +36,21 @@ func NewRepo(repo eh.ReadWriteRepo) *Repo {
 	}
 }
 
-// Parent implements the Parent method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Parent() eh.ReadRepo {
+// InnerRepo implements the InnerRepo method of the eventhorizon.ReadRepo interface.
+func (r *Repo) InnerRepo(ctx context.Context) eh.ReadRepo {
 	return r.ReadWriteRepo
+}
+
+// IntoRepo tries to convert a eh.ReadRepo into a Repo by recursively looking at
+// inner repos. Returns nil if none was found.
+func IntoRepo(ctx context.Context, repo eh.ReadRepo) *Repo {
+	if repo == nil {
+		return nil
+	}
+	if r, ok := repo.(*Repo); ok {
+		return r
+	}
+	return IntoRepo(ctx, repo.InnerRepo(ctx))
 }
 
 // Find implements the Find method of the eventhorizon.ReadModel interface.
@@ -99,17 +111,4 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 	sp.Finish()
 
 	return err
-}
-
-// Repository returns a parent ReadRepo if there is one.
-func Repository(repo eh.ReadRepo) *Repo {
-	if repo == nil {
-		return nil
-	}
-
-	if r, ok := repo.(*Repo); ok {
-		return r
-	}
-
-	return Repository(repo.Parent())
 }

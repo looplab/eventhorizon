@@ -30,5 +30,5 @@ func TestEventStoreMaintenance(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	eventstore.MaintenanceAcceptanceTest(t, context.Background(), store, store)
+	eventstore.MaintenanceAcceptanceTest(t, store, store, context.Background())
 }

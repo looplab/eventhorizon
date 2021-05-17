@@ -39,7 +39,7 @@ func TestEventStore(t *testing.T) {
 
 	// Run the actual test suite, with recording enabled.
 	store.StartRecording()
-	savedEvents := eventstore.AcceptanceTest(t, context.Background(), store)
+	savedEvents := eventstore.AcceptanceTest(t, store, context.Background())
 	store.StopRecording()
 
 	record := store.GetRecord()

@@ -23,11 +23,11 @@ func SetupDomain(
 ) error {
 
 	// Set the entity factory for the base repo.
-	if repo := memory.Repository(repo); repo != nil {
-		repo.SetEntityFactory(func() eh.Entity { return &TodoList{} })
+	if memoryRepo := memory.IntoRepo(ctx, repo); memoryRepo != nil {
+		memoryRepo.SetEntityFactory(func() eh.Entity { return &TodoList{} })
 	}
-	if repo := mongodb.Repository(repo); repo != nil {
-		repo.SetEntityFactory(func() eh.Entity { return &TodoList{} })
+	if mongodbRepo := mongodb.IntoRepo(ctx, repo); mongodbRepo != nil {
+		mongodbRepo.SetEntityFactory(func() eh.Entity { return &TodoList{} })
 	}
 
 	// Create the read model projector.

@@ -23,8 +23,6 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-type namespace string
-
 // Repo is a middleware that adds caching to a read repository. It will update
 // the cache when it receives events affecting the cached items. The primary
 // purpose is to use it with smaller collections accessed often.
@@ -32,7 +30,7 @@ type namespace string
 type Repo struct {
 	eh.ReadWriteRepo
 
-	cache   map[namespace]map[uuid.UUID]eh.Entity
+	cache   map[uuid.UUID]eh.Entity
 	cacheMu sync.RWMutex
 }
 
@@ -40,8 +38,25 @@ type Repo struct {
 func NewRepo(repo eh.ReadWriteRepo) *Repo {
 	return &Repo{
 		ReadWriteRepo: repo,
-		cache:         map[namespace]map[uuid.UUID]eh.Entity{},
+		cache:         map[uuid.UUID]eh.Entity{},
 	}
+}
+
+// InnerRepo implements the InnerRepo method of the eventhorizon.ReadRepo interface.
+func (r *Repo) InnerRepo(ctx context.Context) eh.ReadRepo {
+	return r.ReadWriteRepo
+}
+
+// IntoRepo tries to convert a eh.ReadRepo into a Repo by recursively looking at
+// inner repos. Returns nil if none was found.
+func IntoRepo(ctx context.Context, repo eh.ReadRepo) *Repo {
+	if repo == nil {
+		return nil
+	}
+	if r, ok := repo.(*Repo); ok {
+		return r
+	}
+	return IntoRepo(ctx, repo.InnerRepo(ctx))
 }
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
@@ -54,25 +69,17 @@ func (r *Repo) HandlerType() eh.EventHandlerType {
 // The repo should be added with a eh.MatchAny or eh.MatchAggregate for best
 // effect (depending on if the underlying repo is used for all or individual aggregate types).
 func (r *Repo) HandleEvent(ctx context.Context, event eh.Event) error {
-	ns := r.namespace(ctx)
 	r.cacheMu.Lock()
-	delete(r.cache[ns], event.AggregateID())
+	delete(r.cache, event.AggregateID())
 	r.cacheMu.Unlock()
 	return nil
 }
 
-// Parent implements the Parent method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Parent() eh.ReadRepo {
-	return r.ReadWriteRepo
-}
-
 // Find implements the Find method of the eventhorizon.ReadModel interface.
 func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
-	ns := r.namespace(ctx)
-
 	// First check the cache.
 	r.cacheMu.RLock()
-	entity, ok := r.cache[ns][id]
+	entity, ok := r.cache[id]
 	r.cacheMu.RUnlock()
 	if ok {
 		return entity, nil
@@ -84,7 +91,7 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 		return nil, err
 	}
 	r.cacheMu.Lock()
-	r.cache[ns][id] = entity
+	r.cache[id] = entity
 	r.cacheMu.Unlock()
 
 	return entity, nil
@@ -98,10 +105,9 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	}
 
 	// Cache all items.
-	ns := r.namespace(ctx)
 	r.cacheMu.Lock()
 	for _, entity := range entities {
-		r.cache[ns][entity.EntityID()] = entity
+		r.cache[entity.EntityID()] = entity
 	}
 	r.cacheMu.Unlock()
 
@@ -111,9 +117,8 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 // Save implements the Save method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	// Bust the cache on save.
-	ns := r.namespace(ctx)
 	r.cacheMu.Lock()
-	delete(r.cache[ns], entity.EntityID())
+	delete(r.cache, entity.EntityID())
 	r.cacheMu.Unlock()
 
 	return r.ReadWriteRepo.Save(ctx, entity)
@@ -122,36 +127,9 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 // Remove implements the Remove method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 	// Bust the cache on remove.
-	ns := r.namespace(ctx)
 	r.cacheMu.Lock()
-	delete(r.cache[ns], id)
+	delete(r.cache, id)
 	r.cacheMu.Unlock()
 
 	return r.ReadWriteRepo.Remove(ctx, id)
-}
-
-// Helper to get the namespace and ensure that its data exists.
-func (r *Repo) namespace(ctx context.Context) namespace {
-	ns := namespace(eh.NamespaceFromContext(ctx))
-
-	r.cacheMu.Lock()
-	defer r.cacheMu.Unlock()
-	if _, ok := r.cache[ns]; !ok {
-		r.cache[ns] = map[uuid.UUID]eh.Entity{}
-	}
-
-	return ns
-}
-
-// Repository returns a parent ReadRepo if there is one.
-func Repository(repo eh.ReadRepo) *Repo {
-	if repo == nil {
-		return nil
-	}
-
-	if r, ok := repo.(*Repo); ok {
-		return r
-	}
-
-	return Repository(repo.Parent())
 }

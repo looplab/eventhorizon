@@ -791,11 +791,11 @@ func NewIntegrationTestSession(ctx context.Context) (
 	todoRepo := version.NewRepo(repo)
 
 	// NOTE: Temp clear of DB on startup.
-	mongoRepo, ok := todoRepo.Parent().(*mongodb.Repo)
-	if !ok {
+	mongodbRepo := mongodb.IntoRepo(ctx, todoRepo)
+	if mongodbRepo == nil {
 		log.Fatal("incorrect repo type")
 	}
-	if err := mongoRepo.Clear(ctx); err != nil {
+	if err := mongodbRepo.Clear(ctx); err != nil {
 		log.Println("could not clear DB:", err)
 	}
 

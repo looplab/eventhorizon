@@ -36,7 +36,6 @@ import (
 // EventStore is an eventhorizon.EventStore for MongoDB, using one collection
 // for all events and another to keep track of all aggregates/streams. It also
 // keep tracks of the global position of events, stored as metadata.
-// NOTE: This event store has NO namespace support.
 type EventStore struct {
 	client       *mongo.Client
 	events       *mongo.Collection

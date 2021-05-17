@@ -66,8 +66,6 @@ type CouldNotHandleEventError struct {
 	Err error
 	// Event is the event that failed to be handled.
 	Event Event
-	// Namespace is the namespace for the error.
-	Namespace string
 }
 
 // Error implements the Error method of the errors.Error interface.
@@ -76,11 +74,7 @@ func (e CouldNotHandleEventError) Error() string {
 	if e.Event != nil {
 		eventStr += " '" + e.Event.String() + "'"
 	}
-	errStr := fmt.Sprintf("could not handle event%s: %s", eventStr, e.Err)
-	if e.Namespace != "" {
-		errStr += " (" + e.Namespace + ")"
-	}
-	return errStr
+	return fmt.Sprintf("could not handle event%s: %s", eventStr, e.Err)
 }
 
 // Unwrap implements the errors.Unwrap method.

@@ -88,10 +88,8 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	}
 	guestListRepo.SetEntityFactory(func() eh.Entity { return &guestlist.GuestList{} })
 
-	// Set the namespace to use.
-	ctx, cancel := context.WithCancel(
-		eh.NewContextWithNamespace(context.Background(), "mongodb"),
-	)
+	// Create a context with cancellation.
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// Setup a test utility waiter that waits for all 11 events to occur before
 	// evaluating results.

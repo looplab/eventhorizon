@@ -35,32 +35,26 @@ func TestReadRepo(t *testing.T) {
 	if r == nil {
 		t.Error("there should be a repository")
 	}
-	if parent := r.Parent(); parent != baseRepo {
-		t.Error("the parent repo should be correct:", parent)
+	if inner := r.InnerRepo(context.Background()); inner != baseRepo {
+		t.Error("the inner repo should be correct:", inner)
 	}
 
-	// Read repository with default namespace.
-	repo.AcceptanceTest(t, context.Background(), r)
-
-	// Read repository with other namespace.
-	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
-	repo.AcceptanceTest(t, ctx, r)
-
+	repo.AcceptanceTest(t, r, context.Background())
 }
 
-func TestRepository(t *testing.T) {
-	if r := Repository(nil); r != nil {
-		t.Error("the parent repository should be nil:", r)
+func TestIntoRepo(t *testing.T) {
+	if r := IntoRepo(context.Background(), nil); r != nil {
+		t.Error("the repository should be nil:", r)
 	}
 
 	inner := &mocks.Repo{}
-	if r := Repository(inner); r != nil {
-		t.Error("the parent repository should be nil:", r)
+	if r := IntoRepo(context.Background(), inner); r != nil {
+		t.Error("the repository should be correct:", r)
 	}
 
-	r := NewRepo(inner)
-	outer := &mocks.Repo{ParentRepo: r}
-	if r := Repository(outer); r != r {
-		t.Error("the parent repository should be correct:", r)
+	middle := NewRepo(inner)
+	outer := &mocks.Repo{ParentRepo: middle}
+	if r := IntoRepo(context.Background(), outer); r != middle {
+		t.Error("the repository should be correct:", r)
 	}
 }

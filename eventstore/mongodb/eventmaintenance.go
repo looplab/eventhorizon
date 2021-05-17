@@ -28,16 +28,13 @@ import (
 
 // Replace implements the Replace method of the eventhorizon.EventStore interface.
 func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
-	c := s.client.Database(s.dbName(ctx)).Collection("events")
-
 	// First check if the aggregate exists, the not found error in the update
 	// query can mean both that the aggregate or the event is not found.
-	if n, err := c.CountDocuments(ctx, bson.M{"_id": event.AggregateID()}); n == 0 {
+	if n, err := s.aggregates.CountDocuments(ctx, bson.M{"_id": event.AggregateID()}); n == 0 {
 		return eh.ErrAggregateNotFound
 	} else if err != nil {
 		return eh.EventStoreError{
-			Err:       err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err: err,
 		}
 	}
 
@@ -48,7 +45,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	}
 
 	// Find and replace the event.
-	if r, err := c.UpdateOne(ctx,
+	if r, err := s.aggregates.UpdateOne(ctx,
 		bson.M{
 			"_id":            event.AggregateID(),
 			"events.version": event.Version(),
@@ -58,9 +55,8 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 		},
 	); err != nil {
 		return eh.EventStoreError{
-			Err:       eh.ErrCouldNotSaveEvents,
-			BaseErr:   err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:     eh.ErrCouldNotSaveEvents,
+			BaseErr: err,
 		}
 	} else if r.MatchedCount == 0 {
 		return eh.ErrInvalidEvent
@@ -71,11 +67,9 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 
 // RenameEvent implements the RenameEvent method of the eventhorizon.EventStore interface.
 func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) error {
-	c := s.client.Database(s.dbName(ctx)).Collection("events")
-
 	// Find and rename all events.
 	// TODO: Maybe use change info.
-	if _, err := c.UpdateMany(ctx,
+	if _, err := s.aggregates.UpdateMany(ctx,
 		bson.M{
 			"events.event_type": from.String(),
 		},
@@ -84,9 +78,8 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 		},
 	); err != nil {
 		return eh.EventStoreError{
-			Err:       eh.ErrCouldNotSaveEvents,
-			BaseErr:   err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:     eh.ErrCouldNotSaveEvents,
+			BaseErr: err,
 		}
 	}
 
@@ -95,12 +88,9 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 
 // Clear clears the event storage.
 func (s *EventStore) Clear(ctx context.Context) error {
-	c := s.client.Database(s.dbName(ctx)).Collection("events")
-
-	if err := c.Drop(ctx); err != nil {
+	if err := s.aggregates.Drop(ctx); err != nil {
 		return eh.EventStoreError{
-			Err:       fmt.Errorf("could not clear collection: %w", err),
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err: fmt.Errorf("could not clear collection: %w", err),
 		}
 	}
 	return nil

@@ -58,8 +58,7 @@ func TestEventStoreIntegration(t *testing.T) {
 
 	defer store.Close(context.Background())
 
-	// Run the actual test suite.
-	eventstore.AcceptanceTest(t, context.Background(), store)
+	eventstore.AcceptanceTest(t, store, context.Background())
 }
 
 func TestWithEventHandlerIntegration(t *testing.T) {
