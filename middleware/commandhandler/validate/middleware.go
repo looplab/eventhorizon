@@ -12,32 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package validator
+package validate
 
 import (
 	"context"
+	"fmt"
 
 	eh "github.com/looplab/eventhorizon"
 )
-
-// NewMiddleware returns a new async handling middleware that validate commands
-// with its own validation method.
-func NewMiddleware() eh.CommandHandlerMiddleware {
-	return eh.CommandHandlerMiddleware(func(h eh.CommandHandler) eh.CommandHandler {
-		return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
-			// Call the validation method if it exists
-			if c, ok := cmd.(Command); ok {
-				err := c.Validate()
-				if err != nil {
-					return err
-				}
-			}
-
-			// Immediate command execution.
-			return h.HandleCommand(ctx, cmd)
-		})
-	})
-}
 
 // Command is a command with its own validation method.
 type Command interface {
@@ -50,6 +32,45 @@ type Command interface {
 // CommandWithValidation returns a wrapped command with a validation method.
 func CommandWithValidation(cmd eh.Command, v func() error) Command {
 	return &command{Command: cmd, validate: v}
+}
+
+// NewMiddleware returns a new middleware that validate commands with its own
+// validation method; `Validate() error`. Commands without the validate method
+// will not be validated.
+func NewMiddleware() eh.CommandHandlerMiddleware {
+	return eh.CommandHandlerMiddleware(func(h eh.CommandHandler) eh.CommandHandler {
+		return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
+			// Call the validation method if it exists.
+			if c, ok := cmd.(Command); ok {
+				if err := c.Validate(); err != nil {
+					return Error{err}
+				}
+			}
+
+			// Immediate command execution.
+			return h.HandleCommand(ctx, cmd)
+		})
+	})
+}
+
+// Error is a validation error.
+type Error struct {
+	err error
+}
+
+// Error implements the Error method of the error interface.
+func (e Error) Error() string {
+	return fmt.Sprintf("invalid command: %s", e.err.Error())
+}
+
+// Unwrap implements the errors.Unwrap method.
+func (e Error) Unwrap() error {
+	return e.err
+}
+
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e Error) Cause() error {
+	return e.Unwrap()
 }
 
 // private implementation to wrap ordinary commands and add a validation method.
