@@ -65,7 +65,7 @@ func (s *Scheduler) ScheduleEvent(ctx context.Context, cronLine string, eventFun
 		for {
 			nextTime := expr.Next(time.Now())
 			select {
-			case <-time.After(nextTime.Sub(time.Now())):
+			case <-time.After(time.Until(nextTime)):
 				for _, eventCh := range s.eventChs {
 					eventCh <- data{ctx, eventFunc(nextTime)}
 				}

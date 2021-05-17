@@ -68,6 +68,4 @@ var (
 	ErrIncorrectEventVersion = errors.New("mismatching event version")
 	// ErrCouldNotSaveEvents is when events could not be saved.
 	ErrCouldNotSaveEvents = errors.New("could not save events")
-	// ErrCouldNotHandleEvents is when the events could not be handeled after saving.
-	ErrCouldNotHandleEvents = errors.New("could not handle events")
 )

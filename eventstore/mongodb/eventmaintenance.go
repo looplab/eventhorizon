@@ -16,6 +16,7 @@ package mongodb
 
 import (
 	"context"
+	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
 
@@ -98,8 +99,7 @@ func (s *EventStore) Clear(ctx context.Context) error {
 
 	if err := c.Drop(ctx); err != nil {
 		return eh.EventStoreError{
-			Err:       ErrCouldNotClearDB,
-			BaseErr:   err,
+			Err:       fmt.Errorf("could not clear collection: %w", err),
 			Namespace: eh.NamespaceFromContext(ctx),
 		}
 	}

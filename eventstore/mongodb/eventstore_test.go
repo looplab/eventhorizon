@@ -139,3 +139,31 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkEventStore(b *testing.B) {
+	// Use MongoDB in Docker with fallback to localhost.
+	url := os.Getenv("MONGO_HOST")
+	if url == "" {
+		url = "localhost:27017"
+	}
+	url = "mongodb://" + url
+
+	// Get a random DB name.
+	bs := make([]byte, 4)
+	if _, err := rand.Read(bs); err != nil {
+		b.Fatal(err)
+	}
+	db := "test-" + hex.EncodeToString(bs)
+	b.Log("using DB:", db)
+
+	store, err := NewEventStore(url, db)
+	if err != nil {
+		b.Fatal("there should be no error:", err)
+	}
+	if store == nil {
+		b.Fatal("there should be a store")
+	}
+	defer store.Close(context.Background())
+
+	eventstore.Benchmark(b, store)
+}

@@ -60,7 +60,7 @@ func TestAggregateStore_LoadNoEvents(t *testing.T) {
 	}
 	a, ok := agg.(VersionedAggregate)
 	if !ok {
-		t.Fatal("the aggregate shoud be of correct type")
+		t.Fatal("the aggregate should be of correct type")
 	}
 	if a.EntityID() != id {
 		t.Error("the aggregate ID should be correct: ", a.EntityID(), id)

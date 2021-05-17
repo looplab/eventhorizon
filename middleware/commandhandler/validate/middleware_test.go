@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package validator
+package validate
 
 import (
 	"context"
@@ -51,8 +51,13 @@ func TestCommandHandler_WithValidationError(t *testing.T) {
 	}
 	e := errors.New("a validation error")
 	c := CommandWithValidation(cmd, func() error { return e })
-	if err := h.HandleCommand(context.Background(), c); err != e {
-		t.Error("there should be an error:", e)
+	err := h.HandleCommand(context.Background(), c)
+	var validateErr Error
+	if !errors.As(err, &validateErr) {
+		t.Error("there should be a validate error:", err)
+	}
+	if !errors.Is(err, e) {
+		t.Error("the validation error should be correct:", err)
 	}
 	if len(inner.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", inner.Commands)

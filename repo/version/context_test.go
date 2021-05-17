@@ -36,7 +36,7 @@ func TestContextMinVersion(t *testing.T) {
 
 	vals := eh.MarshalContext(ctx)
 	if v, ok := vals[minVersionKeyStr].(int); !ok || v != 8 {
-		t.Error("the marshaled min version shoud be correct:", v)
+		t.Error("the marshaled min version should be correct:", v)
 	}
 	b, err := json.Marshal(vals)
 	if err != nil {

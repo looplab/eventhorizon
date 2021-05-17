@@ -53,7 +53,7 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	return nil
 }
 
-// Listen waits unil the match function returns true for an event, or the context
+// Listen waits until the match function returns true for an event, or the context
 // deadline expires. The match function can be used to filter or otherwise select
 // interesting events by analysing the event data.
 func (h *EventHandler) Listen(match func(eh.Event) bool) *EventListener {

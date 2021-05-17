@@ -54,7 +54,7 @@ type AggregateStore interface {
 	// Load loads the most recent version of an aggregate with a type and id.
 	Load(context.Context, AggregateType, uuid.UUID) (Aggregate, error)
 
-	// Save saves the uncommittend events for an aggregate.
+	// Save saves the uncommitted events for an aggregate.
 	Save(context.Context, Aggregate) error
 }
 

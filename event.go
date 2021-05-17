@@ -79,7 +79,7 @@ func ForAggregate(aggregateType AggregateType, aggregateID uuid.UUID, version in
 }
 
 // WithMetadata adds metadata when creating an event.
-// Note that the values types must be supprted by the event marshalers in use.
+// Note that the values types must be supported by the event marshalers in use.
 func WithMetadata(metadata map[string]interface{}) EventOption {
 	return func(e Event) {
 		if evt, ok := e.(*event); ok {
@@ -94,7 +94,15 @@ func WithMetadata(metadata map[string]interface{}) EventOption {
 	}
 }
 
-// FromCommand adds metadat for the originating command when crating an event.
+// WithGlobalPosition sets the global event position in the metadata.
+func WithGlobalPosition(position int) EventOption {
+	md := map[string]interface{}{
+		"position": position,
+	}
+	return WithMetadata(md)
+}
+
+// FromCommand adds metadata for the originating command when crating an event.
 // Currently it adds the command type and optionally a command ID (if the
 // CommandIDer interface is implemented).
 func FromCommand(cmd Command) EventOption {

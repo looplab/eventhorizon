@@ -16,7 +16,6 @@ package memory
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -26,12 +25,8 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-var (
-	// ErrCouldNotCreateEvent is when event data could not be created.
-	ErrCouldNotCreateEvent = errors.New("could not create event")
-)
-
-// EventStore implements EventStore as an in memory structure.
+// EventStore is an eventhorizon.EventStore where all events are stored in
+// memory and not persisted. Useful for testing and experimenting.
 type EventStore struct {
 	// The outer map is with namespace as key, the inner with aggregate ID.
 	db           map[string]map[uuid.UUID]aggregateRecord
@@ -141,9 +136,9 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	if s.eventHandler != nil {
 		for _, e := range events {
 			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
-				return eh.EventStoreError{
-					Err:       eh.ErrCouldNotHandleEvents,
-					BaseErr:   err,
+				return eh.CouldNotHandleEventError{
+					Err:       err,
+					Event:     e,
 					Namespace: eh.NamespaceFromContext(ctx),
 				}
 			}
@@ -206,8 +201,7 @@ func copyEvent(ctx context.Context, event eh.Event) (eh.Event, error) {
 		var err error
 		if data, err = eh.CreateEventData(event.EventType()); err != nil {
 			return nil, eh.EventStoreError{
-				Err:       ErrCouldNotCreateEvent,
-				BaseErr:   err,
+				Err:       fmt.Errorf("could not create event data: %w", err),
 				Namespace: eh.NamespaceFromContext(ctx),
 			}
 		}

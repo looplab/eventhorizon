@@ -1,4 +1,4 @@
-// Copyright (c) 2014 - The Event Horizon authors.
+// Copyright (c) 2021 - The Event Horizon authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package memory
+package mongodb_v2
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"os"
 	"testing"
 	"time"
 
@@ -25,8 +28,27 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-func TestEventStore(t *testing.T) {
-	store, err := NewEventStore()
+func TestEventStoreIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	// Use MongoDB in Docker with fallback to localhost.
+	addr := os.Getenv("MONGODB_ADDR")
+	if addr == "" {
+		addr = "localhost:27017"
+	}
+	url := "mongodb://" + addr
+
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	db := "test-" + hex.EncodeToString(b)
+	t.Log("using DB:", db)
+
+	store, err := NewEventStore(url, db)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -34,22 +56,44 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	// Run the actual test suite, both for default and custom namespace.
+	defer store.Close(context.Background())
+
+	// Run the actual test suite.
 	eventstore.AcceptanceTest(t, context.Background(), store)
-	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
-	eventstore.AcceptanceTest(t, ctx, store)
 }
 
-func TestWithEventHandler(t *testing.T) {
+func TestWithEventHandlerIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	// Use MongoDB in Docker with fallback to localhost.
+	url := os.Getenv("MONGO_HOST")
+	if url == "" {
+		url = "localhost:27017"
+	}
+	url = "mongodb://" + url
+
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	db := "test-" + hex.EncodeToString(b)
+	t.Log("using DB:", db)
+
 	h := &mocks.EventBus{}
 
-	store, err := NewEventStore(WithEventHandler(h))
+	store, err := NewEventStore(url, db,
+		WithEventHandler(h),
+	)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
+	defer store.Close(context.Background())
 
 	ctx := context.Background()
 
@@ -69,15 +113,24 @@ func TestWithEventHandler(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 	// The stored events should be ok.
+	if len(events) != len(expected) {
+		t.Errorf("incorrect number of loaded events: %d", len(events))
+	}
 	for i, event := range events {
-		if err := eh.CompareEvents(event, expected[i], eh.IgnoreVersion()); err != nil {
+		if err := eh.CompareEvents(event, expected[i],
+			eh.IgnoreVersion(),
+			eh.IgnorePositionMetadata(),
+		); err != nil {
 			t.Error("the stored event was incorrect:", err)
 		}
 		if event.Version() != i+1 {
 			t.Error("the event version should be correct:", event, event.Version())
 		}
 	}
-	// The handeled events should be ok.
+	// The handled events should be ok.
+	if len(h.Events) != len(expected) {
+		t.Errorf("incorrect number of loaded events: %d", len(events))
+	}
 	for i, event := range h.Events {
 		if err := eh.CompareEvents(event, expected[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the handeled event was incorrect:", err)
@@ -89,13 +142,30 @@ func TestWithEventHandler(t *testing.T) {
 }
 
 func BenchmarkEventStore(b *testing.B) {
-	store, err := NewEventStore()
+	// Use MongoDB in Docker with fallback to localhost.
+	addr := os.Getenv("MONGODB_ADDR")
+	if addr == "" {
+		addr = "localhost:27017"
+	}
+	url := "mongodb://" + addr
+
+	// Get a random DB name.
+	bs := make([]byte, 4)
+	if _, err := rand.Read(bs); err != nil {
+		b.Fatal(err)
+	}
+	db := "test-" + hex.EncodeToString(bs)
+	b.Log("using DB:", db)
+
+	store, err := NewEventStore(url, db)
 	if err != nil {
 		b.Fatal("there should be no error:", err)
 	}
 	if store == nil {
 		b.Fatal("there should be a store")
 	}
+
+	defer store.Close(context.Background())
 
 	eventstore.Benchmark(b, store)
 }

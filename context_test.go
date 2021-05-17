@@ -34,7 +34,7 @@ func TestContextNamespace(t *testing.T) {
 
 	vals := MarshalContext(ctx)
 	if ns, ok := vals[namespaceKeyStr].(string); !ok || ns != "ns" {
-		t.Error("the marshaled namespace shoud be correct:", ns)
+		t.Error("the marshaled namespace should be correct:", ns)
 	}
 	b, err := json.Marshal(vals)
 	if err != nil {

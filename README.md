@@ -34,17 +34,24 @@ Suggestions are welcome!
 
 See the example folder for a few examples to get you started.
 
-# Storage implementations
+# Get Involved
+
+- Join our [slack channel](https://gophers.slack.com/messages/eventhorizon/) (sign up [here](https://gophersinvite.herokuapp.com/))
+- Check out the [contribution guidelines](CONTRIBUTING.md)
+
+# Event Store Implementations
 
 ### Official
 
-- Local / in memory
-- MongoDB (beware of the 16MB document size limit that can affect large aggregates)
+- Memory - Useful for testing and experimentation.
+- MongoDB - One document per aggregate with events as an array. Beware of the 16MB document size limit that can affect large aggregates.
+- MongoDB v2 - One document per event with an additional document per aggregate. This event store is also capable of keeping track of the global event position, in addition to the aggregate version.
+- Recorder - An event recorder (middleware) that can be used in tests to capture some events.
+- Tracing - Adds distributed tracing support to event store operations with OpenTracing.
 
 ### Contributions / 3rd party
 
 - AWS DynamoDB: https://github.com/seedboxtech/eh-dynamo
-- MongoDB-DPE (supporting larger aggregates): https://github.com/gjongenelen/eh-mongodb
 - Postgress: https://github.com/giautm/eh-pg
 - Redis: https://github.com/TerraSkye/eh-redis
 
@@ -52,16 +59,27 @@ See the example folder for a few examples to get you started.
 
 ### Official
 
-- GCP Cloud Pub/Sub
+- GCP Cloud Pub/Sub - Using one topic with multiple subscribers.
 - Jetstream (NATS), uses nightly build of NATS/Jetstream
-- Kafka
-- Local / in memory, useful for testing/experimentation.
-- Redis
+- Kafka - Using one topic with multiple consumer groups.
+- Local - Useful for testing and experimentation.
+- Redis - Using Redis streams.
+- Tracing - Adds distributed tracing support to event publishing and handling with OpenTracing.
 
 ### Contributions / 3rd party
 
 - Kafka: https://github.com/Kistler-Group/eh-kafka
 - NATS Streaming: https://github.com/v0id3r/eh-nats
+
+# Repo Implementations
+
+### Official
+
+- Memory - Useful for testing and experimentation.
+- MongoDB - One document per projected entity.
+- Version - Adds support for reading a specific version of an entity from an underlying repo.
+- Cache - Adds support for in-memory caching of entities from an underlying repo.
+- Tracing - Adds distributed tracing support to an repo operations with OpenTracing.
 
 ## Development
 
@@ -92,11 +110,6 @@ Testing can also be done in docker:
 make test_docker
 make test_integration_docker
 ```
-
-# Get Involved
-
-- Join our [slack channel](https://gophers.slack.com/messages/eventhorizon/) (sign up [here](https://gophersinvite.herokuapp.com/))
-- Check out the [contribution guidelines](CONTRIBUTING.md)
 
 # License
 

@@ -30,7 +30,7 @@ import (
 func QueryHandler(repo eh.ReadRepo) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
-			http.Error(w, "unsuported method: "+r.Method, http.StatusMethodNotAllowed)
+			http.Error(w, "unsupported method: "+r.Method, http.StatusMethodNotAllowed)
 			return
 		}
 
