@@ -56,7 +56,7 @@ func CheckCommand(cmd Command) error {
 
 func isZero(v reflect.Value) bool {
 	switch v.Kind() {
-	case reflect.Func, reflect.Chan, reflect.Uintptr, reflect.Ptr, reflect.UnsafePointer:
+	case reflect.Func, reflect.Chan, reflect.Ptr, reflect.UnsafePointer:
 		// Types that are not allowed at all.
 		// NOTE: Would be better with its own error for this.
 		return true

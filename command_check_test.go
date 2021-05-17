@@ -58,6 +58,12 @@ func TestCheckCommand(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
+	// Missing required uintptr value.
+	err = CheckCommand(&TestCommandUIntPtrValue{TestID: uuid.New()})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
 	// Missing required slice.
 	err = CheckCommand(&TestCommandSlice{TestID: uuid.New()})
 	if err == nil || err.Error() != "missing field: Slice" {
@@ -183,6 +189,19 @@ func (t TestCommandBoolValue) AggregateID() uuid.UUID       { return t.TestID }
 func (t TestCommandBoolValue) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandBoolValue) CommandType() CommandType {
 	return CommandType("TestCommandBoolValue")
+}
+
+type TestCommandUIntPtrValue struct {
+	TestID  uuid.UUID
+	Content uintptr
+}
+
+var _ = Command(TestCommandUIntPtrValue{})
+
+func (t TestCommandUIntPtrValue) AggregateID() uuid.UUID       { return t.TestID }
+func (t TestCommandUIntPtrValue) AggregateType() AggregateType { return AggregateType("Test") }
+func (t TestCommandUIntPtrValue) CommandType() CommandType {
+	return CommandType("TestCommandUIntPtrValue")
 }
 
 type TestCommandSlice struct {
