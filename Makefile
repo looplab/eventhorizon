@@ -1,5 +1,14 @@
 default: test
 
+.PHONY: setup
+setup:
+	cd tools && GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
+	cd tools && go mod tidy
+
+.PHONY: lint
+lint:
+	golangci-lint run ./...
+
 .PHONY: test
 test:
 	go test -v -race -short ./...
