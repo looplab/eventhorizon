@@ -1,4 +1,4 @@
-// Copyright (c) 2020 - The Event Horizon authors.
+// Copyright (c) 2021 - The Event Horizon authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,30 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tracing
+package namespace
 
 import (
 	"context"
 	"testing"
 
+	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventstore"
 	"github.com/looplab/eventhorizon/eventstore/memory"
 )
 
 // NOTE: Not named "Integration" to enable running with the unit tests.
 func TestEventStore(t *testing.T) {
-	innerStore, err := memory.NewEventStore()
-	if err != nil {
-		t.Fatal("there should be no error:", err)
-	}
-	if innerStore == nil {
-		t.Fatal("there should be a store")
-	}
+	usedNamespaces := map[string]struct{}{}
 
-	store := NewEventStore(innerStore)
+	store := NewEventStore(func(ns string) (eh.EventStore, error) {
+		usedNamespaces[ns] = struct{}{}
+		s, err := memory.NewEventStore()
+		if err != nil {
+			return nil, err
+		}
+		return s, nil
+	})
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
 
+	// Default namespace.
 	eventstore.AcceptanceTest(t, store, context.Background())
+
+	// Other namespace.
+	ctx := NewContext(context.Background(), "other")
+	eventstore.AcceptanceTest(t, store, ctx)
+
+	if _, ok := usedNamespaces["default"]; !ok {
+		t.Error("the default namespace should have been used")
+	}
+	if _, ok := usedNamespaces["other"]; !ok {
+		t.Error("the other namespace should have been used")
+	}
 }

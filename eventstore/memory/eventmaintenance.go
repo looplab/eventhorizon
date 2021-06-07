@@ -23,11 +23,8 @@ import (
 
 // Replace implements the Replace method of the eventhorizon.EventStore interface.
 func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
-	// Ensure that the namespace exists.
-	ns := s.namespace(ctx)
-
 	s.dbMu.RLock()
-	aggregate, ok := s.db[ns][event.AggregateID()]
+	aggregate, ok := s.db[event.AggregateID()]
 	if !ok {
 		s.dbMu.RUnlock()
 		return eh.ErrAggregateNotFound
@@ -62,14 +59,11 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 
 // RenameEvent implements the RenameEvent method of the eventhorizon.EventStore interface.
 func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) error {
-	// Ensure that the namespace exists.
-	ns := s.namespace(ctx)
-
 	s.dbMu.Lock()
 	defer s.dbMu.Unlock()
 
 	updated := map[uuid.UUID]aggregateRecord{}
-	for id, aggregate := range s.db[ns] {
+	for id, aggregate := range s.db {
 		events := make([]eh.Event, len(aggregate.Events))
 		for i, e := range aggregate.Events {
 			if e.EventType() == from {
@@ -92,7 +86,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 	}
 
 	for id, aggregate := range updated {
-		s.db[ns][id] = aggregate
+		s.db[id] = aggregate
 	}
 
 	return nil

@@ -31,12 +31,11 @@ import (
 // implementation:
 //
 //   func TestEventStore(t *testing.T) {
-//       ctx := context.Background() // Or other when testing namespaces.
 //       store := NewEventStore()
-//       eventstore.AcceptanceTest(t, ctx, store)
+//       eventstore.AcceptanceTest(t, store, context.Background())
 //   }
 //
-func AcceptanceTest(t *testing.T, ctx context.Context, store eh.EventStore) []eh.Event {
+func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh.Event {
 	savedEvents := []eh.Event{}
 
 	type contextKey string

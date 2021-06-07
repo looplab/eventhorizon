@@ -81,7 +81,7 @@ See the example folder for a few examples to get you started.
 - Cache - Adds support for in-memory caching of entities from an underlying repo.
 - Tracing - Adds distributed tracing support to an repo operations with OpenTracing.
 
-## Development
+# Development
 
 To develop Event Horizon you need to have Docker and Docker Compose installed.
 

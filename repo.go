@@ -23,9 +23,9 @@ import (
 
 // ReadRepo is a read repository for entities.
 type ReadRepo interface {
-	// Parent returns the parent read repository, if there is one.
+	// InnerRepo returns the inner read repository, if there is one.
 	// Useful for iterating a wrapped set of repositories to get a specific one.
-	Parent() ReadRepo
+	InnerRepo(context.Context) ReadRepo
 
 	// Find returns an entity for an ID.
 	Find(context.Context, uuid.UUID) (Entity, error)
@@ -84,14 +84,12 @@ var (
 	ErrIncorrectEntityVersion = errors.New("incorrect entity version")
 )
 
-// RepoError is an error in the read repository, with the namespace.
+// RepoError is an error in the read repository.
 type RepoError struct {
 	// Err is the error.
 	Err error
 	// BaseErr is an optional underlying error, for example from the DB driver.
 	BaseErr error
-	// Namespace is the namespace for the error.
-	Namespace string
 }
 
 // Error implements the Error method of the errors.Error interface.
@@ -100,7 +98,7 @@ func (e RepoError) Error() string {
 	if e.BaseErr != nil {
 		errStr += ": " + e.BaseErr.Error()
 	}
-	return errStr + " (" + e.Namespace + ")"
+	return errStr
 }
 
 // Unwrap implements the errors.Unwrap method.

@@ -59,10 +59,8 @@ func Example() {
 	guestListRepo := memory.NewRepo()
 	guestListRepo.SetEntityFactory(func() eh.Entity { return &guestlist.GuestList{} })
 
-	// Set the namespace to use.
-	ctx, cancel := context.WithCancel(
-		eh.NewContextWithNamespace(context.Background(), "simple"),
-	)
+	// Create a context with cancellation.
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// Setup a test utility waiter that waits for all 11 events to occur before
 	// evaluating results.

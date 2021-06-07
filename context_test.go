@@ -16,42 +16,8 @@ package eventhorizon
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 )
-
-func TestContextNamespace(t *testing.T) {
-	ctx := context.Background()
-
-	if ns := NamespaceFromContext(ctx); ns != DefaultNamespace {
-		t.Error("the namespace should be the default:", ns)
-	}
-
-	ctx = NewContextWithNamespace(ctx, "ns")
-	if ns := NamespaceFromContext(ctx); ns != "ns" {
-		t.Error("the namespace should be correct:", ns)
-	}
-
-	vals := MarshalContext(ctx)
-	if ns, ok := vals[namespaceKeyStr].(string); !ok || ns != "ns" {
-		t.Error("the marshaled namespace should be correct:", ns)
-	}
-	b, err := json.Marshal(vals)
-	if err != nil {
-		t.Error("could not marshal JSON:", err)
-	}
-
-	// Marshal via JSON to get more realistic testing.
-
-	vals = map[string]interface{}{}
-	if err := json.Unmarshal(b, &vals); err != nil {
-		t.Error("could not unmarshal JSON:", err)
-	}
-	ctx = UnmarshalContext(context.Background(), vals)
-	if ns := NamespaceFromContext(ctx); ns != "ns" {
-		t.Error("the namespace should be correct:", ns)
-	}
-}
 
 func TestContextMarshaler(t *testing.T) {
 	if len(contextMarshalFuncs) != 1 {

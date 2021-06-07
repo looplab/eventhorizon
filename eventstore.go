@@ -30,14 +30,12 @@ type EventStore interface {
 	Load(context.Context, uuid.UUID) ([]Event, error)
 }
 
-// EventStoreError is an error in the event store, with the namespace.
+// EventStoreError is an error in the event store.
 type EventStoreError struct {
 	// Err is the error.
 	Err error
 	// BaseErr is an optional underlying error, for example from the DB driver.
 	BaseErr error
-	// Namespace is the namespace for the error.
-	Namespace string
 }
 
 // Error implements the Error method of the errors.Error interface.
@@ -46,7 +44,7 @@ func (e EventStoreError) Error() string {
 	if e.BaseErr != nil {
 		errStr += ": " + e.BaseErr.Error()
 	}
-	return errStr + " (" + e.Namespace + ")"
+	return errStr
 }
 
 // Unwrap implements the errors.Unwrap method.

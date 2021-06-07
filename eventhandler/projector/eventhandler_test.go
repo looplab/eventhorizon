@@ -257,7 +257,6 @@ func TestEventHandler_LoadError(t *testing.T) {
 	expectedErr := Error{
 		Err:          loadErr,
 		Projector:    TestProjectorType.String(),
-		Namespace:    eh.NamespaceFromContext(ctx),
 		EventVersion: 1,
 	}
 	err := handler.HandleEvent(ctx, event)
@@ -287,7 +286,6 @@ func TestEventHandler_SaveError(t *testing.T) {
 	expectedErr := Error{
 		Err:          saveErr,
 		Projector:    TestProjectorType.String(),
-		Namespace:    eh.NamespaceFromContext(ctx),
 		EventVersion: 1,
 	}
 	err := handler.HandleEvent(ctx, event)
@@ -317,7 +315,6 @@ func TestEventHandler_ProjectError(t *testing.T) {
 	expectedErr := Error{
 		Err:          projectErr,
 		Projector:    TestProjectorType.String(),
-		Namespace:    eh.NamespaceFromContext(ctx),
 		EventVersion: 1,
 	}
 	err := handler.HandleEvent(ctx, event)

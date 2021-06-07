@@ -30,12 +30,11 @@ import (
 // implementation:
 //
 //   func TestRepo(t *testing.T) {
-//       ctx := context.Background() // Or other when testing namespaces.
 //       store := NewRepo()
-//       repo.AcceptanceTest(t, ctx, store)
+//       repo.AcceptanceTest(t, store, context.Background())
 //   }
 //
-func AcceptanceTest(t *testing.T, ctx context.Context, repo eh.ReadWriteRepo) {
+func AcceptanceTest(t *testing.T, repo eh.ReadWriteRepo, ctx context.Context) {
 	// Find non-existing item.
 	entity, err := repo.Find(ctx, uuid.New())
 	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {

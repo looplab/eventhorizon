@@ -34,10 +34,7 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	// Run the actual test suite, both for default and custom namespace.
-	eventstore.AcceptanceTest(t, context.Background(), store)
-	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
-	eventstore.AcceptanceTest(t, ctx, store)
+	eventstore.AcceptanceTest(t, store, context.Background())
 }
 
 func TestWithEventHandler(t *testing.T) {

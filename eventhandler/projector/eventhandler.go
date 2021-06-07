@@ -51,14 +51,12 @@ func (t Type) String() string {
 	return string(t)
 }
 
-// Error is an error in the projector, with the namespace.
+// Error is an error in the projector.
 type Error struct {
 	// Err is the error that happened when projecting the event.
 	Err error
 	// Projector is the projector where the error happened.
 	Projector string
-	// Namespace is the namespace for the error.
-	Namespace string
 	// EventVersion is the version of the event.
 	EventVersion int
 	// EntityVersion is the version of the entity.
@@ -67,8 +65,8 @@ type Error struct {
 
 // Error implements the Error method of the errors.Error interface.
 func (e Error) Error() string {
-	return fmt.Sprintf("%s: %s, event: v%d, entity: v%d (%s)",
-		e.Projector, e.Err, e.EventVersion, e.EntityVersion, e.Namespace)
+	return fmt.Sprintf("%s: %s, event: v%d, entity: v%d",
+		e.Projector, e.Err, e.EventVersion, e.EntityVersion)
 }
 
 // Unwrap implements the errors.Unwrap method.
@@ -129,7 +127,6 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 			return Error{
 				Err:          ErrModelNotSet,
 				Projector:    h.projector.ProjectorType().String(),
-				Namespace:    eh.NamespaceFromContext(ctx),
 				EventVersion: event.Version(),
 			}
 		}
@@ -138,7 +135,6 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		return Error{
 			Err:          err,
 			Projector:    h.projector.ProjectorType().String(),
-			Namespace:    eh.NamespaceFromContext(ctx),
 			EventVersion: event.Version(),
 		}
 	}
@@ -157,7 +153,6 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 			return Error{
 				Err:           eh.ErrIncorrectEntityVersion,
 				Projector:     h.projector.ProjectorType().String(),
-				Namespace:     eh.NamespaceFromContext(ctx),
 				EventVersion:  event.Version(),
 				EntityVersion: entityVersion,
 			}
@@ -170,7 +165,6 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		return Error{
 			Err:           err,
 			Projector:     h.projector.ProjectorType().String(),
-			Namespace:     eh.NamespaceFromContext(ctx),
 			EventVersion:  event.Version(),
 			EntityVersion: entityVersion,
 		}
@@ -183,7 +177,6 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 			return Error{
 				Err:           eh.ErrIncorrectEntityVersion,
 				Projector:     h.projector.ProjectorType().String(),
-				Namespace:     eh.NamespaceFromContext(ctx),
 				EventVersion:  event.Version(),
 				EntityVersion: entityVersion,
 			}
@@ -196,7 +189,6 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 			return Error{
 				Err:           err,
 				Projector:     h.projector.ProjectorType().String(),
-				Namespace:     eh.NamespaceFromContext(ctx),
 				EventVersion:  event.Version(),
 				EntityVersion: entityVersion,
 			}
@@ -206,7 +198,6 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 			return Error{
 				Err:           err,
 				Projector:     h.projector.ProjectorType().String(),
-				Namespace:     eh.NamespaceFromContext(ctx),
 				EventVersion:  event.Version(),
 				EntityVersion: entityVersion,
 			}

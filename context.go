@@ -22,16 +22,12 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-// DefaultNamespace is the namespace to use if not set in the context.
-const DefaultNamespace = "default"
-
 // DefaultMinVersionDeadline is the deadline to use when creating a min version
 // context that waits.
 const DefaultMinVersionDeadline = 10 * time.Second
 
 // Strings used to marshal context values.
 const (
-	namespaceKeyStr     = "eh_namespace"
 	aggregateIDKeyStr   = "eh_aggregate_id"
 	aggregateTypeKeyStr = "eh_aggregate_type"
 	commandTypeKeyStr   = "eh_command_type"
@@ -39,9 +35,6 @@ const (
 
 func init() {
 	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
-		if ns, ok := ctx.Value(namespaceKey).(string); ok {
-			vals[namespaceKeyStr] = ns
-		}
 		if aggregateID, ok := AggregateIDFromContext(ctx); ok {
 			vals[aggregateIDKeyStr] = aggregateID.String()
 		}
@@ -53,9 +46,6 @@ func init() {
 		}
 	})
 	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
-		if ns, ok := vals[namespaceKeyStr].(string); ok {
-			ctx = NewContextWithNamespace(ctx, ns)
-		}
 		if aggregateIDStr, ok := vals[aggregateIDKeyStr].(string); ok {
 			if aggregateID, err := uuid.Parse(aggregateIDStr); err == nil {
 				ctx = NewContextWithAggregateID(ctx, aggregateID)
@@ -74,8 +64,7 @@ func init() {
 type contextKey int
 
 const (
-	namespaceKey contextKey = iota
-	aggregateIDKey
+	aggregateIDKey contextKey = iota
 	aggregateTypeKey
 	commandTypeKey
 )
@@ -111,21 +100,6 @@ func NewContextWithAggregateType(ctx context.Context, aggregateType AggregateTyp
 // NewContextWithCommandType adds a command type on the context.
 func NewContextWithCommandType(ctx context.Context, commandType CommandType) context.Context {
 	return context.WithValue(ctx, commandTypeKey, commandType)
-}
-
-// NamespaceFromContext returns the namespace from the context, or the default
-// namespace.
-func NamespaceFromContext(ctx context.Context) string {
-	if ns, ok := ctx.Value(namespaceKey).(string); ok {
-		return ns
-	}
-	return DefaultNamespace
-}
-
-// NewContextWithNamespace sets the namespace to use in the context. The
-// namespace is used to determine which database.
-func NewContextWithNamespace(ctx context.Context, namespace string) context.Context {
-	return context.WithValue(ctx, namespaceKey, namespace)
 }
 
 // Private context marshaling funcs.

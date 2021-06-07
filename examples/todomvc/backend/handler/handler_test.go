@@ -84,8 +84,8 @@ func TestGetAll(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("the status should be correct:", w.Code)
 	}
-	if string(w.Body.Bytes()) != `[]` {
-		t.Error("the body should be correct:", string(w.Body.Bytes()))
+	if w.Body.String() != `[]` {
+		t.Error("the body should be correct:", w.Body.String())
 	}
 
 	id := uuid.New()
@@ -115,8 +115,8 @@ func TestGetAll(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("the status should be correct:", w.Code)
 	}
-	if string(w.Body.Bytes()) != `[{"id":"`+id.String()+`","version":2,"items":[{"id":0,"desc":"desc","completed":false}],"created_at":"`+todo.TimeNow().Format(time.RFC3339Nano)+`","updated_at":"`+todo.TimeNow().Format(time.RFC3339Nano)+`"}]` {
-		t.Error("the body should be correct:", string(w.Body.Bytes()))
+	if w.Body.String() != `[{"id":"`+id.String()+`","version":2,"items":[{"id":0,"desc":"desc","completed":false}],"created_at":"`+todo.TimeNow().Format(time.RFC3339Nano)+`","updated_at":"`+todo.TimeNow().Format(time.RFC3339Nano)+`"}]` {
+		t.Error("the body should be correct:", w.Body.String())
 	}
 
 	// Cancel all handlers and wait.
@@ -146,8 +146,8 @@ func TestCreate(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("the status should be correct:", w.Code)
 	}
-	if string(w.Body.Bytes()) != `` {
-		t.Error("the body should be correct:", string(w.Body.Bytes()))
+	if w.Body.Len() != 0 {
+		t.Error("the body should be correct:", w.Body.String())
 	}
 
 	waiter := waiter.NewEventHandler()
@@ -212,8 +212,8 @@ func TestDelete(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("the status should be correct:", w.Code)
 	}
-	if string(w.Body.Bytes()) != `` {
-		t.Error("the body should be correct:", string(w.Body.Bytes()))
+	if w.Body.Len() != 0 {
+		t.Error("the body should be correct:", w.Body.String())
 	}
 
 	waiter := waiter.NewEventHandler()
@@ -264,8 +264,8 @@ func TestAddItem(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("the status should be correct:", w.Code)
 	}
-	if string(w.Body.Bytes()) != `` {
-		t.Error("the body should be correct:", string(w.Body.Bytes()))
+	if w.Body.Len() != 0 {
+		t.Error("the body should be correct:", w.Body.String())
 	}
 
 	waiter := waiter.NewEventHandler()
@@ -341,8 +341,8 @@ func TestRemoveItem(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("the status should be correct:", w.Code)
 	}
-	if string(w.Body.Bytes()) != `` {
-		t.Error("the body should be correct:", string(w.Body.Bytes()))
+	if w.Body.Len() != 0 {
+		t.Error("the body should be correct:", w.Body.String())
 	}
 
 	waiter := waiter.NewEventHandler()
@@ -426,8 +426,8 @@ func TestRemoveCompleted(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("the status should be correct:", w.Code)
 	}
-	if string(w.Body.Bytes()) != `` {
-		t.Error("the body should be correct:", string(w.Body.Bytes()))
+	if w.Body.Len() != 0 {
+		t.Error("the body should be correct:", w.Body.String())
 	}
 
 	waiter := waiter.NewEventHandler()
@@ -505,8 +505,8 @@ func TestSetItemDesc(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("the status should be correct:", w.Code)
 	}
-	if string(w.Body.Bytes()) != `` {
-		t.Error("the body should be correct:", string(w.Body.Bytes()))
+	if w.Body.Len() != 0 {
+		t.Error("the body should be correct:", w.Body.String())
 	}
 
 	waiter := waiter.NewEventHandler()
@@ -588,8 +588,8 @@ func TestCheckItem(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("the status should be correct:", w.Code)
 	}
-	if string(w.Body.Bytes()) != `` {
-		t.Error("the body should be correct:", string(w.Body.Bytes()))
+	if w.Body.Len() != 0 {
+		t.Error("the body should be correct:", w.Body.String())
 	}
 
 	waiter := waiter.NewEventHandler()
@@ -676,8 +676,8 @@ func TestCheckAllItems(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Error("the status should be correct:", w.Code)
 	}
-	if string(w.Body.Bytes()) != `` {
-		t.Error("the body should be correct:", string(w.Body.Bytes()))
+	if w.Body.Len() != 0 {
+		t.Error("the body should be correct:", w.Body.String())
 	}
 
 	waiter := waiter.NewEventHandler()
@@ -791,11 +791,11 @@ func NewIntegrationTestSession(ctx context.Context) (
 	todoRepo := version.NewRepo(repo)
 
 	// NOTE: Temp clear of DB on startup.
-	mongoRepo, ok := todoRepo.Parent().(*mongodb.Repo)
-	if !ok {
+	mongodbRepo := mongodb.IntoRepo(ctx, todoRepo)
+	if mongodbRepo == nil {
 		log.Fatal("incorrect repo type")
 	}
-	if err := mongoRepo.Clear(ctx); err != nil {
+	if err := mongodbRepo.Clear(ctx); err != nil {
 		log.Println("could not clear DB:", err)
 	}
 

@@ -38,13 +38,12 @@ import (
 // as values.
 type EventStore struct {
 	client       *mongo.Client
-	dbPrefix     string
-	dbName       func(ctx context.Context) string
+	aggregates   *mongo.Collection
 	eventHandler eh.EventHandler
 }
 
 // NewEventStore creates a new EventStore with a MongoDB URI: `mongodb://hostname`.
-func NewEventStore(uri, dbPrefix string, options ...Option) (*EventStore, error) {
+func NewEventStore(uri, db string, options ...Option) (*EventStore, error) {
 	opts := mongoOptions.Client().ApplyURI(uri)
 	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
 	opts.SetReadConcern(readconcern.Majority())
@@ -54,24 +53,18 @@ func NewEventStore(uri, dbPrefix string, options ...Option) (*EventStore, error)
 		return nil, fmt.Errorf("could not connect to DB: %w", err)
 	}
 
-	return NewEventStoreWithClient(client, dbPrefix, options...)
+	return NewEventStoreWithClient(client, db, options...)
 }
 
 // NewEventStoreWithClient creates a new EventStore with a client.
-func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, options ...Option) (*EventStore, error) {
+func NewEventStoreWithClient(client *mongo.Client, db string, options ...Option) (*EventStore, error) {
 	if client == nil {
 		return nil, fmt.Errorf("missing DB client")
 	}
 
 	s := &EventStore{
-		client:   client,
-		dbPrefix: dbPrefix,
-	}
-
-	// Use the a prefix and namespace from the context for DB name.
-	s.dbName = func(ctx context.Context) string {
-		ns := eh.NamespaceFromContext(ctx)
-		return dbPrefix + "_" + ns
+		client:     client,
+		aggregates: client.Database(db).Collection("events"),
 	}
 
 	for _, option := range options {
@@ -86,24 +79,6 @@ func NewEventStoreWithClient(client *mongo.Client, dbPrefix string, options ...O
 // Option is an option setter used to configure creation.
 type Option func(*EventStore) error
 
-// WithPrefixAsDBName uses only the prefix as DB name, without namespace support.
-func WithPrefixAsDBName() Option {
-	return func(s *EventStore) error {
-		s.dbName = func(context.Context) string {
-			return s.dbPrefix
-		}
-		return nil
-	}
-}
-
-// WithDBName uses a custom DB name function.
-func WithDBName(dbName func(context.Context) string) Option {
-	return func(s *EventStore) error {
-		s.dbName = dbName
-		return nil
-	}
-}
-
 // WithEventHandler adds an event handler that will be called when saving events.
 // An example would be to add an event bus to publish events.
 func WithEventHandler(h eh.EventHandler) Option {
@@ -117,8 +92,7 @@ func WithEventHandler(h eh.EventHandler) Option {
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return eh.EventStoreError{
-			Err:       eh.ErrNoEventsToAppend,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err: eh.ErrNoEventsToAppend,
 		}
 	}
 
@@ -130,16 +104,14 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		// Only accept events belonging to the same aggregate.
 		if event.AggregateID() != aggregateID {
 			return eh.EventStoreError{
-				Err:       eh.ErrInvalidEvent,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err: eh.ErrInvalidEvent,
 			}
 		}
 
 		// Only accept events that apply to the correct aggregate version.
 		if event.Version() != originalVersion+i+1 {
 			return eh.EventStoreError{
-				Err:       eh.ErrIncorrectEventVersion,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err: eh.ErrIncorrectEventVersion,
 			}
 		}
 
@@ -151,8 +123,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		dbEvents[i] = *e
 	}
 
-	c := s.client.Database(s.dbName(ctx)).Collection("events")
-
 	// Either insert a new aggregate or append to an existing.
 	if originalVersion == 0 {
 		aggregate := aggregateRecord{
@@ -161,18 +131,17 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			Events:      dbEvents,
 		}
 
-		if _, err := c.InsertOne(ctx, aggregate); err != nil {
+		if _, err := s.aggregates.InsertOne(ctx, aggregate); err != nil {
 			return eh.EventStoreError{
-				Err:       eh.ErrCouldNotSaveEvents,
-				BaseErr:   err,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err:     eh.ErrCouldNotSaveEvents,
+				BaseErr: err,
 			}
 		}
 	} else {
 		// Increment aggregate version on insert of new event record, and
 		// only insert if version of aggregate is matching (ie not changed
 		// since loading the aggregate).
-		if r, err := c.UpdateOne(ctx,
+		if r, err := s.aggregates.UpdateOne(ctx,
 			bson.M{
 				"_id":     aggregateID,
 				"version": originalVersion,
@@ -183,15 +152,13 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			},
 		); err != nil {
 			return eh.EventStoreError{
-				Err:       eh.ErrCouldNotSaveEvents,
-				BaseErr:   err,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err:     eh.ErrCouldNotSaveEvents,
+				BaseErr: err,
 			}
 		} else if r.MatchedCount == 0 {
 			return eh.EventStoreError{
-				Err:       eh.ErrCouldNotSaveEvents,
-				BaseErr:   fmt.Errorf("invalid original version %d", originalVersion),
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err:     eh.ErrCouldNotSaveEvents,
+				BaseErr: fmt.Errorf("invalid original version %d", originalVersion),
 			}
 		}
 	}
@@ -201,9 +168,8 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		for _, e := range events {
 			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
 				return eh.CouldNotHandleEventError{
-					Err:       err,
-					Event:     e,
-					Namespace: eh.NamespaceFromContext(ctx),
+					Err:   err,
+					Event: e,
 				}
 			}
 		}
@@ -214,16 +180,13 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
 func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
-	c := s.client.Database(s.dbName(ctx)).Collection("events")
-
 	var aggregate aggregateRecord
-	err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&aggregate)
+	err := s.aggregates.FindOne(ctx, bson.M{"_id": id}).Decode(&aggregate)
 	if err == mongo.ErrNoDocuments {
 		return []eh.Event{}, nil
 	} else if err != nil {
 		return nil, eh.EventStoreError{
-			Err:       fmt.Errorf("could not find event: %w", err),
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err: fmt.Errorf("could not find event: %w", err),
 		}
 	}
 
@@ -234,14 +197,12 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 			var err error
 			if e.data, err = eh.CreateEventData(e.EventType); err != nil {
 				return nil, eh.EventStoreError{
-					Err:       fmt.Errorf("could not create event data: %w", err),
-					Namespace: eh.NamespaceFromContext(ctx),
+					Err: fmt.Errorf("could not create event data: %w", err),
 				}
 			}
 			if err := bson.Unmarshal(e.RawData, e.data); err != nil {
 				return nil, eh.EventStoreError{
-					Err:       fmt.Errorf("could not unmarshal event data: %w", err),
-					Namespace: eh.NamespaceFromContext(ctx),
+					Err: fmt.Errorf("could not unmarshal event data: %w", err),
 				}
 			}
 			e.RawData = nil
@@ -311,8 +272,7 @@ func newEvt(ctx context.Context, event eh.Event) (*evt, error) {
 		e.RawData, err = bson.Marshal(event.Data())
 		if err != nil {
 			return nil, eh.EventStoreError{
-				Err:       fmt.Errorf("could not marshal event data: %w", err),
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err: fmt.Errorf("could not marshal event data: %w", err),
 			}
 		}
 	}

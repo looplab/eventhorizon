@@ -28,8 +28,7 @@ import (
 // EventStore is an eventhorizon.EventStore where all events are stored in
 // memory and not persisted. Useful for testing and experimenting.
 type EventStore struct {
-	// The outer map is with namespace as key, the inner with aggregate ID.
-	db           map[string]map[uuid.UUID]aggregateRecord
+	db           map[uuid.UUID]aggregateRecord
 	dbMu         sync.RWMutex
 	eventHandler eh.EventHandler
 }
@@ -37,7 +36,7 @@ type EventStore struct {
 // NewEventStore creates a new EventStore using memory as storage.
 func NewEventStore(options ...Option) (*EventStore, error) {
 	s := &EventStore{
-		db: map[string]map[uuid.UUID]aggregateRecord{},
+		db: map[uuid.UUID]aggregateRecord{},
 	}
 	for _, option := range options {
 		if err := option(s); err != nil {
@@ -63,8 +62,7 @@ func WithEventHandler(h eh.EventHandler) Option {
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return eh.EventStoreError{
-			Err:       eh.ErrNoEventsToAppend,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err: eh.ErrNoEventsToAppend,
 		}
 	}
 
@@ -76,16 +74,14 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		// Only accept events belonging to the same aggregate.
 		if event.AggregateID() != aggregateID {
 			return eh.EventStoreError{
-				Err:       eh.ErrInvalidEvent,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err: eh.ErrInvalidEvent,
 			}
 		}
 
 		// Only accept events that apply to the correct aggregate version.
 		if event.Version() != originalVersion+i+1 {
 			return eh.EventStoreError{
-				Err:       eh.ErrIncorrectEventVersion,
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err: eh.ErrIncorrectEventVersion,
 			}
 		}
 
@@ -96,8 +92,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		}
 		dbEvents[i] = e
 	}
-
-	ns := s.namespace(ctx)
 
 	s.dbMu.Lock()
 	defer s.dbMu.Unlock()
@@ -110,24 +104,23 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			Events:      dbEvents,
 		}
 
-		s.db[ns][aggregateID] = aggregate
+		s.db[aggregateID] = aggregate
 	} else {
 		// Increment aggregate version on insert of new event record, and
 		// only insert if version of aggregate is matching (ie not changed
 		// since loading the aggregate).
-		if aggregate, ok := s.db[ns][aggregateID]; ok {
+		if aggregate, ok := s.db[aggregateID]; ok {
 			if aggregate.Version != originalVersion {
 				return eh.EventStoreError{
-					Err:       eh.ErrCouldNotSaveEvents,
-					BaseErr:   fmt.Errorf("invalid original version %d", originalVersion),
-					Namespace: eh.NamespaceFromContext(ctx),
+					Err:     eh.ErrCouldNotSaveEvents,
+					BaseErr: fmt.Errorf("invalid original version %d", originalVersion),
 				}
 			}
 
 			aggregate.Version += len(dbEvents)
 			aggregate.Events = append(aggregate.Events, dbEvents...)
 
-			s.db[ns][aggregateID] = aggregate
+			s.db[aggregateID] = aggregate
 		}
 	}
 
@@ -137,9 +130,8 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		for _, e := range events {
 			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
 				return eh.CouldNotHandleEventError{
-					Err:       err,
-					Event:     e,
-					Namespace: eh.NamespaceFromContext(ctx),
+					Err:   err,
+					Event: e,
 				}
 			}
 		}
@@ -153,12 +145,7 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	s.dbMu.RLock()
 	defer s.dbMu.RUnlock()
 
-	// Ensure that the namespace exists.
-	s.dbMu.RUnlock()
-	ns := s.namespace(ctx)
-	s.dbMu.RLock()
-
-	aggregate, ok := s.db[ns][id]
+	aggregate, ok := s.db[id]
 	if !ok {
 		return []eh.Event{}, nil
 	}
@@ -173,17 +160,6 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	}
 
 	return events, nil
-}
-
-// Helper to get the namespace and ensure that its data exists.
-func (s *EventStore) namespace(ctx context.Context) string {
-	s.dbMu.Lock()
-	defer s.dbMu.Unlock()
-	ns := eh.NamespaceFromContext(ctx)
-	if _, ok := s.db[ns]; !ok {
-		s.db[ns] = map[uuid.UUID]aggregateRecord{}
-	}
-	return ns
 }
 
 type aggregateRecord struct {
@@ -201,8 +177,7 @@ func copyEvent(ctx context.Context, event eh.Event) (eh.Event, error) {
 		var err error
 		if data, err = eh.CreateEventData(event.EventType()); err != nil {
 			return nil, eh.EventStoreError{
-				Err:       fmt.Errorf("could not create event data: %w", err),
-				Namespace: eh.NamespaceFromContext(ctx),
+				Err: fmt.Errorf("could not create event data: %w", err),
 			}
 		}
 		copier.Copy(data, event.Data())

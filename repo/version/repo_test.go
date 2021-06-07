@@ -39,22 +39,17 @@ func TestReadRepo(t *testing.T) {
 	if r == nil {
 		t.Error("there should be a repository")
 	}
-	if parent := r.Parent(); parent != baseRepo {
-		t.Error("the parent repo should be correct:", parent)
+	if inner := r.InnerRepo(context.Background()); inner != baseRepo {
+		t.Error("the inner repo should be correct:", inner)
 	}
 
-	// Read repository with default namespace.
-	repo.AcceptanceTest(t, context.Background(), r)
-	extraRepoTests(t, context.Background(), r, baseRepo)
-
-	// Read repository with other namespace.
-	ctx := eh.NewContextWithNamespace(context.Background(), "ns")
-	repo.AcceptanceTest(t, ctx, r)
-	extraRepoTests(t, ctx, r, baseRepo)
-
+	repo.AcceptanceTest(t, r, context.Background())
+	extraRepoTests(t, r, baseRepo)
 }
 
-func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory.Repo) {
+func extraRepoTests(t *testing.T, r *Repo, baseRepo *memory.Repo) {
+	ctx := context.Background()
+
 	// Set a model without version for the first test case.
 	// A repo should not change models mid-life like this.
 	baseRepo.SetEntityFactory(func() eh.Entity {
@@ -255,19 +250,19 @@ func extraRepoTests(t *testing.T, ctx context.Context, r *Repo, baseRepo *memory
 	}
 }
 
-func TestRepository(t *testing.T) {
-	if r := Repository(nil); r != nil {
-		t.Error("the parent repository should be nil:", r)
+func TestIntoRepo(t *testing.T) {
+	if r := IntoRepo(context.Background(), nil); r != nil {
+		t.Error("the repository should be nil:", r)
 	}
 
 	inner := &mocks.Repo{}
-	if r := Repository(inner); r != nil {
-		t.Error("the parent repository should be nil:", r)
+	if r := IntoRepo(context.Background(), inner); r != nil {
+		t.Error("the repository should be correct:", r)
 	}
 
-	repo := NewRepo(inner)
-	outer := &mocks.Repo{ParentRepo: repo}
-	if r := Repository(outer); r != repo {
-		t.Error("the parent repository should be correct:", r)
+	middle := NewRepo(inner)
+	outer := &mocks.Repo{ParentRepo: middle}
+	if r := IntoRepo(context.Background(), outer); r != middle {
+		t.Error("the repository should be correct:", r)
 	}
 }

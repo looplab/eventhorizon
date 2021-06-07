@@ -49,20 +49,17 @@ func (t Type) String() string {
 	return string(t)
 }
 
-// Error is an error in the projector, with the namespace.
+// Error is an error in the projector.
 type Error struct {
 	// Err is the error that happened when projecting the event.
 	Err error
 	// Saga is the saga where the error happened.
 	Saga string
-	// Namespace is the namespace for the error.
-	Namespace string
 }
 
 // Error implements the Error method of the errors.Error interface.
 func (e Error) Error() string {
-	return fmt.Sprintf("%s: %s (%s)",
-		e.Saga, e.Err, e.Namespace)
+	return fmt.Sprintf("%s: %s", e.Saga, e.Err)
 }
 
 // Unwrap implements the errors.Unwrap method.
@@ -93,9 +90,8 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	// Run the saga which can issue commands on the provided command handler.
 	if err := h.saga.RunSaga(ctx, event, h.commandHandler); err != nil {
 		return Error{
-			Err:       err,
-			Saga:      h.saga.SagaType().String(),
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:  err,
+			Saga: h.saga.SagaType().String(),
 		}
 	}
 

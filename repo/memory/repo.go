@@ -24,57 +24,60 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-type namespace string
-
 // ErrModelNotSet is when an model factory is not set on the Repo.
 var ErrModelNotSet = errors.New("model not set")
 
 // Repo implements an in memory repository of read models.
 type Repo struct {
-	// The outer map is with namespace as key, the inner with aggregate ID.
-	db   map[namespace]map[uuid.UUID][]byte
+	db   map[uuid.UUID][]byte
 	dbMu sync.RWMutex
 
 	// A list of all item ids, only the order is used.
-	// The outer map is for the namespace.
-	ids       map[namespace][]uuid.UUID
+	ids       []uuid.UUID
 	factoryFn func() eh.Entity
 }
 
 // NewRepo creates a new Repo.
 func NewRepo() *Repo {
 	r := &Repo{
-		ids: map[namespace][]uuid.UUID{},
-		db:  map[namespace]map[uuid.UUID][]byte{},
+		db: map[uuid.UUID][]byte{},
 	}
 	return r
 }
 
-// Parent implements the Parent method of the eventhorizon.ReadRepo interface.
-func (r *Repo) Parent() eh.ReadRepo {
+// InnerRepo implements the InnerRepo method of the eventhorizon.ReadRepo interface.
+func (r *Repo) InnerRepo(ctx context.Context) eh.ReadRepo {
 	return nil
+}
+
+// IntoRepo tries to convert a eh.ReadRepo into a Repo by recursively looking at
+// inner repos. Returns nil if none was found.
+func IntoRepo(ctx context.Context, repo eh.ReadRepo) *Repo {
+	if repo == nil {
+		return nil
+	}
+	if r, ok := repo.(*Repo); ok {
+		return r
+	}
+	return IntoRepo(ctx, repo.InnerRepo(ctx))
 }
 
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
-			Err:       ErrModelNotSet,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err: ErrModelNotSet,
 		}
 	}
-
-	ns := r.namespace(ctx)
 
 	r.dbMu.RLock()
 	defer r.dbMu.RUnlock()
 
 	// Fetch entity.
-	b, ok := r.db[ns][id]
+	b, ok := r.db[id]
 	if !ok {
 		return nil, eh.RepoError{
-			Err:       eh.ErrEntityNotFound,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err: eh.ErrEntityNotFound,
 		}
 	}
 
@@ -82,9 +85,8 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	entity := r.factoryFn()
 	if err := json.Unmarshal(b, &entity); err != nil {
 		return nil, eh.RepoError{
-			Err:       eh.ErrCouldNotLoadEntity,
-			BaseErr:   err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:     eh.ErrCouldNotLoadEntity,
+			BaseErr: err,
 		}
 	}
 
@@ -95,24 +97,20 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
-			Err:       ErrModelNotSet,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err: ErrModelNotSet,
 		}
 	}
-
-	ns := r.namespace(ctx)
 
 	r.dbMu.RLock()
 	defer r.dbMu.RUnlock()
 	result := []eh.Entity{}
-	for _, id := range r.ids[ns] {
-		if b, ok := r.db[ns][id]; ok {
+	for _, id := range r.ids {
+		if b, ok := r.db[id]; ok {
 			entity := r.factoryFn()
 			if err := json.Unmarshal(b, &entity); err != nil {
 				return nil, eh.RepoError{
-					Err:       eh.ErrCouldNotLoadEntity,
-					BaseErr:   err,
-					Namespace: eh.NamespaceFromContext(ctx),
+					Err:     eh.ErrCouldNotLoadEntity,
+					BaseErr: err,
 				}
 			}
 			result = append(result, entity)
@@ -126,18 +124,14 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	if r.factoryFn == nil {
 		return eh.RepoError{
-			Err:       ErrModelNotSet,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err: ErrModelNotSet,
 		}
 	}
 
-	ns := r.namespace(ctx)
-
 	if entity.EntityID() == uuid.Nil {
 		return eh.RepoError{
-			Err:       eh.ErrCouldNotSaveEntity,
-			BaseErr:   eh.ErrMissingEntityID,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:     eh.ErrCouldNotSaveEntity,
+			BaseErr: eh.ErrMissingEntityID,
 		}
 	}
 
@@ -149,76 +143,45 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	b, err := json.Marshal(entity)
 	if err != nil {
 		return eh.RepoError{
-			Err:       eh.ErrCouldNotSaveEntity,
-			BaseErr:   err,
-			Namespace: eh.NamespaceFromContext(ctx),
+			Err:     eh.ErrCouldNotSaveEntity,
+			BaseErr: err,
 		}
 	}
 
 	// Update ID index if the item is new.
-	if _, ok := r.db[ns][id]; !ok {
-		r.ids[ns] = append(r.ids[ns], id)
+	if _, ok := r.db[id]; !ok {
+		r.ids = append(r.ids, id)
 	}
-	r.db[ns][id] = b
+	r.db[id] = b
 
 	return nil
 }
 
 // Remove implements the Remove method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
-	ns := r.namespace(ctx)
-
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
-	if _, ok := r.db[ns][id]; ok {
-		delete(r.db[ns], id)
+	if _, ok := r.db[id]; ok {
+		delete(r.db, id)
 
 		index := -1
-		for i, d := range r.ids[ns] {
+		for i, d := range r.ids {
 			if id == d {
 				index = i
 				break
 			}
 		}
-		r.ids[ns] = append(r.ids[ns][:index], r.ids[ns][index+1:]...)
+		r.ids = append(r.ids[:index], r.ids[index+1:]...)
 
 		return nil
 	}
 
 	return eh.RepoError{
-		Err:       eh.ErrEntityNotFound,
-		Namespace: eh.NamespaceFromContext(ctx),
+		Err: eh.ErrEntityNotFound,
 	}
 }
 
 // SetEntityFactory sets a factory function that creates concrete entity types.
 func (r *Repo) SetEntityFactory(f func() eh.Entity) {
 	r.factoryFn = f
-}
-
-// Helper to get the namespace and ensure that its data exists.
-func (r *Repo) namespace(ctx context.Context) namespace {
-	ns := namespace(eh.NamespaceFromContext(ctx))
-
-	r.dbMu.Lock()
-	defer r.dbMu.Unlock()
-	if _, ok := r.db[ns]; !ok {
-		r.db[ns] = map[uuid.UUID][]byte{}
-		r.ids[ns] = []uuid.UUID{}
-	}
-
-	return ns
-}
-
-// Repository returns a parent ReadRepo if there is one.
-func Repository(repo eh.ReadRepo) *Repo {
-	if repo == nil {
-		return nil
-	}
-
-	if r, ok := repo.(*Repo); ok {
-		return r
-	}
-
-	return Repository(repo.Parent())
 }
