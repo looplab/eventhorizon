@@ -26,7 +26,7 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-func TestCommandHandler_Immediate(t *testing.T) {
+func TestMiddleware_Immediate(t *testing.T) {
 	inner := &mocks.CommandHandler{}
 	m, _ := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
@@ -42,7 +42,7 @@ func TestCommandHandler_Immediate(t *testing.T) {
 	}
 }
 
-func TestCommandHandler_Delayed(t *testing.T) {
+func TestMiddleware_Delayed(t *testing.T) {
 	inner := &mocks.CommandHandler{}
 	m, _ := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
@@ -68,7 +68,7 @@ func TestCommandHandler_Delayed(t *testing.T) {
 	inner.RUnlock()
 }
 
-func TestCommandHandler_ZeroTime(t *testing.T) {
+func TestMiddleware_ZeroTime(t *testing.T) {
 	inner := &mocks.CommandHandler{}
 	m, _ := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
@@ -85,7 +85,7 @@ func TestCommandHandler_ZeroTime(t *testing.T) {
 	}
 }
 
-func TestCommandHandler_Errors(t *testing.T) {
+func TestMiddleware_Errors(t *testing.T) {
 	handlerErr := errors.New("handler error")
 	inner := &mocks.CommandHandler{
 		Err: handlerErr,
@@ -113,7 +113,7 @@ func TestCommandHandler_Errors(t *testing.T) {
 	}
 }
 
-func TestCommandHandler_ContextCanceled(t *testing.T) {
+func TestMiddleware_ContextCanceled(t *testing.T) {
 	handlerErr := errors.New("handler error")
 	inner := &mocks.CommandHandler{
 		Err: handlerErr,
@@ -144,7 +144,7 @@ func TestCommandHandler_ContextCanceled(t *testing.T) {
 	}
 }
 
-func TestCommandHandler_ContextDeadline(t *testing.T) {
+func TestMiddleware_ContextDeadline(t *testing.T) {
 	handlerErr := errors.New("handler error")
 	inner := &mocks.CommandHandler{
 		Err: handlerErr,
