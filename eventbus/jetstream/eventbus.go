@@ -74,6 +74,10 @@ func NewEventBus(url, appID string, options ...Option) (*EventBus, error) {
 		return nil, fmt.Errorf("could not create Jetstream context: %w", err)
 	}
 
+	if b.stream, err = b.js.StreamInfo(b.streamName); err == nil {
+		return b, nil
+	}
+
 	// Create the stream, which stores messages received on the subject.
 	subjects := b.streamName + ".*.*"
 	cfg := &nats.StreamConfig{
@@ -81,6 +85,7 @@ func NewEventBus(url, appID string, options ...Option) (*EventBus, error) {
 		Subjects: []string{subjects},
 		Storage:  nats.FileStorage,
 	}
+
 	if b.stream, err = b.js.AddStream(cfg); err != nil {
 		return nil, fmt.Errorf("could not create Jetstream stream: %w", err)
 	}
