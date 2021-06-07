@@ -164,7 +164,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			bson.M{"$inc": bson.M{"position": len(dbEvents)}},
 		)
 		if r.Err() != nil {
-			return nil, fmt.Errorf("could not increment global position: %w", err)
+			return nil, fmt.Errorf("could not increment global position: %w", r.Err())
 		}
 		allStream := struct {
 			Position int
