@@ -327,6 +327,15 @@ func (r *Repo) Collection(ctx context.Context, f func(context.Context, *mongo.Co
 	return nil
 }
 
+// CreateIndex creates an index for a field.
+func (r *Repo) CreateIndex(ctx context.Context, field string) error {
+	index := mongo.IndexModel{Keys: bson.M{field: 1}}
+	if _, err := r.entities.Indexes().CreateOne(ctx, index); err != nil {
+		return fmt.Errorf("could not create index: %s", err)
+	}
+	return nil
+}
+
 // SetEntityFactory sets a factory function that creates concrete entity types.
 func (r *Repo) SetEntityFactory(f func() eh.Entity) {
 	r.newEntity = f
