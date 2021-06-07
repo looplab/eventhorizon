@@ -25,7 +25,7 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-func TestCommandHandler_Immediate(t *testing.T) {
+func TestMiddleware_Immediate(t *testing.T) {
 	inner := &mocks.CommandHandler{}
 	m := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
@@ -41,7 +41,7 @@ func TestCommandHandler_Immediate(t *testing.T) {
 	}
 }
 
-func TestCommandHandler_WithValidationError(t *testing.T) {
+func TestMiddleware_WithValidationError(t *testing.T) {
 	inner := &mocks.CommandHandler{}
 	m := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
@@ -64,7 +64,7 @@ func TestCommandHandler_WithValidationError(t *testing.T) {
 	}
 }
 
-func TestCommandHandler_WithValidationNoError(t *testing.T) {
+func TestMiddleware_WithValidationNoError(t *testing.T) {
 	inner := &mocks.CommandHandler{}
 	m := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)

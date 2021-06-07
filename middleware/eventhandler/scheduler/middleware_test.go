@@ -26,7 +26,7 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-func TestCommandHandler(t *testing.T) {
+func TestMiddleware(t *testing.T) {
 	inner := mocks.NewEventHandler("test")
 
 	schedulerCtx, cancelScheduler := context.WithCancel(context.Background())

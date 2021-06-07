@@ -26,7 +26,7 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-func TestCommandHandler(t *testing.T) {
+func TestMiddleware(t *testing.T) {
 	cmd := mocks.Command{
 		ID:      uuid.New(),
 		Content: "content",

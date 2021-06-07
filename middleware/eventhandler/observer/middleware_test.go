@@ -25,7 +25,7 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-func TestEventHandler(t *testing.T) {
+func TestMiddleware(t *testing.T) {
 	id := uuid.New()
 	eventData := &mocks.EventData{Content: "event1"}
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
