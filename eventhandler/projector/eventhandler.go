@@ -23,16 +23,6 @@ import (
 	"github.com/looplab/eventhorizon/repo/version"
 )
 
-// EventHandler is a CQRS projection handler to run a Projector implementation.
-type EventHandler struct {
-	projector Projector
-	repo      eh.ReadWriteRepo
-	factoryFn func() eh.Entity
-	useWait   bool
-}
-
-var _ = eh.EventHandler(&EventHandler{})
-
 // Projector is a projector of events onto models.
 type Projector interface {
 	// ProjectorType returns the type of the projector.
@@ -82,6 +72,17 @@ func (e Error) Cause() error {
 // ErrModelNotSet is when a model factory is not set on the EventHandler.
 var ErrModelNotSet = errors.New("model not set")
 
+// EventHandler is a CQRS projection handler to run a Projector implementation.
+type EventHandler struct {
+	projector              Projector
+	repo                   eh.ReadWriteRepo
+	factoryFn              func() eh.Entity
+	useWait                bool
+	useIrregularVersioning bool
+}
+
+var _ = eh.EventHandler(&EventHandler{})
+
 // NewEventHandler creates a new EventHandler.
 func NewEventHandler(projector Projector, repo eh.ReadWriteRepo, options ...Option) *EventHandler {
 	h := &EventHandler{
@@ -104,6 +105,15 @@ func WithWait() Option {
 	}
 }
 
+// WithIrregularVersioning sets the option to allow gaps in the version numbers.
+// This can be useful for projectors that project only some events of a larger
+// aggregate, which will lead to gaps in the versions.
+func WithIrregularVersioning() Option {
+	return func(h *EventHandler) {
+		h.useIrregularVersioning = true
+	}
+}
+
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (h *EventHandler) HandlerType() eh.EventHandlerType {
 	return eh.EventHandlerType("projector_" + h.projector.ProjectorType())
@@ -113,14 +123,20 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 // It will try to find the correct version of the model, waiting for it the projector
 // has the WithWait option set.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
-	// Get or create the model, trying to find it with a min version (and optional
-	// retry) if the underlying repo supports it.
-	findCtx := version.NewContextWithMinVersion(ctx, event.Version()-1)
-	if h.useWait {
-		var cancel func()
-		findCtx, cancel = version.NewContextWithMinVersionWait(ctx, event.Version()-1)
-		defer cancel()
+	findCtx := ctx
+	// Irregular versioning skips min version loading.
+	if !h.useIrregularVersioning {
+		// Try to find it with a min version (and optional retry) if the
+		// underlying repo supports it.
+		findCtx = version.NewContextWithMinVersion(ctx, event.Version()-1)
+		if h.useWait {
+			var cancel func()
+			findCtx, cancel = version.NewContextWithMinVersionWait(ctx, event.Version()-1)
+			defer cancel()
+		}
 	}
+
+	// Get or create the model.
 	entity, err := h.repo.Find(findCtx, event.AggregateID())
 	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
 		if h.factoryFn == nil {
@@ -149,12 +165,24 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 			return nil
 		}
 
-		if entity.AggregateVersion()+1 != event.Version() {
-			return Error{
-				Err:           eh.ErrIncorrectEntityVersion,
-				Projector:     h.projector.ProjectorType().String(),
-				EventVersion:  event.Version(),
-				EntityVersion: entityVersion,
+		// Irregular versioning has looser checks on the version.
+		if h.useIrregularVersioning {
+			if entity.AggregateVersion() >= event.Version() {
+				return Error{
+					Err:           eh.ErrIncorrectEntityVersion,
+					Projector:     h.projector.ProjectorType().String(),
+					EventVersion:  event.Version(),
+					EntityVersion: entityVersion,
+				}
+			}
+		} else {
+			if entity.AggregateVersion()+1 != event.Version() {
+				return Error{
+					Err:           eh.ErrIncorrectEntityVersion,
+					Projector:     h.projector.ProjectorType().String(),
+					EventVersion:  event.Version(),
+					EntityVersion: entityVersion,
+				}
 			}
 		}
 	}

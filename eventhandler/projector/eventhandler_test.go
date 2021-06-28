@@ -147,6 +147,55 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 	if err := handler.HandleEvent(ctx, event); err != nil {
 		t.Error("there should be no error:", err)
 	}
+
+	// Handling a future event with a gap in versions should produce an error.
+	futureEvent := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 8))
+	expectedErr := Error{
+		Err:           eh.ErrIncorrectEntityVersion,
+		Projector:     TestProjectorType.String(),
+		EventVersion:  8,
+		EntityVersion: 1,
+	}
+	err := handler.HandleEvent(ctx, futureEvent)
+	if !errors.Is(err, expectedErr) {
+		t.Error("there should be an error:", err)
+	}
+
+	// Handling a "bad projector" which sets the version incorrectly.
+	nextEvent := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 2))
+	projector.newEntity = &mocks.Model{
+		ID:      id,
+		Version: 3,
+		Content: "version 1",
+	}
+	expectedErr = Error{
+		Err:           eh.ErrIncorrectEntityVersion,
+		Projector:     TestProjectorType.String(),
+		EventVersion:  2,
+		EntityVersion: 3,
+	}
+	err = handler.HandleEvent(ctx, nextEvent)
+	if !errors.Is(err, expectedErr) {
+		t.Error("there should be an error:", err)
+	}
+
+	// Handling a future event with a gap in versions should not produce
+	// an error when the irregular versioning option is set.
+	handler = NewEventHandler(projector, version.NewRepo(repo), WithIrregularVersioning())
+	handler.SetEntityFactory(func() eh.Entity {
+		return &mocks.Model{}
+	})
+	// The projector is allowed to bump the version from 3 straight to 8.
+	projector.newEntity = &mocks.Model{
+		ID:      id,
+		Version: 8,
+		Content: "version 1",
+	}
+	if err := handler.HandleEvent(ctx, futureEvent); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestEventHandler_UpdateModelWithEventsOutOfOrder(t *testing.T) {
