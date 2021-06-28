@@ -372,6 +372,49 @@ func TestEventHandler_ProjectError(t *testing.T) {
 	}
 }
 
+func TestEventHandler_EntityLookup(t *testing.T) {
+	repo := &mocks.Repo{}
+	projector := &TestProjector{}
+	handler := NewEventHandler(projector, repo,
+		WithEntityLookup(func(event eh.Event) uuid.UUID {
+			eventData := event.Data().(*mocks.EventData)
+			return uuid.MustParse(eventData.Content)
+		}),
+	)
+	handler.SetEntityFactory(func() eh.Entity {
+		return &mocks.SimpleModel{}
+	})
+
+	ctx := context.Background()
+
+	aggregateID := uuid.New()
+	entityID := uuid.New()
+	eventData := &mocks.EventData{Content: entityID.String()}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, aggregateID, 1))
+	entity := &mocks.SimpleModel{
+		ID: entityID,
+	}
+	repo.Entity = entity
+	projector.newEntity = &mocks.SimpleModel{
+		ID:      entityID,
+		Content: "updated",
+	}
+	if err := handler.HandleEvent(ctx, event); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if projector.event != event {
+		t.Error("the handled event should be correct:", projector.event)
+	}
+	if projector.entity != entity {
+		t.Error("the entity should be correct:", projector.entity)
+	}
+	if repo.Entity != projector.newEntity {
+		t.Error("the new entity should be correct:", repo.Entity)
+	}
+}
+
 const (
 	TestProjectorType Type = "TestProjector"
 )
