@@ -21,6 +21,7 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/repo/version"
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // Projector is a projector of events onto models.
@@ -79,6 +80,7 @@ type EventHandler struct {
 	factoryFn              func() eh.Entity
 	useWait                bool
 	useIrregularVersioning bool
+	entityLookupFn         func(eh.Event) uuid.UUID
 }
 
 var _ = eh.EventHandler(&EventHandler{})
@@ -86,8 +88,9 @@ var _ = eh.EventHandler(&EventHandler{})
 // NewEventHandler creates a new EventHandler.
 func NewEventHandler(projector Projector, repo eh.ReadWriteRepo, options ...Option) *EventHandler {
 	h := &EventHandler{
-		projector: projector,
-		repo:      repo,
+		projector:      projector,
+		repo:           repo,
+		entityLookupFn: defaultEntityLookupFn,
 	}
 	for _, option := range options {
 		option(h)
@@ -114,6 +117,20 @@ func WithIrregularVersioning() Option {
 	}
 }
 
+// WithEntityLookup can be used to provide an alternative ID (from the aggregate ID)
+// for fetching the projected entity. The lookup func can for example extract
+// another field from the event or use a static ID for some singleton-like projections.
+func WithEntityLookup(f func(eh.Event) uuid.UUID) Option {
+	return func(h *EventHandler) {
+		h.entityLookupFn = f
+	}
+}
+
+// defaultEntitypLookupFn does a lookup by the aggregate ID of the event.
+func defaultEntityLookupFn(event eh.Event) uuid.UUID {
+	return event.AggregateID()
+}
+
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (h *EventHandler) HandlerType() eh.EventHandlerType {
 	return eh.EventHandlerType("projector_" + h.projector.ProjectorType())
@@ -137,7 +154,7 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	}
 
 	// Get or create the model.
-	entity, err := h.repo.Find(findCtx, event.AggregateID())
+	entity, err := h.repo.Find(findCtx, h.entityLookupFn(event))
 	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
 		if h.factoryFn == nil {
 			return Error{
@@ -213,6 +230,14 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 
 	// Update or remove the model.
 	if newEntity != nil {
+		if newEntity.EntityID() != h.entityLookupFn(event) {
+			return Error{
+				Err:           eh.ErrMissingEntityID,
+				Projector:     h.projector.ProjectorType().String(),
+				EventVersion:  event.Version(),
+				EntityVersion: entityVersion,
+			}
+		}
 		if err := h.repo.Save(ctx, newEntity); err != nil {
 			return Error{
 				Err:           err,
@@ -222,7 +247,7 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 			}
 		}
 	} else {
-		if err := h.repo.Remove(ctx, event.AggregateID()); err != nil {
+		if err := h.repo.Remove(ctx, h.entityLookupFn(event)); err != nil {
 			return Error{
 				Err:           err,
 				Projector:     h.projector.ProjectorType().String(),
