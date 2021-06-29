@@ -1,0 +1,8 @@
+linters:
+  enable-all: true
+  disable:
+    # are deprecated since v1.39.0 because the repository has be archived by the owner
+    - golint
+    - interfacer
+    - maligned
+    - scopelint
