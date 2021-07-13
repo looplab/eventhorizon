@@ -21,6 +21,12 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
+// IsZeroer is used to check if a type is zero-valued, and in that case
+// is not allowed to be used in a command. See CheckCommand
+type IsZeroer interface {
+	IsZero() bool
+}
+
 // CommandFieldError is returned by Dispatch when a field is incorrect.
 type CommandFieldError struct {
 	Field string
@@ -47,7 +53,15 @@ func CheckCommand(cmd Command) error {
 			continue // Optional field.
 		}
 
-		if isZero(rv.Field(i)) {
+		var zero bool
+		switch foo := rv.Field(i).Interface().(type) {
+		case IsZeroer:
+			zero = foo.IsZero()
+		default:
+			zero = isZero(rv.Field(i))
+		}
+
+		if zero {
 			return CommandFieldError{field.Name}
 		}
 	}

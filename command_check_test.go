@@ -111,6 +111,26 @@ func TestCheckCommand(t *testing.T) {
 	if err == nil || err.Error() != "missing field: StringArray" {
 		t.Error("there should be a missing field error:", err)
 	}
+
+	// IsZero, fail on zeroable int
+	err = CheckCommand(&TestCommandZeroableInt{
+		TestID: uuid.New(),
+		TestZeroableInt: 0,
+		TestInt:         0,
+	})
+	if err == nil || err.Error() != "missing field: TestZeroableInt"{
+		t.Error("there should be a missing field error:", err)
+	}
+
+	// IsZero, do not fail  on plain int
+	err = CheckCommand(&TestCommandZeroableInt{
+		TestID: uuid.New(),
+		TestZeroableInt: 1,
+		TestInt:         0,
+	})
+	if err != nil {
+		t.Error("there should not be an error:", err)
+	}
 }
 
 type TestCommandFields struct {
@@ -288,3 +308,24 @@ var _ = Command(TestCommandArray{})
 func (t TestCommandArray) AggregateID() uuid.UUID       { return t.TestID }
 func (t TestCommandArray) AggregateType() AggregateType { return AggregateType("Test") }
 func (t TestCommandArray) CommandType() CommandType     { return CommandType("TestCommandArray") }
+
+type ZeroableInt int
+
+type TestCommandZeroableInt struct {
+	TestID          uuid.UUID
+	TestZeroableInt ZeroableInt
+	TestInt         int
+}
+
+var _ = Command(TestCommandZeroableInt{})
+
+
+func (t TestCommandZeroableInt) AggregateID() uuid.UUID       { return t.TestID }
+func (t TestCommandZeroableInt) AggregateType() AggregateType { return TestAggregateType }
+func (t TestCommandZeroableInt) CommandType() CommandType {
+	return CommandType("TestCommandZeroableInt")
+}
+
+func (z ZeroableInt) IsZero () bool {
+	return z == 0
+}
