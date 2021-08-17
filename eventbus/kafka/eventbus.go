@@ -252,7 +252,7 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
-				log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
+				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
 			}
 			return
 		}
