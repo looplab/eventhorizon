@@ -36,7 +36,6 @@ type EventBus struct {
 	addr         string
 	appID        string
 	topic        string
-	conn         *kafka.Conn
 	writer       *kafka.Writer
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
@@ -68,19 +67,30 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 	}
 
 	// Get or create the topic.
-	ctx := context.Background()
 	client := &kafka.Client{
 		Addr: kafka.TCP(addr),
 	}
-	resp, err := client.CreateTopics(ctx, &kafka.CreateTopicsRequest{
-		Topics: []kafka.TopicConfig{{
-			Topic:             topic,
-			NumPartitions:     1,
-			ReplicationFactor: 1,
-		}},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("could not get/create Kafka topic: %w", err)
+	var resp *kafka.CreateTopicsResponse
+	var err error
+	for i := 0; i < 10; i++ {
+		resp, err = client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
+			Topics: []kafka.TopicConfig{{
+				Topic:             topic,
+				NumPartitions:     1,
+				ReplicationFactor: 1,
+			}},
+		})
+		if errors.Is(err, kafka.BrokerNotAvailable) {
+			time.Sleep(5 * time.Second)
+			continue
+		} else if err != nil {
+			return nil, fmt.Errorf("error creating Kafka topic: %w", err)
+		} else {
+			break
+		}
+	}
+	if resp == nil {
+		return nil, fmt.Errorf("could not get/create Kafka topic in time: %w", err)
 	}
 	if topicErr, ok := resp.Errors[topic]; ok && topicErr != nil {
 		if !errors.Is(topicErr, kafka.TopicAlreadyExists) {

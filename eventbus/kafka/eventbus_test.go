@@ -42,6 +42,8 @@ func TestEventBusIntegration(t *testing.T) {
 	}
 	appID := "app-" + hex.EncodeToString(b)
 
+	t.Logf("using topic: %s_events", appID)
+
 	bus1, err := NewEventBus(addr, appID)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
@@ -52,7 +54,7 @@ func TestEventBusIntegration(t *testing.T) {
 		t.Fatal("there should be no error:", err)
 	}
 
-	eventbus.AcceptanceTest(t, bus1, bus2, 2*time.Second)
+	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
 }
 
 func TestEventBusLoadtest(t *testing.T) {
