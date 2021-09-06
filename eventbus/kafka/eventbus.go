@@ -76,7 +76,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 		resp, err = client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
 			Topics: []kafka.TopicConfig{{
 				Topic:             topic,
-				NumPartitions:     1,
+				NumPartitions:     5,
 				ReplicationFactor: 1,
 			}},
 		})
@@ -103,6 +103,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 		Topic:        topic,
 		BatchSize:    1,                // Write every event to the bus without delay.
 		RequiredAcks: kafka.RequireOne, // Stronger consistency.
+		Balancer:     &kafka.Hash{},    // Hash by aggregate ID.
 	}
 
 	return b, nil
@@ -137,6 +138,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	}
 
 	if err := b.writer.WriteMessages(ctx, kafka.Message{
+		Key:   []byte(event.AggregateID().String()),
 		Value: data,
 		Headers: []kafka.Header{
 			{
