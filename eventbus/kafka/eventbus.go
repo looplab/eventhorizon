@@ -177,14 +177,13 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	joined := make(chan struct{})
 	groupID := b.appID + "_" + h.HandlerType().String()
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:                []string{b.addr},
-		Topic:                  b.topic,
-		GroupID:                groupID,     // Send messages to only one subscriber per group.
-		MaxBytes:               100e3,       // 100KB
-		MaxWait:                time.Second, // Allow to exit readloop in max 1s.
-		PartitionWatchInterval: time.Second,
-		WatchPartitionChanges:  true,
-		StartOffset:            kafka.LastOffset, // Don't read old messages.
+		Brokers:               []string{b.addr},
+		Topic:                 b.topic,
+		GroupID:               groupID,     // Send messages to only one subscriber per group.
+		MaxBytes:              100e3,       // 100KB
+		MaxWait:               time.Second, // Allow to exit readloop in max 1s.
+		WatchPartitionChanges: true,
+		StartOffset:           kafka.LastOffset, // Don't read old messages.
 		Logger: kafka.LoggerFunc(func(msg string, args ...interface{}) {
 			// NOTE: Hacky way to use logger to find out when the reader is ready.
 			if strings.HasPrefix(msg, "Joined group") {
