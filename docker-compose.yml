@@ -13,13 +13,13 @@ services:
       - gpubsub
       - kafka
       - redis
-      - jetstream
+      - nats
     environment:
       MONGODB_ADDR: mongodb:27017
       PUBSUB_EMULATOR_HOST: gpubsub:8793
       KAFKA_ADDR: kafka:9092
       REDIS_ADDR: redis:6379
-      NATS_ADDR: jetstream:4222
+      NATS_ADDR: nats:4222
     command: [-c, make test test_integration]
 
   # MongoDB replica set setup.
@@ -85,9 +85,8 @@ services:
       - 6379:6379
     entrypoint: [redis-server, --appendonly yes]
 
-  jetstream:
-    image: synadia/jsm:nightly
+  nats:
+    image: nats:2.4-alpine3.14
     ports:
       - 4222:4222
-      - 8222:8222
-    command: [server]
+    command: [-js]
