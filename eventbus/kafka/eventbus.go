@@ -94,7 +94,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 	}
 	if topicErr, ok := resp.Errors[topic]; ok && topicErr != nil {
 		if !errors.Is(topicErr, kafka.TopicAlreadyExists) {
-			return nil, fmt.Errorf("invalid Kafka topic: %w", err)
+			return nil, fmt.Errorf("invalid Kafka topic: %w", topicErr)
 		}
 	}
 
@@ -237,7 +237,7 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 			break
 		}
 		if err != nil {
-			err = fmt.Errorf("could not receive: %w", err)
+			err = fmt.Errorf("could not fetch message: %w", err)
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
