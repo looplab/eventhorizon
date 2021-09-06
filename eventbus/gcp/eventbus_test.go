@@ -17,39 +17,44 @@ package gcp
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventbus"
 )
+
+func TestAddHandlerIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	bus1, _, err := newTestEventBus("")
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	eventbus.TestAddHandler(t, bus1)
+}
 
 func TestEventBusIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
-	// Connect to localhost if not running inside docker
-	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
-		os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8793")
-	}
-
-	// Get a random app ID.
-	b := make([]byte, 8)
-	if _, err := rand.Read(b); err != nil {
-		t.Fatal(err)
-	}
-	appID := "app-" + hex.EncodeToString(b)
-
-	bus1, err := NewEventBus("project_id", appID)
+	bus1, appID, err := newTestEventBus("")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 
-	bus2, err := NewEventBus("project_id", appID)
+	bus2, _, err := newTestEventBus(appID)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
+	t.Logf("using topic: %s_events", appID)
 
 	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
 }
@@ -59,43 +64,46 @@ func TestEventBusLoadtest(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	// Connect to localhost if not running inside docker
-	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
-		os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8793")
-	}
-
-	// Get a random app ID.
-	bts := make([]byte, 8)
-	if _, err := rand.Read(bts); err != nil {
-		t.Fatal(err)
-	}
-	appID := "app-" + hex.EncodeToString(bts)
-
-	bus, err := NewEventBus("project_id", appID)
+	bus, appID, err := newTestEventBus("")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
+	t.Logf("using topic: %s_events", appID)
 
 	eventbus.LoadTest(t, bus)
 }
 
 func BenchmarkEventBus(b *testing.B) {
+	bus, appID, err := newTestEventBus("")
+	if err != nil {
+		b.Fatal("there should be no error:", err)
+	}
+
+	b.Logf("using topic: %s_events", appID)
+
+	eventbus.Benchmark(b, bus)
+}
+
+func newTestEventBus(appID string) (eh.EventBus, string, error) {
 	// Connect to localhost if not running inside docker
 	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
 		os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8793")
 	}
 
 	// Get a random app ID.
-	bts := make([]byte, 8)
-	if _, err := rand.Read(bts); err != nil {
-		b.Fatal(err)
+	if appID == "" {
+		bts := make([]byte, 8)
+		if _, err := rand.Read(bts); err != nil {
+			return nil, "", fmt.Errorf("could not randomize app ID: %w", err)
+		}
+		appID = "app-" + hex.EncodeToString(bts)
 	}
-	appID := "app-" + hex.EncodeToString(bts)
 
 	bus, err := NewEventBus("project_id", appID)
 	if err != nil {
-		b.Fatal("there should be no error:", err)
+		return nil, "", fmt.Errorf("could not create event bus: %w", err)
 	}
 
-	eventbus.Benchmark(b, bus)
+	return bus, appID, nil
 }

@@ -22,6 +22,20 @@ import (
 )
 
 // NOTE: Not named "Integration" to enable running with the unit tests.
+func TestAddHandler(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	bus := NewEventBus()
+	if bus == nil {
+		t.Fatal("there should be a bus")
+	}
+
+	eventbus.TestAddHandler(t, bus)
+}
+
+// NOTE: Not named "Integration" to enable running with the unit tests.
 func TestEventBus(t *testing.T) {
 	group := NewGroup()
 	if group == nil {

@@ -31,18 +31,8 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-// AcceptanceTest is the acceptance test that all implementations of EventBus
-// should pass. It should manually be called from a test case in each
-// implementation:
-//
-//   func TestEventBus(t *testing.T) {
-//       bus1 := NewEventBus()
-//       bus2 := NewEventBus()
-//       eventbus.AcceptanceTest(t, bus1, bus2)
-//   }
-//
-func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration) {
-	ctx, cancel := context.WithCancel(context.Background())
+func TestAddHandler(t *testing.T, bus1 eh.EventBus) {
+	ctx := context.Background()
 
 	// Error on nil matcher.
 	if err := bus1.AddHandler(ctx, nil, mocks.NewEventHandler("no-matcher")); err != eh.ErrMissingMatcher {
@@ -61,7 +51,20 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	if err := bus1.AddHandler(ctx, eh.MatchAll{}, mocks.NewEventHandler("multi")); err != eh.ErrHandlerAlreadyAdded {
 		t.Error("the error should be correct:", err)
 	}
+}
 
+// AcceptanceTest is the acceptance test that all implementations of EventBus
+// should pass. It should manually be called from a test case in each
+// implementation:
+//
+//   func TestEventBus(t *testing.T) {
+//       bus1 := NewEventBus()
+//       bus2 := NewEventBus()
+//       eventbus.AcceptanceTest(t, bus1, bus2)
+//   }
+//
+func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration) {
+	ctx, cancel := context.WithCancel(context.Background())
 	ctx = mocks.WithContextOne(ctx, "testval")
 
 	// Without handler.
