@@ -26,7 +26,7 @@ import (
 )
 
 // DefaultQueueSize is the default queue size per handler for publishing events.
-var DefaultQueueSize = 10
+var DefaultQueueSize = 1000
 
 // EventBus is a local event bus that delegates handling of published events
 // to all matching registered handlers, in order of registration.
@@ -145,7 +145,7 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 		select {
 		case data := <-ch:
 			// Artificial delay to simulate network.
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(time.Millisecond)
 
 			event, ctx, err := b.codec.UnmarshalEvent(ctx, data)
 			if err != nil {
