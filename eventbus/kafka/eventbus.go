@@ -248,7 +248,23 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 			continue
 		}
 
-		handler(ctx, msg)
+		var noBusError eh.EventBusError
+		if err := handler(ctx, msg); err != noBusError {
+			select {
+			case b.errCh <- err:
+			default:
+				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+			}
+		} else {
+			if err := r.CommitMessages(ctx, msg); err != nil {
+				err = fmt.Errorf("could not commit message: %w", err)
+				select {
+				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
+				default:
+					log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+				}
+			}
+		}
 	}
 
 	if err := r.Close(); err != nil {
@@ -256,36 +272,30 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 	}
 }
 
-func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) {
-	return func(ctx context.Context, msg kafka.Message) {
+func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) eh.EventBusError {
+	return func(ctx context.Context, msg kafka.Message) eh.EventBusError {
 		event, ctx, err := b.codec.UnmarshalEvent(ctx, msg.Value)
 		if err != nil {
-			err = fmt.Errorf("could not unmarshal event: %w", err)
-			select {
-			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
-			default:
-				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+			return eh.EventBusError{
+				Err: fmt.Errorf("could not unmarshal event: %w", err),
+				Ctx: ctx,
 			}
-			return
 		}
 
 		// Ignore non-matching events.
 		if !m.Match(event) {
-			r.CommitMessages(ctx, msg)
-			return
+			return eh.EventBusError{}
 		}
 
 		// Handle the event if it did match.
 		if err := h.HandleEvent(ctx, event); err != nil {
-			err = fmt.Errorf("could not handle event (%s): %w", h.HandlerType(), err)
-			select {
-			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
-			default:
-				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+			return eh.EventBusError{
+				Err:   fmt.Errorf("could not handle event (%s): %w", h.HandlerType(), err),
+				Ctx:   ctx,
+				Event: event,
 			}
-			return
 		}
 
-		r.CommitMessages(ctx, msg)
+		return eh.EventBusError{}
 	}
 }
