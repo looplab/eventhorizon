@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jetstream
+package nats
 
 import (
 	"crypto/rand"
@@ -54,7 +54,7 @@ func TestEventBusIntegration(t *testing.T) {
 		t.Fatal("there should be no error:", err)
 	}
 
-	t.Logf("using topic: %s_events", appID)
+	t.Logf("using stream: %s_events", appID)
 
 	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
 }
@@ -69,7 +69,7 @@ func TestEventBusLoadtest(t *testing.T) {
 		t.Fatal("there should be no error:", err)
 	}
 
-	t.Logf("using topic: %s_events", appID)
+	t.Logf("using stream: %s_events", appID)
 
 	eventbus.LoadTest(t, bus)
 }
@@ -80,7 +80,7 @@ func BenchmarkEventBus(b *testing.B) {
 		b.Fatal("there should be no error:", err)
 	}
 
-	b.Logf("using topic: %s_events", appID)
+	b.Logf("using stream: %s_events", appID)
 
 	eventbus.Benchmark(b, bus)
 }

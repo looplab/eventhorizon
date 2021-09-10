@@ -12,8 +12,8 @@ require (
 	github.com/jinzhu/copier v0.3.2
 	github.com/jpillora/backoff v1.0.0
 	github.com/kr/pretty v0.3.0
-	github.com/nats-io/nats-server/v2 v2.3.4 // indirect
-	github.com/nats-io/nats.go v1.11.1-0.20210623165838-4b75fc59ae30
+	github.com/nats-io/nats-server/v2 v2.4.0 // indirect
+	github.com/nats-io/nats.go v1.12.1
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/segmentio/kafka-go v0.4.17
 	github.com/uber/jaeger-client-go v2.29.1+incompatible

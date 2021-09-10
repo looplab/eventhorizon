@@ -60,7 +60,7 @@ See the example folder for a few examples to get you started.
 ### Official
 
 - GCP Cloud Pub/Sub - Using one topic with multiple subscribers.
-- Jetstream (NATS), uses nightly build of NATS/Jetstream
+- NATS - Using Jetstream features.
 - Kafka - Using one topic with multiple consumer groups.
 - Local - Useful for testing and experimentation.
 - Redis - Using Redis streams.

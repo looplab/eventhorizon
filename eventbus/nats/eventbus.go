@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jetstream
+package nats
 
 import (
 	"context"
@@ -27,8 +27,8 @@ import (
 	"github.com/looplab/eventhorizon/codec/json"
 )
 
-// EventBus is a local event bus that delegates handling of published events
-// to all matching registered handlers, in order of registration.
+// EventBus is a NATS Jetstream event bus that delegates handling of published
+// events to all matching registered handlers.
 type EventBus struct {
 	appID        string
 	streamName   string
@@ -43,7 +43,7 @@ type EventBus struct {
 	codec        eh.EventCodec
 }
 
-// NewEventBus creates an EventBus, with optional GCP connection settings.
+// NewEventBus creates an EventBus, with optional settings.
 func NewEventBus(url, appID string, options ...Option) (*EventBus, error) {
 	b := &EventBus{
 		appID:      appID,
@@ -87,7 +87,7 @@ func NewEventBus(url, appID string, options ...Option) (*EventBus, error) {
 	}
 
 	if b.stream, err = b.js.AddStream(cfg); err != nil {
-		return nil, fmt.Errorf("could not create Jetstream stream: %w", err)
+		return nil, fmt.Errorf("could not create NATS stream: %w", err)
 	}
 
 	return b, nil
@@ -154,6 +154,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	sub, err := b.js.QueueSubscribe(subject, consumerName, b.handler(ctx, m, h),
 		nats.Durable(consumerName),
 		nats.DeliverNew(),
+		nats.ManualAck(),
 		nats.AckExplicit(),
 		nats.AckWait(60*time.Second),
 		nats.MaxDeliver(10),
@@ -167,7 +168,6 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 
 	// Handle until context is cancelled.
 	b.wg.Add(1)
-	// go b.handle(ctx, m, h, consumer)
 	go b.handle(ctx, sub)
 
 	return nil
@@ -192,7 +192,7 @@ func (b *EventBus) handle(ctx context.Context, sub *nats.Subscription) {
 		select {
 		case <-ctx.Done():
 			if ctx.Err() != context.Canceled {
-				log.Printf("eventhorizon: context error in Jetstream event bus: %s", ctx.Err())
+				log.Printf("eventhorizon: context error in NATS event bus: %s", ctx.Err())
 			}
 			return
 		}
@@ -207,7 +207,7 @@ func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHan
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
-				log.Printf("eventhorizon: missed error in Jetstream event bus: %s", err)
+				log.Printf("eventhorizon: missed error in NATS event bus: %s", err)
 			}
 			msg.Nak()
 			return
@@ -225,7 +225,7 @@ func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHan
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
 			default:
-				log.Printf("eventhorizon: missed error in Jetstream event bus: %s", err)
+				log.Printf("eventhorizon: missed error in NATS event bus: %s", err)
 			}
 			msg.Nak()
 			return

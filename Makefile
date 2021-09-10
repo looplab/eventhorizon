@@ -38,7 +38,7 @@ upload_coverage:
 
 .PHONY: run
 run:
-	docker-compose up -d mongodb gpubsub kafka redis jetstream
+	docker-compose up -d mongodb gpubsub kafka redis nats
 
 .PHONY: run_mongodb
 run_mongodb:
@@ -56,9 +56,9 @@ run_kafka:
 run_redis:
 	docker-compose up -d redis
 
-.PHONY: run_jetstream
-run_jetstream:
-	docker-compose up -d jetstream
+.PHONY: run_nats
+run_nats:
+	docker-compose up -d nats
 
 .PHONY: stop
 stop:
