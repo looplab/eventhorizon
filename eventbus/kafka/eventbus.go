@@ -76,7 +76,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 		resp, err = client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
 			Topics: []kafka.TopicConfig{{
 				Topic:             topic,
-				NumPartitions:     1,
+				NumPartitions:     5,
 				ReplicationFactor: 1,
 			}},
 		})
@@ -94,7 +94,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 	}
 	if topicErr, ok := resp.Errors[topic]; ok && topicErr != nil {
 		if !errors.Is(topicErr, kafka.TopicAlreadyExists) {
-			return nil, fmt.Errorf("invalid Kafka topic: %w", err)
+			return nil, fmt.Errorf("invalid Kafka topic: %w", topicErr)
 		}
 	}
 
@@ -103,6 +103,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 		Topic:        topic,
 		BatchSize:    1,                // Write every event to the bus without delay.
 		RequiredAcks: kafka.RequireOne, // Stronger consistency.
+		Balancer:     &kafka.Hash{},    // Hash by aggregate ID.
 	}
 
 	return b, nil
@@ -137,6 +138,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	}
 
 	if err := b.writer.WriteMessages(ctx, kafka.Message{
+		Key:   []byte(event.AggregateID().String()),
 		Value: data,
 		Headers: []kafka.Header{
 			{
@@ -175,14 +177,13 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	joined := make(chan struct{})
 	groupID := b.appID + "_" + h.HandlerType().String()
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:                []string{b.addr},
-		Topic:                  b.topic,
-		GroupID:                groupID,     // Send messages to only one subscriber per group.
-		MaxBytes:               100e3,       // 100KB
-		MaxWait:                time.Second, // Allow to exit readloop in max 1s.
-		PartitionWatchInterval: time.Second,
-		WatchPartitionChanges:  true,
-		StartOffset:            kafka.LastOffset, // Don't read old messages.
+		Brokers:               []string{b.addr},
+		Topic:                 b.topic,
+		GroupID:               groupID,     // Send messages to only one subscriber per group.
+		MaxBytes:              100e3,       // 100KB
+		MaxWait:               time.Second, // Allow to exit readloop in max 1s.
+		WatchPartitionChanges: true,
+		StartOffset:           kafka.LastOffset, // Don't read old messages.
 		Logger: kafka.LoggerFunc(func(msg string, args ...interface{}) {
 			// NOTE: Hacky way to use logger to find out when the reader is ready.
 			if strings.HasPrefix(msg, "Joined group") {
@@ -235,7 +236,7 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 			break
 		}
 		if err != nil {
-			err = fmt.Errorf("could not receive: %w", err)
+			err = fmt.Errorf("could not fetch message: %w", err)
 			select {
 			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
@@ -246,7 +247,23 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 			continue
 		}
 
-		handler(ctx, msg)
+		var noBusError eh.EventBusError
+		if err := handler(ctx, msg); err != noBusError {
+			select {
+			case b.errCh <- err:
+			default:
+				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+			}
+		} else {
+			if err := r.CommitMessages(ctx, msg); err != nil {
+				err = fmt.Errorf("could not commit message: %w", err)
+				select {
+				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
+				default:
+					log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+				}
+			}
+		}
 	}
 
 	if err := r.Close(); err != nil {
@@ -254,36 +271,30 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 	}
 }
 
-func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) {
-	return func(ctx context.Context, msg kafka.Message) {
+func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) eh.EventBusError {
+	return func(ctx context.Context, msg kafka.Message) eh.EventBusError {
 		event, ctx, err := b.codec.UnmarshalEvent(ctx, msg.Value)
 		if err != nil {
-			err = fmt.Errorf("could not unmarshal event: %w", err)
-			select {
-			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
-			default:
-				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+			return eh.EventBusError{
+				Err: fmt.Errorf("could not unmarshal event: %w", err),
+				Ctx: ctx,
 			}
-			return
 		}
 
 		// Ignore non-matching events.
 		if !m.Match(event) {
-			r.CommitMessages(ctx, msg)
-			return
+			return eh.EventBusError{}
 		}
 
 		// Handle the event if it did match.
 		if err := h.HandleEvent(ctx, event); err != nil {
-			err = fmt.Errorf("could not handle event (%s): %w", h.HandlerType(), err)
-			select {
-			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
-			default:
-				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+			return eh.EventBusError{
+				Err:   fmt.Errorf("could not handle event (%s): %w", h.HandlerType(), err),
+				Ctx:   ctx,
+				Event: event,
 			}
-			return
 		}
 
-		r.CommitMessages(ctx, msg)
+		return eh.EventBusError{}
 	}
 }
