@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"sync"
 	"testing"
 	"time"
@@ -30,18 +31,8 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-// AcceptanceTest is the acceptance test that all implementations of EventBus
-// should pass. It should manually be called from a test case in each
-// implementation:
-//
-//   func TestEventBus(t *testing.T) {
-//       bus1 := NewEventBus()
-//       bus2 := NewEventBus()
-//       eventbus.AcceptanceTest(t, bus1, bus2)
-//   }
-//
-func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration) {
-	ctx, cancel := context.WithCancel(context.Background())
+func TestAddHandler(t *testing.T, bus1 eh.EventBus) {
+	ctx := context.Background()
 
 	// Error on nil matcher.
 	if err := bus1.AddHandler(ctx, nil, mocks.NewEventHandler("no-matcher")); err != eh.ErrMissingMatcher {
@@ -60,7 +51,20 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	if err := bus1.AddHandler(ctx, eh.MatchAll{}, mocks.NewEventHandler("multi")); err != eh.ErrHandlerAlreadyAdded {
 		t.Error("the error should be correct:", err)
 	}
+}
 
+// AcceptanceTest is the acceptance test that all implementations of EventBus
+// should pass. It should manually be called from a test case in each
+// implementation:
+//
+//   func TestEventBus(t *testing.T) {
+//       bus1 := NewEventBus()
+//       bus2 := NewEventBus()
+//       eventbus.AcceptanceTest(t, bus1, bus2)
+//   }
+//
+func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration) {
+	ctx, cancel := context.WithCancel(context.Background())
 	ctx = mocks.WithContextOne(ctx, "testval")
 
 	// Without handler.
@@ -263,10 +267,34 @@ func checkBusErrors(t *testing.T, bus eh.EventBus) {
 
 // LoadTest is a load test for an event bus implementation.
 func LoadTest(t *testing.T, bus eh.EventBus) {
+	benchmark(&testAsBench{t}, bus, 20, 10, 1000)
+}
+
+// Benchmark is a benchmark for an event bus implementation.
+func Benchmark(b *testing.B, bus eh.EventBus) {
+	benchmark(b, bus, 20, 10, b.N)
+}
+
+type bench interface {
+	Log(args ...interface{})
+	Error(args ...interface{})
+	Fatal(args ...interface{})
+
+	ResetTimer()
+	StopTimer()
+}
+
+type testAsBench struct {
+	*testing.T
+}
+
+func (b *testAsBench) ResetTimer() {}
+func (b *testAsBench) StopTimer()  {}
+
+func benchmark(t bench, bus eh.EventBus, numAggregates, numHandlers, numEvents int) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Add handlers.
-	handlers := make([]*mocks.EventHandler, 100)
+	handlers := make([]*mocks.EventHandler, numHandlers)
 	for i := range handlers {
 		h := mocks.NewEventHandler(fmt.Sprintf("handler-%d", i))
 		if err := bus.AddHandler(ctx, eh.MatchAll{}, h); err != nil {
@@ -275,85 +303,60 @@ func LoadTest(t *testing.T, bus eh.EventBus) {
 		handlers[i] = h
 	}
 
-	time.Sleep(3 * time.Second) // Need to wait here for handlers to be added.
+	time.Sleep(time.Second) // Need to wait here for handler to be added.
 	t.Log("setup complete")
+	t.Log("num events:", numEvents)
 
-	// Start receiving.
 	var wg sync.WaitGroup
 	for _, h := range handlers {
 		wg.Add(1)
 		go func(h *mocks.EventHandler) {
-			select {
-			case <-h.Recv:
-			case <-time.After(30 * time.Second):
-				t.Error("did not receive message within timeout")
+			defer wg.Done()
+			numEventsReceived := 0
+			for {
+				if numEventsReceived == numEvents {
+					return
+				}
+				select {
+				case <-h.Recv:
+					numEventsReceived++
+					continue
+				case <-ctx.Done():
+					return
+				case <-time.After(30 * time.Second):
+					t.Error("did not receive message within timeout")
+					return
+				}
 			}
-			wg.Done()
 		}(h)
 	}
 
-	// Handle event.
-	id := uuid.New()
-	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event1 := eh.NewEvent(
-		mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
-		eh.ForAggregate(mocks.AggregateType, id, 1))
-	if err := bus.HandleEvent(ctx, event1); err != nil {
-		t.Error("there should be no error:", err)
+	var aggregates []*struct {
+		id      uuid.UUID
+		version int
+	}
+	for i := 0; i < numAggregates; i++ {
+		aggregates = append(aggregates, &struct {
+			id      uuid.UUID
+			version int
+		}{uuid.New(), 0})
 	}
 
-	// Wait for all handlers to have received their event.
-	wg.Wait()
-
-	// Cancel all handlers and wait.
-	cancel()
-	bus.Wait()
-}
-
-// Benchmark is a benchmark for an event bus implementation.
-func Benchmark(b *testing.B, bus eh.EventBus) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	h := mocks.NewEventHandler("handler")
-	if err := bus.AddHandler(ctx, eh.MatchAll{}, h); err != nil {
-		b.Fatal("there should be no error:", err)
-	}
-
-	time.Sleep(3 * time.Second) // Need to wait here for handler to be added.
-	b.Log("setup complete")
-	b.Log("num iterations:", b.N)
-	b.ResetTimer()
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		// Wait for all events in batch.
-		for n := 0; n < b.N; n++ {
-			select {
-			case <-h.Recv:
-				continue
-			case <-ctx.Done():
-				return
-			case <-time.After(30 * time.Second):
-				b.Error("did not receive message within timeout")
-				return
-			}
-		}
-	}()
-
-	id := uuid.New()
-	for n := 0; n < b.N; n++ {
+	t.ResetTimer()
+	for n := 0; n < numEvents; n++ {
+		a := aggregates[rand.Intn(len(aggregates))]
+		a.version++
+		timestamp := time.Date(2009, time.November, 10, 23, n, 0, 0, time.UTC)
 		e := eh.NewEvent(
-			mocks.EventType, &mocks.EventData{Content: fmt.Sprintf("event%d", n)}, time.Now(),
-			eh.ForAggregate(mocks.AggregateType, id, n+1))
+			mocks.EventType, &mocks.EventData{Content: fmt.Sprintf("event%d", n)}, timestamp,
+			eh.ForAggregate(mocks.AggregateType, a.id, a.version))
 		if err := bus.HandleEvent(ctx, e); err != nil {
-			b.Error("there should be no error:", err)
+			t.Error("there should be no error:", err)
 		}
 	}
 
 	wg.Wait() // Wait for all events to be received.
-	b.StopTimer()
+	t.StopTimer()
 
 	// Cancel handler and wait.
 	cancel()
