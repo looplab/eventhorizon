@@ -1,0 +1,12 @@
+FROM golang:1.17
+
+WORKDIR /eventhorizon
+
+# Cache dependencies.
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Rest of the project files.
+COPY . .
+
+ENTRYPOINT [ "/bin/sh" ]
