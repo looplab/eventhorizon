@@ -75,4 +75,4 @@ clean:
 
 .PHONY: mongodb_shell
 mongodb_shell:
-	docker run -it --network eventhorizon_default --rm mongo:4.4 mongo --host mongodb-rs test
+	docker run -it --network eventhorizon_default --rm mongo:4.4 mongo --host mongodb test
