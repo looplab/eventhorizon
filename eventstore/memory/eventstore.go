@@ -60,6 +60,31 @@ func WithEventHandler(h eh.EventHandler) Option {
 
 // Save implements the Save method of the eventhorizon.EventStore interface.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
+	if err := s.save(ctx, events, originalVersion); err != nil {
+		return err
+	}
+
+	// Let the optional event handler handle the events. Aborts the transaction
+	// in case of error.
+	if s.eventHandler != nil {
+		for _, e := range events {
+			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
+				return eh.CouldNotHandleEventError{
+					Err:   err,
+					Event: e,
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// This method needs to be separate from the Save() method to not lock the mutex during publishing.
+func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersion int) error {
+	s.dbMu.Lock()
+	defer s.dbMu.Unlock()
+
 	if len(events) == 0 {
 		return eh.EventStoreError{
 			Err: eh.ErrNoEventsToAppend,
@@ -93,9 +118,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		dbEvents[i] = e
 	}
 
-	s.dbMu.Lock()
-	defer s.dbMu.Unlock()
-
 	// Either insert a new aggregate or append to an existing.
 	if originalVersion == 0 {
 		aggregate := aggregateRecord{
@@ -121,19 +143,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			aggregate.Events = append(aggregate.Events, dbEvents...)
 
 			s.db[aggregateID] = aggregate
-		}
-	}
-
-	// Let the optional event handler handle the events. Aborts the transaction
-	// in case of error.
-	if s.eventHandler != nil {
-		for _, e := range events {
-			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
-				return eh.CouldNotHandleEventError{
-					Err:   err,
-					Event: e,
-				}
-			}
 		}
 	}
 
