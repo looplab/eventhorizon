@@ -22,6 +22,9 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
+// DefaultNamespace is the namespace to use if not set in the context.
+const DefaultNamespace = "default"
+
 // DefaultMinVersionDeadline is the deadline to use when creating a min version
 // context that waits.
 const DefaultMinVersionDeadline = 10 * time.Second
@@ -31,7 +34,17 @@ const (
 	aggregateIDKeyStr   = "eh_aggregate_id"
 	aggregateTypeKeyStr = "eh_aggregate_type"
 	commandTypeKeyStr   = "eh_command_type"
+	namespaceKeyStr     = "eh_namespace"
 )
+
+// NamespaceFromContext returns the namespace from the context, or the default
+// namespace.
+func NamespaceFromContext(ctx context.Context) string {
+	if ns, ok := ctx.Value(namespaceKey).(string); ok {
+		return ns
+	}
+	return DefaultNamespace
+}
 
 func init() {
 	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
@@ -67,6 +80,7 @@ const (
 	aggregateIDKey contextKey = iota
 	aggregateTypeKey
 	commandTypeKey
+	namespaceKey
 )
 
 // AggregateIDFromContext return the command type from the context.

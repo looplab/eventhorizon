@@ -37,10 +37,13 @@ import (
 // for all events and another to keep track of all aggregates/streams. It also
 // keep tracks of the global position of events, stored as metadata.
 type EventStore struct {
-	client       *mongo.Client
-	events       *mongo.Collection
-	streams      *mongo.Collection
-	eventHandler eh.EventHandler
+	useCustomPrefix bool
+	customPrefixes  []string
+	client          *mongo.Client
+	db              *mongo.Database
+	events          *mongo.Collection
+	streams         *mongo.Collection
+	eventHandler    eh.EventHandler
 }
 
 // NewEventStore creates a new EventStore with a MongoDB URI: `mongodb://hostname`.
@@ -64,8 +67,10 @@ func NewEventStoreWithClient(client *mongo.Client, dbName string, options ...Opt
 	}
 
 	db := client.Database(dbName)
+
 	s := &EventStore{
 		client:  client,
+		db:      db,
 		events:  db.Collection("events"),
 		streams: db.Collection("streams"),
 	}
@@ -78,24 +83,14 @@ func NewEventStoreWithClient(client *mongo.Client, dbName string, options ...Opt
 
 	ctx := context.Background()
 
-	if _, err := s.events.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: bson.M{"aggregate_id": 1},
-	}); err != nil {
-		return nil, fmt.Errorf("could not ensure events index: %w", err)
+	err := s.createIndices(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	// Make sure the $all stream exists.
-	if err := s.streams.FindOne(ctx, bson.M{
-		"_id": "$all",
-	}).Err(); err == mongo.ErrNoDocuments {
-		if _, err := s.streams.InsertOne(ctx, bson.M{
-			"_id":      "$all",
-			"position": 0,
-		}); err != nil {
-			return nil, fmt.Errorf("could not create the $all stream document: %w", err)
-		}
-	} else if err != nil {
-		return nil, fmt.Errorf("could not find the $all stream document: %w", err)
+	err = s.ensureAllStream(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	return s, nil
@@ -109,6 +104,16 @@ type Option func(*EventStore) error
 func WithEventHandler(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
 		s.eventHandler = h
+		return nil
+	}
+}
+
+// WithCustomCollectionPrefix enables the use of multiple collections in the same db.
+// Collections are being selected on runtime using a context value.
+func WithCustomCollectionPrefix(customCollections bool, prefixes []string) Option {
+	return func(s *EventStore) error {
+		s.useCustomPrefix = customCollections
+		s.customPrefixes = prefixes
 		return nil
 	}
 }
@@ -159,13 +164,19 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 	if _, err := sess.WithTransaction(ctx, func(txCtx mongo.SessionContext) (interface{}, error) {
 		// Fetch and increment global version in the all-stream.
-		r := s.streams.FindOneAndUpdate(txCtx,
+		streams := s.streams
+		if s.useCustomPrefix {
+			streams = s.collStreams(ctx)
+		}
+
+		r := streams.FindOneAndUpdate(txCtx,
 			bson.M{"_id": "$all"},
 			bson.M{"$inc": bson.M{"position": len(dbEvents)}},
 		)
 		if r.Err() != nil {
 			return nil, fmt.Errorf("could not increment global position: %w", r.Err())
 		}
+
 		allStream := struct {
 			Position int
 		}{}
@@ -195,7 +206,12 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		}
 
 		// Store events.
-		insert, err := s.events.InsertMany(txCtx, dbEvents)
+		eventsCollection := s.events
+		if s.useCustomPrefix {
+			eventsCollection = s.collEvents(ctx)
+		}
+
+		insert, err := eventsCollection.InsertMany(txCtx, dbEvents)
 		if err != nil {
 			return nil, fmt.Errorf("could not insert events: %w", err)
 		}
@@ -217,13 +233,18 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			}
 		}
 
+		streamsCollection := s.streams
+		if s.useCustomPrefix {
+			streamsCollection = s.collEvents(ctx)
+		}
+
 		// Update the stream.
 		if originalVersion == 0 {
-			if _, err := s.streams.InsertOne(txCtx, strm); err != nil {
+			if _, err := streamsCollection.InsertOne(txCtx, strm); err != nil {
 				return nil, fmt.Errorf("could not insert stream: %w", err)
 			}
 		} else {
-			if res := s.streams.FindOneAndUpdate(txCtx,
+			if res := streamsCollection.FindOneAndUpdate(txCtx,
 				bson.M{"_id": strm.ID},
 				bson.M{
 					"$set": bson.M{
@@ -263,7 +284,12 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
 func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
-	cursor, err := s.events.Find(ctx, bson.M{"aggregate_id": id})
+	eventsCollection := s.events
+	if s.useCustomPrefix {
+		eventsCollection = s.collEvents(ctx)
+	}
+
+	cursor, err := eventsCollection.Find(ctx, bson.M{"aggregate_id": id})
 	if err != nil {
 		return nil, eh.EventStoreError{
 			Err: fmt.Errorf("could not find event: %w", err),
@@ -370,4 +396,86 @@ func newEvt(ctx context.Context, event eh.Event) (*evt, error) {
 	}
 
 	return e, nil
+}
+
+// collEvents appends the namespace, if one is set, to the Collection to
+// get the name of the Collection to use.
+func (s *EventStore) collEvents(ctx context.Context) *mongo.Collection {
+	ns := eh.NamespaceFromContext(ctx)
+
+	return s.db.Collection(ns + "_events")
+}
+
+// collStreams appends the namespace, if one is set, to the Collection to
+// get the name of the Collection to use.
+func (s *EventStore) collStreams(ctx context.Context) *mongo.Collection {
+	ns := eh.NamespaceFromContext(ctx)
+
+	return s.db.Collection(ns + "_streams")
+}
+
+// ensureAllStream ensures that the $all stream exist for all collections
+func (s *EventStore) ensureAllStream(ctx context.Context) error {
+	if !s.useCustomPrefix {
+		// Make sure the $all stream exists.
+		if err := s.streams.FindOne(ctx, bson.M{
+			"_id": "$all",
+		}).Err(); err == mongo.ErrNoDocuments {
+			if _, err := s.streams.InsertOne(ctx, bson.M{
+				"_id":      "$all",
+				"position": 0,
+			}); err != nil {
+				return fmt.Errorf("could not create the $all stream document: %w", err)
+			}
+		} else if err != nil {
+			return fmt.Errorf("could not find the $all stream document: %w", err)
+		}
+		return nil
+	}
+
+	for i := range s.customPrefixes {
+		prefix := s.customPrefixes[i]
+		collection := s.db.Collection(prefix + "_streams")
+
+		if err := collection.FindOne(ctx, bson.M{
+			"_id": "$all",
+		}).Err(); err == mongo.ErrNoDocuments {
+			if _, err := collection.InsertOne(ctx, bson.M{
+				"_id":      "$all",
+				"position": 0,
+			}); err != nil {
+				return fmt.Errorf("could not create the $all stream document: %w", err)
+			}
+		} else if err != nil {
+			return fmt.Errorf("could not find the $all stream document: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// createIndices creates incides.
+func (s *EventStore) createIndices(ctx context.Context) error {
+	if !s.useCustomPrefix {
+		if _, err := s.events.Indexes().CreateOne(ctx, mongo.IndexModel{
+			Keys: bson.M{"aggregate_id": 1},
+		}); err != nil {
+			return fmt.Errorf("could not ensure events index: %w", err)
+		}
+
+		return nil
+	}
+
+	for i := range s.customPrefixes {
+		prefix := s.customPrefixes[i]
+		collection := s.db.Collection(prefix + "_events")
+
+		if _, err := collection.Indexes().CreateOne(ctx, mongo.IndexModel{
+			Keys: bson.M{"aggregate_id": 1},
+		}); err != nil {
+			return fmt.Errorf("could not ensure events index: %w", err)
+		}
+	}
+
+	return nil
 }
