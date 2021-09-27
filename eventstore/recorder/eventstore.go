@@ -25,8 +25,27 @@ import (
 type EventStore struct {
 	eh.EventStore
 	recording bool
-	record    []eh.Event
-	recordMu  sync.RWMutex
+	records   []*EventRecord
+	mu        sync.RWMutex
+}
+
+// Status is the status of the recorded event.
+type Status int
+
+const (
+	// Pending is for events that are being handled.
+	Pending Status = iota
+	// Succeeded is for events that was successfully saved (with potential side effects).
+	Succeeded
+	// Failed is for events that failed and where not saved.
+	Failed
+)
+
+// EventRecord is a record for an event with additional metadata for status.
+type EventRecord struct {
+	Event  eh.Event
+	Status Status
+	Err    error
 }
 
 // NewEventStore creates a new EventStore.
@@ -37,54 +56,108 @@ func NewEventStore(eventStore eh.EventStore) *EventStore {
 
 	return &EventStore{
 		EventStore: eventStore,
-		record:     make([]eh.Event, 0),
+		records:    make([]*EventRecord, 0),
 	}
 }
 
 // Save implements the Save method of the eventhorizon.EventStore interface.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
+	s.mu.RLock()
+	if !s.recording {
+		s.mu.RUnlock()
+		return s.EventStore.Save(ctx, events, originalVersion)
+	}
+	s.mu.RUnlock()
+
+	// Record before saving to keep the order of any potential
+	// secondary saved events from the underlying stores event handler(s).
+	s.mu.Lock()
+	records := make([]*EventRecord, len(events))
+	for i, e := range events {
+		records[i] = &EventRecord{Event: e, Status: Pending}
+	}
+	s.records = append(s.records, records...)
+	s.mu.Unlock()
+
 	if err := s.EventStore.Save(ctx, events, originalVersion); err != nil {
+		// Mark events as failed.
+		s.mu.Lock()
+		for _, r := range records {
+			r.Status = Failed
+			r.Err = err
+		}
+		s.mu.Unlock()
+
 		return err
 	}
 
-	// Only record events that are successfully saved.
-	s.recordMu.Lock()
-	defer s.recordMu.Unlock()
-	if s.recording {
-		s.record = append(s.record, events...)
+	// Mark events as succeeded.
+	s.mu.Lock()
+	for _, r := range records {
+		r.Status = Succeeded
 	}
+	s.mu.Unlock()
 
 	return nil
 }
 
 // StartRecording starts recording of handled events.
 func (s *EventStore) StartRecording() {
-	s.recordMu.Lock()
-	defer s.recordMu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.recording = true
 }
 
 // StopRecording stops recording of handled events.
 func (s *EventStore) StopRecording() {
-	s.recordMu.Lock()
-	defer s.recordMu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.recording = false
 }
 
-// GetRecord returns the events that happened during the recording.
-func (s *EventStore) GetRecord() []eh.Event {
-	s.recordMu.RLock()
-	defer s.recordMu.RUnlock()
+// FullRecording returns all events that happened during the recording, including status.
+func (s *EventStore) FullRecording() []*EventRecord {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	return s.record
+	return s.records
+}
+
+// PendingEvents returns the events that where pending during the recording.
+func (s *EventStore) PendingEvents() []eh.Event {
+	return s.eventsByStatus(Pending)
+}
+
+// SuccessfulEvents returns the events that succeeded during the recording.
+func (s *EventStore) SuccessfulEvents() []eh.Event {
+	return s.eventsByStatus(Succeeded)
+}
+
+// FailedEvents returns the events that failed during the recording.
+func (s *EventStore) FailedEvents() []eh.Event {
+	return s.eventsByStatus(Failed)
+}
+
+func (s *EventStore) eventsByStatus(status Status) []eh.Event {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var events []eh.Event
+	for _, r := range s.records {
+		if r.Status == status {
+			events = append(events, r.Event)
+		}
+	}
+
+	return events
 }
 
 // ResetTrace resets the record.
 func (s *EventStore) ResetTrace() {
-	s.recordMu.Lock()
-	defer s.recordMu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	s.record = make([]eh.Event, 0)
+	s.records = make([]*EventRecord, 0)
 }
