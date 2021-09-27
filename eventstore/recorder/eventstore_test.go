@@ -42,7 +42,7 @@ func TestEventStore(t *testing.T) {
 	savedEvents := eventstore.AcceptanceTest(t, store, context.Background())
 	store.StopRecording()
 
-	record := store.GetRecord()
+	record := store.SuccessfulEvents()
 	if !reflect.DeepEqual(record, savedEvents) {
 		t.Error("there should be events recorded:", record)
 	}
@@ -50,7 +50,7 @@ func TestEventStore(t *testing.T) {
 	// And then some more recording specific testing.
 
 	store.ResetTrace()
-	record = store.GetRecord()
+	record = store.SuccessfulEvents()
 	if len(record) != 0 {
 		t.Error("there should be no events recorded:", record)
 	}
@@ -74,7 +74,7 @@ func TestEventStore(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 	aggregate1events = append(aggregate1events, event1)
-	record = store.GetRecord()
+	record = store.SuccessfulEvents()
 	if len(record) != 0 {
 		t.Error("there should be no events recorded:", record)
 	}
