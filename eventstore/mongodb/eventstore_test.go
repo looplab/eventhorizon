@@ -66,7 +66,7 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 	}
 
 	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGO_HOST")
+	url := os.Getenv("MONGODB_ADDR")
 	if url == "" {
 		url = "localhost:27017"
 	}
@@ -138,7 +138,7 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 
 func BenchmarkEventStore(b *testing.B) {
 	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGO_HOST")
+	url := os.Getenv("MONGODB_ADDR")
 	if url == "" {
 		url = "localhost:27017"
 	}
