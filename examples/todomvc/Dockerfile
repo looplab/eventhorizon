@@ -1,4 +1,4 @@
-FROM golang:1.16-alpine3.13 as builder
+FROM golang:1.17-alpine3.14 as builder
 
 RUN apk -U upgrade && \
     apk add --update ca-certificates tzdata curl gzip
@@ -19,9 +19,9 @@ RUN elm make src/Main.elm --output=elm.js
 
 # Build backend.
 WORKDIR /eventhorizon/examples/todomvc/backend
-RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build .
+RUN CGO_ENABLED=0 go build .
 
-FROM alpine:3.12
+FROM alpine:3.14
 
 # Import certs and timezone data.
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/

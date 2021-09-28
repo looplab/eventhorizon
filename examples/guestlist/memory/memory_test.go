@@ -77,6 +77,7 @@ func Example() {
 	guestlist.Setup(
 		ctx,
 		eventStore,
+		eventBus, // Use the event bus both as local and global handler.
 		eventBus,
 		commandBus,
 		invitationRepo, guestListRepo,
@@ -163,6 +164,9 @@ func Example() {
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 	}
 
+	if err := eventBus.Close(); err != nil {
+		log.Println("error closing event bus:", err)
+	}
 	if err := invitationRepo.Close(); err != nil {
 		log.Println("error closing invitation repo:", err)
 	}
@@ -171,9 +175,6 @@ func Example() {
 	}
 	if err := eventStore.Close(); err != nil {
 		log.Println("error closing event store:", err)
-	}
-	if err := eventBus.Close(); err != nil {
-		log.Println("error closing event bus:", err)
 	}
 
 	// Output:

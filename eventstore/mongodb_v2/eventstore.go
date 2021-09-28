@@ -37,10 +37,11 @@ import (
 // for all events and another to keep track of all aggregates/streams. It also
 // keep tracks of the global position of events, stored as metadata.
 type EventStore struct {
-	client       *mongo.Client
-	events       *mongo.Collection
-	streams      *mongo.Collection
-	eventHandler eh.EventHandler
+	client                *mongo.Client
+	events                *mongo.Collection
+	streams               *mongo.Collection
+	eventHandlerAfterSave eh.EventHandler
+	eventHandlerInTX      eh.EventHandler
 }
 
 // NewEventStore creates a new EventStore with a MongoDB URI: `mongodb://hostname`.
@@ -109,11 +110,39 @@ func NewEventStoreWithClient(client *mongo.Client, dbName string, options ...Opt
 // Option is an option setter used to configure creation.
 type Option func(*EventStore) error
 
-// WithEventHandler adds an event handler that will be called when saving events.
+// WithEventHandler adds an event handler that will be called after saving events.
 // An example would be to add an event bus to publish events.
 func WithEventHandler(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
-		s.eventHandler = h
+		if s.eventHandlerAfterSave != nil {
+			return fmt.Errorf("another event handler is already set")
+		}
+
+		if s.eventHandlerInTX != nil {
+			return fmt.Errorf("another TX event handler is already set")
+		}
+
+		s.eventHandlerAfterSave = h
+
+		return nil
+	}
+}
+
+// WithEventHandlerInTX adds an event handler that will be called during saving of
+// events. An example would be to add an outbox to further process events.
+// For an outbox to be atomic it needs to use the same transaction as the save
+// operation, which is passed down using the context.
+func WithEventHandlerInTX(h eh.EventHandler) Option {
+	return func(s *EventStore) error {
+		if s.eventHandlerAfterSave != nil {
+			return fmt.Errorf("another event handler is already set")
+		}
+
+		if s.eventHandlerInTX != nil {
+			return fmt.Errorf("another TX event handler is already set")
+		}
+
+		s.eventHandlerInTX = h
 
 		return nil
 	}
@@ -289,6 +318,14 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			}
 		}
 
+		if s.eventHandlerInTX != nil {
+			for _, e := range events {
+				if err := s.eventHandlerInTX.HandleEvent(ctx, e); err != nil {
+					return nil, fmt.Errorf("could not handle event in transaction: %w", err)
+				}
+			}
+		}
+
 		return nil, nil
 	}); err != nil {
 		return &eh.EventStoreError{
@@ -302,9 +339,9 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	}
 
 	// Let the optional event handler handle the events.
-	if s.eventHandler != nil {
+	if s.eventHandlerAfterSave != nil {
 		for _, e := range events {
-			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
+			if err := s.eventHandlerAfterSave.HandleEvent(ctx, e); err != nil {
 				return &eh.EventHandlerError{
 					Err:   err,
 					Event: e,

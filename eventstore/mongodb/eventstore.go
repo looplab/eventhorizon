@@ -37,9 +37,10 @@ import (
 // collection with one document per aggregate/stream which holds its events
 // as values.
 type EventStore struct {
-	client       *mongo.Client
-	aggregates   *mongo.Collection
-	eventHandler eh.EventHandler
+	client                *mongo.Client
+	aggregates            *mongo.Collection
+	eventHandlerAfterSave eh.EventHandler
+	eventHandlerInTX      eh.EventHandler
 }
 
 // NewEventStore creates a new EventStore with a MongoDB URI: `mongodb://hostname`.
@@ -84,11 +85,39 @@ func NewEventStoreWithClient(client *mongo.Client, db string, options ...Option)
 // Option is an option setter used to configure creation.
 type Option func(*EventStore) error
 
-// WithEventHandler adds an event handler that will be called when saving events.
+// WithEventHandler adds an event handler that will be called after saving events.
 // An example would be to add an event bus to publish events.
 func WithEventHandler(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
-		s.eventHandler = h
+		if s.eventHandlerAfterSave != nil {
+			return fmt.Errorf("another event handler is already set")
+		}
+
+		if s.eventHandlerInTX != nil {
+			return fmt.Errorf("another TX event handler is already set")
+		}
+
+		s.eventHandlerAfterSave = h
+
+		return nil
+	}
+}
+
+// WithEventHandlerInTX adds an event handler that will be called during saving of
+// events. An example would be to add an outbox to further process events.
+// For an outbox to be atomic it needs to use the same transaction as the save
+// operation, which is passed down using the context.
+func WithEventHandlerInTX(h eh.EventHandler) Option {
+	return func(s *EventStore) error {
+		if s.eventHandlerAfterSave != nil {
+			return fmt.Errorf("another event handler is already set")
+		}
+
+		if s.eventHandlerInTX != nil {
+			return fmt.Errorf("another TX event handler is already set")
+		}
+
+		s.eventHandlerInTX = h
 
 		return nil
 	}
@@ -161,17 +190,72 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		dbEvents[i] = *e
 	}
 
-	// Either insert a new aggregate or append to an existing.
-	if originalVersion == 0 {
-		aggregate := aggregateRecord{
-			AggregateID: id,
-			Version:     len(dbEvents),
-			Events:      dbEvents,
+	// Run the operation in a transaction if using an outbox, otherwise it's not needed.
+	saveEvents := func(ctx mongo.SessionContext) error {
+		// Either insert a new aggregate or append to an existing.
+		if originalVersion == 0 {
+			aggregate := aggregateRecord{
+				AggregateID: id,
+				Version:     len(dbEvents),
+				Events:      dbEvents,
+			}
+			if _, err := s.aggregates.InsertOne(ctx, aggregate); err != nil {
+				return fmt.Errorf("could not insert events (new): %w", err)
+			}
+		} else {
+			// Increment aggregate version on insert of new event record, and
+			// only insert if version of aggregate is matching (ie not changed
+			// since loading the aggregate).
+			if r, err := s.aggregates.UpdateOne(ctx,
+				bson.M{
+					"_id":     id,
+					"version": originalVersion,
+				},
+				bson.M{
+					"$push": bson.M{"events": bson.M{"$each": dbEvents}},
+					"$inc":  bson.M{"version": len(dbEvents)},
+				},
+			); err != nil {
+				return fmt.Errorf("could not insert events (update): %w", err)
+			} else if r.MatchedCount == 0 {
+				return eh.ErrEventConflictFromOtherSave
+			}
 		}
 
-		if _, err := s.aggregates.InsertOne(ctx, aggregate); err != nil {
+		return nil
+	}
+
+	// Run the operation in a transaction if using an outbox, otherwise it's not needed.
+	if s.eventHandlerInTX != nil {
+		sess, err := s.client.StartSession(nil)
+		if err != nil {
 			return &eh.EventStoreError{
-				Err:              fmt.Errorf("could not insert: %w", err),
+				Err:              fmt.Errorf("could not start transaction: %w", err),
+				Op:               eh.EventStoreOpSave,
+				AggregateType:    at,
+				AggregateID:      id,
+				AggregateVersion: originalVersion,
+				Events:           events,
+			}
+		}
+
+		defer sess.EndSession(ctx)
+
+		if _, err := sess.WithTransaction(ctx, func(ctx mongo.SessionContext) (interface{}, error) {
+			if err := saveEvents(ctx); err != nil {
+				return nil, err
+			}
+
+			for _, e := range events {
+				if err := s.eventHandlerInTX.HandleEvent(ctx, e); err != nil {
+					return nil, fmt.Errorf("could not handle event in transaction: %w", err)
+				}
+			}
+
+			return nil, nil
+		}); err != nil {
+			return &eh.EventStoreError{
+				Err:              err,
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
 				AggregateID:      id,
@@ -180,30 +264,10 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			}
 		}
 	} else {
-		// Increment aggregate version on insert of new event record, and
-		// only insert if version of aggregate is matching (ie not changed
-		// since loading the aggregate).
-		if r, err := s.aggregates.UpdateOne(ctx,
-			bson.M{
-				"_id":     id,
-				"version": originalVersion,
-			},
-			bson.M{
-				"$push": bson.M{"events": bson.M{"$each": dbEvents}},
-				"$inc":  bson.M{"version": len(dbEvents)},
-			},
-		); err != nil {
+		dummySessionCtx := mongo.NewSessionContext(ctx, nil)
+		if err := saveEvents(dummySessionCtx); err != nil {
 			return &eh.EventStoreError{
-				Err:              fmt.Errorf("could not update: %w", err),
-				Op:               eh.EventStoreOpSave,
-				AggregateType:    at,
-				AggregateID:      id,
-				AggregateVersion: originalVersion,
-				Events:           events,
-			}
-		} else if r.MatchedCount == 0 {
-			return &eh.EventStoreError{
-				Err:              eh.ErrEventConflictFromOtherSave,
+				Err:              err,
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
 				AggregateID:      id,
@@ -214,9 +278,9 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	}
 
 	// Let the optional event handler handle the events.
-	if s.eventHandler != nil {
+	if s.eventHandlerAfterSave != nil {
 		for _, e := range events {
-			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
+			if err := s.eventHandlerAfterSave.HandleEvent(ctx, e); err != nil {
 				return &eh.EventHandlerError{
 					Err:   err,
 					Event: e,

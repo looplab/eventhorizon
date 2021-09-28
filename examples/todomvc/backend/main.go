@@ -16,19 +16,24 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/commandhandler/bus"
-	gcpEventBus "github.com/looplab/eventhorizon/eventbus/gcp"
+
+	redisEventBus "github.com/looplab/eventhorizon/eventbus/redis"
 	tracingEventBus "github.com/looplab/eventhorizon/eventbus/tracing"
 	mongoEventStore "github.com/looplab/eventhorizon/eventstore/mongodb"
 	tracingEventStore "github.com/looplab/eventhorizon/eventstore/tracing"
 	"github.com/looplab/eventhorizon/middleware/commandhandler/tracing"
 	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
+	mongoOutbox "github.com/looplab/eventhorizon/outbox/mongodb"
 	mongoRepo "github.com/looplab/eventhorizon/repo/mongodb"
 	tracingRepo "github.com/looplab/eventhorizon/repo/tracing"
 	"github.com/looplab/eventhorizon/repo/version"
@@ -42,16 +47,16 @@ func main() {
 	log.Println("starting TodoMVC backend")
 
 	// Use MongoDB in Docker with fallback to localhost.
-	addr := os.Getenv("MONGODB_ADDR")
-	if addr == "" {
-		addr = "localhost:27017"
+	mongodbAddr := os.Getenv("MONGODB_ADDR")
+	if mongodbAddr == "" {
+		mongodbAddr = "localhost:27017"
 	}
-	url := "mongodb://" + addr
-	dbPrefix := "todomvc-example"
+	mongodbURI := "mongodb://" + mongodbAddr
 
 	// Connect to localhost if not running inside docker
-	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
-		os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8793")
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
 	}
 
 	// Connect to localhost if not running inside docker
@@ -60,17 +65,61 @@ func main() {
 		tracingURL = "localhost"
 	}
 
-	traceCloser, err := NewTracer("todomvc", tracingURL)
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		log.Fatal("could not get random DB name:", err)
+	}
+	db := "todomvc-" + hex.EncodeToString(b)
+	log.Println("using DB:", db)
+
+	traceCloser, err := NewTracer(db, tracingURL)
 	if err != nil {
 		log.Fatal("could not create tracer: ", err)
 	}
 
-	// Create an event bus.
+	// Create the outbox that will project and publish events.
+	outbox, err := mongoOutbox.NewOutbox(mongodbURI, db)
+	if err != nil {
+		log.Fatalf("could not create outbox: %s", err)
+	}
+	go func() {
+		for err := range outbox.Errors() {
+			log.Print("outbox:", err)
+		}
+	}()
+
+	// Create the event store.
+	var eventStore eh.EventStore
+	if eventStore, err = mongoEventStore.NewEventStoreWithClient(
+		outbox.Client(), db,
+		mongoEventStore.WithEventHandlerInTX(outbox),
+	); err != nil {
+		log.Fatal("could not create event store: ", err)
+	}
+	eventStore = tracingEventStore.NewEventStore(eventStore)
+
+	// Create an command bus.
 	commandBus := bus.NewCommandHandler()
+
+	// Create the repository and wrap in a version repository.
+	var todoRepo eh.ReadWriteRepo
+	if todoRepo, err = mongoRepo.NewRepo(mongodbURI, db, "todos"); err != nil {
+		log.Fatal("could not create invitation repository: ", err)
+	}
+	todoRepo = version.NewRepo(todoRepo)
+	todoRepo = tracingRepo.NewRepo(todoRepo)
+
+	// Setup the Todo domain.
+	if err := todo.SetupDomain(commandBus, eventStore, outbox, todoRepo); err != nil {
+		log.Fatal("could not setup Todo domain: ", err)
+	}
+
+	ctx := context.Background()
 
 	// Create the event bus that distributes events.
 	var eventBus eh.EventBus
-	if eventBus, err = gcpEventBus.NewEventBus("project-id", dbPrefix); err != nil {
+	if eventBus, err = redisEventBus.NewEventBus(redisAddr, db, "backend"); err != nil {
 		log.Fatal("could not create event bus: ", err)
 	}
 	go func() {
@@ -78,42 +127,19 @@ func main() {
 			log.Print("eventbus:", err)
 		}
 	}()
-
-	// Wrap the event bus to add tracing.
 	eventBus = tracingEventBus.NewEventBus(eventBus)
-
-	// Create the event store.
-	var eventStore eh.EventStore
-	if eventStore, err = mongoEventStore.NewEventStore(url, dbPrefix,
-		mongoEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
-	); err != nil {
-		log.Fatal("could not create event store: ", err)
+	if err := outbox.AddHandler(ctx, eh.MatchAll{}, eventBus); err != nil {
+		log.Fatal("could not add event bus to outbox:", err)
 	}
-	eventStore = tracingEventStore.NewEventStore(eventStore)
-
-	ctx := context.Background()
 
 	// Add an event logger as an observer.
 	eventLogger := &EventLogger{}
 	if err := eventBus.AddHandler(ctx, eh.MatchAll{},
 		eh.UseEventHandlerMiddleware(eventLogger,
-			observer.NewMiddleware(observer.NamedGroup("todomvc")),
+			observer.NewMiddleware(observer.NamedGroup("global")),
 		),
 	); err != nil {
 		log.Fatal("could not add event logger: ", err)
-	}
-
-	// Create the repository and wrap in a version repository.
-	var todoRepo eh.ReadWriteRepo
-	if todoRepo, err = mongoRepo.NewRepo(url, dbPrefix, "todos"); err != nil {
-		log.Fatal("could not create invitation repository: ", err)
-	}
-	todoRepo = version.NewRepo(todoRepo)
-	todoRepo = tracingRepo.NewRepo(todoRepo)
-
-	// Setup the Todo domain.
-	if err := todo.SetupDomain(commandBus, eventStore, eventBus, todoRepo); err != nil {
-		log.Fatal("could not setup Todo domain: ", err)
 	}
 
 	// Add tracing middleware to init tracing spans, and the logging middleware.
@@ -127,59 +153,21 @@ func main() {
 	if err != nil {
 		log.Fatal("could not create handler: ", err)
 	}
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: h,
+	}
+	srvClosed := make(chan struct{})
+	go func() {
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatal("could not listen HTTP: ", err)
+		}
+		close(srvClosed)
+	}()
 
 	log.Println("adding a todo list with a few example items")
-	cmdCtx := context.Background()
-	id := uuid.New()
-	if err := commandHandler.HandleCommand(cmdCtx, &todo.Create{
-		ID: id,
-	}); err != nil {
-		log.Fatal("there should be no error: ", err)
-	}
-
-	// Add some examples and check them off.
-	if err := commandHandler.HandleCommand(cmdCtx, &todo.AddItem{
-		ID:          id,
-		Description: "Build the TodoMVC example",
-	}); err != nil {
-		log.Fatal("there should be no error: ", err)
-	}
-	if err := commandHandler.HandleCommand(cmdCtx, &todo.AddItem{
-		ID:          id,
-		Description: "Run the TodoMVC example",
-	}); err != nil {
-		log.Fatal("there should be no error: ", err)
-	}
-	findCtx, cancelFind := version.NewContextWithMinVersionWait(cmdCtx, 3)
-	if _, err := todoRepo.Find(findCtx, id); err != nil {
-		log.Fatal("could not find created todo list: ", err)
-	}
-	cancelFind()
-	if err := commandHandler.HandleCommand(cmdCtx, &todo.CheckAllItems{
-		ID: id,
-	}); err != nil {
-		log.Fatal("there should be no error: ", err)
-	}
-
-	// Add some more unchecked example items.
-	if err := commandHandler.HandleCommand(cmdCtx, &todo.AddItem{
-		ID:          id,
-		Description: "Learn Go",
-	}); err != nil {
-		log.Fatal("there should be no error: ", err)
-	}
-	if err := commandHandler.HandleCommand(cmdCtx, &todo.AddItem{
-		ID:          id,
-		Description: "Read the Event Horizon source",
-	}); err != nil {
-		log.Fatal("there should be no error: ", err)
-	}
-	if err := commandHandler.HandleCommand(cmdCtx, &todo.AddItem{
-		ID:          id,
-		Description: "Create a PR",
-	}); err != nil {
-		log.Fatal("there should be no error: ", err)
-	}
+	time.Sleep(3 * time.Second)
+	seedExample(commandHandler, todoRepo)
 
 	log.Printf(`
 
@@ -189,41 +177,30 @@ func main() {
 
 `)
 
-	srv := &http.Server{
-		Addr:    ":8080",
-		Handler: h,
-	}
-	srvClosed := make(chan struct{})
-	go func() {
-		sigint := make(chan os.Signal, 1)
-		signal.Notify(sigint, os.Interrupt)
-		<-sigint
-		if err := srv.Shutdown(context.Background()); err != nil {
-			log.Print("could not shutdown HTTP server: ", err)
-		}
-		close(srvClosed)
-	}()
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+	<-sigint
 
-	log.Println("serving HTTP on :8080")
-	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatal("could not listen HTTP: ", err)
+	log.Println("waiting for HTTP server to close")
+	if err := srv.Shutdown(context.Background()); err != nil {
+		log.Print("could not shutdown HTTP server: ", err)
 	}
-
-	log.Println("waiting for HTTP request to finish")
 	<-srvClosed
 
 	// Cancel all handlers and wait.
 	log.Println("waiting for handlers to finish")
+	if err := eventBus.Close(); err != nil {
+		log.Print("could not close event bus: ", err)
+	}
+	if err := outbox.Close(); err != nil {
+		log.Print("could not close outbox: ", err)
+	}
 	if err := todoRepo.Close(); err != nil {
 		log.Print("could not close todo repo: ", err)
 	}
 	if err := eventStore.Close(); err != nil {
 		log.Print("could not close event store: ", err)
 	}
-	if err := eventBus.Close(); err != nil {
-		log.Print("could not close event bus: ", err)
-	}
-
 	if err := traceCloser.Close(); err != nil {
 		log.Print("could not close tracer: ", err)
 	}
@@ -251,4 +228,58 @@ func (l *EventLogger) HandlerType() eh.EventHandlerType {
 func (l *EventLogger) HandleEvent(ctx context.Context, event eh.Event) error {
 	log.Printf("EVENT: %s", event)
 	return nil
+}
+
+func seedExample(h eh.CommandHandler, todoRepo eh.ReadRepo) {
+	cmdCtx := context.Background()
+	id := uuid.New()
+	if err := h.HandleCommand(cmdCtx, &todo.Create{
+		ID: id,
+	}); err != nil {
+		log.Fatal("there should be no error: ", err)
+	}
+
+	// Add some examples and check them off.
+	if err := h.HandleCommand(cmdCtx, &todo.AddItem{
+		ID:          id,
+		Description: "Build the TodoMVC example",
+	}); err != nil {
+		log.Fatal("there should be no error: ", err)
+	}
+	if err := h.HandleCommand(cmdCtx, &todo.AddItem{
+		ID:          id,
+		Description: "Run the TodoMVC example",
+	}); err != nil {
+		log.Fatal("there should be no error: ", err)
+	}
+	findCtx, cancelFind := version.NewContextWithMinVersionWait(cmdCtx, 3)
+	if _, err := todoRepo.Find(findCtx, id); err != nil {
+		log.Fatal("could not find created todo list: ", err)
+	}
+	cancelFind()
+	if err := h.HandleCommand(cmdCtx, &todo.CheckAllItems{
+		ID: id,
+	}); err != nil {
+		log.Fatal("there should be no error: ", err)
+	}
+
+	// Add some more unchecked example items.
+	if err := h.HandleCommand(cmdCtx, &todo.AddItem{
+		ID:          id,
+		Description: "Learn Go",
+	}); err != nil {
+		log.Fatal("there should be no error: ", err)
+	}
+	if err := h.HandleCommand(cmdCtx, &todo.AddItem{
+		ID:          id,
+		Description: "Read the Event Horizon source",
+	}); err != nil {
+		log.Fatal("there should be no error: ", err)
+	}
+	if err := h.HandleCommand(cmdCtx, &todo.AddItem{
+		ID:          id,
+		Description: "Create a PR",
+	}); err != nil {
+		log.Fatal("there should be no error: ", err)
+	}
 }

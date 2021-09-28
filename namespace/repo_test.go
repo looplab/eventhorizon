@@ -68,7 +68,9 @@ func TestReadRepo(t *testing.T) {
 		t.Error("the other repo should be correct")
 	}
 
-	// Test both namespaces.
+	t.Log("testing default namespace")
 	repo.AcceptanceTest(t, r, defaultCtx)
+
+	t.Log("testing other namespace")
 	repo.AcceptanceTest(t, r, otherCtx)
 }

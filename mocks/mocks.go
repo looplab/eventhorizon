@@ -252,6 +252,7 @@ func (m *EventHandler) Reset() {
 	m.Events = []eh.Event{}
 	m.Context = context.Background()
 	m.Time = time.Time{}
+	m.Err = nil
 }
 
 // Wait is a helper to wait some duration until for an event to be handled.

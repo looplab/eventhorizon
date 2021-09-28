@@ -6,11 +6,11 @@ build:
 
 .PHONY: run
 run:
-	docker-compose up todomvc
+	docker-compose up --build todomvc
 
 .PHONY: run_services
 run_services:
-	docker-compose up -d mongo gpubsub tracing
+	docker-compose up -d mongodb redis tracing
 
 .PHONY: stop
 stop:

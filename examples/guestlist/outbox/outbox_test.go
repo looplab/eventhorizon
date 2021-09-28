@@ -1,4 +1,4 @@
-// Copyright (c) 2014 - The Event Horizon authors.
+// Copyright (c) 2021 - The Event Horizon authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mongodb
+package outbox
 
 import (
 	"context"
@@ -28,6 +28,7 @@ import (
 	"github.com/looplab/eventhorizon/commandhandler/bus"
 	localEventBus "github.com/looplab/eventhorizon/eventbus/local"
 	mongoEventStore "github.com/looplab/eventhorizon/eventstore/mongodb"
+	mongoOutbox "github.com/looplab/eventhorizon/outbox/mongodb"
 	"github.com/looplab/eventhorizon/repo/mongodb"
 	"github.com/looplab/eventhorizon/repo/version"
 	"github.com/looplab/eventhorizon/uuid"
@@ -52,7 +53,27 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 		addr = "localhost:27017"
 	}
 	url := "mongodb://" + addr
-	dbPrefix := "guestlist"
+	dbPrefix := "guestlist_outbox"
+
+	// Create the outbox that will project and publish events.
+	outbox, err := mongoOutbox.NewOutbox(url, dbPrefix)
+	if err != nil {
+		log.Fatalf("could not create outbox: %s", err)
+	}
+	go func() {
+		for e := range outbox.Errors() {
+			log.Printf("outbox: %s", e.Error())
+		}
+	}()
+
+	// Create the event store.
+	eventStore, err := mongoEventStore.NewEventStoreWithClient(
+		outbox.Client(), dbPrefix,
+		mongoEventStore.WithEventHandlerInTX(outbox),
+	)
+	if err != nil {
+		log.Fatalf("could not create event store: %s", err)
+	}
 
 	// Create the event bus that distributes events.
 	eventBus := localEventBus.NewEventBus(nil)
@@ -61,14 +82,6 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 			log.Printf("eventbus: %s", e.Error())
 		}
 	}()
-
-	// Create the event store.
-	eventStore, err := mongoEventStore.NewEventStore(url, dbPrefix,
-		mongoEventStore.WithEventHandler(eventBus), // Add the event bus as a handler after save.
-	)
-	if err != nil {
-		log.Fatalf("could not create event store: %s", err)
-	}
 
 	// Create the command bus.
 	commandBus := bus.NewCommandHandler()
@@ -92,15 +105,22 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 
 	// Setup the guestlist.
 	eventID := uuid.New()
-	guestlist.Setup(
+	if err := guestlist.Setup(
 		ctx,
 		eventStore,
-		eventBus, // Use the event bus both as local and global handler.
+		outbox,
 		eventBus,
 		commandBus,
 		invitationVersionRepo, guestListRepo,
 		eventID,
-	)
+	); err != nil {
+		log.Fatal("could not setup domain:", err)
+	}
+
+	// Add the event bus as the last handler of the outbox.
+	if err := outbox.AddHandler(ctx, eh.MatchAll{}, eventBus); err != nil {
+		log.Fatal("could not add event bus to outbox:", err)
+	}
 
 	// Setup a test utility waiter that waits for all 11 events to occur before
 	// evaluating results.
@@ -125,6 +145,8 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	if err := guestListRepo.Clear(ctx); err != nil {
 		log.Fatal("could not clear guest list repo:", err)
 	}
+
+	outbox.Start()
 
 	// --- Execute commands on the domain --------------------------------------
 
@@ -206,8 +228,12 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 	}
 
+	// Cancel all handlers and wait.
 	if err := eventBus.Close(); err != nil {
 		log.Println("error closing event bus:", err)
+	}
+	if err := outbox.Close(); err != nil {
+		log.Println("error closing outbox:", err)
 	}
 	if err := invitationRepo.Close(); err != nil {
 		log.Println("error closing invitation repo:", err)

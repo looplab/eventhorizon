@@ -135,7 +135,7 @@ func NewGuestListProjector(repo eh.ReadWriteRepo, eventID uuid.UUID) *GuestListP
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (p *GuestListProjector) HandlerType() eh.EventHandlerType {
-	return eh.EventHandlerType("GuestList")
+	return eh.EventHandlerType("projector_GuestList")
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler interface.
@@ -176,9 +176,8 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 
 	case InviteDeniedEvent:
 		g.NumDenied++
-
 	default:
-		return fmt.Errorf("could not handle event: %s", event)
+		return fmt.Errorf("projector: unsupported event type: %s", event)
 	}
 
 	if err := p.repo.Save(ctx, g); err != nil {
