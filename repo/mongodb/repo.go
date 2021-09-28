@@ -85,6 +85,10 @@ func NewRepoWithClient(client *mongo.Client, db, collection string, options ...O
 		}
 	}
 
+	if err := r.client.Ping(context.Background(), readpref.Primary()); err != nil {
+		return nil, fmt.Errorf("could not connect to MongoDB: %w", err)
+	}
+
 	return r, nil
 }
 

@@ -76,6 +76,10 @@ func NewEventStoreWithClient(client *mongo.Client, dbName string, options ...Opt
 		}
 	}
 
+	if err := s.client.Ping(context.Background(), readpref.Primary()); err != nil {
+		return nil, fmt.Errorf("could not connect to MongoDB: %w", err)
+	}
+
 	ctx := context.Background()
 
 	if _, err := s.events.Indexes().CreateOne(ctx, mongo.IndexModel{
