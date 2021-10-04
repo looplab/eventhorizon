@@ -312,12 +312,9 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	return events, nil
 }
 
-// Close closes the database client.
-func (s *EventStore) Close(ctx context.Context) error {
-	if err := s.client.Disconnect(ctx); err != nil {
-		return fmt.Errorf("could not close DB connection: %w", err)
-	}
-	return nil
+// Close implements the Close method of the eventhorizon.EventStore interface.
+func (s *EventStore) Close() error {
+	return s.client.Disconnect(context.Background())
 }
 
 // stream is a stream of events, often containing the events for an aggregate.

@@ -163,6 +163,9 @@ func Example() {
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 	}
 
+	if err := eventStore.Close(); err != nil {
+		log.Println("error closing event store:", err)
+	}
 	if err := eventBus.Close(); err != nil {
 		log.Println("error closing event bus:", err)
 	}

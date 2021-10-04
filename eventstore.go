@@ -28,6 +28,9 @@ type EventStore interface {
 
 	// Load loads all events for the aggregate id from the store.
 	Load(context.Context, uuid.UUID) ([]Event, error)
+
+	// Close closes the EventStore.
+	Close() error
 }
 
 // EventStoreError is an error in the event store.

@@ -197,6 +197,9 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 	}
 
+	if err := eventStore.Close(); err != nil {
+		log.Println("error closing event store:", err)
+	}
 	if err := eventBus.Close(); err != nil {
 		log.Println("error closing event bus:", err)
 	}

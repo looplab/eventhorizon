@@ -328,6 +328,11 @@ func (m *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	return nil
 }
 
+// Close implements the Close method of the eventhorizon.EventStore interface.
+func (m *EventStore) Close() error {
+	return nil
+}
+
 var _ = eh.EventBus(&EventBus{})
 
 // EventBus is a mocked eventhorizon.EventBus, useful in testing.
