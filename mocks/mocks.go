@@ -363,8 +363,10 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return make(chan eh.EventBusError)
 }
 
-// Wait implements the Wait method of the eventhorizon.EventBus interface.
-func (b *EventBus) Wait() {}
+// Close implements the Close method of the eventhorizon.EventBus interface.
+func (b *EventBus) Close() error {
+	return nil
+}
 
 // Repo is a mocked eventhorizon.ReadRepo, useful in testing.
 type Repo struct {

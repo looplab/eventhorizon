@@ -39,16 +39,22 @@ type EventBus struct {
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
+	cctx         context.Context
+	cancel       context.CancelFunc
 	wg           sync.WaitGroup
 	codec        eh.EventCodec
 }
 
 // NewEventBus creates an EventBus, with optional GCP connection settings.
 func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	b := &EventBus{
 		appID:      appID,
 		registered: map[eh.EventHandlerType]struct{}{},
 		errCh:      make(chan eh.EventBusError, 100),
+		cctx:       ctx,
+		cancel:     cancel,
 		codec:      &json.EventCodec{},
 	}
 
@@ -63,9 +69,8 @@ func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) 
 	}
 
 	// Create the GCP pubsub client.
-	ctx := context.Background()
 	var err error
-	b.client, err = pubsub.NewClient(ctx, projectID, b.clientOpts...)
+	b.client, err = pubsub.NewClient(b.cctx, projectID, b.clientOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -73,10 +78,10 @@ func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) 
 	// Get or create the topic.
 	name := appID + "_events"
 	b.topic = b.client.Topic(name)
-	if ok, err := b.topic.Exists(ctx); err != nil {
+	if ok, err := b.topic.Exists(b.cctx); err != nil {
 		return nil, err
 	} else if !ok {
-		if b.topic, err = b.client.CreateTopic(ctx, name); err != nil {
+		if b.topic, err = b.client.CreateTopic(b.cctx, name); err != nil {
 			return nil, err
 		}
 	}
@@ -195,8 +200,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	b.registered[h.HandlerType()] = struct{}{}
 
 	// Handle until context is cancelled.
-	b.wg.Add(1)
-	go b.handle(ctx, m, h, sub)
+	go b.handle(m, h, sub)
 
 	return nil
 }
@@ -206,20 +210,28 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return b.errCh
 }
 
-// Wait for all channels to close in the event bus group
-func (b *EventBus) Wait() {
+// Close implements the Close method of the eventhorizon.EventBus interface.
+func (b *EventBus) Close() error {
+	// Stop publishing.
+	b.topic.Stop()
+
+	// Stop handling.
+	b.cancel()
 	b.wg.Wait()
+
+	return b.client.Close()
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, sub *pubsub.Subscription) {
+func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, sub *pubsub.Subscription) {
+	b.wg.Add(1)
 	defer b.wg.Done()
 
 	for {
-		if err := sub.Receive(ctx, b.handler(m, h)); err != nil {
+		if err := sub.Receive(b.cctx, b.handler(m, h)); err != nil {
 			err = fmt.Errorf("could not receive: %w", err)
 			select {
-			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
+			case b.errCh <- eh.EventBusError{Err: err}:
 			default:
 				log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
 			}
@@ -227,6 +239,7 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 			time.Sleep(time.Second)
 			continue
 		}
+
 		return
 	}
 }

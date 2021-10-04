@@ -64,7 +64,7 @@ func TestAddHandler(t *testing.T, bus1 eh.EventBus) {
 //   }
 //
 func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 	ctx = mocks.WithContextOne(ctx, "testval")
 
 	// Without handler.
@@ -245,10 +245,14 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 		}
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	bus1.Wait()
-	bus2.Wait()
+	// TODO: Test context cancellation.
+
+	if err := bus1.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if err := bus2.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func checkBusErrors(t *testing.T, bus eh.EventBus) {
@@ -357,8 +361,9 @@ func benchmark(t bench, bus eh.EventBus, numAggregates, numHandlers, numEvents i
 
 	wg.Wait() // Wait for all events to be received.
 	t.StopTimer()
+	cancel() // Stop receiving goroutines.
 
-	// Cancel handler and wait.
-	cancel()
-	bus.Wait()
+	if err := bus.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }

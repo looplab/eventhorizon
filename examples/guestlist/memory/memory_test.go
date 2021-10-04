@@ -59,8 +59,7 @@ func Example() {
 	guestListRepo := memory.NewRepo()
 	guestListRepo.SetEntityFactory(func() eh.Entity { return &guestlist.GuestList{} })
 
-	// Create a context with cancellation.
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 
 	// Setup a test utility waiter that waits for all 11 events to occur before
 	// evaluating results.
@@ -164,9 +163,9 @@ func Example() {
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	eventBus.Wait()
+	if err := eventBus.Close(); err != nil {
+		log.Println("error closing event bus:", err)
+	}
 
 	// Output:
 	// invitation: Athena - confirmed

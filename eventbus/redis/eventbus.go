@@ -16,6 +16,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -39,18 +40,24 @@ type EventBus struct {
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
+	cctx         context.Context
+	cancel       context.CancelFunc
 	wg           sync.WaitGroup
 	codec        eh.EventCodec
 }
 
 // NewEventBus creates an EventBus, with optional settings.
 func NewEventBus(addr, appID, clientID string, options ...Option) (*EventBus, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	b := &EventBus{
 		appID:      appID,
 		clientID:   clientID,
 		streamName: appID + "_events",
 		registered: map[eh.EventHandlerType]struct{}{},
 		errCh:      make(chan eh.EventBusError, 100),
+		cctx:       ctx,
+		cancel:     cancel,
 		codec:      &json.EventCodec{},
 	}
 
@@ -73,8 +80,7 @@ func NewEventBus(addr, appID, clientID string, options ...Option) (*EventBus, er
 
 	// Create client and check connection.
 	b.client = redis.NewClient(b.clientOpts)
-	ctx := context.Background()
-	if res, err := b.client.Ping(ctx).Result(); err != nil || res != "PONG" {
+	if res, err := b.client.Ping(b.cctx).Result(); err != nil || res != "PONG" {
 		return nil, fmt.Errorf("could not check Redis server: %w", err)
 	}
 
@@ -166,8 +172,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	b.registered[h.HandlerType()] = struct{}{}
 
 	// Handle until context is cancelled.
-	b.wg.Add(1)
-	go b.handle(ctx, m, h, groupName)
+	go b.handle(m, h, groupName)
 
 	return nil
 }
@@ -177,37 +182,39 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return b.errCh
 }
 
-// Wait for all channels to close in the event bus group
-func (b *EventBus) Wait() {
+// Close implements the Close method of the eventhorizon.EventBus interface.
+func (b *EventBus) Close() error {
+	b.cancel()
 	b.wg.Wait()
-	if err := b.client.Close(); err != nil {
-		log.Printf("eventhorizon: failed to close Redis client: %s", err)
-	}
+
+	return b.client.Close()
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, groupName string) {
+func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, groupName string) {
+	b.wg.Add(1)
 	defer b.wg.Done()
 
-	msgHandler := b.handler(m, h, groupName)
+	handler := b.handler(m, h, groupName)
+
 	for {
-		streams, err := b.client.XReadGroup(ctx, &redis.XReadGroupArgs{
+		streams, err := b.client.XReadGroup(b.cctx, &redis.XReadGroupArgs{
 			Group:    groupName,
 			Consumer: groupName + "_" + b.clientID,
 			Streams:  []string{b.streamName, ">"},
 		}).Result()
-		if err != nil && err != context.Canceled {
+		if errors.Is(err, context.Canceled) {
+			break
+		} else if err != nil {
 			err = fmt.Errorf("could not receive: %w", err)
 			select {
-			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
+			case b.errCh <- eh.EventBusError{Err: err}:
 			default:
 				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
 			}
 			// Retry the receive loop if there was an error.
 			time.Sleep(time.Second)
 			continue
-		} else if err == context.Canceled {
-			return
 		}
 
 		// Handle all messages from group read.
@@ -216,7 +223,7 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 				continue
 			}
 			for _, msg := range stream.Messages {
-				msgHandler(ctx, &msg)
+				handler(b.cctx, &msg)
 			}
 		}
 	}

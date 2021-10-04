@@ -43,11 +43,9 @@ import (
 )
 
 func TestStaticFiles(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	commandHandler, eventBus, todoRepo := NewTestSession()
 
-	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
-
-	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,9 +57,9 @@ func TestStaticFiles(t *testing.T) {
 		t.Error("there should be a 200 status for /")
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	eventBus.Wait()
+	if err := eventBus.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestGetAll(t *testing.T) {
@@ -69,11 +67,9 @@ func TestGetAll(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	commandHandler, eventBus, todoRepo := NewTestSession()
 
-	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
-
-	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,6 +83,8 @@ func TestGetAll(t *testing.T) {
 	if w.Body.String() != `[]` {
 		t.Error("the body should be correct:", w.Body.String())
 	}
+
+	ctx := context.Background()
 
 	id := uuid.New()
 	if err := commandHandler.HandleCommand(ctx, &todo.Create{
@@ -119,9 +117,9 @@ func TestGetAll(t *testing.T) {
 		t.Error("the body should be correct:", w.Body.String())
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	eventBus.Wait()
+	if err := eventBus.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestCreate(t *testing.T) {
@@ -129,11 +127,9 @@ func TestCreate(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	commandHandler, eventBus, todoRepo := NewTestSession()
 
-	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
-
-	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,6 +145,8 @@ func TestCreate(t *testing.T) {
 	if w.Body.Len() != 0 {
 		t.Error("the body should be correct:", w.Body.String())
 	}
+
+	ctx := context.Background()
 
 	waiter := waiter.NewEventHandler()
 	eventBus.AddHandler(ctx, eh.MatchEvents{todo.Created},
@@ -179,9 +177,9 @@ func TestCreate(t *testing.T) {
 		t.Log("expected:", expected)
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	eventBus.Wait()
+	if err := eventBus.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestDelete(t *testing.T) {
@@ -189,14 +187,14 @@ func TestDelete(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	commandHandler, eventBus, todoRepo := NewTestSession()
 
-	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
-
-	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ctx := context.Background()
 
 	id := uuid.New()
 	if err := commandHandler.HandleCommand(ctx, &todo.Create{
@@ -231,9 +229,9 @@ func TestDelete(t *testing.T) {
 		t.Error("there should be a not found error:", err)
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	eventBus.Wait()
+	if err := eventBus.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestAddItem(t *testing.T) {
@@ -241,14 +239,14 @@ func TestAddItem(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	commandHandler, eventBus, todoRepo := NewTestSession()
 
-	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
-
-	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ctx := context.Background()
 
 	id := uuid.New()
 	if err := commandHandler.HandleCommand(ctx, &todo.Create{
@@ -302,9 +300,9 @@ func TestAddItem(t *testing.T) {
 		t.Log("expected:", expected)
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	eventBus.Wait()
+	if err := eventBus.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestRemoveItem(t *testing.T) {
@@ -312,14 +310,14 @@ func TestRemoveItem(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	commandHandler, eventBus, todoRepo := NewTestSession()
 
-	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
-
-	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ctx := context.Background()
 
 	id := uuid.New()
 	if err := commandHandler.HandleCommand(ctx, &todo.Create{
@@ -374,9 +372,9 @@ func TestRemoveItem(t *testing.T) {
 		t.Log("expected:", expected)
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	eventBus.Wait()
+	if err := eventBus.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestRemoveCompleted(t *testing.T) {
@@ -384,14 +382,14 @@ func TestRemoveCompleted(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	commandHandler, eventBus, todoRepo := NewTestSession()
 
-	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
-
-	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ctx := context.Background()
 
 	id := uuid.New()
 	if err := commandHandler.HandleCommand(ctx, &todo.Create{
@@ -466,9 +464,9 @@ func TestRemoveCompleted(t *testing.T) {
 		t.Log("expected:", expected)
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	eventBus.Wait()
+	if err := eventBus.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestSetItemDesc(t *testing.T) {
@@ -476,14 +474,14 @@ func TestSetItemDesc(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	commandHandler, eventBus, todoRepo := NewTestSession()
 
-	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
-
-	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ctx := context.Background()
 
 	id := uuid.New()
 	if err := commandHandler.HandleCommand(ctx, &todo.Create{
@@ -543,9 +541,9 @@ func TestSetItemDesc(t *testing.T) {
 		t.Log("expected:", expected)
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	eventBus.Wait()
+	if err := eventBus.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestCheckItem(t *testing.T) {
@@ -553,14 +551,14 @@ func TestCheckItem(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	commandHandler, eventBus, todoRepo := NewTestSession()
 
-	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
-
-	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ctx := context.Background()
 
 	id := uuid.New()
 	if err := commandHandler.HandleCommand(ctx, &todo.Create{
@@ -631,9 +629,9 @@ func TestCheckItem(t *testing.T) {
 		t.Log("expected:", expected)
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	eventBus.Wait()
+	if err := eventBus.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestCheckAllItems(t *testing.T) {
@@ -641,14 +639,14 @@ func TestCheckAllItems(t *testing.T) {
 		return time.Date(2017, time.July, 10, 23, 0, 0, 0, time.UTC)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	commandHandler, eventBus, todoRepo := NewTestSession()
 
-	commandHandler, eventBus, todoRepo := NewTestSession(ctx)
-
-	h, err := NewHandler(ctx, commandHandler, eventBus, todoRepo, "../../frontend")
+	h, err := NewHandler(commandHandler, eventBus, todoRepo, "../../frontend")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ctx := context.Background()
 
 	id := uuid.New()
 	if err := commandHandler.HandleCommand(ctx, &todo.Create{
@@ -722,12 +720,12 @@ func TestCheckAllItems(t *testing.T) {
 		t.Log("expected:", expected)
 	}
 
-	// Cancel all handlers and wait.
-	cancel()
-	eventBus.Wait()
+	if err := eventBus.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
-func NewTestSession(ctx context.Context) (
+func NewTestSession() (
 	eh.CommandHandler,
 	eh.EventBus,
 	eh.ReadWriteRepo,
@@ -745,7 +743,7 @@ func NewTestSession(ctx context.Context) (
 
 	// Create the read repositories.
 	todoRepo := memory.NewRepo()
-	if err := todo.SetupDomain(ctx, commandBus, eventStore, eventBus, todoRepo); err != nil {
+	if err := todo.SetupDomain(commandBus, eventStore, eventBus, todoRepo); err != nil {
 		log.Println("could not setup domain:", err)
 	}
 
@@ -800,7 +798,7 @@ func NewIntegrationTestSession(ctx context.Context) (
 	}
 
 	// Setup the todo domain.
-	if err := todo.SetupDomain(ctx, commandBus, eventStore, eventBus, todoRepo); err != nil {
+	if err := todo.SetupDomain(commandBus, eventStore, eventBus, todoRepo); err != nil {
 		log.Println("could not setup domain:", err)
 	}
 

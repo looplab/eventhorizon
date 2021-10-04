@@ -40,19 +40,24 @@ type EventBus struct {
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
+	cctx         context.Context
+	cancel       context.CancelFunc
 	wg           sync.WaitGroup
 	codec        eh.EventCodec
 }
 
 // NewEventBus creates an EventBus, with optional GCP connection settings.
 func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
-	topic := appID + "_events"
+	ctx, cancel := context.WithCancel(context.Background())
+
 	b := &EventBus{
 		addr:       addr,
 		appID:      appID,
-		topic:      topic,
+		topic:      appID + "_events",
 		registered: map[eh.EventHandlerType]struct{}{},
 		errCh:      make(chan eh.EventBusError, 100),
+		cctx:       ctx,
+		cancel:     cancel,
 		codec:      &json.EventCodec{},
 	}
 
@@ -75,7 +80,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 	for i := 0; i < 10; i++ {
 		resp, err = client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
 			Topics: []kafka.TopicConfig{{
-				Topic:             topic,
+				Topic:             b.topic,
 				NumPartitions:     5,
 				ReplicationFactor: 1,
 			}},
@@ -92,7 +97,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 	if resp == nil {
 		return nil, fmt.Errorf("could not get/create Kafka topic in time: %w", err)
 	}
-	if topicErr, ok := resp.Errors[topic]; ok && topicErr != nil {
+	if topicErr, ok := resp.Errors[b.topic]; ok && topicErr != nil {
 		if !errors.Is(topicErr, kafka.TopicAlreadyExists) {
 			return nil, fmt.Errorf("invalid Kafka topic: %w", topicErr)
 		}
@@ -100,7 +105,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 
 	b.writer = &kafka.Writer{
 		Addr:         kafka.TCP(addr),
-		Topic:        topic,
+		Topic:        b.topic,
 		BatchSize:    1,                // Write every event to the bus without delay.
 		RequiredAcks: kafka.RequireOne, // Stronger consistency.
 		Balancer:     &kafka.Hash{},    // Hash by aggregate ID.
@@ -206,8 +211,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	b.registered[h.HandlerType()] = struct{}{}
 
 	// Handle until context is cancelled.
-	b.wg.Add(1)
-	go b.handle(ctx, m, h, r)
+	go b.handle(m, h, r)
 
 	return nil
 }
@@ -217,28 +221,29 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return b.errCh
 }
 
-// Wait for all channels to close in the event bus group
-func (b *EventBus) Wait() {
+// Close implements the Close method of the eventhorizon.EventBus interface.
+func (b *EventBus) Close() error {
+	b.cancel()
 	b.wg.Wait()
-	if err := b.writer.Close(); err != nil {
-		log.Printf("eventhorizon: failed to close Kafka writer: %s", err)
-	}
+
+	return b.writer.Close()
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) {
+func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) {
+	b.wg.Add(1)
 	defer b.wg.Done()
+
 	handler := b.handler(m, h, r)
 
 	for {
-		msg, err := r.FetchMessage(ctx)
+		msg, err := r.FetchMessage(b.cctx)
 		if errors.Is(err, context.Canceled) {
 			break
-		}
-		if err != nil {
+		} else if err != nil {
 			err = fmt.Errorf("could not fetch message: %w", err)
 			select {
-			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
+			case b.errCh <- eh.EventBusError{Err: err}:
 			default:
 				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
 			}
@@ -248,17 +253,17 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 		}
 
 		var noBusError eh.EventBusError
-		if err := handler(ctx, msg); err != noBusError {
+		if err := handler(b.cctx, msg); err != noBusError {
 			select {
 			case b.errCh <- err:
 			default:
 				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
 			}
 		} else {
-			if err := r.CommitMessages(ctx, msg); err != nil {
+			if err := r.CommitMessages(b.cctx, msg); err != nil {
 				err = fmt.Errorf("could not commit message: %w", err)
 				select {
-				case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
+				case b.errCh <- eh.EventBusError{Err: err}:
 				default:
 					log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
 				}

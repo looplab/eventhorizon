@@ -35,16 +35,22 @@ type EventBus struct {
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
+	cctx         context.Context
+	cancel       context.CancelFunc
 	wg           sync.WaitGroup
 	codec        eh.EventCodec
 }
 
 // NewEventBus creates a EventBus.
 func NewEventBus(options ...Option) *EventBus {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	b := &EventBus{
 		group:      NewGroup(),
 		registered: map[eh.EventHandlerType]struct{}{},
 		errCh:      make(chan eh.EventBusError, 100),
+		cctx:       ctx,
+		cancel:     cancel,
 		codec:      &json.EventCodec{},
 	}
 
@@ -115,8 +121,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	b.registered[h.HandlerType()] = struct{}{}
 
 	// Handle until context is cancelled.
-	b.wg.Add(1)
-	go b.handle(ctx, m, h, ch)
+	go b.handle(m, h, ch)
 
 	return nil
 }
@@ -126,10 +131,13 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return b.errCh
 }
 
-// Wait for all channels to close in the event bus group
-func (b *EventBus) Wait() {
+// Close implements the Close method of the eventhorizon.EventBus interface.
+func (b *EventBus) Close() error {
+	b.cancel()
 	b.wg.Wait()
 	b.group.close()
+
+	return nil
 }
 
 type evt struct {
@@ -138,7 +146,8 @@ type evt struct {
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte) {
+func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte) {
+	b.wg.Add(1)
 	defer b.wg.Done()
 
 	for {
@@ -147,7 +156,7 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 			// Artificial delay to simulate network.
 			time.Sleep(time.Millisecond)
 
-			event, ctx, err := b.codec.UnmarshalEvent(ctx, data)
+			event, ctx, err := b.codec.UnmarshalEvent(b.cctx, data)
 			if err != nil {
 				err = fmt.Errorf("could not unmarshal event: %w", err)
 				select {
@@ -172,7 +181,7 @@ func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHand
 					log.Printf("eventhorizon: missed error in local event bus: %s", err)
 				}
 			}
-		case <-ctx.Done():
+		case <-b.cctx.Done():
 			return
 		}
 	}
