@@ -333,8 +333,6 @@ func (m *EventStore) Close() error {
 	return nil
 }
 
-var _ = eh.EventBus(&EventBus{})
-
 // EventBus is a mocked eventhorizon.EventBus, useful in testing.
 type EventBus struct {
 	Events  []eh.Event
@@ -342,6 +340,8 @@ type EventBus struct {
 	// Used to simulate errors in PublishEvent.
 	Err error
 }
+
+var _ = eh.EventBus(&EventBus{})
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandlerType() eh.EventHandlerType {
@@ -440,6 +440,11 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 		return r.SaveErr
 	}
 	r.Entity = nil
+	return nil
+}
+
+// Close implements the Close method of the eventhorizon.ReadRepo interface.
+func (r *Repo) Close() error {
 	return nil
 }
 

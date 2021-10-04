@@ -32,6 +32,9 @@ type ReadRepo interface {
 
 	// FindAll returns all entities in the repository.
 	FindAll(context.Context) ([]Entity, error)
+
+	// Close closes the ReadRepo.
+	Close() error
 }
 
 // WriteRepo is a write repository for entities.

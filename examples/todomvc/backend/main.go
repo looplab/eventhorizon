@@ -214,6 +214,9 @@ func main() {
 
 	// Cancel all handlers and wait.
 	log.Println("waiting for handlers to finish")
+	if err := todoRepo.Close(); err != nil {
+		log.Print("could not close todo repo: ", err)
+	}
 	if err := eventStore.Close(); err != nil {
 		log.Print("could not close event store: ", err)
 	}

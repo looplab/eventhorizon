@@ -197,6 +197,12 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 	}
 
+	if err := invitationRepo.Close(); err != nil {
+		log.Println("error closing invitation repo:", err)
+	}
+	if err := guestListRepo.Close(); err != nil {
+		log.Println("error closing guest list repo:", err)
+	}
 	if err := eventStore.Close(); err != nil {
 		log.Println("error closing event store:", err)
 	}
