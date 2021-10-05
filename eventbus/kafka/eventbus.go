@@ -237,6 +237,12 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 	handler := b.handler(m, h, r)
 
 	for {
+		select {
+		case <-b.cctx.Done():
+			break
+		default:
+		}
+
 		msg, err := r.FetchMessage(b.cctx)
 		if errors.Is(err, context.Canceled) {
 			break
@@ -259,14 +265,16 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 			default:
 				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
 			}
-		} else {
-			if err := r.CommitMessages(b.cctx, msg); err != nil {
-				err = fmt.Errorf("could not commit message: %w", err)
-				select {
-				case b.errCh <- eh.EventBusError{Err: err}:
-				default:
-					log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
-				}
+			continue
+		}
+
+		// Use a new context to always finish the commit.
+		if err := r.CommitMessages(context.Background(), msg); err != nil {
+			err = fmt.Errorf("could not commit message: %w", err)
+			select {
+			case b.errCh <- eh.EventBusError{Err: err}:
+			default:
+				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
 			}
 		}
 	}
