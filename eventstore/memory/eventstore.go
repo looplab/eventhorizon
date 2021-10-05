@@ -178,6 +178,11 @@ type aggregateRecord struct {
 	// Snapshot    eh.Aggregate
 }
 
+// Close implements the Close method of the eventhorizon.EventStore interface.
+func (s *EventStore) Close() error {
+	return nil
+}
+
 // copyEvent duplicates an event.
 func copyEvent(ctx context.Context, event eh.Event) (eh.Event, error) {
 	// Copy data if there is any.

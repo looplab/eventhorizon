@@ -29,7 +29,6 @@ import (
 // NewHandler returns a http.Handler that interacts exposes the command handler,
 // read repo and event bus to the frontend.
 func NewHandler(
-	ctx context.Context,
 	commandHandler eh.CommandHandler,
 	eventBus eh.EventBus,
 	todoRepo eh.ReadRepo,
@@ -40,7 +39,7 @@ func NewHandler(
 	// Add the event bus as a websocket that sends the events as JSON.
 	eventBusHandler := httputils.NewEventBusHandler()
 	observerMiddleware := observer.NewMiddleware(observer.NamedGroup("todomvc"))
-	eventBus.AddHandler(ctx, eh.MatchAll{},
+	eventBus.AddHandler(context.Background(), eh.MatchAll{},
 		eh.UseEventHandlerMiddleware(eventBusHandler, observerMiddleware))
 	h.Handle("/api/events/", eventBusHandler)
 

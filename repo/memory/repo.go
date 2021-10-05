@@ -185,3 +185,8 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 func (r *Repo) SetEntityFactory(f func() eh.Entity) {
 	r.factoryFn = f
 }
+
+// Close implements the Close method of the eventhorizon.WriteRepo interface.
+func (r *Repo) Close() error {
+	return nil
+}

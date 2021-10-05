@@ -60,7 +60,7 @@ func TestReadRepoIntegration(t *testing.T) {
 	if r == nil {
 		t.Error("there should be a repository")
 	}
-	defer r.Close(context.Background())
+	defer r.Close()
 
 	r.SetEntityFactory(func() eh.Entity {
 		return &mocks.Model{}
@@ -193,7 +193,7 @@ func TestIntoRepo(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	defer inner.Close(context.Background())
+	defer inner.Close()
 
 	outer := &mocks.Repo{ParentRepo: inner}
 	if r := IntoRepo(context.Background(), outer); r != inner {

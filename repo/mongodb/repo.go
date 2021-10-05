@@ -352,7 +352,7 @@ func (r *Repo) Clear(ctx context.Context) error {
 	return nil
 }
 
-// Close closes a database session.
-func (r *Repo) Close(ctx context.Context) {
-	r.client.Disconnect(ctx)
+// Close implements the Close method of the eventhorizon.WriteRepo interface.
+func (r *Repo) Close() error {
+	return r.client.Disconnect(context.Background())
 }

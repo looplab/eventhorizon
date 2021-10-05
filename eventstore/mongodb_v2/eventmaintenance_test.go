@@ -51,7 +51,7 @@ func TestEventStoreMaintenanceIntegration(t *testing.T) {
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
-	defer store.Close(context.Background())
+	defer store.Close()
 
 	eventstore.MaintenanceAcceptanceTest(t, store, store, context.Background())
 }

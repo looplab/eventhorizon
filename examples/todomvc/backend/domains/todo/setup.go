@@ -15,12 +15,12 @@ import (
 
 // SetupDomain sets up the Todo domain.
 func SetupDomain(
-	ctx context.Context,
 	commandBus *bus.CommandHandler,
 	eventStore eh.EventStore,
 	eventBus eh.EventBus,
 	repo eh.ReadWriteRepo,
 ) error {
+	ctx := context.Background()
 
 	// Set the entity factory for the base repo.
 	if memoryRepo := memory.IntoRepo(ctx, repo); memoryRepo != nil {

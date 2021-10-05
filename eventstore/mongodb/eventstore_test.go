@@ -55,7 +55,7 @@ func TestEventStoreIntegration(t *testing.T) {
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
-	defer store.Close(context.Background())
+	defer store.Close()
 
 	eventstore.AcceptanceTest(t, store, context.Background())
 }
@@ -91,7 +91,7 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
-	defer store.Close(context.Background())
+	defer store.Close()
 
 	ctx := context.Background()
 
@@ -159,7 +159,7 @@ func BenchmarkEventStore(b *testing.B) {
 	if store == nil {
 		b.Fatal("there should be a store")
 	}
-	defer store.Close(context.Background())
+	defer store.Close()
 
 	eventstore.Benchmark(b, store)
 }

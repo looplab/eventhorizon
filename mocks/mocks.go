@@ -328,7 +328,10 @@ func (m *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	return nil
 }
 
-var _ = eh.EventBus(&EventBus{})
+// Close implements the Close method of the eventhorizon.EventStore interface.
+func (m *EventStore) Close() error {
+	return nil
+}
 
 // EventBus is a mocked eventhorizon.EventBus, useful in testing.
 type EventBus struct {
@@ -337,6 +340,8 @@ type EventBus struct {
 	// Used to simulate errors in PublishEvent.
 	Err error
 }
+
+var _ = eh.EventBus(&EventBus{})
 
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandlerType() eh.EventHandlerType {
@@ -363,8 +368,10 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return make(chan eh.EventBusError)
 }
 
-// Wait implements the Wait method of the eventhorizon.EventBus interface.
-func (b *EventBus) Wait() {}
+// Close implements the Close method of the eventhorizon.EventBus interface.
+func (b *EventBus) Close() error {
+	return nil
+}
 
 // Repo is a mocked eventhorizon.ReadRepo, useful in testing.
 type Repo struct {
@@ -433,6 +440,11 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 		return r.SaveErr
 	}
 	r.Entity = nil
+	return nil
+}
+
+// Close implements the Close method of the eventhorizon.ReadRepo interface.
+func (r *Repo) Close() error {
 	return nil
 }
 

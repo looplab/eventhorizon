@@ -39,17 +39,23 @@ type EventBus struct {
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan eh.EventBusError
+	cctx         context.Context
+	cancel       context.CancelFunc
 	wg           sync.WaitGroup
 	codec        eh.EventCodec
 }
 
 // NewEventBus creates an EventBus, with optional settings.
 func NewEventBus(url, appID string, options ...Option) (*EventBus, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	b := &EventBus{
 		appID:      appID,
 		streamName: appID + "_events",
 		registered: map[eh.EventHandlerType]struct{}{},
 		errCh:      make(chan eh.EventBusError, 100),
+		cctx:       ctx,
+		cancel:     cancel,
 		codec:      &json.EventCodec{},
 	}
 
@@ -151,7 +157,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Create a consumer.
 	subject := createConsumerSubject(b.streamName, m)
 	consumerName := fmt.Sprintf("%s_%s", b.appID, h.HandlerType())
-	sub, err := b.js.QueueSubscribe(subject, consumerName, b.handler(ctx, m, h),
+	sub, err := b.js.QueueSubscribe(subject, consumerName, b.handler(b.cctx, m, h),
 		nats.Durable(consumerName),
 		nats.DeliverNew(),
 		nats.ManualAck(),
@@ -167,8 +173,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	b.registered[h.HandlerType()] = struct{}{}
 
 	// Handle until context is cancelled.
-	b.wg.Add(1)
-	go b.handle(ctx, sub)
+	go b.handle(sub)
 
 	return nil
 }
@@ -178,21 +183,26 @@ func (b *EventBus) Errors() <-chan eh.EventBusError {
 	return b.errCh
 }
 
-// Wait for all channels to close in the event bus group
-func (b *EventBus) Wait() {
+// Close implements the Close method of the eventhorizon.EventBus interface.
+func (b *EventBus) Close() error {
+	b.cancel()
 	b.wg.Wait()
+
 	b.conn.Close()
+
+	return nil
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(ctx context.Context, sub *nats.Subscription) {
+func (b *EventBus) handle(sub *nats.Subscription) {
+	b.wg.Add(1)
 	defer b.wg.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
-			if ctx.Err() != context.Canceled {
-				log.Printf("eventhorizon: context error in NATS event bus: %s", ctx.Err())
+		case <-b.cctx.Done():
+			if b.cctx.Err() != context.Canceled {
+				log.Printf("eventhorizon: context error in NATS event bus: %s", b.cctx.Err())
 			}
 			return
 		}

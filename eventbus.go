@@ -34,8 +34,8 @@ type EventBus interface {
 	// Errors returns an error channel where async handling errors are sent.
 	Errors() <-chan EventBusError
 
-	// Wait wait for all handlers to be cancelled by their context.
-	Wait()
+	// Close closes the EventBus and waits for all handlers to finish.
+	Close() error
 }
 
 // EventBusError is an async error containing the error returned from a handler

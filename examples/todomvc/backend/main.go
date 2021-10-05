@@ -91,7 +91,7 @@ func main() {
 	}
 	eventStore = tracingEventStore.NewEventStore(eventStore)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 
 	// Add an event logger as an observer.
 	eventLogger := &EventLogger{}
@@ -112,7 +112,7 @@ func main() {
 	todoRepo = tracingRepo.NewRepo(todoRepo)
 
 	// Setup the Todo domain.
-	if err := todo.SetupDomain(ctx, commandBus, eventStore, eventBus, todoRepo); err != nil {
+	if err := todo.SetupDomain(commandBus, eventStore, eventBus, todoRepo); err != nil {
 		log.Fatal("could not setup Todo domain: ", err)
 	}
 
@@ -123,7 +123,7 @@ func main() {
 	)
 
 	// Setup the HTTP handler for commands, read repo and events.
-	h, err := handler.NewHandler(ctx, commandHandler, eventBus, todoRepo, "frontend")
+	h, err := handler.NewHandler(commandHandler, eventBus, todoRepo, "frontend")
 	if err != nil {
 		log.Fatal("could not create handler: ", err)
 	}
@@ -213,9 +213,16 @@ func main() {
 	<-srvClosed
 
 	// Cancel all handlers and wait.
-	cancel()
 	log.Println("waiting for handlers to finish")
-	eventBus.Wait()
+	if err := todoRepo.Close(); err != nil {
+		log.Print("could not close todo repo: ", err)
+	}
+	if err := eventStore.Close(); err != nil {
+		log.Print("could not close event store: ", err)
+	}
+	if err := eventBus.Close(); err != nil {
+		log.Print("could not close event bus: ", err)
+	}
 
 	if err := traceCloser.Close(); err != nil {
 		log.Print("could not close tracer: ", err)

@@ -17,6 +17,7 @@ package namespace
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -122,6 +123,25 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 		return err
 	}
 	return repo.Remove(ctx, id)
+}
+
+// Close implements the Close method of the eventhorizon.WriteRepo interface.
+func (r *Repo) Close() error {
+	r.reposMu.RLock()
+	defer r.reposMu.RUnlock()
+
+	var errStrs []string
+	for _, repo := range r.repos {
+		if err := repo.Close(); err != nil {
+			errStrs = append(errStrs, err.Error())
+		}
+	}
+
+	if len(errStrs) > 0 {
+		return fmt.Errorf("multiple errors: %s", strings.Join(errStrs, ", "))
+	}
+
+	return nil
 }
 
 // repo is a helper that returns or creates repos for each namespace.
