@@ -73,6 +73,10 @@ func NewEventStoreWithClient(client *mongo.Client, db string, options ...Option)
 		}
 	}
 
+	if err := s.client.Ping(context.Background(), readpref.Primary()); err != nil {
+		return nil, fmt.Errorf("could not connect to MongoDB: %w", err)
+	}
+
 	return s, nil
 }
 

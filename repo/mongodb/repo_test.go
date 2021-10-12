@@ -164,7 +164,11 @@ func extraRepoTests(t *testing.T, r *Repo) {
 	}
 }
 
-func TestIntoRepo(t *testing.T) {
+func TestIntoRepoIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
 	if r := IntoRepo(context.Background(), nil); r != nil {
 		t.Error("the repository should be nil:", r)
 	}

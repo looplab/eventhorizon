@@ -39,14 +39,14 @@ func TestMiddleware(t *testing.T) {
 	if err := h1.HandleEvent(context.Background(), event); err != nil {
 		t.Error("there should be no error:", err)
 	}
-	if h1.HandlerType() != inner.HandlerType()+"-a" {
+	if h1.HandlerType() != inner.HandlerType()+"_a" {
 		t.Error("the handler type should be correct:", h1.HandlerType())
 	}
 
 	// UUID group.
 	groupID := uuid.New()
 	h2 := eh.UseEventHandlerMiddleware(inner, NewMiddleware(UUIDGroup(groupID)))
-	if h2.HandlerType() != inner.HandlerType()+"-"+eh.EventHandlerType(groupID.String()) {
+	if h2.HandlerType() != inner.HandlerType()+"_"+eh.EventHandlerType(groupID.String()) {
 		t.Error("the handler type should be correct:", h2.HandlerType())
 	}
 
@@ -66,7 +66,7 @@ func TestMiddleware(t *testing.T) {
 		t.Error("could not get hostname:", err)
 	}
 	h5 := eh.UseEventHandlerMiddleware(inner, NewMiddleware(HostnameGroup()))
-	if h5.HandlerType() != inner.HandlerType()+"-"+eh.EventHandlerType(hostname) {
+	if h5.HandlerType() != inner.HandlerType()+"_"+eh.EventHandlerType(hostname) {
 		t.Error("the handler type should be correct:", h5.HandlerType())
 	}
 	t.Log(h5.HandlerType())
