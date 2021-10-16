@@ -27,3 +27,6 @@ coverage.out
 
 # CI
 .env
+
+# Editors
+.vscode
