@@ -1,13 +1,8 @@
 default: test
 
-.PHONY: setup
-setup:
-	cd tools && GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
-	cd tools && go mod tidy
-
 .PHONY: lint
 lint:
-	golangci-lint run ./...
+	docker run --rm -v $$(pwd):/app -w /app golangci/golangci-lint:v1.42.1 golangci-lint run -v --timeout 2m
 
 .PHONY: test
 test:
