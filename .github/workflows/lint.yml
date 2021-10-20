@@ -6,12 +6,12 @@ on:
     branches: [main]
 
 jobs:
-  lint (Go):
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       
-      - name: Run golangci-lint
+      - name: Run Lint (Go)
         uses: golangci/golangci-lint-action@v2
         with:
           version: v1.42.1
