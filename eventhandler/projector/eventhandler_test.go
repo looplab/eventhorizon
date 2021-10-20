@@ -251,6 +251,60 @@ func TestEventHandler_UpdateModelWithEventsOutOfOrder(t *testing.T) {
 	}
 }
 
+func TestEventHandler_UpdateModelWithRetryOnce(t *testing.T) {
+	repo := &mocks.Repo{}
+	projector := &TestProjector{}
+	// Out of order events requires waiting, at least if the event bus doesn't
+	// support retries.
+	handler := NewEventHandler(projector, version.NewRepo(repo), WithRetryOnce())
+	handler.SetEntityFactory(func() eh.Entity {
+		return &mocks.Model{}
+	})
+
+	ctx := context.Background()
+
+	id := uuid.New()
+	eventData := &mocks.EventData{Content: "event1"}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 3))
+	entity := &mocks.Model{
+		ID:      id,
+		Version: 1,
+		Content: "version 1",
+	}
+	newEntity := &mocks.Model{
+		ID:      id,
+		Version: 2,
+		Content: "version 2",
+	}
+	repo.Entity = entity
+	projector.newEntity = &mocks.Model{
+		ID:      id,
+		Version: 3,
+		Content: "version 3",
+	}
+	go func() {
+		// Replace the entity after the first load.
+		<-time.After(50 * time.Millisecond)
+		repo.Lock()
+		repo.Entity = newEntity
+		repo.Unlock()
+	}()
+	if err := handler.HandleEvent(ctx, event); err != nil {
+		t.Error("there should be no error:", err)
+	}
+	if projector.event != event {
+		t.Error("the handled event should be correct:", projector.event)
+	}
+	if projector.entity != newEntity {
+		t.Error("the entity should be correct:", projector.entity)
+	}
+	if repo.Entity != projector.newEntity {
+		t.Error("the new entity should be correct:", repo.Entity)
+	}
+}
+
 func TestEventHandler_DeleteModel(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}
