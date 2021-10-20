@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/repo/version"
@@ -41,6 +42,8 @@ type Type string
 func (t Type) String() string {
 	return string(t)
 }
+
+var ErrIncorrectProjectedEntityVersion = fmt.Errorf("incorrect projected entity version")
 
 // Error is an error in the projector.
 type Error struct {
@@ -79,6 +82,7 @@ type EventHandler struct {
 	repo                   eh.ReadWriteRepo
 	factoryFn              func() eh.Entity
 	useWait                bool
+	useRetryOnce           bool
 	useIrregularVersioning bool
 	entityLookupFn         func(eh.Event) uuid.UUID
 }
@@ -105,6 +109,14 @@ type Option func(*EventHandler)
 func WithWait() Option {
 	return func(h *EventHandler) {
 		h.useWait = true
+	}
+}
+
+// WithRetryOnce adds a single retry in case of version mismatch. Useful to
+// let racy projections finish witout an error.
+func WithRetryOnce() Option {
+	return func(h *EventHandler) {
+		h.useRetryOnce = true
 	}
 }
 
@@ -140,6 +152,11 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 // It will try to find the correct version of the model, waiting for it the projector
 // has the WithWait option set.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
+
+	// Used to retry once in case of a version mismatch.
+	triedOnce := false
+retryOnce:
+
 	findCtx := ctx
 	// Irregular versioning skips min version loading.
 	if !h.useIrregularVersioning {
@@ -155,7 +172,7 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 
 	// Get or create the model.
 	entity, err := h.repo.Find(findCtx, h.entityLookupFn(event))
-	if rrErr, ok := err.(eh.RepoError); ok && rrErr.Err == eh.ErrEntityNotFound {
+	if errors.Is(err, eh.ErrEntityNotFound) {
 		if h.factoryFn == nil {
 			return Error{
 				Err:          ErrModelNotSet,
@@ -164,6 +181,18 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 			}
 		}
 		entity = h.factoryFn()
+	} else if errors.Is(err, eh.ErrIncorrectEntityVersion) {
+		if h.useRetryOnce && !triedOnce {
+			triedOnce = true
+			time.Sleep(100 * time.Millisecond)
+			goto retryOnce
+		}
+
+		return Error{
+			Err:          fmt.Errorf("could not load entity: %w", err),
+			Projector:    h.projector.ProjectorType().String(),
+			EventVersion: event.Version(),
+		}
 	} else if err != nil {
 		return Error{
 			Err:          err,
@@ -178,28 +207,23 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		entityVersion = entity.AggregateVersion()
 
 		// Ignore old/duplicate events.
-		if entity.AggregateVersion() >= event.Version() {
+		if event.Version() <= entityVersion {
 			return nil
 		}
 
 		// Irregular versioning has looser checks on the version.
-		if h.useIrregularVersioning {
-			if entity.AggregateVersion() >= event.Version() {
-				return Error{
-					Err:           eh.ErrIncorrectEntityVersion,
-					Projector:     h.projector.ProjectorType().String(),
-					EventVersion:  event.Version(),
-					EntityVersion: entityVersion,
-				}
+		if event.Version() != entityVersion+1 && !h.useIrregularVersioning {
+			if h.useRetryOnce && !triedOnce {
+				triedOnce = true
+				time.Sleep(100 * time.Millisecond)
+				goto retryOnce
 			}
-		} else {
-			if entity.AggregateVersion()+1 != event.Version() {
-				return Error{
-					Err:           eh.ErrIncorrectEntityVersion,
-					Projector:     h.projector.ProjectorType().String(),
-					EventVersion:  event.Version(),
-					EntityVersion: entityVersion,
-				}
+
+			return Error{
+				Err:           eh.ErrIncorrectEntityVersion,
+				Projector:     h.projector.ProjectorType().String(),
+				EventVersion:  event.Version(),
+				EntityVersion: entityVersion,
 			}
 		}
 	}
@@ -220,7 +244,7 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		entityVersion = newEntity.AggregateVersion()
 		if newEntity.AggregateVersion() != event.Version() {
 			return Error{
-				Err:           eh.ErrIncorrectEntityVersion,
+				Err:           ErrIncorrectProjectedEntityVersion,
 				Projector:     h.projector.ProjectorType().String(),
 				EventVersion:  event.Version(),
 				EntityVersion: entityVersion,
