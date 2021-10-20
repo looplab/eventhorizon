@@ -42,6 +42,8 @@ func (t Type) String() string {
 	return string(t)
 }
 
+var ErrIncorrectProjectedEntityVersion = fmt.Errorf("incorrect projected entity version")
+
 // Error is an error in the projector.
 type Error struct {
 	// Err is the error that happened when projecting the event.
@@ -220,7 +222,7 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 		entityVersion = newEntity.AggregateVersion()
 		if newEntity.AggregateVersion() != event.Version() {
 			return Error{
-				Err:           eh.ErrIncorrectEntityVersion,
+				Err:           ErrIncorrectProjectedEntityVersion,
 				Projector:     h.projector.ProjectorType().String(),
 				EventVersion:  event.Version(),
 				EntityVersion: entityVersion,

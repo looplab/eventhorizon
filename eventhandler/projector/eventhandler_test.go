@@ -171,7 +171,7 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 		Content: "version 1",
 	}
 	expectedErr = Error{
-		Err:           eh.ErrIncorrectEntityVersion,
+		Err:           ErrIncorrectProjectedEntityVersion,
 		Projector:     TestProjectorType.String(),
 		EventVersion:  2,
 		EntityVersion: 3,
