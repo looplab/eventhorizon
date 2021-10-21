@@ -156,7 +156,9 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 
 	aggregate, ok := s.db[id]
 	if !ok {
-		return []eh.Event{}, nil
+		return nil, eh.EventStoreError{
+			Err: eh.ErrAggregateNotFound,
+		}
 	}
 
 	events := make([]eh.Event, len(aggregate.Events))

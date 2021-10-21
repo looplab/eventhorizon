@@ -76,7 +76,7 @@ func TestAggregateEvents(t *testing.T) {
 	if event1.Version() != 1 {
 		t.Error("the version should be 1:", event1.Version())
 	}
-	if event1.String() != "TestAggregateEvent@1" {
+	if event1.String() != "TestAggregateEvent("+id.String()+", v1)" {
 		t.Error("the string representation should be correct:", event1.String())
 	}
 	events := agg.events

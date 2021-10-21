@@ -313,6 +313,12 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 		events = append(events, event)
 	}
 
+	if len(events) == 0 {
+		return nil, eh.EventStoreError{
+			Err: eh.ErrAggregateNotFound,
+		}
+	}
+
 	return events, nil
 }
 

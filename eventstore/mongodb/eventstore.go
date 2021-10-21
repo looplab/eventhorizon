@@ -187,7 +187,9 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	var aggregate aggregateRecord
 	err := s.aggregates.FindOne(ctx, bson.M{"_id": id}).Decode(&aggregate)
 	if err == mongo.ErrNoDocuments {
-		return []eh.Event{}, nil
+		return nil, eh.EventStoreError{
+			Err: eh.ErrAggregateNotFound,
+		}
 	} else if err != nil {
 		return nil, eh.EventStoreError{
 			Err: fmt.Errorf("could not find event: %w", err),

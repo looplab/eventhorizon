@@ -16,6 +16,7 @@ package eventstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -112,8 +113,8 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 
 	// Load events for non-existing aggregate.
 	events, err := store.Load(ctx, uuid.New())
-	if err != nil {
-		t.Error("there should be no error:", err)
+	if !errors.Is(err, eh.ErrAggregateNotFound) {
+		t.Error("there should be a not found error:", err)
 	}
 	if len(events) != 0 {
 		t.Error("there should be no loaded events:", eventsToString(events))
