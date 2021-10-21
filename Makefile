@@ -1,5 +1,9 @@
 default: test
 
+.PHONY: lint
+lint:
+	docker run --rm -v $$(pwd):/app -w /app golangci/golangci-lint:v1.42.1 golangci-lint run -v --timeout 2m
+
 .PHONY: test
 test:
 	go test -v -race -short ./...

@@ -1,0 +1,9 @@
+linters:
+  enable-all: true
+  disable:
+    # The linter are deprecated since v1.39.0 because the repository has be archived by the owner.
+    # With disabling them, we can avoid the warn message. With enable all, we already have the replacements active.
+    - golint
+    - interfacer
+    - maligned
+    - scopelint
