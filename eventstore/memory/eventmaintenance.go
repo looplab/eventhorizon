@@ -16,6 +16,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/uuid"
@@ -23,18 +24,30 @@ import (
 
 // Replace implements the Replace method of the eventhorizon.EventStore interface.
 func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
+	id := event.AggregateID()
+
 	s.dbMu.RLock()
-	aggregate, ok := s.db[event.AggregateID()]
+	aggregate, ok := s.db[id]
 	if !ok {
 		s.dbMu.RUnlock()
-		return eh.ErrAggregateNotFound
+		return eh.EventStoreError{
+			Err:         eh.ErrAggregateNotFound,
+			Op:          eh.EventStoreOpReplace,
+			AggregateID: id,
+			Events:      []eh.Event{event},
+		}
 	}
 	s.dbMu.RUnlock()
 
 	// Create the event record for the Database.
 	e, err := copyEvent(ctx, event)
 	if err != nil {
-		return err
+		return eh.EventStoreError{
+			Err:         fmt.Errorf("could not copy event: %w", err),
+			Op:          eh.EventStoreOpReplace,
+			AggregateID: id,
+			Events:      []eh.Event{event},
+		}
 	}
 
 	// Find the event to replace.
@@ -46,7 +59,12 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 		}
 	}
 	if idx == -1 {
-		return eh.ErrInvalidEvent
+		return eh.EventStoreError{
+			Err:         fmt.Errorf("could not find original event"),
+			Op:          eh.EventStoreOpReplace,
+			AggregateID: id,
+			Events:      []eh.Event{event},
+		}
 	}
 
 	// Replace event.

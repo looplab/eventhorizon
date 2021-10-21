@@ -16,6 +16,7 @@ package eventstore
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -53,15 +54,18 @@ func MaintenanceAcceptanceTest(t *testing.T, store eh.EventStore, storeMaintenan
 	// Replace event, no aggregate.
 	eventWithoutAggregate := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, uuid.New(), 1))
-	if err := storeMaintenance.Replace(ctx, eventWithoutAggregate); err != eh.ErrAggregateNotFound {
+	err := storeMaintenance.Replace(ctx, eventWithoutAggregate)
+	if !errors.Is(err, eh.ErrAggregateNotFound) {
 		t.Error("there should be an aggregate not found error:", err)
 	}
 
-	// Replace event, no event version.
-	eventWithoutVersion := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event20"}, timestamp,
+	// Replace event, invalid event version.
+	eventWithInvalidVersion := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event20"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 20))
-	if err := storeMaintenance.Replace(ctx, eventWithoutVersion); err != eh.ErrInvalidEvent {
-		t.Error("there should be an invalid event error:", err)
+	err = storeMaintenance.Replace(ctx, eventWithInvalidVersion)
+	eventStoreErr := eh.EventStoreError{}
+	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "could not find original event" {
+		t.Error("there should be a event store error:", err)
 	}
 
 	// Replace event.
