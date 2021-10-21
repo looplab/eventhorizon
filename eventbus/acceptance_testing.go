@@ -240,7 +240,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 		t.Error("there should be an async error")
 	case err := <-bus1.Errors():
 		// Good case.
-		if err.Error() != "could not handle event (error_handler): handler error: (Event@3)" {
+		if err.Error() != "could not handle event (error_handler): handler error: (Event("+id.String()+", v3))" {
 			t.Error("incorrect error sent on event bus:", err)
 		}
 	}
