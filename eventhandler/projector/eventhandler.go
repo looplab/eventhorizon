@@ -43,7 +43,12 @@ func (t Type) String() string {
 	return string(t)
 }
 
-var ErrIncorrectProjectedEntityVersion = fmt.Errorf("incorrect projected entity version")
+var (
+	// ErrModelNotSet is when a model factory is not set on the EventHandler.
+	ErrModelNotSet = errors.New("model not set")
+	// Returned if the model has not incremented its version as predicted.
+	ErrIncorrectProjectedEntityVersion = errors.New("incorrect projected entity version")
+)
 
 // Error is an error in the projector.
 type Error struct {
@@ -72,9 +77,6 @@ func (e Error) Unwrap() error {
 func (e Error) Cause() error {
 	return e.Unwrap()
 }
-
-// ErrModelNotSet is when a model factory is not set on the EventHandler.
-var ErrModelNotSet = errors.New("model not set")
 
 // EventHandler is a CQRS projection handler to run a Projector implementation.
 type EventHandler struct {
