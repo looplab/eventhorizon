@@ -16,6 +16,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -37,7 +38,7 @@ import (
 func AcceptanceTest(t *testing.T, repo eh.ReadWriteRepo, ctx context.Context) {
 	// Find non-existing item.
 	entity, err := repo.Find(ctx, uuid.New())
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {
+	if !errors.Is(err, eh.ErrEntityNotFound) {
 		t.Error("there should be a ErrEntityNotFound error:", err)
 	}
 	if entity != nil {
@@ -59,8 +60,9 @@ func AcceptanceTest(t *testing.T, repo eh.ReadWriteRepo, ctx context.Context) {
 		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
 	err = repo.Save(ctx, entityMissingID)
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.BaseErr != eh.ErrMissingEntityID {
-		t.Error("there should be a ErrMissingEntityID error:", err)
+	repoErr := eh.RepoError{}
+	if !errors.As(err, &repoErr) || repoErr.Err.Error() != "missing entity ID" {
+		t.Error("there should be a repo error:", err)
 	}
 
 	// Save and find one item.
@@ -145,7 +147,7 @@ func AcceptanceTest(t *testing.T, repo eh.ReadWriteRepo, ctx context.Context) {
 		t.Error("there should be no error:", err)
 	}
 	entity, err = repo.Find(ctx, entity1Alt.ID)
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {
+	if !errors.Is(err, eh.ErrEntityNotFound) {
 		t.Error("there should be a ErrEntityNotFound error:", err)
 	}
 	if entity != nil {
@@ -154,7 +156,7 @@ func AcceptanceTest(t *testing.T, repo eh.ReadWriteRepo, ctx context.Context) {
 
 	// Remove non-existing item.
 	err = repo.Remove(ctx, entity1Alt.ID)
-	if rrErr, ok := err.(eh.RepoError); !ok || rrErr.Err != eh.ErrEntityNotFound {
+	if !errors.Is(err, eh.ErrEntityNotFound) {
 		t.Error("there should be a ErrEntityNotFound error:", err)
 	}
 }

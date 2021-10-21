@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 
 	eh "github.com/looplab/eventhorizon"
@@ -66,7 +67,9 @@ func IntoRepo(ctx context.Context, repo eh.ReadRepo) *Repo {
 func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
-			Err: ErrModelNotSet,
+			Err:      ErrModelNotSet,
+			Op:       eh.RepoOpFind,
+			EntityID: id,
 		}
 	}
 
@@ -77,7 +80,9 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	b, ok := r.db[id]
 	if !ok {
 		return nil, eh.RepoError{
-			Err: eh.ErrEntityNotFound,
+			Err:      eh.ErrEntityNotFound,
+			Op:       eh.RepoOpFind,
+			EntityID: id,
 		}
 	}
 
@@ -85,8 +90,9 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	entity := r.factoryFn()
 	if err := json.Unmarshal(b, &entity); err != nil {
 		return nil, eh.RepoError{
-			Err:     eh.ErrCouldNotLoadEntity,
-			BaseErr: err,
+			Err:      fmt.Errorf("could not unmarshal: %w", err),
+			Op:       eh.RepoOpFind,
+			EntityID: id,
 		}
 	}
 
@@ -98,6 +104,7 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	if r.factoryFn == nil {
 		return nil, eh.RepoError{
 			Err: ErrModelNotSet,
+			Op:  eh.RepoOpFindAll,
 		}
 	}
 
@@ -109,8 +116,8 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 			entity := r.factoryFn()
 			if err := json.Unmarshal(b, &entity); err != nil {
 				return nil, eh.RepoError{
-					Err:     eh.ErrCouldNotLoadEntity,
-					BaseErr: err,
+					Err: fmt.Errorf("could not unmarshal: %w", err),
+					Op:  eh.RepoOpFindAll,
 				}
 			}
 			result = append(result, entity)
@@ -125,26 +132,28 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	if r.factoryFn == nil {
 		return eh.RepoError{
 			Err: ErrModelNotSet,
+			Op:  eh.RepoOpSave,
 		}
 	}
 
-	if entity.EntityID() == uuid.Nil {
+	id := entity.EntityID()
+	if id == uuid.Nil {
 		return eh.RepoError{
-			Err:     eh.ErrCouldNotSaveEntity,
-			BaseErr: eh.ErrMissingEntityID,
+			Err: fmt.Errorf("missing entity ID"),
+			Op:  eh.RepoOpSave,
 		}
 	}
 
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
-	id := entity.EntityID()
 
 	// Insert entity.
 	b, err := json.Marshal(entity)
 	if err != nil {
 		return eh.RepoError{
-			Err:     eh.ErrCouldNotSaveEntity,
-			BaseErr: err,
+			Err:      fmt.Errorf("could not marshal: %w", err),
+			Op:       eh.RepoOpSave,
+			EntityID: id,
 		}
 	}
 
@@ -177,7 +186,9 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 	}
 
 	return eh.RepoError{
-		Err: eh.ErrEntityNotFound,
+		Err:      eh.ErrEntityNotFound,
+		Op:       eh.RepoOpRemove,
+		EntityID: id,
 	}
 }
 

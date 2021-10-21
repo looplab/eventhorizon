@@ -73,35 +73,59 @@ type Iter interface {
 var (
 	// ErrEntityNotFound is when a entity could not be found.
 	ErrEntityNotFound = errors.New("could not find entity")
-	// ErrCouldNotLoadEntity is when a entity could not be loaded.
-	ErrCouldNotLoadEntity = errors.New("could not load entity")
-	// ErrCouldNotSaveEntity is when a entity could not be saved.
-	ErrCouldNotSaveEntity = errors.New("could not save entity")
-	// ErrCouldNotRemoveEntity is when a entity could not be removed.
-	ErrCouldNotRemoveEntity = errors.New("could not remove entity")
-	// ErrMissingEntityID is when a entity has no ID.
-	ErrMissingEntityID = errors.New("missing entity ID")
 	// ErrEntityHasNoVersion is when an entity has no version number.
 	ErrEntityHasNoVersion = errors.New("entity has no version")
 	// ErrIncorrectEntityVersion is when an entity has an incorrect version.
 	ErrIncorrectEntityVersion = errors.New("incorrect entity version")
 )
 
+// RepoOperation is the operation done when an error happened.
+type RepoOperation string
+
+const (
+	// Errors during finding of an entity.
+	RepoOpFind = "find"
+	// Errors during finding of all entities.
+	RepoOpFindAll = "find all"
+	// Errors during finding of entities by query.
+	RepoOpFindQuery = "find query"
+	// Errors during saving of an entity.
+	RepoOpSave = "save"
+	// Errors during removing of an entity.
+	RepoOpRemove = "remove"
+	// Errors during clearing of all entities.
+	RepoOpClear = "clear"
+)
+
 // RepoError is an error in the read repository.
 type RepoError struct {
 	// Err is the error.
 	Err error
-	// BaseErr is an optional underlying error, for example from the DB driver.
-	BaseErr error
+	// Op is the operation for the error.
+	Op RepoOperation
+	// EntityID of related operation.
+	EntityID uuid.UUID
 }
 
 // Error implements the Error method of the errors.Error interface.
 func (e RepoError) Error() string {
-	errStr := e.Err.Error()
-	if e.BaseErr != nil {
-		errStr += ": " + e.BaseErr.Error()
+	str := "repo: "
+
+	if e.Op != "" {
+		str += string(e.Op) + ": "
 	}
-	return errStr
+
+	if e.Err != nil {
+		str += e.Err.Error()
+	} else {
+		str += "unknown error"
+	}
+
+	if e.EntityID != uuid.Nil {
+		str += " " + e.EntityID.String() + " "
+	}
+
+	return str
 }
 
 // Unwrap implements the errors.Unwrap method.
