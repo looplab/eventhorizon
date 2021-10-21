@@ -17,7 +17,6 @@ package eventhorizon
 import (
 	"context"
 	"errors"
-	"fmt"
 )
 
 // EventBus is an EventHandler that distributes published events to all matching
@@ -38,6 +37,15 @@ type EventBus interface {
 	Close() error
 }
 
+var (
+	// ErrMissingMatcher is returned when calling AddHandler without a matcher.
+	ErrMissingMatcher = errors.New("missing matcher")
+	// ErrMissingHandler is returned when calling AddHandler with a nil handler.
+	ErrMissingHandler = errors.New("missing handler")
+	// ErrHandlerAlreadyAdded is returned when calling AddHandler weth the same handler twice.
+	ErrHandlerAlreadyAdded = errors.New("handler already added")
+)
+
 // EventBusError is an async error containing the error returned from a handler
 // and the event that it happened on.
 type EventBusError struct {
@@ -51,7 +59,19 @@ type EventBusError struct {
 
 // Error implements the Error method of the error interface.
 func (e EventBusError) Error() string {
-	return fmt.Sprintf("%s: (%s)", e.Err, e.Event)
+	str := "event bus: "
+
+	if e.Err != nil {
+		str += e.Err.Error()
+	} else {
+		str += "unknown error"
+	}
+
+	if e.Event != nil {
+		str += " [" + e.Event.String() + "]"
+	}
+
+	return str
 }
 
 // Unwrap implements the errors.Unwrap method.
@@ -63,12 +83,3 @@ func (e EventBusError) Unwrap() error {
 func (e EventBusError) Cause() error {
 	return e.Unwrap()
 }
-
-// ErrMissingMatcher is returned when calling AddHandler without a matcher.
-var ErrMissingMatcher = errors.New("missing matcher")
-
-// ErrMissingHandler is returned when calling AddHandler with a nil handler.
-var ErrMissingHandler = errors.New("missing handler")
-
-// ErrHandlerAlreadyAdded is returned when calling AddHandler weth the same handler twice.
-var ErrHandlerAlreadyAdded = errors.New("handler already added")

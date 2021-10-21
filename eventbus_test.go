@@ -30,27 +30,27 @@ func TestEventBusError(t *testing.T) {
 		{
 			"both non-nil",
 			errors.New("some error"),
-			NewEvent("some event type", nil, time.Time{}),
-			"some error: (some event type)",
+			NewEvent("SomeEventType", nil, time.Time{}),
+			"event bus: some error [SomeEventType]",
 		},
 		{
 			"error nil",
 			nil,
-			NewEvent("some event type", nil, time.Time{}),
-			"%!s(<nil>): (some event type)",
+			NewEvent("SomeEventType", nil, time.Time{}),
+			"event bus: unknown error [SomeEventType]",
 		},
 		{
 			"event nil",
 			errors.New("some error"),
 			nil,
-			"some error: (%!s(<nil>))",
+			"event bus: some error",
 		},
 
 		{
 			"both nil",
 			nil,
 			nil,
-			"%!s(<nil>): (%!s(<nil>))",
+			"event bus: unknown error",
 		},
 	}
 
