@@ -27,3 +27,10 @@ type Entity interface {
 	// EntityID returns the ID of the entity.
 	EntityID() uuid.UUID
 }
+
+// Versionable is an item that has a version number,
+// used by version.ReadRepo and projector.EventHandler.
+type Versionable interface {
+	// AggregateVersion returns the version of the item.
+	AggregateVersion() int
+}

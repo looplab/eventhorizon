@@ -52,13 +52,6 @@ type ReadWriteRepo interface {
 	WriteRepo
 }
 
-// Versionable is an item that has a version number,
-// used by version.ReadRepo.FindMinVersion().
-type Versionable interface {
-	// AggregateVersion returns the version of the item.
-	AggregateVersion() int
-}
-
 // Iter is a stateful iterator object that when called Next() readies the next
 // value that can be retrieved from Value(). Enables incremental object retrieval
 // from repos that support it. You must call Close() on each Iter even when
