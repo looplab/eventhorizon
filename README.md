@@ -1,5 +1,5 @@
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/looplab/eventhorizon)](https://pkg.go.dev/github.com/looplab/eventhorizon)
-![Bulid Status](https://github.com/looplab/eventhorizon/actions/workflows/main.yml/badge.svg)
+![Build Status](https://github.com/looplab/eventhorizon/actions/workflows/test.yml/badge.svg)
 [![Coverage Status](https://img.shields.io/coveralls/looplab/eventhorizon.svg)](https://coveralls.io/r/looplab/eventhorizon)
 [![Go Report Card](https://goreportcard.com/badge/looplab/eventhorizon)](https://goreportcard.com/report/looplab/eventhorizon)
 
