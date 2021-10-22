@@ -22,7 +22,7 @@ import (
 )
 
 // IsZeroer is used to check if a type is zero-valued, and in that case
-// is not allowed to be used in a command. See CheckCommand
+// is not allowed to be used in a command. See CheckCommand.
 type IsZeroer interface {
 	IsZero() bool
 }
@@ -65,6 +65,7 @@ func CheckCommand(cmd Command) error {
 			return &CommandFieldError{field.Name}
 		}
 	}
+
 	return nil
 }
 
@@ -82,14 +83,17 @@ func isZero(v reflect.Value) bool {
 		case uuid.UUID:
 			return obj == uuid.Nil
 		}
+
 		for i := 0; i < v.Len(); i++ {
 			if !isZero(v.Index(i)) {
 				return false
 			}
 		}
+
 		return true
 	case reflect.Interface, reflect.String:
 		z := reflect.Zero(v.Type())
+
 		return v.Interface() == z.Interface()
 	case reflect.Struct:
 		// Special case to get zero values by method.
@@ -100,12 +104,15 @@ func isZero(v reflect.Value) bool {
 
 		// Check public fields for zero values.
 		z := true
+
 		for i := 0; i < v.NumField(); i++ {
 			if v.Type().Field(i).PkgPath != "" {
 				continue // Skip private fields.
 			}
+
 			z = z && isZero(v.Field(i))
 		}
+
 		return z
 	default:
 		// Don't check for zero for value types:

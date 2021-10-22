@@ -16,17 +16,21 @@ import (
 func main() {
 	flag.Parse()
 	args := flag.Args()
+
 	root, err := os.Getwd()
 	if err != nil {
 		log.Fatal("coverage: Could not get current working directory")
 	}
+
 	out := "coverage.out"
+
 	if len(args) == 1 {
 		root = args[0]
 	} else if len(args) == 2 {
 		root = args[0]
 		out = args[1]
 	} else {
+		// nolint:forbidigo
 		fmt.Println("Usage: coverage [root] [out]\n\nCollects all .coverprofile files rooted in [root] and concatenantes them into a single file at [out].\n[root] defaults to the current directory, [out] to 'coverage.out'.")
 		os.Exit(1)
 	}
@@ -39,6 +43,7 @@ func main() {
 	coverage := map[string]struct {
 		numStmt, count int
 	}{}
+
 	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if filepath.Ext(path) != ".coverprofile" {
 			return err
@@ -92,10 +97,11 @@ func main() {
 		log.Fatal("coverage: could not walk directory structure:", err)
 	}
 
-	var lines []string
+	lines := []string{}
 	for l, d := range coverage {
 		lines = append(lines, fmt.Sprintf("%s %d %d", l, d.numStmt, d.count))
 	}
+
 	sort.Strings(lines)
 
 	if err := ioutil.WriteFile(out, []byte(strings.Join(lines, "\n")), 0666); err != nil {

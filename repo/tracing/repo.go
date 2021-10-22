@@ -48,9 +48,11 @@ func IntoRepo(ctx context.Context, repo eh.ReadRepo) *Repo {
 	if repo == nil {
 		return nil
 	}
+
 	if r, ok := repo.(*Repo); ok {
 		return r
 	}
+
 	return IntoRepo(ctx, repo.InnerRepo(ctx))
 }
 
@@ -61,9 +63,11 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	entity, err := r.ReadWriteRepo.Find(ctx, id)
 
 	sp.SetTag("eh.aggregate_id", id)
+
 	if err != nil && !errors.Is(err, eh.ErrEntityNotFound) {
 		ext.LogError(sp, err)
 	}
+
 	sp.Finish()
 
 	return entity, err
@@ -74,10 +78,10 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Repo.FindAll")
 
 	entities, err := r.ReadWriteRepo.FindAll(ctx)
-
 	if err != nil {
 		ext.LogError(sp, err)
 	}
+
 	sp.Finish()
 
 	return entities, err
@@ -88,11 +92,12 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Repo.Save")
 
 	err := r.ReadWriteRepo.Save(ctx, entity)
-
-	sp.SetTag("eh.aggregate_id", entity.EntityID())
 	if err != nil {
 		ext.LogError(sp, err)
 	}
+
+	sp.SetTag("eh.aggregate_id", entity.EntityID())
+
 	sp.Finish()
 
 	return err
@@ -103,11 +108,12 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Repo.Remove")
 
 	err := r.ReadWriteRepo.Remove(ctx, id)
-
-	sp.SetTag("eh.aggregate_id", id)
 	if err != nil {
 		ext.LogError(sp, err)
 	}
+
+	sp.SetTag("eh.aggregate_id", id)
+
 	sp.Finish()
 
 	return err

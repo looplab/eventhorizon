@@ -21,7 +21,7 @@ import (
 
 // EventBus is an EventHandler that distributes published events to all matching
 // handlers that are registered, but only one of each type will handle the event.
-// Events are not garanteed to be handeled in order.
+// Events are not guaranteed to be handeled in order.
 type EventBus interface {
 	EventHandler
 

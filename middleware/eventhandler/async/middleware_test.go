@@ -36,14 +36,17 @@ func TestMiddleware(t *testing.T) {
 	inner := mocks.NewEventHandler("test")
 	m, errCh := NewMiddleware()
 	h := eh.UseEventHandlerMiddleware(inner, m)
+
 	if err := h.HandleEvent(context.Background(), event); err != nil {
 		t.Error("there should never be an error:", err)
 	}
+
 	select {
 	case err := <-errCh:
 		t.Error("there should not be an error:", err)
 	case <-time.After(time.Millisecond):
 	}
+
 	inner.RLock()
 	if !reflect.DeepEqual(inner.Events, []eh.Event{event}) {
 		t.Error("the event should have been handeled:", inner.Events)
@@ -57,23 +60,28 @@ func TestMiddleware(t *testing.T) {
 	handlingErr := errors.New("handling error")
 	inner.Err = handlingErr
 	ctx := context.Background()
+
 	if err := h.HandleEvent(ctx, event); err != nil {
 		t.Error("there should never be an error:", err)
 	}
+
 	select {
 	case err := <-errCh:
 		if err.Err != handlingErr {
 			t.Error("the error should be correct:", err.Err)
 		}
+
 		if err.Ctx != ctx {
 			t.Error("the context should be correct:", err.Ctx)
 		}
+
 		if err.Event != event {
 			t.Error("the event should be correct:", err.Event)
 		}
 	case <-time.After(time.Millisecond):
 		t.Error("there should be an error")
 	}
+
 	if !reflect.DeepEqual(inner.Events, []eh.Event{}) {
 		t.Error("the event should not have been handeled:", inner.Events)
 	}

@@ -31,6 +31,7 @@ func QueryHandler(repo eh.ReadRepo) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			http.Error(w, "unsupported method: "+r.Method, http.StatusMethodNotAllowed)
+
 			return
 		}
 
@@ -44,22 +45,26 @@ func QueryHandler(repo eh.ReadRepo) http.Handler {
 		if idStr == "" {
 			if data, err = repo.FindAll(r.Context()); err != nil {
 				http.Error(w, "could not find items: "+err.Error(), http.StatusInternalServerError)
+
 				return
 			}
 		} else {
 			id, err := uuid.Parse(idStr)
 			if err != nil {
 				http.Error(w, "could not parse ID: "+err.Error(), http.StatusBadRequest)
+
 				return
 			}
 
 			if data, err = repo.Find(r.Context(), id); err != nil {
 				if errors.Is(err, eh.ErrEntityNotFound) {
 					http.Error(w, "could not find item", http.StatusNotFound)
+
 					return
 				}
 
 				http.Error(w, "could not find item: "+err.Error(), http.StatusInternalServerError)
+
 				return
 			}
 		}
@@ -67,8 +72,10 @@ func QueryHandler(repo eh.ReadRepo) http.Handler {
 		b, err := json.Marshal(data)
 		if err != nil {
 			http.Error(w, "could not encode result: "+err.Error(), http.StatusInternalServerError)
+
 			return
 		}
+
 		w.Write(b)
 	})
 }

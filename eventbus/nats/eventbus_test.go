@@ -91,6 +91,7 @@ func newTestEventBus(appID string) (eh.EventBus, string, error) {
 	if addr == "" {
 		addr = "localhost:4222"
 	}
+
 	url := "nats://" + addr
 
 	// Get a random app ID.
@@ -99,6 +100,7 @@ func newTestEventBus(appID string) (eh.EventBus, string, error) {
 		if _, err := rand.Read(b); err != nil {
 			return nil, "", fmt.Errorf("could not randomize app ID: %w", err)
 		}
+
 		appID = "app-" + hex.EncodeToString(b)
 	}
 

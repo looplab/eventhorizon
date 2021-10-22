@@ -33,35 +33,46 @@ func init() {
 	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
 		if span := opentracing.SpanFromContext(ctx); span != nil {
 			tracer := opentracing.GlobalTracer()
+
 			carrier := opentracing.TextMapCarrier{}
 			if err := tracer.Inject(span.Context(), opentracing.TextMap, &carrier); err != nil {
 				log.Printf("eventhorizon: could not inject tracing span: %s", err)
+
 				return
 			}
+
 			js, err := json.Marshal(carrier)
 			if err != nil {
 				log.Printf("eventhorizon: could not marshal tracing span: %s", err)
+
 				return
 			}
+
 			vals[tracingSpanKeyStr] = string(js)
 		}
 	})
 	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
 		if js, ok := vals[tracingSpanKeyStr].(string); ok {
 			tracer := opentracing.GlobalTracer()
+
 			carrier := opentracing.TextMapCarrier{}
 			if err := json.Unmarshal([]byte(js), &carrier); err != nil {
 				log.Printf("eventhorizon: could not unmarshal tracing span: %s", err)
+
 				return ctx
 			}
+
 			parentSpanContext, err := tracer.Extract(opentracing.TextMap, carrier)
 			if err != nil && err != opentracing.ErrSpanContextNotFound {
 				log.Printf("eventhorizon: could not extract tracing span: %s", err)
+
 				return ctx
 			}
+
 			span := tracer.StartSpan("eventbus", ext.RPCServerOption(parentSpanContext))
 			ctx = opentracing.ContextWithSpan(ctx, span)
 		}
+
 		return ctx
 	})
 }

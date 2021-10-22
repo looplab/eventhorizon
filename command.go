@@ -66,14 +66,14 @@ var ErrCommandNotRegistered = errors.New("command not registered")
 // An example would be:
 //     RegisterCommand(func() Command { return &MyCommand{} })
 func RegisterCommand(factory func() Command) {
+	// Check that the created command matches the type registered.
 	// TODO: Explore the use of reflect/gob for creating concrete types without
 	// a factory func.
-
-	// Check that the created command matches the type registered.
 	cmd := factory()
 	if cmd == nil {
 		panic("eventhorizon: created command is nil")
 	}
+
 	commandType := cmd.CommandType()
 	if commandType == CommandType("") {
 		panic("eventhorizon: attempt to register empty command type")
@@ -81,9 +81,11 @@ func RegisterCommand(factory func() Command) {
 
 	commandsMu.Lock()
 	defer commandsMu.Unlock()
+
 	if _, ok := commands[commandType]; ok {
 		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", commandType))
 	}
+
 	commands[commandType] = factory
 }
 
@@ -97,9 +99,11 @@ func UnregisterCommand(commandType CommandType) {
 
 	commandsMu.Lock()
 	defer commandsMu.Unlock()
+
 	if _, ok := commands[commandType]; !ok {
 		panic(fmt.Sprintf("eventhorizon: unregister of non-registered type %q", commandType))
 	}
+
 	delete(commands, commandType)
 }
 
@@ -108,9 +112,11 @@ func UnregisterCommand(commandType CommandType) {
 func CreateCommand(commandType CommandType) (Command, error) {
 	commandsMu.RLock()
 	defer commandsMu.RUnlock()
+
 	if factory, ok := commands[commandType]; ok {
 		return factory(), nil
 	}
+
 	return nil, ErrCommandNotRegistered
 }
 

@@ -38,6 +38,7 @@ func TestContext(t *testing.T) {
 	if ns, ok := vals[namespaceKeyStr].(string); !ok || ns != "ns" {
 		t.Error("the marshaled namespace should be correct:", ns)
 	}
+
 	b, err := json.Marshal(vals)
 	if err != nil {
 		t.Error("could not marshal JSON:", err)
@@ -49,7 +50,9 @@ func TestContext(t *testing.T) {
 	if err := json.Unmarshal(b, &vals); err != nil {
 		t.Error("could not unmarshal JSON:", err)
 	}
+
 	ctx = eh.UnmarshalContext(context.Background(), vals)
+
 	if ns := FromContext(ctx); ns != "ns" {
 		t.Error("the namespace should be correct:", ns)
 	}

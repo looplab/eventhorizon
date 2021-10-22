@@ -99,6 +99,7 @@ func WithGlobalPosition(position int) EventOption {
 	md := map[string]interface{}{
 		"position": position,
 	}
+
 	return WithMetadata(md)
 }
 
@@ -109,9 +110,11 @@ func FromCommand(cmd Command) EventOption {
 	md := map[string]interface{}{
 		"command_type": cmd.CommandType().String(),
 	}
+
 	if c, ok := cmd.(CommandIDer); ok {
 		md["command_id"] = c.CommandID().String()
 	}
+
 	return WithMetadata(md)
 }
 
@@ -122,12 +125,15 @@ func NewEvent(eventType EventType, data EventData, timestamp time.Time, options 
 		data:      data,
 		timestamp: timestamp,
 	}
+
 	for _, option := range options {
 		if option == nil {
 			continue
 		}
+
 		option(e)
 	}
+
 	return e
 }
 
@@ -137,6 +143,7 @@ func NewEvent(eventType EventType, data EventData, timestamp time.Time, options 
 func NewEventForAggregate(eventType EventType, data EventData, timestamp time.Time,
 	aggregateType AggregateType, aggregateID uuid.UUID, version int, options ...EventOption) Event {
 	options = append(options, ForAggregate(aggregateType, aggregateID, version))
+
 	return NewEvent(eventType, data, timestamp, options...)
 }
 
@@ -208,18 +215,19 @@ var ErrEventDataNotRegistered = errors.New("event data not registered")
 // An example would be:
 //     RegisterEventData(MyEventType, func() Event { return &MyEventData{} })
 func RegisterEventData(eventType EventType, factory func() EventData) {
-	// TODO: Explore the use of reflect/gob for creating concrete types without
-	// a factory func.
-
 	if eventType == EventType("") {
 		panic("eventhorizon: attempt to register empty event type")
 	}
 
 	eventDataFactoriesMu.Lock()
 	defer eventDataFactoriesMu.Unlock()
+
+	// TODO: Explore the use of reflect/gob for creating concrete types without
+	// a factory func.
 	if _, ok := eventDataFactories[eventType]; ok {
 		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", eventType))
 	}
+
 	eventDataFactories[eventType] = factory
 }
 
@@ -233,9 +241,11 @@ func UnregisterEventData(eventType EventType) {
 
 	eventDataFactoriesMu.Lock()
 	defer eventDataFactoriesMu.Unlock()
+
 	if _, ok := eventDataFactories[eventType]; !ok {
 		panic(fmt.Sprintf("eventhorizon: unregister of non-registered type %q", eventType))
 	}
+
 	delete(eventDataFactories, eventType)
 }
 
@@ -244,9 +254,11 @@ func UnregisterEventData(eventType EventType) {
 func CreateEventData(eventType EventType) (EventData, error) {
 	eventDataFactoriesMu.RLock()
 	defer eventDataFactoriesMu.RUnlock()
+
 	if factory, ok := eventDataFactories[eventType]; ok {
 		return factory(), nil
 	}
+
 	return nil, ErrEventDataNotRegistered
 }
 

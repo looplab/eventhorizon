@@ -98,6 +98,7 @@ func newTestEventBus(appID string) (eh.EventBus, string, error) {
 		if _, err := rand.Read(b); err != nil {
 			return nil, "", fmt.Errorf("could not randomize app ID: %w", err)
 		}
+
 		appID = "app-" + hex.EncodeToString(b)
 	}
 

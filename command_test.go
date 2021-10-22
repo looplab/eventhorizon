@@ -33,6 +33,7 @@ func TestCreateCommand(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if cmd.CommandType() != TestCommandRegisterType {
 		t.Error("the command type should be correct:", cmd.CommandType())
 	}

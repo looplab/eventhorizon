@@ -33,9 +33,11 @@ func TestMiddleware_Immediate(t *testing.T) {
 		ID:      uuid.New(),
 		Content: "content",
 	}
+
 	if err := h.HandleCommand(context.Background(), cmd); err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
 		t.Error("the command should have been handled:", inner.Commands)
 	}
@@ -51,14 +53,17 @@ func TestMiddleware_WithValidationError(t *testing.T) {
 	}
 	e := errors.New("a validation error")
 	c := CommandWithValidation(cmd, func() error { return e })
-	err := h.HandleCommand(context.Background(), c)
 	validateErr := &Error{}
+
+	err := h.HandleCommand(context.Background(), c)
 	if !errors.As(err, &validateErr) {
 		t.Error("there should be a validate error:", err)
 	}
+
 	if !errors.Is(err, e) {
 		t.Error("the validation error should be correct:", err)
 	}
+
 	if len(inner.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
@@ -73,9 +78,11 @@ func TestMiddleware_WithValidationNoError(t *testing.T) {
 		Content: "content",
 	}
 	c := CommandWithValidation(cmd, func() error { return nil })
+
 	if err := h.HandleCommand(context.Background(), c); err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if !reflect.DeepEqual(inner.Commands, []eh.Command{c}) {
 		t.Error("the command should have been handled:", inner.Commands)
 	}

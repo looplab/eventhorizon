@@ -30,6 +30,7 @@ func (types MatchEvents) Match(e Event) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -43,6 +44,7 @@ func (types MatchAggregates) Match(e Event) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -56,6 +58,7 @@ func (matchers MatchAny) Match(e Event) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -69,5 +72,6 @@ func (matchers MatchAll) Match(e Event) bool {
 			return false
 		}
 	}
+
 	return true
 }

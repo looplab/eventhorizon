@@ -34,6 +34,7 @@ func NewEventStore(eventStore eh.EventStore) *EventStore {
 	if eventStore == nil {
 		return nil
 	}
+
 	return &EventStore{
 		EventStore: eventStore,
 	}
@@ -44,6 +45,9 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "EventStore.Save")
 
 	err := s.EventStore.Save(ctx, events, originalVersion)
+	if err != nil {
+		ext.LogError(sp, err)
+	}
 
 	// Use the first event for tracing metadata.
 	if len(events) > 0 {
@@ -52,9 +56,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		sp.SetTag("eh.aggregate_id", events[0].AggregateID())
 		sp.SetTag("eh.version", events[0].Version())
 	}
-	if err != nil {
-		ext.LogError(sp, err)
-	}
+
 	sp.Finish()
 
 	return err
@@ -65,6 +67,9 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "EventStore.Load")
 
 	events, err := s.EventStore.Load(ctx, id)
+	if err != nil {
+		ext.LogError(sp, err)
+	}
 
 	// Use the first event for tracing metadata.
 	if len(events) > 0 {
@@ -73,9 +78,7 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 		sp.SetTag("eh.aggregate_id", events[0].AggregateID())
 		sp.SetTag("eh.version", events[0].Version())
 	}
-	if err != nil {
-		ext.LogError(sp, err)
-	}
+
 	sp.Finish()
 
 	return events, err

@@ -190,6 +190,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			Events:           events,
 		}
 	}
+
 	defer sess.EndSession(ctx)
 
 	if _, err := sess.WithTransaction(ctx, func(txCtx mongo.SessionContext) (interface{}, error) {
@@ -201,6 +202,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if r.Err() != nil {
 			return nil, fmt.Errorf("could not increment global position: %w", r.Err())
 		}
+
 		allStream := struct {
 			Position int
 		}{}

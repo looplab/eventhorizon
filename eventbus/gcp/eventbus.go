@@ -63,6 +63,7 @@ func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) 
 		if option == nil {
 			continue
 		}
+
 		if err := option(b); err != nil {
 			return nil, fmt.Errorf("error while applying option: %w", err)
 		}
@@ -70,6 +71,7 @@ func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) 
 
 	// Create the GCP pubsub client.
 	var err error
+
 	b.client, err = pubsub.NewClient(b.cctx, projectID, b.clientOpts...)
 	if err != nil {
 		return nil, err
@@ -78,6 +80,7 @@ func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) 
 	// Get or create the topic.
 	name := appID + "_events"
 	b.topic = b.client.Topic(name)
+
 	if ok, err := b.topic.Exists(b.cctx); err != nil {
 		return nil, err
 	} else if !ok {
@@ -85,6 +88,7 @@ func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) 
 			return nil, err
 		}
 	}
+
 	b.topic.EnableMessageOrdering = true
 
 	return b, nil
@@ -97,6 +101,7 @@ type Option func(*EventBus) error
 func WithCodec(codec eh.EventCodec) Option {
 	return func(b *EventBus) error {
 		b.codec = codec
+
 		return nil
 	}
 }
@@ -105,6 +110,7 @@ func WithCodec(codec eh.EventCodec) Option {
 func WithPubSubOptions(opts ...option.ClientOption) Option {
 	return func(b *EventBus) error {
 		b.clientOpts = opts
+
 		return nil
 	}
 }
@@ -147,6 +153,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	if m == nil {
 		return eh.ErrMissingMatcher
 	}
+
 	if h == nil {
 		return eh.ErrMissingHandler
 	}
@@ -154,6 +161,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Check handler existence.
 	b.registeredMu.Lock()
 	defer b.registeredMu.Unlock()
+
 	if _, ok := b.registered[h.HandlerType()]; ok {
 		return eh.ErrHandlerAlreadyAdded
 	}
@@ -167,6 +175,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Get or create the subscription.
 	subscriptionID := b.appID + "_" + h.HandlerType().String()
 	sub := b.client.Subscription(subscriptionID)
+
 	if ok, err := sub.Exists(ctx); err != nil {
 		return fmt.Errorf("could not check existing subscription: %w", err)
 	} else if !ok {
@@ -235,8 +244,10 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, sub *pubsub.Subs
 			default:
 				log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
 			}
+
 			// Retry the receive loop if there was an error.
 			time.Sleep(time.Second)
+
 			continue
 		}
 
@@ -254,13 +265,16 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 			default:
 				log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
 			}
+
 			msg.Nack()
+
 			return
 		}
 
 		// Ignore non-matching events.
 		if !m.Match(event) {
 			msg.Ack()
+
 			return
 		}
 
@@ -272,7 +286,9 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx contex
 			default:
 				log.Printf("eventhorizon: missed error in GCP event bus: %s", err)
 			}
+
 			msg.Nack()
+
 			return
 		}
 
@@ -289,24 +305,28 @@ func createFilter(m eh.EventMatcher) string {
 		for i, et := range m {
 			s[i] = fmt.Sprintf(`attributes:"%s"`, et) // Filter event types by key to save space.
 		}
+
 		return strings.Join(s, " OR ")
 	case eh.MatchAggregates:
 		s := make([]string, len(m))
 		for i, at := range m {
 			s[i] = fmt.Sprintf(`attributes.%s="%s"`, aggregateTypeAttribute, at)
 		}
+
 		return strings.Join(s, " OR ")
 	case eh.MatchAny:
 		s := make([]string, len(m))
 		for i, sm := range m {
 			s[i] = fmt.Sprintf("(%s)", createFilter(sm))
 		}
+
 		return strings.Join(s, " OR ")
 	case eh.MatchAll:
 		s := make([]string, len(m))
 		for i, sm := range m {
 			s[i] = fmt.Sprintf("(%s)", createFilter(sm))
 		}
+
 		return strings.Join(s, " AND ")
 	default:
 		return ""

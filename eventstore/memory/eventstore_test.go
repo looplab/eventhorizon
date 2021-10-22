@@ -30,6 +30,7 @@ func TestEventStore(t *testing.T) {
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
@@ -44,6 +45,7 @@ func TestWithEventHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
@@ -55,30 +57,37 @@ func TestWithEventHandler(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
 		timestamp, mocks.AggregateType, id1, 1)
+
 	err = store.Save(ctx, []eh.Event{event1}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	expected := []eh.Event{event1}
+
 	// The saved events should be ok.
 	events, err := store.Load(ctx, id1)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
+	expected := []eh.Event{event1}
+
 	// The stored events should be ok.
 	for i, event := range events {
 		if err := eh.CompareEvents(event, expected[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the stored event was incorrect:", err)
 		}
+
 		if event.Version() != i+1 {
 			t.Error("the event version should be correct:", event, event.Version())
 		}
 	}
+
 	// The handeled events should be ok.
 	for i, event := range h.Events {
 		if err := eh.CompareEvents(event, expected[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the handeled event was incorrect:", err)
 		}
+
 		if event.Version() != i+1 {
 			t.Error("the event version should be correct:", event, event.Version())
 		}
@@ -90,6 +99,7 @@ func BenchmarkEventStore(b *testing.B) {
 	if err != nil {
 		b.Fatal("there should be no error:", err)
 	}
+
 	if store == nil {
 		b.Fatal("there should be a store")
 	}

@@ -34,9 +34,11 @@ func TestMiddleware_Immediate(t *testing.T) {
 		ID:      uuid.New(),
 		Content: "content",
 	}
+
 	if err := h.HandleCommand(context.Background(), cmd); err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
 		t.Error("the command should have been handled:", inner.Commands)
 	}
@@ -51,9 +53,11 @@ func TestMiddleware_Delayed(t *testing.T) {
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
+
 	if err := h.HandleCommand(context.Background(), c); err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	inner.RLock()
 	if len(inner.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", inner.Commands)
@@ -77,9 +81,11 @@ func TestMiddleware_ZeroTime(t *testing.T) {
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Time{})
+
 	if err := h.HandleCommand(context.Background(), c); err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if !reflect.DeepEqual(inner.Commands, []eh.Command{c}) {
 		t.Error("the command should have been handled:", inner.Commands)
 	}
@@ -97,17 +103,21 @@ func TestMiddleware_Errors(t *testing.T) {
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
+
 	if err := h.HandleCommand(context.Background(), c); err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if len(inner.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
+
 	var err *Error
 	select {
 	case err = <-errCh:
 	case <-time.After(10 * time.Millisecond):
 	}
+
 	if err.Err != handlerErr {
 		t.Error("there should be an error:", err)
 	}
@@ -125,19 +135,24 @@ func TestMiddleware_ContextCanceled(t *testing.T) {
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
+
 	if err := h.HandleCommand(ctx, c); err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if len(inner.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
+
 	var err *Error
 	select {
 	case err = <-errCh:
 	case <-time.After(10 * time.Millisecond):
 	}
+
 	canceledErr := context.Canceled
 	if !errors.Is(err, canceledErr) {
 		t.Error("there should be an error:", err)
@@ -156,19 +171,24 @@ func TestMiddleware_ContextDeadline(t *testing.T) {
 		Content: "content",
 	}
 	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 	defer cancel()
+
 	if err := h.HandleCommand(ctx, c); err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if len(inner.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
+
 	var err *Error
 	select {
 	case err = <-errCh:
 	case <-time.After(10 * time.Millisecond):
 	}
+
 	deadlineExceededErr := context.DeadlineExceeded
 	if !errors.Is(err, deadlineExceededErr) {
 		t.Error("there should be an error:", err)

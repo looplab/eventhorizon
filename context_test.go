@@ -23,11 +23,13 @@ func TestContextMarshaler(t *testing.T) {
 	if len(contextMarshalFuncs) != 1 {
 		t.Error("there should be one context marshaler")
 	}
+
 	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
 		if val, ok := ContextTestOne(ctx); ok {
 			vals[contextTestKeyOneStr] = val
 		}
 	})
+
 	if len(contextMarshalFuncs) != 2 {
 		t.Error("there should be two context marshalers")
 	}
@@ -38,7 +40,9 @@ func TestContextMarshaler(t *testing.T) {
 	if _, ok := vals[contextTestKeyOneStr]; ok {
 		t.Error("the marshaled values should be empty:", vals)
 	}
+
 	ctx = WithContextTestOne(ctx, "testval")
+
 	vals = MarshalContext(ctx)
 	if val, ok := vals[contextTestKeyOneStr]; !ok || val != "testval" {
 		t.Error("the marshaled value should be correct:", val)
@@ -49,22 +53,28 @@ func TestContextUnmarshaler(t *testing.T) {
 	if len(contextUnmarshalFuncs) != 1 {
 		t.Error("there should be one context marshaler")
 	}
+
 	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
 		if val, ok := vals[contextTestKeyOneStr].(string); ok {
 			return WithContextTestOne(ctx, val)
 		}
+
 		return ctx
 	})
+
 	if len(contextUnmarshalFuncs) != 2 {
 		t.Error("there should be two context unmarshalers")
 	}
 
 	vals := map[string]interface{}{}
 	ctx := UnmarshalContext(context.Background(), vals)
+
 	if _, ok := ContextTestOne(ctx); ok {
 		t.Error("the unmarshaled context should be empty:", ctx)
 	}
+
 	vals[contextTestKeyOneStr] = "testval"
+
 	ctx = UnmarshalContext(context.Background(), vals)
 	if val, ok := ContextTestOne(ctx); !ok || val != "testval" {
 		t.Error("the unmarshaled context should be correct:", val)
@@ -90,5 +100,6 @@ func WithContextTestOne(ctx context.Context, val string) context.Context {
 // ContextTestOne returns a value for One from the context.
 func ContextTestOne(ctx context.Context) (string, bool) {
 	val, ok := ctx.Value(contextTestKeyOne).(string)
+
 	return val, ok
 }

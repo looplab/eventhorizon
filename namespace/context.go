@@ -38,6 +38,7 @@ func init() {
 		if ns, ok := vals[namespaceKeyStr].(string); ok {
 			ctx = NewContext(ctx, ns)
 		}
+
 		return ctx
 	})
 }
@@ -53,6 +54,7 @@ func FromContext(ctx context.Context) string {
 	if ns, ok := ctx.Value(namespaceKey).(string); ok {
 		return ns
 	}
+
 	return DefaultNamespace
 }
 

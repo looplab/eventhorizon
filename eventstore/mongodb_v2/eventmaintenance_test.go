@@ -34,6 +34,7 @@ func TestEventStoreMaintenanceIntegration(t *testing.T) {
 	if addr == "" {
 		addr = "localhost:27017"
 	}
+
 	url := "mongodb://" + addr
 
 	// Get a random DB name.
@@ -41,16 +42,20 @@ func TestEventStoreMaintenanceIntegration(t *testing.T) {
 	if _, err := rand.Read(b); err != nil {
 		t.Fatal(err)
 	}
+
 	db := "test-" + hex.EncodeToString(b)
+
 	t.Log("using DB:", db)
 
 	store, err := NewEventStore(url, db)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
+
 	defer store.Close()
 
 	eventstore.MaintenanceAcceptanceTest(t, store, store, context.Background())

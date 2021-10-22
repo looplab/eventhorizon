@@ -4,7 +4,7 @@ package uuid
 
 import "github.com/google/uuid"
 
-// UUID is an alias type for github.com/google/uuid.UUID
+// UUID is an alias type for github.com/google/uuid.UUID.
 type UUID = uuid.UUID
 
 // Nil is an empty UUID.
@@ -18,6 +18,7 @@ func New() UUID {
 // Parse parses a UUID from a string, or returns an error.
 func Parse(s string) (UUID, error) {
 	id, err := uuid.Parse(s)
+
 	return UUID(id), err
 }
 

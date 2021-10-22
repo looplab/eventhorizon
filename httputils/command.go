@@ -30,22 +30,27 @@ func CommandHandler(commandHandler eh.CommandHandler, commandType eh.CommandType
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			http.Error(w, "unsupported method: "+r.Method, http.StatusMethodNotAllowed)
+
 			return
 		}
 
 		cmd, err := eh.CreateCommand(commandType)
 		if err != nil {
 			http.Error(w, "could not create command: "+err.Error(), http.StatusBadRequest)
+
 			return
 		}
 
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "could not read command: "+err.Error(), http.StatusBadRequest)
+
 			return
 		}
+
 		if err := json.Unmarshal(b, &cmd); err != nil {
 			http.Error(w, "could not decode command: "+err.Error(), http.StatusBadRequest)
+
 			return
 		}
 
@@ -55,6 +60,7 @@ func CommandHandler(commandHandler eh.CommandHandler, commandType eh.CommandType
 		ctx := context.Background()
 		if err := commandHandler.HandleCommand(ctx, cmd); err != nil {
 			http.Error(w, "could not handle command: "+err.Error(), http.StatusBadRequest)
+
 			return
 		}
 

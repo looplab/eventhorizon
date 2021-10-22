@@ -34,6 +34,7 @@ func TestEventHandler(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	expectedEvent := eh.NewEvent(mocks.EventType, nil, timestamp,
 		eh.ForAggregate(mocks.AggregateType, uuid.New(), 1))
+
 	go func() {
 		time.Sleep(time.Millisecond)
 		h.HandleEvent(context.Background(), expectedEvent)
@@ -43,16 +44,19 @@ func TestEventHandler(t *testing.T) {
 		if event.EventType() == mocks.EventType {
 			return true
 		}
+
 		return false
 	})
 	defer l.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+
 	event, err := l.Wait(ctx)
 	if err != nil {
 		t.Error(err)
 	}
+
 	if !reflect.DeepEqual(event, expectedEvent) {
 		t.Error("the event should be correct:", event)
 	}
@@ -60,6 +64,7 @@ func TestEventHandler(t *testing.T) {
 	// Other events should not match.
 	otherEvent := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
 		eh.ForAggregate(mocks.AggregateType, uuid.New(), 1))
+
 	go func() {
 		time.Sleep(time.Millisecond)
 		h.HandleEvent(context.Background(), otherEvent)
@@ -67,11 +72,14 @@ func TestEventHandler(t *testing.T) {
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
-	event, err = l.Wait(ctx)
+
 	deadlineExceededErr := context.DeadlineExceeded
+
+	event, err = l.Wait(ctx)
 	if !errors.Is(err, deadlineExceededErr) {
 		t.Error("there should be a context deadline exceeded error")
 	}
+
 	if event != nil {
 		t.Error("the event should be nil:", event)
 	}

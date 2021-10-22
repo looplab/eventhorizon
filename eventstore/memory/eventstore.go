@@ -38,11 +38,13 @@ func NewEventStore(options ...Option) (*EventStore, error) {
 	s := &EventStore{
 		db: map[uuid.UUID]aggregateRecord{},
 	}
+
 	for _, option := range options {
 		if err := option(s); err != nil {
 			return nil, fmt.Errorf("error while applying option: %v", err)
 		}
 	}
+
 	return s, nil
 }
 
@@ -54,6 +56,7 @@ type Option func(*EventStore) error
 func WithEventHandler(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
 		s.eventHandler = h
+
 		return nil
 	}
 }
@@ -200,6 +203,7 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	}
 
 	events := make([]eh.Event, len(aggregate.Events))
+
 	for i, event := range aggregate.Events {
 		e, err := copyEvent(ctx, event)
 		if err != nil {

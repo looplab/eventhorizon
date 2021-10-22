@@ -66,6 +66,7 @@ func NewEventBus(addr, appID, clientID string, options ...Option) (*EventBus, er
 		if option == nil {
 			continue
 		}
+
 		if err := option(b); err != nil {
 			return nil, fmt.Errorf("error while applying option: %w", err)
 		}
@@ -94,6 +95,7 @@ type Option func(*EventBus) error
 func WithCodec(codec eh.EventCodec) Option {
 	return func(b *EventBus) error {
 		b.codec = codec
+
 		return nil
 	}
 }
@@ -102,6 +104,7 @@ func WithCodec(codec eh.EventCodec) Option {
 func WithRedisOptions(opts *redis.Options) Option {
 	return func(b *EventBus) error {
 		b.clientOpts = opts
+
 		return nil
 	}
 }
@@ -144,6 +147,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	if m == nil {
 		return eh.ErrMissingMatcher
 	}
+
 	if h == nil {
 		return eh.ErrMissingHandler
 	}
@@ -151,6 +155,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Check handler existence.
 	b.registeredMu.Lock()
 	defer b.registeredMu.Unlock()
+
 	if _, ok := b.registered[h.HandlerType()]; ok {
 		return eh.ErrHandlerAlreadyAdded
 	}
@@ -158,6 +163,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Get or create the subscription.
 	// TODO: Filter subscription.
 	groupName := fmt.Sprintf("%s_%s", b.appID, h.HandlerType())
+
 	res, err := b.client.XGroupCreateMkStream(ctx, b.streamName, groupName, "$").Result()
 	if err != nil {
 		// Ignore group exists non-errors.
@@ -212,8 +218,10 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, groupName string
 			default:
 				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
 			}
+
 			// Retry the receive loop if there was an error.
 			time.Sleep(time.Second)
+
 			continue
 		}
 
@@ -222,6 +230,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, groupName string
 			if stream.Stream != b.streamName {
 				continue
 			}
+
 			for _, msg := range stream.Messages {
 				handler(b.cctx, &msg)
 			}
@@ -231,7 +240,19 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, groupName string
 
 func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, groupName string) func(ctx context.Context, msg *redis.XMessage) {
 	return func(ctx context.Context, msg *redis.XMessage) {
-		data := msg.Values[dataKey].(string)
+		data, ok := msg.Values[dataKey].(string)
+		if !ok {
+			err := fmt.Errorf("event data is of incorrect type %T", msg.Values[dataKey])
+			select {
+			case b.errCh <- &eh.EventBusError{Err: err, Ctx: ctx}:
+			default:
+				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
+			}
+
+			// TODO: Nack if possible.
+			return
+		}
+
 		event, ctx, err := b.codec.UnmarshalEvent(ctx, []byte(data))
 		if err != nil {
 			err = fmt.Errorf("could not unmarshal event: %w", err)
@@ -240,6 +261,7 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, groupName strin
 			default:
 				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
 			}
+
 			// TODO: Nack if possible.
 			return
 		}
@@ -255,6 +277,7 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, groupName strin
 					log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
 				}
 			}
+
 			return
 		}
 
@@ -266,6 +289,7 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, groupName strin
 			default:
 				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
 			}
+
 			// TODO: Nack if possible.
 			return
 		}

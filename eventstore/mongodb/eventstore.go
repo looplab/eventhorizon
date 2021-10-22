@@ -89,6 +89,7 @@ type Option func(*EventStore) error
 func WithEventHandler(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
 		s.eventHandler = h
+
 		return nil
 	}
 }

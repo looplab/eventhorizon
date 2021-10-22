@@ -27,9 +27,11 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	id := event.AggregateID()
 
 	s.dbMu.RLock()
+
 	aggregate, ok := s.db[id]
 	if !ok {
 		s.dbMu.RUnlock()
+
 		return &eh.EventStoreError{
 			Err:         eh.ErrAggregateNotFound,
 			Op:          eh.EventStoreOpReplace,
@@ -52,12 +54,15 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 
 	// Find the event to replace.
 	idx := -1
+
 	for i, e := range aggregate.Events {
 		if e.Version() == event.Version() {
 			idx = i
+
 			break
 		}
 	}
+
 	if idx == -1 {
 		return &eh.EventStoreError{
 			Err:         fmt.Errorf("could not find original event"),
@@ -70,6 +75,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	// Replace event.
 	s.dbMu.Lock()
 	defer s.dbMu.Unlock()
+
 	aggregate.Events[idx] = e
 
 	return nil
@@ -81,8 +87,10 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 	defer s.dbMu.Unlock()
 
 	updated := map[uuid.UUID]aggregateRecord{}
+
 	for id, aggregate := range s.db {
 		events := make([]eh.Event, len(aggregate.Events))
+
 		for i, e := range aggregate.Events {
 			if e.EventType() == from {
 				// Rename any matching event by duplicating.
@@ -99,7 +107,9 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 				)
 			}
 		}
+
 		aggregate.Events = events
+
 		updated[id] = aggregate
 	}
 

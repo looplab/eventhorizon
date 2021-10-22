@@ -26,18 +26,23 @@ import (
 func TestNewEvent(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event := NewEvent(TestEventType, &TestEventData{"event1"}, timestamp)
+
 	if event.EventType() != TestEventType {
 		t.Error("the event type should be correct:", event.EventType())
 	}
+
 	if !reflect.DeepEqual(event.Data(), &TestEventData{"event1"}) {
 		t.Error("the data should be correct:", event.Data())
 	}
+
 	if !event.Timestamp().Equal(timestamp) {
 		t.Error("the timestamp should not be zero:", event.Timestamp())
 	}
+
 	if event.Version() != 0 {
 		t.Error("the version should be zero:", event.Version())
 	}
+
 	if event.String() != "TestEvent" {
 		t.Error("the string representation should be correct:", event.String())
 	}
@@ -53,24 +58,31 @@ func TestNewEvent(t *testing.T) {
 		FromCommand(cmd),
 		WithMetadata(map[string]interface{}{"meta": "data", "num": 42}),
 	)
+
 	if event.EventType() != TestEventType {
 		t.Error("the event type should be correct:", event.EventType())
 	}
+
 	if !reflect.DeepEqual(event.Data(), &TestEventData{"event1"}) {
 		t.Error("the data should be correct:", event.Data())
 	}
+
 	if !event.Timestamp().Equal(timestamp) {
 		t.Error("the timestamp should not be zero:", event.Timestamp())
 	}
+
 	if event.AggregateType() != TestAggregateType {
 		t.Error("the aggregate type should be correct:", event.AggregateType())
 	}
+
 	if event.AggregateID() != id {
 		t.Error("the aggregate ID should be correct:", event.AggregateID())
 	}
+
 	if event.Version() != 3 {
 		t.Error("the version should be correct:", event.Version())
 	}
+
 	if !reflect.DeepEqual(event.Metadata(), map[string]interface{}{
 		"meta":         "data",
 		"num":          42,
@@ -79,6 +91,7 @@ func TestNewEvent(t *testing.T) {
 	}) {
 		t.Error("the metadata should be correct:", event.Metadata())
 	}
+
 	if event.String() != "TestEvent("+id.String()+", v3)" {
 		t.Error("the string representation should be correct:", event.String())
 	}
@@ -89,6 +102,7 @@ func TestCreateEventData(t *testing.T) {
 	if !errors.Is(err, ErrEventDataNotRegistered) {
 		t.Error("there should be a event not registered error:", err)
 	}
+
 	if data != nil {
 		t.Error("the data should be nil")
 	}
@@ -101,6 +115,7 @@ func TestCreateEventData(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if _, ok := data.(*TestEventRegisterData); !ok {
 		t.Errorf("the event type should be correct: %T", data)
 	}

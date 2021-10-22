@@ -88,8 +88,10 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 	if a.Err != nil {
 		return a.Err
 	}
+
 	a.Commands = append(a.Commands, cmd)
 	a.Context = ctx
+
 	return nil
 }
 
@@ -188,8 +190,10 @@ func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) erro
 	if h.Err != nil {
 		return h.Err
 	}
+
 	h.Commands = append(h.Commands, cmd)
 	h.Context = ctx
+
 	return nil
 }
 
@@ -231,10 +235,12 @@ func (m *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	if m.Err != nil {
 		return m.Err
 	}
+
 	m.Events = append(m.Events, event)
 	m.Context = ctx
 	m.Time = time.Now()
 	m.Recv <- event
+
 	return nil
 }
 
@@ -273,7 +279,9 @@ func (m *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 	if m.Err != nil {
 		return nil, m.Err
 	}
+
 	m.Context = ctx
+
 	return m.Aggregates[id], nil
 }
 
@@ -282,8 +290,10 @@ func (m *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error
 	if m.Err != nil {
 		return m.Err
 	}
+
 	m.Context = ctx
 	m.Aggregates[aggregate.EntityID()] = aggregate
+
 	return nil
 }
 
@@ -303,8 +313,10 @@ func (m *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	if m.Err != nil {
 		return m.Err
 	}
+
 	m.Events = append(m.Events, events...)
 	m.Context = ctx
+
 	return nil
 }
 
@@ -313,8 +325,10 @@ func (m *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	if m.Err != nil {
 		return nil, m.Err
 	}
+
 	m.Loaded = id
 	m.Context = ctx
+
 	return m.Events, nil
 }
 
@@ -323,8 +337,10 @@ func (m *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	if m.Err != nil {
 		return m.Err
 	}
+
 	m.Events = []eh.Event{event}
 	m.Context = ctx
+
 	return nil
 }
 
@@ -353,8 +369,10 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 	if b.Err != nil {
 		return b.Err
 	}
+
 	b.Events = append(b.Events, event)
 	b.Context = ctx
+
 	return nil
 }
 
@@ -399,9 +417,11 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	defer r.RUnlock()
 
 	r.FindCalled = true
+
 	if r.LoadErr != nil {
 		return nil, r.LoadErr
 	}
+
 	return r.Entity, nil
 }
 
@@ -411,9 +431,11 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	defer r.RUnlock()
 
 	r.FindAllCalled = true
+
 	if r.LoadErr != nil {
 		return nil, r.LoadErr
 	}
+
 	return r.Entities, nil
 }
 
@@ -423,10 +445,13 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	defer r.Unlock()
 
 	r.SaveCalled = true
+
 	if r.SaveErr != nil {
 		return r.SaveErr
 	}
+
 	r.Entity = entity
+
 	return nil
 }
 
@@ -436,10 +461,13 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 	defer r.Unlock()
 
 	r.RemoveCalled = true
+
 	if r.SaveErr != nil {
 		return r.SaveErr
 	}
+
 	r.Entity = nil
+
 	return nil
 }
 
@@ -462,6 +490,7 @@ func WithContextOne(ctx context.Context, val string) context.Context {
 // ContextOne returns a value for One from the context.
 func ContextOne(ctx context.Context) (string, bool) {
 	val, ok := ctx.Value(contextKeyOne).(string)
+
 	return val, ok
 }
 
@@ -481,6 +510,7 @@ func init() {
 		if val, ok := vals[contextKeyOneStr].(string); ok {
 			return WithContextOne(ctx, val)
 		}
+
 		return ctx
 	})
 }

@@ -79,7 +79,7 @@ type command struct {
 	validate func() error
 }
 
-// Validate implements the Validate method of the Command interface
+// Validate implements the Validate method of the Command interface.
 func (c *command) Validate() error {
 	return c.validate()
 }

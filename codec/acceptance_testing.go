@@ -53,7 +53,7 @@ func EventCodecAcceptanceTest(t *testing.T, c eh.EventCodec, expectedBytes []byt
 		String:  "string",
 		Number:  42.0,
 		Slice:   []string{"a", "b"},
-		Map:     map[string]interface{}{"key": "value"}, // NOTE: Just one key to avoid comparisson issues.
+		Map:     map[string]interface{}{"key": "value"}, // NOTE: Just one key to avoid compare issues.
 		Time:    timestamp,
 		TimeRef: &timestamp,
 		Struct: Nested{
@@ -69,12 +69,14 @@ func EventCodecAcceptanceTest(t *testing.T, c eh.EventCodec, expectedBytes []byt
 	}
 	event := eh.NewEvent(EventType, &eventData, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 1),
-		eh.WithMetadata(map[string]interface{}{"num": 42.0}), // NOTE: Just one key to avoid comparisson issues.
+		eh.WithMetadata(map[string]interface{}{"num": 42.0}), // NOTE: Just one key to avoid compare issues.
 	)
+
 	b, err := c.MarshalEvent(ctx, event)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if string(b) != string(expectedBytes) {
 		t.Error("the encoded bytes should be correct:", b)
 	}
@@ -84,9 +86,11 @@ func EventCodecAcceptanceTest(t *testing.T, c eh.EventCodec, expectedBytes []byt
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if err := eh.CompareEvents(decodedEvent, event); err != nil {
 		t.Error("the decoded event was incorrect:", err)
 	}
+
 	if val, ok := mocks.ContextOne(decodedContext); !ok || val != "testval" {
 		t.Error("the decoded context was incorrect:", decodedContext)
 	}
@@ -107,7 +111,7 @@ type EventData struct {
 	NullStruct *Nested
 }
 
-// Nested is nested event data
+// Nested is nested event data.
 type Nested struct {
 	Bool   bool
 	String string

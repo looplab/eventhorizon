@@ -112,5 +112,6 @@ func (a *AggregateBase) AppendEvent(t eh.EventType, data eh.EventData, timestamp
 	)
 	e := eh.NewEvent(t, data, timestamp, options...)
 	a.events = append(a.events, e)
+
 	return e
 }

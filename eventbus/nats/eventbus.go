@@ -64,6 +64,7 @@ func NewEventBus(url, appID string, options ...Option) (*EventBus, error) {
 		if option == nil {
 			continue
 		}
+
 		if err := option(b); err != nil {
 			return nil, fmt.Errorf("error while applying option: %w", err)
 		}
@@ -106,6 +107,7 @@ type Option func(*EventBus) error
 func WithCodec(codec eh.EventCodec) Option {
 	return func(b *EventBus) error {
 		b.codec = codec
+
 		return nil
 	}
 }
@@ -114,6 +116,7 @@ func WithCodec(codec eh.EventCodec) Option {
 func WithNATSOptions(opts ...nats.Option) Option {
 	return func(b *EventBus) error {
 		b.connOpts = opts
+
 		return nil
 	}
 }
@@ -143,6 +146,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	if m == nil {
 		return eh.ErrMissingMatcher
 	}
+
 	if h == nil {
 		return eh.ErrMissingHandler
 	}
@@ -150,6 +154,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Check handler existence.
 	b.registeredMu.Lock()
 	defer b.registeredMu.Unlock()
+
 	if _, ok := b.registered[h.HandlerType()]; ok {
 		return eh.ErrHandlerAlreadyAdded
 	}
@@ -157,6 +162,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Create a consumer.
 	subject := createConsumerSubject(b.streamName, m)
 	consumerName := fmt.Sprintf("%s_%s", b.appID, h.HandlerType())
+
 	sub, err := b.js.QueueSubscribe(subject, consumerName, b.handler(b.cctx, m, h),
 		nats.Durable(consumerName),
 		nats.DeliverNew(),
@@ -204,6 +210,7 @@ func (b *EventBus) handle(sub *nats.Subscription) {
 			if b.cctx.Err() != context.Canceled {
 				log.Printf("eventhorizon: context error in NATS event bus: %s", b.cctx.Err())
 			}
+
 			return
 		}
 	}
@@ -220,12 +227,14 @@ func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHan
 				log.Printf("eventhorizon: missed error in NATS event bus: %s", err)
 			}
 			msg.Nak()
+
 			return
 		}
 
 		// Ignore non-matching events.
 		if !m.Match(event) {
 			msg.AckSync()
+
 			return
 		}
 
@@ -237,7 +246,9 @@ func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHan
 			default:
 				log.Printf("eventhorizon: missed error in NATS event bus: %s", err)
 			}
+
 			msg.Nak()
+
 			return
 		}
 
@@ -248,6 +259,7 @@ func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHan
 func createConsumerSubject(streamName string, m eh.EventMatcher) string {
 	aggregateMatch := "*"
 	eventMatch := "*"
+
 	switch m := m.(type) {
 	case eh.MatchEvents:
 		// Supports only matching one event, otherwise its wildcard.
@@ -259,9 +271,9 @@ func createConsumerSubject(streamName string, m eh.EventMatcher) string {
 		if len(m) == 1 {
 			aggregateMatch = m[0].String()
 		}
-		// case eh.MatchAny:
-		// case eh.MatchAll:
-		// TODO: Support eh.MatchAll in one level with aggregate and event.
 	}
+
+	// TODO: Support eh.MatchAll in one level with aggregate and event.
+
 	return fmt.Sprintf("%s.%s.%s", streamName, aggregateMatch, eventMatch)
 }

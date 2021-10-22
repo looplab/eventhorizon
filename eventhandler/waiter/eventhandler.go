@@ -37,7 +37,9 @@ func NewEventHandler() *EventHandler {
 		register:   make(chan *EventListener),
 		unregister: make(chan *EventListener),
 	}
+
 	go h.run()
+
 	return &h
 }
 
@@ -50,6 +52,7 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 // It forwards events to the waiters so that they can match the events.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	h.inbox <- event
+
 	return nil
 }
 
@@ -99,6 +102,7 @@ func (l *EventListener) Close() {
 
 func (h *EventHandler) run() {
 	listeners := map[uuid.UUID]*EventListener{}
+
 	for {
 		select {
 		case l := <-h.register:
@@ -114,8 +118,7 @@ func (h *EventHandler) run() {
 				if l.match == nil || l.match(event) {
 					select {
 					case l.inbox <- event:
-					default:
-						// Drop any events exceeding the listener buffer.
+					default: // Drop any events exceeding the listener buffer.
 					}
 				}
 			}

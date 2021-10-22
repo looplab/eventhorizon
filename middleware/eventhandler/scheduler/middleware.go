@@ -26,9 +26,11 @@ import (
 // NewMiddleware creates a new scheduler middleware that runs until the context is canceled.
 func NewMiddleware(ctx context.Context) (eh.EventHandlerMiddleware, *Scheduler) {
 	s := &Scheduler{ctx: ctx}
+
 	return eh.EventHandlerMiddleware(func(h eh.EventHandler) eh.EventHandler {
 		m := &eventHandler{h, s.newChannel()}
 		go m.run(ctx)
+
 		return m
 	}), s
 }
@@ -43,6 +45,7 @@ type Scheduler struct {
 func (s *Scheduler) newChannel() <-chan data {
 	ch := make(chan data)
 	s.eventChs = append(s.eventChs, ch)
+
 	return ch
 }
 
@@ -103,6 +106,7 @@ func (h *eventHandler) run(ctx context.Context) error {
 			if err := ctx.Err(); err != nil && err != context.Canceled {
 				return err
 			}
+
 			return nil
 		}
 	}

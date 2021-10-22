@@ -106,6 +106,7 @@ func (e *AggregateStoreError) Error() string {
 		if e.AggregateType != "" {
 			at = string(e.AggregateType)
 		}
+
 		str += fmt.Sprintf(", %s(%s)", at, e.AggregateID)
 	}
 
@@ -149,14 +150,14 @@ func (e *AggregateError) Cause() error {
 // An example would be:
 //     RegisterAggregate(func(id UUID) Aggregate { return &MyAggregate{id} })
 func RegisterAggregate(factory func(uuid.UUID) Aggregate) {
+	// Check that the created aggregate matches the registered type.
 	// TODO: Explore the use of reflect/gob for creating concrete types without
 	// a factory func.
-
-	// Check that the created aggregate matches the registered type.
 	aggregate := factory(uuid.New())
 	if aggregate == nil {
 		panic("eventhorizon: created aggregate is nil")
 	}
+
 	aggregateType := aggregate.AggregateType()
 	if aggregateType == AggregateType("") {
 		panic("eventhorizon: attempt to register empty aggregate type")
@@ -164,9 +165,11 @@ func RegisterAggregate(factory func(uuid.UUID) Aggregate) {
 
 	aggregatesMu.Lock()
 	defer aggregatesMu.Unlock()
+
 	if _, ok := aggregates[aggregateType]; ok {
 		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", aggregateType))
 	}
+
 	aggregates[aggregateType] = factory
 }
 
@@ -175,9 +178,11 @@ func RegisterAggregate(factory func(uuid.UUID) Aggregate) {
 func CreateAggregate(aggregateType AggregateType, id uuid.UUID) (Aggregate, error) {
 	aggregatesMu.RLock()
 	defer aggregatesMu.RUnlock()
+
 	if factory, ok := aggregates[aggregateType]; ok {
 		return factory(id), nil
 	}
+
 	return nil, ErrAggregateNotRegistered
 }
 

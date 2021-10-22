@@ -70,11 +70,13 @@ func (h *EventBusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("eventhorizon: could not upgrade websocket: %s", err)
+
 		return
 	}
 	defer c.Close()
 
 	ch := make(chan eh.Event, 10)
+
 	h.chsMu.Lock()
 	h.chs = append(h.chs, ch)
 	h.chsMu.Unlock()
@@ -83,11 +85,13 @@ func (h *EventBusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		data, err := h.codec.MarshalEvent(context.Background(), event)
 		if err != nil {
 			log.Printf("eventhorizon: could not marshal websocket event: %s", err)
+
 			break
 		}
 
 		if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
 			log.Printf("eventhorizon: could not write to websocket: %s", err)
+
 			break
 		}
 	}

@@ -38,6 +38,7 @@ func TestEventStoreIntegration(t *testing.T) {
 	if addr == "" {
 		addr = "localhost:27017"
 	}
+
 	url := "mongodb://" + addr
 
 	// Get a random DB name.
@@ -45,13 +46,16 @@ func TestEventStoreIntegration(t *testing.T) {
 	if _, err := rand.Read(b); err != nil {
 		t.Fatal(err)
 	}
+
 	db := "test-" + hex.EncodeToString(b)
+
 	t.Log("using DB:", db)
 
 	store, err := NewEventStore(url, db)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
@@ -71,6 +75,7 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 	if url == "" {
 		url = "localhost:27017"
 	}
+
 	url = "mongodb://" + url
 
 	// Get a random DB name.
@@ -78,7 +83,9 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 	if _, err := rand.Read(b); err != nil {
 		t.Fatal(err)
 	}
+
 	db := "test-" + hex.EncodeToString(b)
+
 	t.Log("using DB:", db)
 
 	h := &mocks.EventBus{}
@@ -89,9 +96,11 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
+
 	defer store.Close()
 
 	ctx := context.Background()
@@ -101,20 +110,25 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEventForAggregate(mocks.EventType, &mocks.EventData{Content: "event1"},
 		timestamp, mocks.AggregateType, id1, 1)
+
 	err = store.Save(ctx, []eh.Event{event1}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
-	expected := []eh.Event{event1}
+
 	// The saved events should be ok.
 	events, err := store.Load(ctx, id1)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
+	expected := []eh.Event{event1}
+
 	// The stored events should be ok.
 	if len(events) != len(expected) {
 		t.Errorf("incorrect number of loaded events: %d", len(events))
 	}
+
 	for i, event := range events {
 		if err := eh.CompareEvents(event, expected[i],
 			eh.IgnoreVersion(),
@@ -122,18 +136,22 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 		); err != nil {
 			t.Error("the stored event was incorrect:", err)
 		}
+
 		if event.Version() != i+1 {
 			t.Error("the event version should be correct:", event, event.Version())
 		}
 	}
+
 	// The handled events should be ok.
 	if len(h.Events) != len(expected) {
 		t.Errorf("incorrect number of loaded events: %d", len(events))
 	}
+
 	for i, event := range h.Events {
 		if err := eh.CompareEvents(event, expected[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the handeled event was incorrect:", err)
 		}
+
 		if event.Version() != i+1 {
 			t.Error("the event version should be correct:", event, event.Version())
 		}
@@ -146,6 +164,7 @@ func BenchmarkEventStore(b *testing.B) {
 	if addr == "" {
 		addr = "localhost:27017"
 	}
+
 	url := "mongodb://" + addr
 
 	// Get a random DB name.
@@ -153,13 +172,16 @@ func BenchmarkEventStore(b *testing.B) {
 	if _, err := rand.Read(bs); err != nil {
 		b.Fatal(err)
 	}
+
 	db := "test-" + hex.EncodeToString(bs)
+
 	b.Log("using DB:", db)
 
 	store, err := NewEventStore(url, db)
 	if err != nil {
 		b.Fatal("there should be no error:", err)
 	}
+
 	if store == nil {
 		b.Fatal("there should be a store")
 	}

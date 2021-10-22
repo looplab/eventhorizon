@@ -48,6 +48,7 @@ func NewCommandHandler(t eh.AggregateType, store eh.AggregateStore) (*CommandHan
 		t:     t,
 		store: store,
 	}
+
 	return h, nil
 }
 
