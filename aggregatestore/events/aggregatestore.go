@@ -17,6 +17,7 @@ package events
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/uuid"
@@ -38,30 +39,6 @@ var (
 	ErrMismatchedEventType = errors.New("mismatched event type and aggregate type")
 )
 
-// ApplyEventError is when an event could not be applied. It contains the error
-// and the event that caused it.
-type ApplyEventError struct {
-	// Err is the error that happened when applying the event.
-	Err error
-	// Event is the event being applied when the error happened.
-	Event eh.Event
-}
-
-// Error implements the Error method of the error interface.
-func (e ApplyEventError) Error() string {
-	return "failed to apply event " + e.Event.String() + ": " + e.Err.Error()
-}
-
-// Unwrap implements the errors.Unwrap method.
-func (e ApplyEventError) Unwrap() error {
-	return e.Err
-}
-
-// Cause implements the github.com/pkg/errors Unwrap method.
-func (e ApplyEventError) Cause() error {
-	return e.Unwrap()
-}
-
 // NewAggregateStore creates a aggregate store with an event store and an event
 // handler that will handle resulting events (for example by publishing them
 // on an event bus).
@@ -69,9 +46,11 @@ func NewAggregateStore(store eh.EventStore) (*AggregateStore, error) {
 	if store == nil {
 		return nil, ErrInvalidEventStore
 	}
+
 	d := &AggregateStore{
 		store: store,
 	}
+
 	return d, nil
 }
 
@@ -82,20 +61,41 @@ func NewAggregateStore(store eh.EventStore) (*AggregateStore, error) {
 func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateType, id uuid.UUID) (eh.Aggregate, error) {
 	agg, err := eh.CreateAggregate(aggregateType, id)
 	if err != nil {
-		return nil, err
+		return nil, eh.AggregateStoreError{
+			Err:           err,
+			Op:            eh.AggregateStoreOpLoad,
+			AggregateType: aggregateType,
+			AggregateID:   id,
+		}
 	}
+
 	a, ok := agg.(VersionedAggregate)
 	if !ok {
-		return nil, ErrAggregateNotVersioned
+		return nil, eh.AggregateStoreError{
+			Err:           ErrAggregateNotVersioned,
+			Op:            eh.AggregateStoreOpLoad,
+			AggregateType: aggregateType,
+			AggregateID:   id,
+		}
 	}
 
 	events, err := r.store.Load(ctx, a.EntityID())
 	if err != nil && !errors.Is(err, eh.ErrAggregateNotFound) {
-		return nil, err
+		return nil, eh.AggregateStoreError{
+			Err:           err,
+			Op:            eh.AggregateStoreOpLoad,
+			AggregateType: aggregateType,
+			AggregateID:   id,
+		}
 	}
 
 	if err := r.applyEvents(ctx, a, events); err != nil {
-		return nil, err
+		return nil, eh.AggregateStoreError{
+			Err:           err,
+			Op:            eh.AggregateStoreOpLoad,
+			AggregateType: aggregateType,
+			AggregateID:   id,
+		}
 	}
 
 	return a, nil
@@ -106,7 +106,12 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 	a, ok := agg.(VersionedAggregate)
 	if !ok {
-		return ErrAggregateNotVersioned
+		return eh.AggregateStoreError{
+			Err:           ErrAggregateNotVersioned,
+			Op:            eh.AggregateStoreOpSave,
+			AggregateType: agg.AggregateType(),
+			AggregateID:   agg.EntityID(),
+		}
 	}
 
 	// Retrieve any new events to store.
@@ -114,15 +119,27 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 	if len(events) == 0 {
 		return nil
 	}
+
 	if err := r.store.Save(ctx, events, a.AggregateVersion()); err != nil {
-		return err
+		return eh.AggregateStoreError{
+			Err:           err,
+			Op:            eh.AggregateStoreOpSave,
+			AggregateType: agg.AggregateType(),
+			AggregateID:   agg.EntityID(),
+		}
 	}
+
 	a.ClearUncommittedEvents()
 
 	// Apply the events in case the aggregate needs to be further used
 	// after this save. Currently it is not reused.
 	if err := r.applyEvents(ctx, a, events); err != nil {
-		return err
+		return eh.AggregateStoreError{
+			Err:           err,
+			Op:            eh.AggregateStoreOpSave,
+			AggregateType: agg.AggregateType(),
+			AggregateID:   agg.EntityID(),
+		}
 	}
 
 	return nil
@@ -135,11 +152,9 @@ func (r *AggregateStore) applyEvents(ctx context.Context, a VersionedAggregate, 
 		}
 
 		if err := a.ApplyEvent(ctx, event); err != nil {
-			return ApplyEventError{
-				Event: event,
-				Err:   err,
-			}
+			return fmt.Errorf("could not apply event %s: %w", event, err)
 		}
+
 		a.SetAggregateVersion(event.Version())
 	}
 

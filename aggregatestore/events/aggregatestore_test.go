@@ -200,20 +200,23 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 
 	// Store error.
 	agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
-	aggregateErr := errors.New("aggregate error")
-	eventStore.Err = aggregateErr
+	storeErr := errors.New("store error")
+	eventStore.Err = storeErr
 	err = store.Save(ctx, agg)
-	if !errors.Is(err, aggregateErr) {
-		t.Error("the error should be correct:", err)
+	aggStoreErr := eh.AggregateStoreError{}
+	if !errors.As(err, &aggStoreErr) || !errors.Is(err, storeErr) {
+		t.Error("there should be an aggregate store error:", err)
 	}
 	eventStore.Err = nil
 
 	// Aggregate error.
 	agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: "event"}, timestamp)
-	agg.err = errors.New("error")
+	aggErr := errors.New("aggregate error")
+	agg.err = aggErr
 	err = store.Save(ctx, agg)
-	if _, ok := err.(ApplyEventError); !ok {
-		t.Error("there should be an error of type ApplyEventError:", err)
+	aggStoreErr = eh.AggregateStoreError{}
+	if !errors.As(err, &aggStoreErr) || !errors.Is(err, aggErr) {
+		t.Error("there should be an aggregate store error:", err)
 	}
 	agg.err = nil
 }
