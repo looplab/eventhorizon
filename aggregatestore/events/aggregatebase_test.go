@@ -26,16 +26,20 @@ import (
 
 func TestNewAggregateBase(t *testing.T) {
 	id := uuid.New()
+
 	agg := NewAggregateBase(TestAggregateType, id)
 	if agg == nil {
 		t.Fatal("there should be an aggregate")
 	}
+
 	if agg.AggregateType() != TestAggregateType {
 		t.Error("the aggregate type should be correct: ", agg.AggregateType(), TestAggregateType)
 	}
+
 	if agg.EntityID() != id {
 		t.Error("the entity ID should be correct: ", agg.EntityID(), id)
 	}
+
 	if agg.AggregateVersion() != 0 {
 		t.Error("the version should be 0:", agg.AggregateVersion())
 	}
@@ -48,6 +52,7 @@ func TestAggregateVersion(t *testing.T) {
 	}
 
 	agg.SetAggregateVersion(51)
+
 	if agg.AggregateVersion() != 51 {
 		t.Error("the version should be 1:", agg.AggregateVersion())
 	}
@@ -58,31 +63,40 @@ func TestAggregateEvents(t *testing.T) {
 	agg := NewTestAggregate(id)
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
+
 	if event1.EventType() != TestAggregateEventType {
 		t.Error("the event type should be correct:", event1.EventType())
 	}
+
 	if !reflect.DeepEqual(event1.Data(), &TestEventData{"event1"}) {
 		t.Error("the data should be correct:", event1.Data())
 	}
+
 	if !event1.Timestamp().Equal(timestamp) {
 		t.Error("the timestamp should not be zero:", event1.Timestamp())
 	}
+
 	if event1.AggregateType() != TestAggregateType {
 		t.Error("the aggregate type should be correct:", event1.AggregateType())
 	}
+
 	if event1.AggregateID() != id {
 		t.Error("the aggregate ID should be correct:", event1.AggregateID())
 	}
+
 	if event1.Version() != 1 {
 		t.Error("the version should be 1:", event1.Version())
 	}
+
 	if event1.String() != "TestAggregateEvent("+id.String()+", v1)" {
 		t.Error("the string representation should be correct:", event1.String())
 	}
+
 	events := agg.events
 	if len(events) != 1 {
 		t.Fatal("there should be one event provided:", len(events))
 	}
+
 	if events[0] != event1 {
 		t.Error("the provided event should be correct:", events[0])
 	}
@@ -91,32 +105,39 @@ func TestAggregateEvents(t *testing.T) {
 	if event2.Version() != 2 {
 		t.Error("the version should be 2:", event2.Version())
 	}
+
 	events = agg.UncommittedEvents()
 	if len(events) != 2 {
 		t.Error("there should be two events provided:", len(events))
 	}
+
 	agg.ClearUncommittedEvents()
 
 	event3 := agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
 	if event3.Version() != 1 {
 		t.Error("the version should be 1 after clearing uncommitted events (without applying any):", event3.Version())
 	}
+
 	events = agg.UncommittedEvents()
 	if len(events) != 1 {
 		t.Error("there should be one new event provided:", len(events))
 	}
+
 	agg.ClearUncommittedEvents()
 
 	agg = NewTestAggregate(uuid.New())
 	event1 = agg.AppendEvent(TestAggregateEventType, &TestEventData{"event1"}, timestamp)
 	event2 = agg.AppendEvent(TestAggregateEventType, &TestEventData{"event2"}, timestamp)
 	events = agg.events
+
 	if len(events) != 2 {
 		t.Fatal("there should be 2 events provided:", len(events))
 	}
+
 	if events[0] != event1 {
 		t.Error("the first provided event should be correct:", events[0])
 	}
+
 	if events[1] != event2 {
 		t.Error("the second provided event should be correct:", events[0])
 	}
@@ -170,5 +191,6 @@ func (a *TestAggregate) HandleCommand(ctx context.Context, cmd eh.Command) error
 
 func (a *TestAggregate) ApplyEvent(ctx context.Context, event eh.Event) error {
 	a.event = event
+
 	return nil
 }

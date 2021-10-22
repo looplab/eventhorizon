@@ -36,9 +36,11 @@ func Benchmark(b *testing.B, store eh.EventStore) {
 		e := eh.NewEvent(mocks.EventType,
 			&mocks.EventData{Content: "event1"}, time.Now(),
 			eh.ForAggregate(mocks.AggregateType, id, n+1))
+
 		if err := store.Save(ctx, []eh.Event{e}, n); err != nil {
 			b.Error("could not save event:", err)
 		}
+
 		if _, err := store.Load(ctx, id); err != nil {
 			b.Error("could not load events:", err)
 		}

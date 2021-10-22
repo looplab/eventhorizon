@@ -85,6 +85,7 @@ func (e *EventStoreError) Error() string {
 		if e.AggregateType != "" {
 			at = string(e.AggregateType)
 		}
+
 		str += fmt.Sprintf(", %s(%s, v%d)", at, e.AggregateID, e.AggregateVersion)
 	}
 
@@ -93,6 +94,7 @@ func (e *EventStoreError) Error() string {
 		for _, e := range e.Events {
 			es = append(es, e.String())
 		}
+
 		str += " [" + strings.Join(es, ", ") + "]"
 	}
 

@@ -51,6 +51,7 @@ func NewRepo(uri, db, collection string, options ...Option) (*Repo, error) {
 	opts.SetReadConcern(readconcern.Majority())
 	opts.SetReadPreference(readpref.Primary())
 	client, err := mongo.Connect(context.TODO(), opts)
+
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to DB: %w", err)
 	}
@@ -96,9 +97,11 @@ func IntoRepo(ctx context.Context, repo eh.ReadRepo) *Repo {
 	if repo == nil {
 		return nil
 	}
+
 	if r, ok := repo.(*Repo); ok {
 		return r
 	}
+
 	return IntoRepo(ctx, repo.InnerRepo(ctx))
 }
 
@@ -117,6 +120,7 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 		if err == mongo.ErrNoDocuments {
 			err = eh.ErrEntityNotFound
 		}
+
 		return nil, &eh.RepoError{
 			Err:      err,
 			Op:       eh.RepoOpFind,
@@ -145,6 +149,7 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	}
 
 	result := []eh.Entity{}
+
 	for cursor.Next(ctx) {
 		entity := r.newEntity()
 		if err := cursor.Decode(entity); err != nil {
@@ -153,6 +158,7 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 				Op:  eh.RepoOpFindAll,
 			}
 		}
+
 		result = append(result, entity)
 	}
 
@@ -182,6 +188,7 @@ func (i *iter) Next(ctx context.Context) bool {
 	item := i.newEntity()
 	i.decodeErr = i.cursor.Decode(item)
 	i.data = item
+
 	return true
 }
 
@@ -193,10 +200,11 @@ func (i *iter) Close(ctx context.Context) error {
 	if err := i.cursor.Close(ctx); err != nil {
 		return err
 	}
+
 	return i.decodeErr
 }
 
-// FindCustomIter returns a mgo cursor you can use to stream results of very large datasets
+// FindCustomIter returns a mgo cursor you can use to stream results of very large datasets.
 func (r *Repo) FindCustomIter(ctx context.Context, f func(context.Context, *mongo.Collection) (*mongo.Cursor, error)) (eh.Iter, error) {
 	if r.newEntity == nil {
 		return nil, &eh.RepoError{
@@ -212,6 +220,7 @@ func (r *Repo) FindCustomIter(ctx context.Context, f func(context.Context, *mong
 			Op:  eh.RepoOpFindQuery,
 		}
 	}
+
 	if cursor == nil {
 		return nil, &eh.RepoError{
 			Err: fmt.Errorf("no cursor"),
@@ -245,6 +254,7 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 			Op:  eh.RepoOpFindQuery,
 		}
 	}
+
 	if cursor == nil {
 		return nil, &eh.RepoError{
 			Err: fmt.Errorf("no cursor"),
@@ -254,6 +264,7 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 
 	result := []interface{}{}
 	entity := r.newEntity()
+
 	for cursor.Next(ctx) {
 		if err := cursor.Decode(entity); err != nil {
 			return nil, &eh.RepoError{
@@ -261,9 +272,11 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 				Op:  eh.RepoOpFindQuery,
 			}
 		}
+
 		result = append(result, entity)
 		entity = r.newEntity()
 	}
+
 	if err := cursor.Close(ctx); err != nil {
 		return nil, &eh.RepoError{
 			Err: fmt.Errorf("could not close cursor: %w", err),
@@ -299,6 +312,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 			EntityID: id,
 		}
 	}
+
 	return nil
 }
 
@@ -338,6 +352,7 @@ func (r *Repo) CreateIndex(ctx context.Context, field string) error {
 	if _, err := r.entities.Indexes().CreateOne(ctx, index); err != nil {
 		return fmt.Errorf("could not create index: %s", err)
 	}
+
 	return nil
 }
 
@@ -354,6 +369,7 @@ func (r *Repo) Clear(ctx context.Context) error {
 			Op:  eh.RepoOpClear,
 		}
 	}
+
 	return nil
 }
 

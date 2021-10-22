@@ -14,7 +14,7 @@ import (
 // Update the default BSON registry to be able to handle UUID types as strings.
 func init() {
 	rb := bson.NewRegistryBuilder()
-	var id uuid.UUID
+	id := uuid.Nil
 	uuidType := reflect.TypeOf(id)
 
 	rb.RegisterTypeEncoder(uuidType, bsoncodec.ValueEncoderFunc(
@@ -33,6 +33,7 @@ func init() {
 			if err != nil {
 				return fmt.Errorf("could not parse UUID bytes (%x): %w", v.Bytes(), err)
 			}
+
 			return vw.WriteString(id.String())
 		},
 	))

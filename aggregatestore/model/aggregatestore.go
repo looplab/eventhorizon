@@ -48,6 +48,7 @@ func NewAggregateStore(repo eh.ReadWriteRepo, eventHandler eh.EventHandler) (*Ag
 		repo:         repo,
 		eventHandler: eventHandler,
 	}
+
 	return d, nil
 }
 
@@ -81,6 +82,7 @@ func (r *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error
 	if a, ok := aggregate.(eh.EventSource); ok && r.eventHandler != nil {
 		events := a.UncommittedEvents()
 		a.ClearUncommittedEvents()
+
 		for _, e := range events {
 			if err := r.eventHandler.HandleEvent(ctx, e); err != nil {
 				return err

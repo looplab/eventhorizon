@@ -34,6 +34,7 @@ func TestReadRepo(t *testing.T) {
 			return &mocks.Model{}
 		})
 		repos[ns] = r
+
 		return r, nil
 	})
 	if r == nil {
@@ -46,19 +47,23 @@ func TestReadRepo(t *testing.T) {
 
 	// Check that repos are created on access.
 	innerDefault := r.InnerRepo(defaultCtx)
+
 	defaultRepo, ok := repos["default"]
 	if !ok {
 		t.Error("the default namespace should have been used")
 	}
+
 	if innerDefault != defaultRepo {
 		t.Error("the default repo should be correct")
 	}
 
 	innerOther := r.InnerRepo(otherCtx)
+
 	otherRepo, ok := repos["other"]
 	if !ok {
 		t.Error("the other namespace should have been used")
 	}
+
 	if innerOther != otherRepo {
 		t.Error("the other repo should be correct")
 	}

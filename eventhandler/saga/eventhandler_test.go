@@ -40,10 +40,13 @@ func TestEventHandler(t *testing.T) {
 	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 1))
 	saga.commands = []eh.Command{&mocks.Command{ID: uuid.New(), Content: "content"}}
+
 	handler.HandleEvent(ctx, event)
+
 	if saga.event != event {
 		t.Error("the handled event should be correct:", saga.event)
 	}
+
 	if !reflect.DeepEqual(commandHandler.Commands, saga.commands) {
 		t.Error("the produced commands should be correct:", commandHandler.Commands)
 	}
@@ -66,8 +69,10 @@ func (m *TestSaga) SagaType() Type {
 func (m *TestSaga) RunSaga(ctx context.Context, event eh.Event, h eh.CommandHandler) error {
 	m.event = event
 	m.context = ctx
+
 	for _, cmd := range m.commands {
 		return h.HandleCommand(ctx, cmd)
 	}
+
 	return nil
 }

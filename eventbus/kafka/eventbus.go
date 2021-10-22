@@ -66,6 +66,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 		if option == nil {
 			continue
 		}
+
 		if err := option(b); err != nil {
 			return nil, fmt.Errorf("error while applying option: %w", err)
 		}
@@ -75,8 +76,11 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 	client := &kafka.Client{
 		Addr: kafka.TCP(addr),
 	}
+
 	var resp *kafka.CreateTopicsResponse
+
 	var err error
+
 	for i := 0; i < 10; i++ {
 		resp, err = client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
 			Topics: []kafka.TopicConfig{{
@@ -85,8 +89,10 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 				ReplicationFactor: 1,
 			}},
 		})
+
 		if errors.Is(err, kafka.BrokerNotAvailable) {
 			time.Sleep(5 * time.Second)
+
 			continue
 		} else if err != nil {
 			return nil, fmt.Errorf("error creating Kafka topic: %w", err)
@@ -94,9 +100,11 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 			break
 		}
 	}
+
 	if resp == nil {
 		return nil, fmt.Errorf("could not get/create Kafka topic in time: %w", err)
 	}
+
 	if topicErr, ok := resp.Errors[b.topic]; ok && topicErr != nil {
 		if !errors.Is(topicErr, kafka.TopicAlreadyExists) {
 			return nil, fmt.Errorf("invalid Kafka topic: %w", topicErr)
@@ -121,6 +129,7 @@ type Option func(*EventBus) error
 func WithCodec(codec eh.EventCodec) Option {
 	return func(b *EventBus) error {
 		b.codec = codec
+
 		return nil
 	}
 }
@@ -167,6 +176,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	if m == nil {
 		return eh.ErrMissingMatcher
 	}
+
 	if h == nil {
 		return eh.ErrMissingHandler
 	}
@@ -174,6 +184,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Check handler existence.
 	b.registeredMu.Lock()
 	defer b.registeredMu.Unlock()
+
 	if _, ok := b.registered[h.HandlerType()]; ok {
 		return eh.ErrHandlerAlreadyAdded
 	}
@@ -253,8 +264,10 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 			default:
 				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
 			}
+
 			// Retry the receive loop if there was an error.
 			time.Sleep(time.Second)
+
 			continue
 		}
 
@@ -264,6 +277,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 			default:
 				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
 			}
+
 			continue
 		}
 

@@ -114,17 +114,17 @@ func TestCheckCommand(t *testing.T) {
 
 	// IsZero, fail on zeroable int
 	err = CheckCommand(&TestCommandZeroableInt{
-		TestID: uuid.New(),
+		TestID:          uuid.New(),
 		TestZeroableInt: 0,
 		TestInt:         0,
 	})
-	if err == nil || err.Error() != "missing field: TestZeroableInt"{
+	if err == nil || err.Error() != "missing field: TestZeroableInt" {
 		t.Error("there should be a missing field error:", err)
 	}
 
 	// IsZero, do not fail  on plain int
 	err = CheckCommand(&TestCommandZeroableInt{
-		TestID: uuid.New(),
+		TestID:          uuid.New(),
 		TestZeroableInt: 1,
 		TestInt:         0,
 	})
@@ -319,13 +319,12 @@ type TestCommandZeroableInt struct {
 
 var _ = Command(TestCommandZeroableInt{})
 
-
 func (t TestCommandZeroableInt) AggregateID() uuid.UUID       { return t.TestID }
 func (t TestCommandZeroableInt) AggregateType() AggregateType { return TestAggregateType }
 func (t TestCommandZeroableInt) CommandType() CommandType {
 	return CommandType("TestCommandZeroableInt")
 }
 
-func (z ZeroableInt) IsZero () bool {
+func (z ZeroableInt) IsZero() bool {
 	return z == 0
 }

@@ -25,6 +25,7 @@ func UseCommandHandlerMiddleware(h CommandHandler, middleware ...CommandHandlerM
 		m := middleware[i]
 		h = m(h)
 	}
+
 	return h
 }
 
@@ -39,5 +40,6 @@ func UseEventHandlerMiddleware(h EventHandler, middleware ...EventHandlerMiddlew
 		m := middleware[i]
 		h = m(h)
 	}
+
 	return h
 }

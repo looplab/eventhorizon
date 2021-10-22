@@ -76,6 +76,7 @@ func (c *EventCodec) UnmarshalEvent(ctx context.Context, b []byte) (eh.Event, co
 		if err := bson.Unmarshal(e.RawData, e.data); err != nil {
 			return nil, nil, fmt.Errorf("could not unmarshal event data: %w", err)
 		}
+
 		e.RawData = nil
 	}
 
@@ -84,6 +85,7 @@ func (c *EventCodec) UnmarshalEvent(ctx context.Context, b []byte) (eh.Event, co
 	if err != nil {
 		aggregateID = uuid.Nil
 	}
+
 	event := eh.NewEvent(
 		e.EventType,
 		e.data,

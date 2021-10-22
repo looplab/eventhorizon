@@ -25,6 +25,7 @@ import (
 // on a error channel.
 func NewMiddleware() (eh.EventHandlerMiddleware, chan *Error) {
 	errCh := make(chan *Error, 20)
+
 	return eh.EventHandlerMiddleware(func(h eh.EventHandler) eh.EventHandler {
 		return &eventHandler{h, errCh}
 	}), errCh
@@ -43,6 +44,7 @@ func (h *eventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 			h.errCh <- &Error{err, ctx, event}
 		}
 	}()
+
 	return nil
 }
 

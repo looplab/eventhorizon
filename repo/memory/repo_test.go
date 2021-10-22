@@ -33,6 +33,7 @@ func TestReadRepo(t *testing.T) {
 	r.SetEntityFactory(func() eh.Entity {
 		return &mocks.Model{}
 	})
+
 	if r.InnerRepo(context.Background()) != nil {
 		t.Error("the inner repo should be nil")
 	}
@@ -52,6 +53,7 @@ func TestIntoRepo(t *testing.T) {
 
 	inner := NewRepo()
 	outer := &mocks.Repo{ParentRepo: inner}
+
 	if r := IntoRepo(context.Background(), outer); r != inner {
 		t.Error("the repository should be correct:", r)
 	}

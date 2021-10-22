@@ -32,14 +32,17 @@ func init() {
 			vals[minVersionKeyStr] = v
 		}
 	})
+
 	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
 		if v, ok := vals[minVersionKeyStr].(int); ok {
 			return NewContextWithMinVersion(ctx, v)
 		}
+
 		// Support JSON-like marshaling of ints as floats.
 		if v, ok := vals[minVersionKeyStr].(float64); ok {
 			return NewContextWithMinVersion(ctx, int(v))
 		}
+
 		return ctx
 	})
 }
@@ -58,6 +61,7 @@ const (
 // MinVersionFromContext returns the min version from the context.
 func MinVersionFromContext(ctx context.Context) (int, bool) {
 	minVersion, ok := ctx.Value(minVersionKey).(int)
+
 	return minVersion, ok
 }
 
@@ -70,5 +74,6 @@ func NewContextWithMinVersion(ctx context.Context, minVersion int) context.Conte
 // default deadline set.
 func NewContextWithMinVersionWait(ctx context.Context, minVersion int) (c context.Context, cancel func()) {
 	ctx = context.WithValue(ctx, minVersionKey, minVersion)
+
 	return context.WithTimeout(ctx, DefaultMinVersionDeadline)
 }

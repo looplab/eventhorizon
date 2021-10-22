@@ -43,6 +43,7 @@ func NewRepo() *Repo {
 	r := &Repo{
 		db: map[uuid.UUID][]byte{},
 	}
+
 	return r
 }
 
@@ -57,9 +58,11 @@ func IntoRepo(ctx context.Context, repo eh.ReadRepo) *Repo {
 	if repo == nil {
 		return nil
 	}
+
 	if r, ok := repo.(*Repo); ok {
 		return r
 	}
+
 	return IntoRepo(ctx, repo.InnerRepo(ctx))
 }
 
@@ -110,7 +113,9 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 
 	r.dbMu.RLock()
 	defer r.dbMu.RUnlock()
+
 	result := []eh.Entity{}
+
 	for _, id := range r.ids {
 		if b, ok := r.db[id]; ok {
 			entity := r.factoryFn()
@@ -120,6 +125,7 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 					Op:  eh.RepoOpFindAll,
 				}
 			}
+
 			result = append(result, entity)
 		}
 	}
@@ -161,6 +167,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	if _, ok := r.db[id]; !ok {
 		r.ids = append(r.ids, id)
 	}
+
 	r.db[id] = b
 
 	return nil
@@ -170,16 +177,20 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 	r.dbMu.Lock()
 	defer r.dbMu.Unlock()
+
 	if _, ok := r.db[id]; ok {
 		delete(r.db, id)
 
 		index := -1
+
 		for i, d := range r.ids {
 			if id == d {
 				index = i
+
 				break
 			}
 		}
+
 		r.ids = append(r.ids[:index], r.ids[index+1:]...)
 
 		return nil

@@ -48,9 +48,11 @@ func IntoRepo(ctx context.Context, repo eh.ReadRepo) *Repo {
 	if repo == nil {
 		return nil
 	}
+
 	if r, ok := repo.(*Repo); ok {
 		return r
 	}
+
 	return IntoRepo(ctx, repo.InnerRepo(ctx))
 }
 
@@ -74,6 +76,7 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	// Skip the first duration, which is always 0.
 	_ = delay.Duration()
 	_, hasDeadline := ctx.Deadline()
+
 	for {
 		entity, err := r.findMinVersion(ctx, id, minVersion)
 		if errors.Is(err, eh.ErrIncorrectEntityVersion) || errors.Is(err, eh.ErrEntityNotFound) {

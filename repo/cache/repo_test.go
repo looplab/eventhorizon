@@ -35,6 +35,7 @@ func TestReadRepo(t *testing.T) {
 	if r == nil {
 		t.Error("there should be a repository")
 	}
+
 	if inner := r.InnerRepo(context.Background()); inner != baseRepo {
 		t.Error("the inner repo should be correct:", inner)
 	}
@@ -54,6 +55,7 @@ func TestIntoRepo(t *testing.T) {
 
 	middle := NewRepo(inner)
 	outer := &mocks.Repo{ParentRepo: middle}
+
 	if r := IntoRepo(context.Background(), outer); r != middle {
 		t.Error("the repository should be correct:", r)
 	}

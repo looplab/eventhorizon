@@ -25,6 +25,7 @@ func TestEventHandlerFunc(t *testing.T) {
 	events := []Event{}
 	h := EventHandlerFunc(func(ctx context.Context, e Event) error {
 		events = append(events, e)
+
 		return nil
 	})
 	if h.HandlerType() != EventHandlerType("eventhorizon-TestEventHandlerFunc-func1") {

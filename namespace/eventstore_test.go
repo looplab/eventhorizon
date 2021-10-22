@@ -33,6 +33,7 @@ func TestEventStore(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
+
 		return s, nil
 	})
 	if store == nil {
@@ -49,6 +50,7 @@ func TestEventStore(t *testing.T) {
 	if _, ok := usedNamespaces["default"]; !ok {
 		t.Error("the default namespace should have been used")
 	}
+
 	if _, ok := usedNamespaces["other"]; !ok {
 		t.Error("the other namespace should have been used")
 	}

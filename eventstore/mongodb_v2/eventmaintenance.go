@@ -44,6 +44,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 			Events:           []eh.Event{event},
 		}
 	}
+
 	defer sess.EndSession(ctx)
 
 	if _, err := sess.WithTransaction(ctx, func(txCtx mongo.SessionContext) (interface{}, error) {

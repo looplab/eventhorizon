@@ -65,5 +65,6 @@ func (h *CommandHandler) SetHandler(handler eh.CommandHandler, cmdType eh.Comman
 	}
 
 	h.handlers[cmdType] = handler
+
 	return nil
 }

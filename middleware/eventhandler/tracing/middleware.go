@@ -40,14 +40,15 @@ func (h *eventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, opName)
 
 	err := h.EventHandler.HandleEvent(ctx, event)
+	if err != nil {
+		ext.LogError(sp, err)
+	}
 
 	sp.SetTag("eh.event_type", event.EventType())
 	sp.SetTag("eh.aggregate_type", event.AggregateType())
 	sp.SetTag("eh.aggregate_id", event.AggregateID())
 	sp.SetTag("eh.version", event.Version())
-	if err != nil {
-		ext.LogError(sp, err)
-	}
+
 	sp.Finish()
 
 	return err

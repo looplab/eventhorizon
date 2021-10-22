@@ -45,9 +45,11 @@ func TestMiddleware(t *testing.T) {
 	if err := h.HandleEvent(context.Background(), expectedEvent); err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if !reflect.DeepEqual(inner.Events, []eh.Event{expectedEvent}) {
 		t.Error("the events should be correct:", inner.Events)
 	}
+
 	inner.Events = nil
 
 	// Schedule the same event every second.
@@ -91,6 +93,7 @@ func TestMiddleware(t *testing.T) {
 
 	// Schedule after canceled.
 	cancelScheduler()
+
 	if err := scheduler.ScheduleEvent(context.Background(), "* * * * * * *", func(t time.Time) eh.Event {
 		return nil
 	}); !errors.Is(err, context.Canceled) {

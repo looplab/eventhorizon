@@ -59,6 +59,7 @@ func NewEventBus(options ...Option) *EventBus {
 		if option == nil {
 			continue
 		}
+
 		option(b)
 	}
 
@@ -102,6 +103,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	if m == nil {
 		return eh.ErrMissingMatcher
 	}
+
 	if h == nil {
 		return eh.ErrMissingHandler
 	}
@@ -109,6 +111,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Check handler existence.
 	b.registeredMu.Lock()
 	defer b.registeredMu.Unlock()
+
 	if _, ok := b.registered[h.HandlerType()]; ok {
 		return eh.ErrHandlerAlreadyAdded
 	}
@@ -164,6 +167,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte
 				default:
 					log.Printf("eventhorizon: missed error in local event bus: %s", err)
 				}
+
 				return
 			}
 
@@ -210,6 +214,7 @@ func (g *Group) channel(id string) <-chan []byte {
 
 	ch := make(chan []byte, DefaultQueueSize)
 	g.bus[id] = ch
+
 	return ch
 }
 
@@ -236,5 +241,6 @@ func (g *Group) close() {
 	for _, ch := range g.bus {
 		close(ch)
 	}
+
 	g.bus = nil
 }

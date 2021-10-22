@@ -26,8 +26,10 @@ func TestMockContext(t *testing.T) {
 	if val, ok := ContextOne(ctx); !ok || val != "string" {
 		t.Error("the context value should exist")
 	}
+
 	vals := eh.MarshalContext(ctx)
 	ctx = eh.UnmarshalContext(context.Background(), vals)
+
 	if val, ok := ContextOne(ctx); !ok || val != "string" {
 		t.Error("the context marshalling should work")
 	}

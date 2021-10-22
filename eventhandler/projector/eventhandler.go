@@ -115,9 +115,11 @@ func NewEventHandler(projector Projector, repo eh.ReadWriteRepo, options ...Opti
 		repo:           repo,
 		entityLookupFn: defaultEntityLookupFn,
 	}
+
 	for _, option := range options {
 		option(h)
 	}
+
 	return h
 }
 
@@ -171,7 +173,6 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 // It will try to find the correct version of the model, waiting for it the projector
 // has the WithWait option set.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
-
 	// Used to retry once in case of a version mismatch.
 	triedOnce := false
 retryOnce:
@@ -182,9 +183,11 @@ retryOnce:
 		// Try to find it with a min version (and optional retry) if the
 		// underlying repo supports it.
 		findCtx = version.NewContextWithMinVersion(ctx, event.Version()-1)
+
 		if h.useWait {
 			var cancel func()
 			findCtx, cancel = version.NewContextWithMinVersionWait(ctx, event.Version()-1)
+
 			defer cancel()
 		}
 	}
@@ -202,11 +205,14 @@ retryOnce:
 				EntityID:  id,
 			}
 		}
+
 		entity = h.factoryFn()
 	} else if errors.Is(err, eh.ErrIncorrectEntityVersion) {
 		if h.useRetryOnce && !triedOnce {
 			triedOnce = true
+
 			time.Sleep(100 * time.Millisecond)
+
 			goto retryOnce
 		}
 
@@ -239,7 +245,9 @@ retryOnce:
 		if event.Version() != entityVersion+1 && !h.useIrregularVersioning {
 			if h.useRetryOnce && !triedOnce {
 				triedOnce = true
+
 				time.Sleep(100 * time.Millisecond)
+
 				goto retryOnce
 			}
 
@@ -268,6 +276,7 @@ retryOnce:
 	// The model should now be at the same version as the event.
 	if newEntity, ok := newEntity.(eh.Versionable); ok {
 		entityVersion = newEntity.AggregateVersion()
+
 		if newEntity.AggregateVersion() != event.Version() {
 			return &Error{
 				Err:           ErrIncorrectProjectedEntityVersion,
@@ -290,6 +299,7 @@ retryOnce:
 				EntityVersion: entityVersion,
 			}
 		}
+
 		if err := h.repo.Save(ctx, newEntity); err != nil {
 			return &Error{
 				Err:           fmt.Errorf("could not save: %w", err),

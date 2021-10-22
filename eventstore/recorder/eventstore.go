@@ -65,6 +65,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	s.mu.RLock()
 	if !s.recording {
 		s.mu.RUnlock()
+
 		return s.EventStore.Save(ctx, events, originalVersion)
 	}
 	s.mu.RUnlock()
@@ -73,9 +74,11 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	// secondary saved events from the underlying stores event handler(s).
 	s.mu.Lock()
 	records := make([]*EventRecord, len(events))
+
 	for i, e := range events {
 		records[i] = &EventRecord{Event: e, Status: Pending}
 	}
+
 	s.records = append(s.records, records...)
 	s.mu.Unlock()
 
@@ -145,6 +148,7 @@ func (s *EventStore) eventsByStatus(status Status) []eh.Event {
 	defer s.mu.RUnlock()
 
 	var events []eh.Event
+
 	for _, r := range s.records {
 		if r.Status == status {
 			events = append(events, r.Event)

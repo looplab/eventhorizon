@@ -29,6 +29,7 @@ func TestCommandHandlerMiddleware(t *testing.T) {
 		return CommandHandlerMiddleware(func(h CommandHandler) CommandHandler {
 			return CommandHandlerFunc(func(ctx context.Context, cmd Command) error {
 				order = append(order, s)
+
 				return h.HandleCommand(ctx, cmd)
 			})
 		})
@@ -62,6 +63,7 @@ func TestEventHandlerMiddleware(t *testing.T) {
 		return EventHandlerMiddleware(func(h EventHandler) EventHandler {
 			return EventHandlerFunc(func(ctx context.Context, e Event) error {
 				order = append(order, s)
+
 				return h.HandleEvent(ctx, e)
 			})
 		})

@@ -59,6 +59,7 @@ func HostnameGroup() Group {
 	if err != nil {
 		panic("could not get hostname for HostnameGroup()")
 	}
+
 	return group(hostname)
 }
 

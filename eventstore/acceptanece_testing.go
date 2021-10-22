@@ -40,11 +40,13 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	savedEvents := []eh.Event{}
 
 	type contextKey string
+
 	ctx = context.WithValue(ctx, contextKey("testkey"), "testval")
 
 	// Save no events.
-	err := store.Save(ctx, []eh.Event{}, 0)
 	eventStoreErr := &eh.EventStoreError{}
+
+	err := store.Save(ctx, []eh.Event{}, 0)
 	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "no events" {
 		t.Error("there should be a event store error:", err)
 	}
@@ -54,18 +56,21 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 1))
+
 	err = store.Save(ctx, []eh.Event{event1}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	savedEvents = append(savedEvents, event1)
 	// if val, ok := agg.Context.Value("testkey").(string); !ok || val != "testval" {
 	// 	t.Error("the context should be correct:", agg.Context)
 	// }
 
 	// Try to save same event twice.
-	err = store.Save(ctx, []eh.Event{event1}, 1)
 	eventStoreErr = &eh.EventStoreError{}
+
+	err = store.Save(ctx, []eh.Event{event1}, 1)
 	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "invalid event version" {
 		t.Error("there should be a event store error:", err)
 	}
@@ -75,19 +80,23 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 		eh.ForAggregate(mocks.AggregateType, id, 2),
 		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
 	)
+
 	err = store.Save(ctx, []eh.Event{event2}, 1)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	savedEvents = append(savedEvents, event2)
 
 	// Save event without data, version 3.
 	event3 := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 3))
+
 	err = store.Save(ctx, []eh.Event{event3}, 2)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	savedEvents = append(savedEvents, event3)
 
 	// Save multiple events, version 4,5 and 6.
@@ -97,10 +106,12 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 		eh.ForAggregate(mocks.AggregateType, id, 5))
 	event6 := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 6))
+
 	err = store.Save(ctx, []eh.Event{event4, event5, event6}, 3)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	savedEvents = append(savedEvents, event4, event5, event6)
 
 	// Save event for different aggregate IDs.
@@ -108,6 +119,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 		eh.ForAggregate(mocks.AggregateType, id, 7))
 	eventOtherAggID := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
 		eh.ForAggregate(mocks.AggregateType, uuid.New(), 8))
+
 	err = store.Save(ctx, []eh.Event{eventSameAggID, eventOtherAggID}, 6)
 	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "event has different aggregate ID" {
 		t.Error("there should be a event store error:", err)
@@ -118,6 +130,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 		eh.ForAggregate(mocks.AggregateType, id, 7))
 	eventOtherAggType := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
 		eh.ForAggregate(eh.AggregateType("OtherAggregate"), id, 8))
+
 	err = store.Save(ctx, []eh.Event{eventSameAggType, eventOtherAggType}, 6)
 	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "event has different aggregate type" {
 		t.Error("there should be a event store error:", err)
@@ -127,18 +140,22 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	id2 := uuid.New()
 	event7 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event7"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id2, 1))
+
 	err = store.Save(ctx, []eh.Event{event7}, 0)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	savedEvents = append(savedEvents, event7)
 
 	// Load events for non-existing aggregate.
-	events, err := store.Load(ctx, uuid.New())
 	eventStoreErr = &eh.EventStoreError{}
+
+	events, err := store.Load(ctx, uuid.New())
 	if !errors.As(err, &eventStoreErr) || !errors.Is(err, eh.ErrAggregateNotFound) {
 		t.Error("there should be a not found error:", err)
 	}
+
 	if len(events) != 0 {
 		t.Error("there should be no loaded events:", eventsToString(events))
 	}
@@ -148,15 +165,18 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	expectedEvents := []eh.Event{
 		event1,                 // Version 1
 		event2,                 // Version 2
 		event3,                 // Version 3
 		event4, event5, event6, // Version 4, 5 and 6
 	}
+
 	if len(events) != len(expectedEvents) {
 		t.Errorf("incorrect number of loaded events: %d", len(events))
 	}
+
 	for i, event := range events {
 		if err := eh.CompareEvents(event, expectedEvents[i],
 			eh.IgnoreVersion(),
@@ -164,6 +184,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 		); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
+
 		if event.Version() != i+1 {
 			t.Error("the event version should be correct:", event, event.Version())
 		}
@@ -174,10 +195,13 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	expectedEvents = []eh.Event{event7}
+
 	if len(events) != len(expectedEvents) {
 		t.Errorf("incorrect number of loaded events: %d", len(events))
 	}
+
 	for i, event := range events {
 		if err := eh.CompareEvents(event, expectedEvents[i],
 			eh.IgnoreVersion(),
@@ -185,6 +209,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 		); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
+
 		if event.Version() != i+1 {
 			t.Error("the event version should be correct:", event, event.Version())
 		}
@@ -200,5 +225,6 @@ func eventsToString(events []eh.Event) string {
 			e.AggregateType(), e.EventType(),
 			e.AggregateID(), e.Version())
 	}
+
 	return strings.Join(parts, ", ")
 }

@@ -36,6 +36,7 @@ func TestNewAggregateStore(t *testing.T) {
 	if !errors.Is(err, ErrInvalidRepo) {
 		t.Error("there should be a ErrInvalidRepo error:", err)
 	}
+
 	if store != nil {
 		t.Error("there should be no store:", store)
 	}
@@ -44,6 +45,7 @@ func TestNewAggregateStore(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if store == nil {
 		t.Error("there should be a store")
 	}
@@ -56,10 +58,12 @@ func TestAggregateStore_LoadNotFound(t *testing.T) {
 
 	id := uuid.New()
 	repo.LoadErr = &eh.RepoError{Err: eh.ErrEntityNotFound}
+
 	agg, err := store.Load(ctx, AggregateType, id)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
 	if agg.EntityID() != id {
 		t.Error("the aggregate ID should be correct: ", agg.EntityID(), id)
 	}
@@ -69,14 +73,15 @@ func TestAggregateStore_Load(t *testing.T) {
 	store, repo, _ := createStore(t)
 
 	ctx := context.Background()
-
 	id := uuid.New()
 	agg := NewAggregate(id)
 	repo.Entity = agg
+
 	loadedAgg, err := store.Load(ctx, AggregateType, id)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
 	if !reflect.DeepEqual(loadedAgg, agg) {
 		t.Error("the aggregate should be correct:", loadedAgg)
 	}
@@ -84,10 +89,12 @@ func TestAggregateStore_Load(t *testing.T) {
 	// Store error.
 	storeErr := errors.New("error")
 	repo.LoadErr = storeErr
+
 	_, err = store.Load(ctx, AggregateType, id)
 	if !errors.Is(err, storeErr) {
 		t.Error("the error should be correct:", err)
 	}
+
 	repo.LoadErr = nil
 }
 
@@ -95,8 +102,8 @@ func TestAggregateStore_Load_InvalidAggregate(t *testing.T) {
 	store, repo, _ := createStore(t)
 
 	ctx := context.Background()
-
 	id := uuid.New()
+
 	err := repo.Save(ctx, &Model{
 		ID: id,
 	})
@@ -108,6 +115,7 @@ func TestAggregateStore_Load_InvalidAggregate(t *testing.T) {
 	if !errors.Is(err, ErrInvalidAggregate) {
 		t.Fatal("there should be a ErrInvalidAggregate error:", err)
 	}
+
 	if loadedAgg != nil {
 		t.Error("the aggregate should be nil")
 	}
@@ -120,10 +128,12 @@ func TestAggregateStore_Save(t *testing.T) {
 
 	id := uuid.New()
 	agg := NewAggregate(id)
+
 	err := store.Save(ctx, agg)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if repo.Entity != agg {
 		t.Error("the aggregate should be saved")
 	}
@@ -131,10 +141,12 @@ func TestAggregateStore_Save(t *testing.T) {
 	// Store error.
 	aggregateErr := errors.New("aggregate error")
 	repo.SaveErr = aggregateErr
+
 	err = store.Save(ctx, agg)
 	if !errors.Is(err, aggregateErr) {
 		t.Error("the error should be correct:", err)
 	}
+
 	repo.SaveErr = nil
 }
 
@@ -148,19 +160,24 @@ func TestAggregateStore_SaveWithPublish(t *testing.T) {
 
 	// Normal publish should publish events on the bus.
 	agg.AppendEvent(event)
+
 	if len(agg.SliceEventSource) != 1 {
 		t.Error("there should be one event to publish")
 	}
+
 	err := store.Save(ctx, agg)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	if repo.Entity != agg {
 		t.Error("the aggregate should be saved")
 	}
+
 	if !reflect.DeepEqual(bus.Events, []eh.Event{event}) {
 		t.Error("there should be an event on the bus:", bus.Events)
 	}
+
 	if len(agg.SliceEventSource) != 0 {
 		t.Error("there should be no events to publish")
 	}
@@ -168,11 +185,14 @@ func TestAggregateStore_SaveWithPublish(t *testing.T) {
 	// Simulate a bus error.
 	busErr := errors.New("bus error")
 	bus.Err = busErr
+
 	agg.AppendEvent(event)
+
 	err = store.Save(ctx, agg)
 	if !errors.Is(err, busErr) {
 		t.Error("the error should be correct:", err)
 	}
+
 	if len(agg.SliceEventSource) != 0 {
 		t.Error("there should be no events to publish")
 	}
@@ -183,13 +203,16 @@ func createStore(t *testing.T) (*AggregateStore, *mocks.Repo, *mocks.EventBus) {
 	bus := &mocks.EventBus{
 		Events: make([]eh.Event, 0),
 	}
+
 	store, err := NewAggregateStore(repo, bus)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
+
 	return store, repo, bus
 }
 
@@ -238,8 +261,10 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 	if a.Err != nil {
 		return a.Err
 	}
+
 	a.Commands = append(a.Commands, cmd)
 	a.Context = ctx
+
 	return nil
 }
 

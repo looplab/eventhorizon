@@ -32,6 +32,7 @@ func TestEventStore(t *testing.T) {
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
 	store := NewEventStore(baseStore)
 	if store == nil {
 		t.Fatal("there should be a store")
@@ -50,6 +51,7 @@ func TestEventStore(t *testing.T) {
 	// And then some more recording specific testing.
 
 	store.ResetTrace()
+
 	record = store.SuccessfulEvents()
 	if len(record) != 0 {
 		t.Error("there should be no events recorded:", record)
@@ -57,6 +59,7 @@ func TestEventStore(t *testing.T) {
 
 	event1 := savedEvents[0]
 	aggregate1events := []eh.Event{}
+
 	for _, e := range savedEvents {
 		if e.AggregateID() == event1.AggregateID() {
 			aggregate1events = append(aggregate1events, e)
@@ -69,11 +72,14 @@ func TestEventStore(t *testing.T) {
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event7 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, event1.AggregateID(), 7))
+
 	err = store.Save(ctx, []eh.Event{event7}, 6)
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	aggregate1events = append(aggregate1events, event1)
+
 	record = store.SuccessfulEvents()
 	if len(record) != 0 {
 		t.Error("there should be no events recorded:", record)
@@ -84,10 +90,12 @@ func TestEventStore(t *testing.T) {
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
+
 	for i, event := range events {
 		if err := eh.CompareEvents(event, aggregate1events[i], eh.IgnoreVersion()); err != nil {
 			t.Error("the event was incorrect:", err)
 		}
+
 		if event.Version() != i+1 {
 			t.Error("the event version should be correct:", event, event.Version())
 		}

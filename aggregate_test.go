@@ -25,6 +25,7 @@ import (
 func TestCreateAggregate(t *testing.T) {
 	id := uuid.New()
 	_, err := CreateAggregate(TestAggregateRegisterType, id)
+
 	if !errors.Is(err, ErrAggregateNotRegistered) {
 		t.Error("there should be a aggregate not registered error:", err)
 	}
@@ -41,6 +42,7 @@ func TestCreateAggregate(t *testing.T) {
 	if aggregate.AggregateType() != TestAggregateRegisterType {
 		t.Error("the aggregate type should be correct:", aggregate.AggregateType())
 	}
+
 	if aggregate.EntityID() != id {
 		t.Error("the ID should be correct:", aggregate.EntityID())
 	}

@@ -26,6 +26,7 @@ func TestEventStoreMaintenance(t *testing.T) {
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
+
 	if store == nil {
 		t.Fatal("there should be a store")
 	}

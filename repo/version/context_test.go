@@ -38,6 +38,7 @@ func TestContextMinVersion(t *testing.T) {
 	if v, ok := vals[minVersionKeyStr].(int); !ok || v != 8 {
 		t.Error("the marshaled min version should be correct:", v)
 	}
+
 	b, err := json.Marshal(vals)
 	if err != nil {
 		t.Error("could not marshal JSON:", err)
@@ -49,6 +50,7 @@ func TestContextMinVersion(t *testing.T) {
 	if err := json.Unmarshal(b, &vals); err != nil {
 		t.Error("could not unmarshal JSON:", err)
 	}
+
 	ctx = eh.UnmarshalContext(context.Background(), vals)
 	if v, ok := MinVersionFromContext(ctx); !ok || v != 8 {
 		t.Error("the min version should be correct:", v)

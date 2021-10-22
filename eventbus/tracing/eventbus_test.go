@@ -47,10 +47,12 @@ func TestEventBus(t *testing.T) {
 	if group == nil {
 		t.Fatal("there should be a group")
 	}
+
 	innerBus1 := local.NewEventBus(local.WithGroup(group))
 	if innerBus1 == nil {
 		t.Fatal("there should be a bus")
 	}
+
 	innerBus2 := local.NewEventBus(local.WithGroup(group))
 	if innerBus2 == nil {
 		t.Fatal("there should be a bus")

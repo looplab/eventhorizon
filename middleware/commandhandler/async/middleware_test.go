@@ -35,9 +35,11 @@ func TestMiddleware(t *testing.T) {
 	inner := &mocks.CommandHandler{}
 	m, errCh := NewMiddleware()
 	h := eh.UseCommandHandlerMiddleware(inner, m)
+
 	if err := h.HandleCommand(context.Background(), cmd); err != nil {
 		t.Error("there should never be an error:", err)
 	}
+
 	select {
 	case err := <-errCh:
 		t.Error("there should not be an error:", err)
@@ -56,23 +58,28 @@ func TestMiddleware(t *testing.T) {
 	handlingErr := errors.New("handling error")
 	inner.Err = handlingErr
 	ctx := context.Background()
+
 	if err := h.HandleCommand(ctx, cmd); err != nil {
 		t.Error("there should never be an error:", err)
 	}
+
 	select {
 	case err := <-errCh:
 		if !errors.Is(err, handlingErr) {
 			t.Error("the error should be correct:", err.Err)
 		}
+
 		if err.Ctx != ctx {
 			t.Error("the context should be correct:", err.Ctx)
 		}
+
 		if err.Command != cmd {
 			t.Error("the command should be correct:", err.Command)
 		}
 	case <-time.After(time.Millisecond):
 		t.Error("there should be an error")
 	}
+
 	if !reflect.DeepEqual(inner.Commands, []eh.Command(nil)) {
 		t.Error("the command should not have been handeled:", inner.Commands)
 	}

@@ -47,7 +47,9 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	if h == nil {
 		return eh.ErrMissingHandler
 	}
+
 	// Wrap the handlers in tracing middleware.
 	h = eh.UseEventHandlerMiddleware(h, tracing.NewMiddleware())
+
 	return b.EventBus.AddHandler(ctx, m, h)
 }

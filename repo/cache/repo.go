@@ -53,9 +53,11 @@ func IntoRepo(ctx context.Context, repo eh.ReadRepo) *Repo {
 	if repo == nil {
 		return nil
 	}
+
 	if r, ok := repo.(*Repo); ok {
 		return r
 	}
+
 	return IntoRepo(ctx, repo.InnerRepo(ctx))
 }
 
@@ -72,6 +74,7 @@ func (r *Repo) HandleEvent(ctx context.Context, event eh.Event) error {
 	r.cacheMu.Lock()
 	delete(r.cache, event.AggregateID())
 	r.cacheMu.Unlock()
+
 	return nil
 }
 
@@ -81,6 +84,7 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	r.cacheMu.RLock()
 	entity, ok := r.cache[id]
 	r.cacheMu.RUnlock()
+
 	if ok {
 		return entity, nil
 	}
@@ -90,6 +94,7 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	r.cacheMu.Lock()
 	r.cache[id] = entity
 	r.cacheMu.Unlock()

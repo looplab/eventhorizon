@@ -63,5 +63,6 @@ type LongCommandHandler struct{}
 
 func (h *LongCommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
 	time.Sleep(100 * time.Millisecond)
+
 	return nil
 }

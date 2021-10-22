@@ -121,5 +121,6 @@ func (s *EventStore) Clear(ctx context.Context) error {
 			Op:  eh.EventStoreOpRename,
 		}
 	}
+
 	return nil
 }

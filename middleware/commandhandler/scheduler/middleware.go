@@ -26,6 +26,7 @@ import (
 // on a error channel.
 func NewMiddleware() (eh.CommandHandlerMiddleware, chan *Error) {
 	errCh := make(chan *Error, 20)
+
 	return eh.CommandHandlerMiddleware(func(h eh.CommandHandler) eh.CommandHandler {
 		return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
 			// Delayed command execution if there is time set.
@@ -47,6 +48,7 @@ func NewMiddleware() (eh.CommandHandlerMiddleware, chan *Error) {
 						errCh <- &Error{err, ctx, cmd}
 					}
 				}()
+
 				return nil
 			}
 
