@@ -30,7 +30,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	aggregate, ok := s.db[id]
 	if !ok {
 		s.dbMu.RUnlock()
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err:         eh.ErrAggregateNotFound,
 			Op:          eh.EventStoreOpReplace,
 			AggregateID: id,
@@ -42,7 +42,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	// Create the event record for the Database.
 	e, err := copyEvent(ctx, event)
 	if err != nil {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err:         fmt.Errorf("could not copy event: %w", err),
 			Op:          eh.EventStoreOpReplace,
 			AggregateID: id,
@@ -59,7 +59,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 		}
 	}
 	if idx == -1 {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err:         fmt.Errorf("could not find original event"),
 			Op:          eh.EventStoreOpReplace,
 			AggregateID: id,

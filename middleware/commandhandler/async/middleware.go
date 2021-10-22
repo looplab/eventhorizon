@@ -23,14 +23,14 @@ import (
 
 // NewMiddleware returns a new async handling middleware that returns any errors
 // on a error channel.
-func NewMiddleware() (eh.CommandHandlerMiddleware, chan Error) {
-	errCh := make(chan Error, 20)
+func NewMiddleware() (eh.CommandHandlerMiddleware, chan *Error) {
+	errCh := make(chan *Error, 20)
 	return eh.CommandHandlerMiddleware(func(h eh.CommandHandler) eh.CommandHandler {
 		return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
 			go func() {
 				if err := h.HandleCommand(ctx, cmd); err != nil {
 					// Always try to deliver errors.
-					errCh <- Error{err, ctx, cmd}
+					errCh <- &Error{err, ctx, cmd}
 				}
 			}()
 			return nil
@@ -49,16 +49,16 @@ type Error struct {
 }
 
 // Error implements the Error method of the error interface.
-func (e Error) Error() string {
+func (e *Error) Error() string {
 	return fmt.Sprintf("%s (%s): %s", e.Command.CommandType(), e.Command.AggregateID(), e.Err.Error())
 }
 
 // Unwrap implements the errors.Unwrap method.
-func (e Error) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.Err
 }
 
 // Cause implements the github.com/pkg/errors Unwrap method.
-func (e Error) Cause() error {
+func (e *Error) Cause() error {
 	return e.Unwrap()
 }

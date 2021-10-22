@@ -88,7 +88,7 @@ type AggregateStoreError struct {
 }
 
 // Error implements the Error method of the error interface.
-func (e AggregateStoreError) Error() string {
+func (e *AggregateStoreError) Error() string {
 	str := "aggregate store: "
 
 	if e.Op != "" {
@@ -113,12 +113,12 @@ func (e AggregateStoreError) Error() string {
 }
 
 // Unwrap implements the errors.Unwrap method.
-func (e AggregateStoreError) Unwrap() error {
+func (e *AggregateStoreError) Unwrap() error {
 	return e.Err
 }
 
 // Cause implements the github.com/pkg/errors Unwrap method.
-func (e AggregateStoreError) Cause() error {
+func (e *AggregateStoreError) Cause() error {
 	return e.Unwrap()
 }
 
@@ -129,17 +129,17 @@ type AggregateError struct {
 }
 
 // Error implements the Error method of the errors.Error interface.
-func (e AggregateError) Error() string {
+func (e *AggregateError) Error() string {
 	return "aggregate error: " + e.Err.Error()
 }
 
 // Unwrap implements the errors.Unwrap method.
-func (e AggregateError) Unwrap() error {
+func (e *AggregateError) Unwrap() error {
 	return e.Err
 }
 
 // Cause implements the github.com/pkg/errors Unwrap method.
-func (e AggregateError) Cause() error {
+func (e *AggregateError) Cause() error {
 	return e.Unwrap()
 }
 

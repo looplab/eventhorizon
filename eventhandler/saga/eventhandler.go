@@ -58,17 +58,17 @@ type Error struct {
 }
 
 // Error implements the Error method of the errors.Error interface.
-func (e Error) Error() string {
+func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.Saga, e.Err)
 }
 
 // Unwrap implements the errors.Unwrap method.
-func (e Error) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.Err
 }
 
 // Cause implements the github.com/pkg/errors Unwrap method.
-func (e Error) Cause() error {
+func (e *Error) Cause() error {
 	return e.Unwrap()
 }
 
@@ -89,7 +89,7 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	// Run the saga which can issue commands on the provided command handler.
 	if err := h.saga.RunSaga(ctx, event, h.commandHandler); err != nil {
-		return Error{
+		return &Error{
 			Err:  err,
 			Saga: h.saga.SagaType().String(),
 		}

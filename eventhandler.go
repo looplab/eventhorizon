@@ -68,7 +68,7 @@ type EventHandlerError struct {
 }
 
 // Error implements the Error method of the errors.Error interface.
-func (e EventHandlerError) Error() string {
+func (e *EventHandlerError) Error() string {
 	str := "could not handle event: "
 
 	if e.Err != nil {
@@ -85,11 +85,11 @@ func (e EventHandlerError) Error() string {
 }
 
 // Unwrap implements the errors.Unwrap method.
-func (e EventHandlerError) Unwrap() error {
+func (e *EventHandlerError) Unwrap() error {
 	return e.Err
 }
 
 // Cause implements the github.com/pkg/errors Unwrap method.
-func (e EventHandlerError) Cause() error {
+func (e *EventHandlerError) Cause() error {
 	return e.Unwrap()
 }

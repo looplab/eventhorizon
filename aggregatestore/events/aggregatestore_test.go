@@ -203,7 +203,7 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 	storeErr := errors.New("store error")
 	eventStore.Err = storeErr
 	err = store.Save(ctx, agg)
-	aggStoreErr := eh.AggregateStoreError{}
+	aggStoreErr := &eh.AggregateStoreError{}
 	if !errors.As(err, &aggStoreErr) || !errors.Is(err, storeErr) {
 		t.Error("there should be an aggregate store error:", err)
 	}
@@ -214,7 +214,7 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 	aggErr := errors.New("aggregate error")
 	agg.err = aggErr
 	err = store.Save(ctx, agg)
-	aggStoreErr = eh.AggregateStoreError{}
+	aggStoreErr = &eh.AggregateStoreError{}
 	if !errors.As(err, &aggStoreErr) || !errors.Is(err, aggErr) {
 		t.Error("there should be an aggregate store error:", err)
 	}

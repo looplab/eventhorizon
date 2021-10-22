@@ -56,7 +56,7 @@ func TestEventBusError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			busError := EventBusError{
+			busError := &EventBusError{
 				Err:   tc.err,
 				Event: tc.event,
 			}

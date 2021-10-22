@@ -44,7 +44,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 
 	// Save no events.
 	err := store.Save(ctx, []eh.Event{}, 0)
-	eventStoreErr := eh.EventStoreError{}
+	eventStoreErr := &eh.EventStoreError{}
 	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "no events" {
 		t.Error("there should be a event store error:", err)
 	}
@@ -65,7 +65,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 
 	// Try to save same event twice.
 	err = store.Save(ctx, []eh.Event{event1}, 1)
-	eventStoreErr = eh.EventStoreError{}
+	eventStoreErr = &eh.EventStoreError{}
 	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "invalid event version" {
 		t.Error("there should be a event store error:", err)
 	}
@@ -115,7 +115,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 
 	// Load events for non-existing aggregate.
 	events, err := store.Load(ctx, uuid.New())
-	eventStoreErr = eh.EventStoreError{}
+	eventStoreErr = &eh.EventStoreError{}
 	if !errors.As(err, &eventStoreErr) || !errors.Is(err, eh.ErrAggregateNotFound) {
 		t.Error("there should be a not found error:", err)
 	}

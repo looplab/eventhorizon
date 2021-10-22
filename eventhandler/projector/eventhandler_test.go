@@ -46,7 +46,7 @@ func TestEventHandler_CreateModel(t *testing.T) {
 	entity := &mocks.SimpleModel{
 		ID: id,
 	}
-	repo.LoadErr = eh.RepoError{
+	repo.LoadErr = &eh.RepoError{
 		Err: eh.ErrEntityNotFound,
 	}
 	projector.newEntity = entity
@@ -151,15 +151,10 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 	// Handling a future event with a gap in versions should produce an error.
 	futureEvent := eh.NewEvent(mocks.EventType, eventData, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 8))
-	expectedErr := Error{
-		Err:           eh.ErrIncorrectEntityVersion,
-		Projector:     TestProjectorType.String(),
-		Event:         futureEvent,
-		EntityID:      id,
-		EntityVersion: 1,
-	}
+	errType := &Error{}
 	err := handler.HandleEvent(ctx, futureEvent)
-	if !errors.Is(err, expectedErr) {
+	if !errors.As(err, &errType) || !errors.Is(err, eh.ErrIncorrectEntityVersion) {
+		// if err != expectedErr {
 		t.Error("there should be an error:", err)
 	}
 
@@ -171,15 +166,9 @@ func TestEventHandler_UpdateModelWithVersion(t *testing.T) {
 		Version: 3,
 		Content: "version 1",
 	}
-	expectedErr = Error{
-		Err:           ErrIncorrectProjectedEntityVersion,
-		Projector:     TestProjectorType.String(),
-		Event:         nextEvent,
-		EntityID:      id,
-		EntityVersion: 3,
-	}
+	errType = &Error{}
 	err = handler.HandleEvent(ctx, nextEvent)
-	if !errors.Is(err, expectedErr) {
+	if !errors.As(err, &errType) || !errors.Is(err, ErrIncorrectProjectedEntityVersion) {
 		t.Error("there should be an error:", err)
 	}
 
@@ -362,7 +351,7 @@ func TestEventHandler_LoadError(t *testing.T) {
 
 	err := handler.HandleEvent(ctx, event)
 
-	projectError := Error{}
+	projectError := &Error{}
 	if !errors.As(err, &projectError) || !errors.Is(err, loadErr) {
 		t.Error("there should be an error:", err)
 	}
@@ -389,7 +378,7 @@ func TestEventHandler_SaveError(t *testing.T) {
 
 	err := handler.HandleEvent(ctx, event)
 
-	projectError := Error{}
+	projectError := &Error{}
 	if !errors.As(err, &projectError) || !errors.Is(err, saveErr) {
 		t.Error("there should be an error:", err)
 	}
@@ -416,7 +405,7 @@ func TestEventHandler_ProjectError(t *testing.T) {
 
 	err := handler.HandleEvent(ctx, event)
 
-	projectError := Error{}
+	projectError := &Error{}
 	if !errors.As(err, &projectError) || !errors.Is(err, projectErr) {
 		t.Error("there should be an error:", err)
 	}

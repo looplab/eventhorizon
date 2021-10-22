@@ -63,7 +63,7 @@ func MaintenanceAcceptanceTest(t *testing.T, store eh.EventStore, storeMaintenan
 	eventWithInvalidVersion := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event20"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 20))
 	err = storeMaintenance.Replace(ctx, eventWithInvalidVersion)
-	eventStoreErr := eh.EventStoreError{}
+	eventStoreErr := &eh.EventStoreError{}
 	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "could not find original event" {
 		t.Error("there should be a event store error:", err)
 	}

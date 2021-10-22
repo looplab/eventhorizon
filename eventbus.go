@@ -31,7 +31,7 @@ type EventBus interface {
 	AddHandler(context.Context, EventMatcher, EventHandler) error
 
 	// Errors returns an error channel where async handling errors are sent.
-	Errors() <-chan EventBusError
+	Errors() <-chan *EventBusError
 
 	// Close closes the EventBus and waits for all handlers to finish.
 	Close() error
@@ -58,7 +58,7 @@ type EventBusError struct {
 }
 
 // Error implements the Error method of the error interface.
-func (e EventBusError) Error() string {
+func (e *EventBusError) Error() string {
 	str := "event bus: "
 
 	if e.Err != nil {
@@ -75,11 +75,11 @@ func (e EventBusError) Error() string {
 }
 
 // Unwrap implements the errors.Unwrap method.
-func (e EventBusError) Unwrap() error {
+func (e *EventBusError) Unwrap() error {
 	return e.Err
 }
 
 // Cause implements the github.com/pkg/errors Unwrap method.
-func (e EventBusError) Cause() error {
+func (e *EventBusError) Cause() error {
 	return e.Unwrap()
 }

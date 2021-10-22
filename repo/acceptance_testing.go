@@ -60,7 +60,7 @@ func AcceptanceTest(t *testing.T, repo eh.ReadWriteRepo, ctx context.Context) {
 		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
 	err = repo.Save(ctx, entityMissingID)
-	repoErr := eh.RepoError{}
+	repoErr := &eh.RepoError{}
 	if !errors.As(err, &repoErr) || repoErr.Err.Error() != "missing entity ID" {
 		t.Error("there should be a repo error:", err)
 	}

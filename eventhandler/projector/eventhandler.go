@@ -65,7 +65,7 @@ type Error struct {
 }
 
 // Error implements the Error method of the errors.Error interface.
-func (e Error) Error() string {
+func (e *Error) Error() string {
 	str := "projector '" + e.Projector + "': "
 
 	if e.Err != nil {
@@ -86,12 +86,12 @@ func (e Error) Error() string {
 }
 
 // Unwrap implements the errors.Unwrap method.
-func (e Error) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.Err
 }
 
 // Cause implements the github.com/pkg/errors Unwrap method.
-func (e Error) Cause() error {
+func (e *Error) Cause() error {
 	return e.Unwrap()
 }
 
@@ -195,7 +195,7 @@ retryOnce:
 	entity, err := h.repo.Find(findCtx, id)
 	if errors.Is(err, eh.ErrEntityNotFound) {
 		if h.factoryFn == nil {
-			return Error{
+			return &Error{
 				Err:       ErrModelNotSet,
 				Projector: h.projector.ProjectorType().String(),
 				Event:     event,
@@ -210,14 +210,14 @@ retryOnce:
 			goto retryOnce
 		}
 
-		return Error{
+		return &Error{
 			Err:       fmt.Errorf("could not load entity with correct version: %w", err),
 			Projector: h.projector.ProjectorType().String(),
 			Event:     event,
 			EntityID:  id,
 		}
 	} else if err != nil {
-		return Error{
+		return &Error{
 			Err:       fmt.Errorf("could not load entity: %w", err),
 			Projector: h.projector.ProjectorType().String(),
 			Event:     event,
@@ -243,7 +243,7 @@ retryOnce:
 				goto retryOnce
 			}
 
-			return Error{
+			return &Error{
 				Err:           eh.ErrIncorrectEntityVersion,
 				Projector:     h.projector.ProjectorType().String(),
 				Event:         event,
@@ -256,7 +256,7 @@ retryOnce:
 	// Run the projection, which will possibly increment the version.
 	newEntity, err := h.projector.Project(ctx, event, entity)
 	if err != nil {
-		return Error{
+		return &Error{
 			Err:           fmt.Errorf("could not project: %w", err),
 			Projector:     h.projector.ProjectorType().String(),
 			Event:         event,
@@ -269,7 +269,7 @@ retryOnce:
 	if newEntity, ok := newEntity.(eh.Versionable); ok {
 		entityVersion = newEntity.AggregateVersion()
 		if newEntity.AggregateVersion() != event.Version() {
-			return Error{
+			return &Error{
 				Err:           ErrIncorrectProjectedEntityVersion,
 				Projector:     h.projector.ProjectorType().String(),
 				Event:         event,
@@ -282,7 +282,7 @@ retryOnce:
 	// Update or remove the model.
 	if newEntity != nil {
 		if newEntity.EntityID() != id {
-			return Error{
+			return &Error{
 				Err:           fmt.Errorf("incorrect entity ID after projection"),
 				Projector:     h.projector.ProjectorType().String(),
 				Event:         event,
@@ -291,7 +291,7 @@ retryOnce:
 			}
 		}
 		if err := h.repo.Save(ctx, newEntity); err != nil {
-			return Error{
+			return &Error{
 				Err:           fmt.Errorf("could not save: %w", err),
 				Projector:     h.projector.ProjectorType().String(),
 				Event:         event,
@@ -301,7 +301,7 @@ retryOnce:
 		}
 	} else {
 		if err := h.repo.Remove(ctx, id); err != nil {
-			return Error{
+			return &Error{
 				Err:           fmt.Errorf("could not remove: %w", err),
 				Projector:     h.projector.ProjectorType().String(),
 				Event:         event,

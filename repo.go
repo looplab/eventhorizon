@@ -101,7 +101,7 @@ type RepoError struct {
 }
 
 // Error implements the Error method of the errors.Error interface.
-func (e RepoError) Error() string {
+func (e *RepoError) Error() string {
 	str := "repo: "
 
 	if e.Op != "" {
@@ -122,11 +122,11 @@ func (e RepoError) Error() string {
 }
 
 // Unwrap implements the errors.Unwrap method.
-func (e RepoError) Unwrap() error {
+func (e *RepoError) Unwrap() error {
 	return e.Err
 }
 
 // Cause implements the github.com/pkg/errors Unwrap method.
-func (e RepoError) Cause() error {
+func (e *RepoError) Cause() error {
 	return e.Unwrap()
 }

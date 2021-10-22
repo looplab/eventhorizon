@@ -35,7 +35,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	// First check if the aggregate exists, the not found error in the update
 	// query can mean both that the aggregate or the event is not found.
 	if n, err := s.aggregates.CountDocuments(ctx, bson.M{"_id": id}); n == 0 {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err:              eh.ErrAggregateNotFound,
 			Op:               eh.EventStoreOpReplace,
 			AggregateType:    at,
@@ -44,7 +44,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 			Events:           []eh.Event{event},
 		}
 	} else if err != nil {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err:              fmt.Errorf("could not check aggregate existence: %w", err),
 			Op:               eh.EventStoreOpReplace,
 			AggregateType:    at,
@@ -70,7 +70,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 			"$set": bson.M{"events.$": *e},
 		},
 	); err != nil {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err:              err,
 			Op:               eh.EventStoreOpReplace,
 			AggregateType:    at,
@@ -79,7 +79,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 			Events:           []eh.Event{event},
 		}
 	} else if r.MatchedCount == 0 {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err:              fmt.Errorf("could not find original event"),
 			Op:               eh.EventStoreOpReplace,
 			AggregateType:    at,
@@ -104,7 +104,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 			"$set": bson.M{"events.$.event_type": to.String()},
 		},
 	); err != nil {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err: fmt.Errorf("could not update events of type '%s': %w", from, err),
 			Op:  eh.EventStoreOpRename,
 		}
@@ -116,7 +116,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 // Clear clears the event storage.
 func (s *EventStore) Clear(ctx context.Context) error {
 	if err := s.aggregates.Drop(ctx); err != nil {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err: err,
 			Op:  eh.EventStoreOpRename,
 		}

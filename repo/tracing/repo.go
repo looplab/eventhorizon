@@ -16,6 +16,7 @@ package tracing
 
 import (
 	"context"
+	"errors"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
@@ -60,8 +61,7 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	entity, err := r.ReadWriteRepo.Find(ctx, id)
 
 	sp.SetTag("eh.aggregate_id", id)
-	if rrErr, ok := err.(eh.RepoError); err != nil &&
-		!(ok && rrErr.Err == eh.ErrEntityNotFound) {
+	if err != nil && !errors.Is(err, eh.ErrEntityNotFound) {
 		ext.LogError(sp, err)
 	}
 	sp.Finish()

@@ -103,7 +103,7 @@ func TestMiddleware_Errors(t *testing.T) {
 	if len(inner.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
-	var err Error
+	var err *Error
 	select {
 	case err = <-errCh:
 	case <-time.After(10 * time.Millisecond):
@@ -133,7 +133,7 @@ func TestMiddleware_ContextCanceled(t *testing.T) {
 	if len(inner.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
-	var err Error
+	var err *Error
 	select {
 	case err = <-errCh:
 	case <-time.After(10 * time.Millisecond):
@@ -164,7 +164,7 @@ func TestMiddleware_ContextDeadline(t *testing.T) {
 	if len(inner.Commands) != 0 {
 		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
-	var err Error
+	var err *Error
 	select {
 	case err = <-errCh:
 	case <-time.After(10 * time.Millisecond):

@@ -67,7 +67,7 @@ func extraRepoTests(t *testing.T, r *Repo, baseRepo *memory.Repo) {
 	// Find with min version without version.
 	ctxVersion := NewContextWithMinVersion(ctx, 1)
 	_, err := r.Find(ctxVersion, simpleModel.ID)
-	repoErr := eh.RepoError{}
+	repoErr := &eh.RepoError{}
 	if !errors.As(err, &repoErr) || !errors.Is(err, eh.ErrEntityHasNoVersion) {
 		t.Error("there should be a model has no version error:", err)
 	}
@@ -90,7 +90,7 @@ func extraRepoTests(t *testing.T, r *Repo, baseRepo *memory.Repo) {
 	// Find with min version, too low.
 	ctxVersion = NewContextWithMinVersion(ctx, 2)
 	_, err = r.Find(ctxVersion, m1.ID)
-	repoErr = eh.RepoError{}
+	repoErr = &eh.RepoError{}
 	if !errors.As(err, &repoErr) || !errors.Is(err, eh.ErrIncorrectEntityVersion) {
 		t.Error("there should be a incorrect model version error:", err)
 	}

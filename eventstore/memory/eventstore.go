@@ -69,7 +69,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	if s.eventHandler != nil {
 		for _, e := range events {
 			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
-				return eh.EventHandlerError{
+				return &eh.EventHandlerError{
 					Err:   err,
 					Event: e,
 				}
@@ -86,7 +86,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 	defer s.dbMu.Unlock()
 
 	if len(events) == 0 {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err: fmt.Errorf("no events"),
 			Op:  eh.EventStoreOpSave,
 		}
@@ -101,7 +101,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 	for i, event := range events {
 		// Only accept events belonging to the same aggregate.
 		if event.AggregateID() != id {
-			return eh.EventStoreError{
+			return &eh.EventStoreError{
 				Err:              fmt.Errorf("event has different aggregate ID"),
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
@@ -112,7 +112,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 		}
 
 		if event.AggregateType() != at {
-			return eh.EventStoreError{
+			return &eh.EventStoreError{
 				Err:              fmt.Errorf("event has different aggregate type"),
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
@@ -124,7 +124,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 
 		// Only accept events that apply to the correct aggregate version.
 		if event.Version() != originalVersion+i+1 {
-			return eh.EventStoreError{
+			return &eh.EventStoreError{
 				Err:              fmt.Errorf("invalid event version"),
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
@@ -137,7 +137,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 		// Create the event record with timestamp.
 		e, err := copyEvent(ctx, event)
 		if err != nil {
-			return eh.EventStoreError{
+			return &eh.EventStoreError{
 				Err:              fmt.Errorf("could not copy event: %w", err),
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
@@ -165,7 +165,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 		// since loading the aggregate).
 		if aggregate, ok := s.db[id]; ok {
 			if aggregate.Version != originalVersion {
-				return eh.EventStoreError{
+				return &eh.EventStoreError{
 					Err:              fmt.Errorf("invalid original aggregate version, new version: %d", aggregate.Version),
 					Op:               eh.EventStoreOpSave,
 					AggregateType:    at,
@@ -192,7 +192,7 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 
 	aggregate, ok := s.db[id]
 	if !ok {
-		return nil, eh.EventStoreError{
+		return nil, &eh.EventStoreError{
 			Err:         eh.ErrAggregateNotFound,
 			Op:          eh.EventStoreOpLoad,
 			AggregateID: id,
@@ -203,7 +203,7 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	for i, event := range aggregate.Events {
 		e, err := copyEvent(ctx, event)
 		if err != nil {
-			return nil, eh.EventStoreError{
+			return nil, &eh.EventStoreError{
 				Err:              fmt.Errorf("could not copy event: %w", err),
 				Op:               eh.EventStoreOpLoad,
 				AggregateType:    e.AggregateType(),
@@ -233,16 +233,15 @@ func (s *EventStore) Close() error {
 
 // copyEvent duplicates an event.
 func copyEvent(ctx context.Context, event eh.Event) (eh.Event, error) {
-	// Copy data if there is any.
 	var data eh.EventData
+
+	// Copy data if there is any.
 	if event.Data() != nil {
 		var err error
 		if data, err = eh.CreateEventData(event.EventType()); err != nil {
 			return nil, fmt.Errorf("could not create event data: %w", err)
-			// return nil, eh.EventStoreError{
-			// 	Err: fmt.Errorf("could not create event data: %w", err),
-			// }
 		}
+
 		copier.Copy(data, event.Data())
 	}
 

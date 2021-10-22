@@ -35,7 +35,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 
 	sess, err := s.client.StartSession(nil)
 	if err != nil {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err:              fmt.Errorf("could not start transaction: %w", err),
 			Op:               eh.EventStoreOpSave,
 			AggregateType:    at,
@@ -94,7 +94,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 
 		return nil, nil
 	}); err != nil {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err:              err,
 			Op:               eh.EventStoreOpReplace,
 			AggregateType:    at,
@@ -119,7 +119,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 			"$set": bson.M{"event_type": to.String()},
 		},
 	); err != nil {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err: fmt.Errorf("could not update events of type '%s': %w", from, err),
 			Op:  eh.EventStoreOpRename,
 		}
@@ -131,13 +131,13 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 // Clear clears the event storage.
 func (s *EventStore) Clear(ctx context.Context) error {
 	if err := s.events.Drop(ctx); err != nil {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err: fmt.Errorf("could not clear events collection: %w", err),
 		}
 	}
 
 	if err := s.streams.Drop(ctx); err != nil {
-		return eh.EventStoreError{
+		return &eh.EventStoreError{
 			Err: fmt.Errorf("could not clear streams collection: %w", err),
 		}
 	}

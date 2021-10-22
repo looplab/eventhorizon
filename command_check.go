@@ -33,7 +33,7 @@ type CommandFieldError struct {
 }
 
 // Error implements the Error method of the error interface.
-func (c CommandFieldError) Error() string {
+func (c *CommandFieldError) Error() string {
 	return "missing field: " + c.Field
 }
 
@@ -62,7 +62,7 @@ func CheckCommand(cmd Command) error {
 		}
 
 		if zero {
-			return CommandFieldError{field.Name}
+			return &CommandFieldError{field.Name}
 		}
 	}
 	return nil

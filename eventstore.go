@@ -67,7 +67,7 @@ type EventStoreError struct {
 }
 
 // Error implements the Error method of the errors.Error interface.
-func (e EventStoreError) Error() string {
+func (e *EventStoreError) Error() string {
 	str := "event store: "
 
 	if e.Op != "" {
@@ -100,11 +100,11 @@ func (e EventStoreError) Error() string {
 }
 
 // Unwrap implements the errors.Unwrap method.
-func (e EventStoreError) Unwrap() error {
+func (e *EventStoreError) Unwrap() error {
 	return e.Err
 }
 
 // Cause implements the github.com/pkg/errors Unwrap method.
-func (e EventStoreError) Cause() error {
+func (e *EventStoreError) Cause() error {
 	return e.Unwrap()
 }
