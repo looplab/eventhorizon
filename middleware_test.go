@@ -43,6 +43,7 @@ func TestCommandHandlerMiddleware(t *testing.T) {
 		middleware("third"),
 	)
 	h.HandleCommand(context.Background(), MiddlewareTestCommand{})
+
 	if !reflect.DeepEqual(order, []string{"first", "second", "third"}) {
 		t.Error("the order of middleware should be correct")
 		t.Log(order)
@@ -77,6 +78,7 @@ func TestEventHandlerMiddleware(t *testing.T) {
 		middleware("third"),
 	)
 	h.HandleEvent(context.Background(), NewEvent("test", nil, time.Now()))
+
 	if !reflect.DeepEqual(order, []string{"first", "second", "third"}) {
 		t.Error("the order of middleware should be correct")
 		t.Log(order)

@@ -24,6 +24,7 @@ import (
 func TestMatchEvents(t *testing.T) {
 	et := EventType("test")
 	m := MatchEvents{et}
+
 	if m.Match(nil) {
 		t.Error("match event should not match nil event")
 	}
