@@ -38,7 +38,7 @@ func TestNewEvent(t *testing.T) {
 	if event.Version() != 0 {
 		t.Error("the version should be zero:", event.Version())
 	}
-	if event.String() != "TestEvent@0" {
+	if event.String() != "TestEvent" {
 		t.Error("the string representation should be correct:", event.String())
 	}
 
@@ -79,7 +79,7 @@ func TestNewEvent(t *testing.T) {
 	}) {
 		t.Error("the metadata should be correct:", event.Metadata())
 	}
-	if event.String() != "TestEvent@3" {
+	if event.String() != "TestEvent("+id.String()+", v3)" {
 		t.Error("the string representation should be correct:", event.String())
 	}
 }

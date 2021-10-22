@@ -14,13 +14,13 @@
 
 package lock
 
-import "fmt"
+import "errors"
 
 var (
 	// ErrLockExists is returned from Lock() when the lock is already taken.
-	ErrLockExists = fmt.Errorf("lock exists")
+	ErrLockExists = errors.New("lock exists")
 	// ErrNoLockExists is returned from Unlock() when the lock does not exist.
-	ErrNoLockExists = fmt.Errorf("no lock exists")
+	ErrNoLockExists = errors.New("no lock exists")
 )
 
 // Lock is a locker of IDs.

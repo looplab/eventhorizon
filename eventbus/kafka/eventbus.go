@@ -39,7 +39,7 @@ type EventBus struct {
 	writer       *kafka.Writer
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
-	errCh        chan eh.EventBusError
+	errCh        chan error
 	cctx         context.Context
 	cancel       context.CancelFunc
 	wg           sync.WaitGroup
@@ -55,7 +55,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 		appID:      appID,
 		topic:      appID + "_events",
 		registered: map[eh.EventHandlerType]struct{}{},
-		errCh:      make(chan eh.EventBusError, 100),
+		errCh:      make(chan error, 100),
 		cctx:       ctx,
 		cancel:     cancel,
 		codec:      &json.EventCodec{},
@@ -217,7 +217,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.
-func (b *EventBus) Errors() <-chan eh.EventBusError {
+func (b *EventBus) Errors() <-chan error {
 	return b.errCh
 }
 
@@ -249,7 +249,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 		} else if err != nil {
 			err = fmt.Errorf("could not fetch message: %w", err)
 			select {
-			case b.errCh <- eh.EventBusError{Err: err}:
+			case b.errCh <- &eh.EventBusError{Err: err}:
 			default:
 				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
 			}
@@ -258,8 +258,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 			continue
 		}
 
-		var noBusError eh.EventBusError
-		if err := handler(b.cctx, msg); err != noBusError {
+		if err := handler(b.cctx, msg); err != nil {
 			select {
 			case b.errCh <- err:
 			default:
@@ -272,7 +271,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 		if err := r.CommitMessages(context.Background(), msg); err != nil {
 			err = fmt.Errorf("could not commit message: %w", err)
 			select {
-			case b.errCh <- eh.EventBusError{Err: err}:
+			case b.errCh <- &eh.EventBusError{Err: err}:
 			default:
 				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
 			}
@@ -284,11 +283,11 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 	}
 }
 
-func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) eh.EventBusError {
-	return func(ctx context.Context, msg kafka.Message) eh.EventBusError {
+func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) *eh.EventBusError {
+	return func(ctx context.Context, msg kafka.Message) *eh.EventBusError {
 		event, ctx, err := b.codec.UnmarshalEvent(ctx, msg.Value)
 		if err != nil {
-			return eh.EventBusError{
+			return &eh.EventBusError{
 				Err: fmt.Errorf("could not unmarshal event: %w", err),
 				Ctx: ctx,
 			}
@@ -296,18 +295,18 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader
 
 		// Ignore non-matching events.
 		if !m.Match(event) {
-			return eh.EventBusError{}
+			return nil
 		}
 
 		// Handle the event if it did match.
 		if err := h.HandleEvent(ctx, event); err != nil {
-			return eh.EventBusError{
+			return &eh.EventBusError{
 				Err:   fmt.Errorf("could not handle event (%s): %w", h.HandlerType(), err),
 				Ctx:   ctx,
 				Event: event,
 			}
 		}
 
-		return eh.EventBusError{}
+		return nil
 	}
 }

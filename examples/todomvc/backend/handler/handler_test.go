@@ -224,7 +224,7 @@ func TestDelete(t *testing.T) {
 	cancelTimeout()
 
 	_, err = todoRepo.Find(ctx, id)
-	var repoErr eh.RepoError
+	repoErr := &eh.RepoError{}
 	if !errors.As(err, &repoErr) || !errors.Is(err, eh.ErrEntityNotFound) {
 		t.Error("there should be a not found error:", err)
 	}

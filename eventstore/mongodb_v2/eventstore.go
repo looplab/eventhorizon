@@ -49,6 +49,7 @@ func NewEventStore(uri, dbName string, options ...Option) (*EventStore, error) {
 	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
 	opts.SetReadConcern(readconcern.Majority())
 	opts.SetReadPreference(readpref.Primary())
+
 	client, err := mongo.Connect(context.TODO(), opts)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to DB: %w", err)
@@ -113,6 +114,7 @@ type Option func(*EventStore) error
 func WithEventHandler(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
 		s.eventHandler = h
+
 		return nil
 	}
 }
@@ -120,27 +122,51 @@ func WithEventHandler(h eh.EventHandler) Option {
 // Save implements the Save method of the eventhorizon.EventStore interface.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
-		return eh.EventStoreError{
-			Err: eh.ErrNoEventsToAppend,
+		return &eh.EventStoreError{
+			Err: fmt.Errorf("no events"),
+			Op:  eh.EventStoreOpSave,
 		}
 	}
 
+	dbEvents := make([]interface{}, len(events))
+	id := events[0].AggregateID()
+	at := events[0].AggregateType()
+
 	// Build all event records, with incrementing versions starting from the
 	// original aggregate version.
-	dbEvents := make([]interface{}, len(events))
-	aggregateID := events[0].AggregateID()
 	for i, event := range events {
 		// Only accept events belonging to the same aggregate.
-		if event.AggregateID() != aggregateID {
-			return eh.EventStoreError{
-				Err: eh.ErrInvalidEvent,
+		if event.AggregateID() != id {
+			return &eh.EventStoreError{
+				Err:              fmt.Errorf("event has different aggregate ID"),
+				Op:               eh.EventStoreOpSave,
+				AggregateType:    at,
+				AggregateID:      id,
+				AggregateVersion: originalVersion,
+				Events:           events,
+			}
+		}
+
+		if event.AggregateType() != at {
+			return &eh.EventStoreError{
+				Err:              fmt.Errorf("event has different aggregate type"),
+				Op:               eh.EventStoreOpSave,
+				AggregateType:    at,
+				AggregateID:      id,
+				AggregateVersion: originalVersion,
+				Events:           events,
 			}
 		}
 
 		// Only accept events that apply to the correct aggregate version.
 		if event.Version() != originalVersion+i+1 {
-			return eh.EventStoreError{
-				Err: eh.ErrIncorrectEventVersion,
+			return &eh.EventStoreError{
+				Err:              fmt.Errorf("invalid event version"),
+				Op:               eh.EventStoreOpSave,
+				AggregateType:    at,
+				AggregateID:      id,
+				AggregateVersion: originalVersion,
+				Events:           events,
 			}
 		}
 
@@ -149,14 +175,19 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		if err != nil {
 			return err
 		}
+
 		dbEvents[i] = e
 	}
 
 	sess, err := s.client.StartSession(nil)
 	if err != nil {
-		return eh.EventStoreError{
-			Err:     eh.ErrCouldNotSaveEvents,
-			BaseErr: err,
+		return &eh.EventStoreError{
+			Err:              fmt.Errorf("could not start transaction: %w", err),
+			Op:               eh.EventStoreOpSave,
+			AggregateType:    at,
+			AggregateID:      id,
+			AggregateVersion: originalVersion,
+			Events:           events,
 		}
 	}
 	defer sess.EndSession(ctx)
@@ -181,7 +212,11 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		// This natively prevents duplicate events to be written.
 		var strm *stream
 		for i, e := range dbEvents {
-			event := e.(*evt)
+			event, ok := e.(*evt)
+			if !ok {
+				return nil, fmt.Errorf("event is of incorrect type %T", e)
+			}
+
 			event.Position = allStream.Position + i + 1
 			// Also store the position in the event metadata.
 			event.Metadata["position"] = event.Position
@@ -207,14 +242,20 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		// Check that all inserted events got the requested ID (position),
 		// instead of a generated ID by MongoDB.
 		for _, e := range dbEvents {
-			event := e.(*evt)
+			event, ok := e.(*evt)
+			if !ok {
+				return nil, fmt.Errorf("event is of incorrect type %T", e)
+			}
+
 			found := false
 			for _, id := range insert.InsertedIDs {
 				if pos, ok := id.(int32); ok && event.Position == int(pos) {
 					found = true
+
 					break
 				}
 			}
+
 			if !found {
 				return nil, fmt.Errorf("inserted event %s at pos %d not found",
 					event.AggregateID, event.Position)
@@ -244,9 +285,13 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 		return nil, nil
 	}); err != nil {
-		return eh.EventStoreError{
-			Err:     eh.ErrCouldNotSaveEvents,
-			BaseErr: err,
+		return &eh.EventStoreError{
+			Err:              err,
+			Op:               eh.EventStoreOpSave,
+			AggregateType:    at,
+			AggregateID:      id,
+			AggregateVersion: originalVersion,
+			Events:           events,
 		}
 	}
 
@@ -254,7 +299,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	if s.eventHandler != nil {
 		for _, e := range events {
 			if err := s.eventHandler.HandleEvent(ctx, e); err != nil {
-				return eh.CouldNotHandleEventError{
+				return &eh.EventHandlerError{
 					Err:   err,
 					Event: e,
 				}
@@ -269,17 +314,23 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
 	cursor, err := s.events.Find(ctx, bson.M{"aggregate_id": id})
 	if err != nil {
-		return nil, eh.EventStoreError{
-			Err: fmt.Errorf("could not find event: %w", err),
+		return nil, &eh.EventStoreError{
+			Err:         fmt.Errorf("could not find event: %w", err),
+			Op:          eh.EventStoreOpLoad,
+			AggregateID: id,
 		}
 	}
 
 	var events []eh.Event
+
 	for cursor.Next(ctx) {
 		var e evt
 		if err := cursor.Decode(&e); err != nil {
-			return nil, eh.EventStoreError{
-				Err: fmt.Errorf("could not decode event: %w", err),
+			return nil, &eh.EventStoreError{
+				Err:         fmt.Errorf("could not decode event: %w", err),
+				Op:          eh.EventStoreOpLoad,
+				AggregateID: id,
+				Events:      events,
 			}
 		}
 
@@ -287,15 +338,27 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 		if len(e.RawData) > 0 {
 			var err error
 			if e.data, err = eh.CreateEventData(e.EventType); err != nil {
-				return nil, eh.EventStoreError{
-					Err: fmt.Errorf("could not create event data: %w", err),
+				return nil, &eh.EventStoreError{
+					Err:              fmt.Errorf("could not create event data: %w", err),
+					Op:               eh.EventStoreOpLoad,
+					AggregateType:    e.AggregateType,
+					AggregateID:      id,
+					AggregateVersion: e.Version,
+					Events:           events,
 				}
 			}
+
 			if err := bson.Unmarshal(e.RawData, e.data); err != nil {
-				return nil, eh.EventStoreError{
-					Err: fmt.Errorf("could not unmarshal event data: %w", err),
+				return nil, &eh.EventStoreError{
+					Err:              fmt.Errorf("could not unmarshal event data: %w", err),
+					Op:               eh.EventStoreOpLoad,
+					AggregateType:    e.AggregateType,
+					AggregateID:      id,
+					AggregateVersion: e.Version,
+					Events:           events,
 				}
 			}
+
 			e.RawData = nil
 		}
 
@@ -311,6 +374,14 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 			eh.WithMetadata(e.Metadata),
 		)
 		events = append(events, event)
+	}
+
+	if len(events) == 0 {
+		return nil, &eh.EventStoreError{
+			Err:         eh.ErrAggregateNotFound,
+			Op:          eh.EventStoreOpLoad,
+			AggregateID: id,
+		}
 	}
 
 	return events, nil
@@ -362,9 +433,10 @@ func newEvt(ctx context.Context, event eh.Event) (*evt, error) {
 	// Marshal event data if there is any.
 	if event.Data() != nil {
 		var err error
+
 		e.RawData, err = bson.Marshal(event.Data())
 		if err != nil {
-			return nil, eh.EventStoreError{
+			return nil, &eh.EventStoreError{
 				Err: fmt.Errorf("could not marshal event data: %w", err),
 			}
 		}

@@ -101,8 +101,8 @@ func extraRepoTests(t *testing.T, r *Repo) {
 	result, err = r.FindCustom(ctx, func(ctx context.Context, c *mongo.Collection) (*mongo.Cursor, error) {
 		return nil, nil
 	})
-	var repoErr eh.RepoError
-	if !errors.As(err, &repoErr) || !errors.Is(err, ErrInvalidQuery) {
+	repoErr := &eh.RepoError{}
+	if !errors.As(err, &repoErr) || repoErr.Err.Error() != "no cursor" {
 		t.Error("there should be a invalid query error:", err)
 	}
 
@@ -116,7 +116,8 @@ func extraRepoTests(t *testing.T, r *Repo) {
 		// Be sure to return nil to not execute the query again in FindCustom.
 		return nil, nil
 	})
-	if !errors.As(err, &repoErr) || !errors.Is(err, ErrInvalidQuery) {
+	repoErr = &eh.RepoError{}
+	if !errors.As(err, &repoErr) || repoErr.Err.Error() != "no cursor" {
 		t.Error("there should be a invalid query error:", err)
 	}
 	if count != 2 {

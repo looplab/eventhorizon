@@ -43,7 +43,12 @@ func (t Type) String() string {
 	return string(t)
 }
 
-var ErrIncorrectProjectedEntityVersion = fmt.Errorf("incorrect projected entity version")
+var (
+	// ErrModelNotSet is when a model factory is not set on the EventHandler.
+	ErrModelNotSet = errors.New("model not set")
+	// Returned if the model has not incremented its version as predicted.
+	ErrIncorrectProjectedEntityVersion = errors.New("incorrect projected entity version")
+)
 
 // Error is an error in the projector.
 type Error struct {
@@ -51,30 +56,44 @@ type Error struct {
 	Err error
 	// Projector is the projector where the error happened.
 	Projector string
-	// EventVersion is the version of the event.
-	EventVersion int
+	// Event is the event being projected.
+	Event eh.Event
+	// EntityID of related operation.
+	EntityID uuid.UUID
 	// EntityVersion is the version of the entity.
 	EntityVersion int
 }
 
 // Error implements the Error method of the errors.Error interface.
-func (e Error) Error() string {
-	return fmt.Sprintf("%s: %s, event: v%d, entity: v%d",
-		e.Projector, e.Err, e.EventVersion, e.EntityVersion)
+func (e *Error) Error() string {
+	str := "projector '" + e.Projector + "': "
+
+	if e.Err != nil {
+		str += e.Err.Error()
+	} else {
+		str += "unknown error"
+	}
+
+	if e.EntityID != uuid.Nil {
+		str += fmt.Sprintf(", Entity(%s, v%d)", e.EntityID, e.EntityVersion)
+	}
+
+	if e.Event != nil {
+		str += ", " + e.Event.String()
+	}
+
+	return str
 }
 
 // Unwrap implements the errors.Unwrap method.
-func (e Error) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.Err
 }
 
 // Cause implements the github.com/pkg/errors Unwrap method.
-func (e Error) Cause() error {
+func (e *Error) Cause() error {
 	return e.Unwrap()
 }
-
-// ErrModelNotSet is when a model factory is not set on the EventHandler.
-var ErrModelNotSet = errors.New("model not set")
 
 // EventHandler is a CQRS projection handler to run a Projector implementation.
 type EventHandler struct {
@@ -170,14 +189,17 @@ retryOnce:
 		}
 	}
 
+	id := h.entityLookupFn(event)
+
 	// Get or create the model.
-	entity, err := h.repo.Find(findCtx, h.entityLookupFn(event))
+	entity, err := h.repo.Find(findCtx, id)
 	if errors.Is(err, eh.ErrEntityNotFound) {
 		if h.factoryFn == nil {
-			return Error{
-				Err:          ErrModelNotSet,
-				Projector:    h.projector.ProjectorType().String(),
-				EventVersion: event.Version(),
+			return &Error{
+				Err:       ErrModelNotSet,
+				Projector: h.projector.ProjectorType().String(),
+				Event:     event,
+				EntityID:  id,
 			}
 		}
 		entity = h.factoryFn()
@@ -188,16 +210,18 @@ retryOnce:
 			goto retryOnce
 		}
 
-		return Error{
-			Err:          fmt.Errorf("could not load entity: %w", err),
-			Projector:    h.projector.ProjectorType().String(),
-			EventVersion: event.Version(),
+		return &Error{
+			Err:       fmt.Errorf("could not load entity with correct version: %w", err),
+			Projector: h.projector.ProjectorType().String(),
+			Event:     event,
+			EntityID:  id,
 		}
 	} else if err != nil {
-		return Error{
-			Err:          err,
-			Projector:    h.projector.ProjectorType().String(),
-			EventVersion: event.Version(),
+		return &Error{
+			Err:       fmt.Errorf("could not load entity: %w", err),
+			Projector: h.projector.ProjectorType().String(),
+			Event:     event,
+			EntityID:  id,
 		}
 	}
 
@@ -219,10 +243,11 @@ retryOnce:
 				goto retryOnce
 			}
 
-			return Error{
+			return &Error{
 				Err:           eh.ErrIncorrectEntityVersion,
 				Projector:     h.projector.ProjectorType().String(),
-				EventVersion:  event.Version(),
+				Event:         event,
+				EntityID:      id,
 				EntityVersion: entityVersion,
 			}
 		}
@@ -231,10 +256,11 @@ retryOnce:
 	// Run the projection, which will possibly increment the version.
 	newEntity, err := h.projector.Project(ctx, event, entity)
 	if err != nil {
-		return Error{
-			Err:           err,
+		return &Error{
+			Err:           fmt.Errorf("could not project: %w", err),
 			Projector:     h.projector.ProjectorType().String(),
-			EventVersion:  event.Version(),
+			Event:         event,
+			EntityID:      id,
 			EntityVersion: entityVersion,
 		}
 	}
@@ -243,10 +269,11 @@ retryOnce:
 	if newEntity, ok := newEntity.(eh.Versionable); ok {
 		entityVersion = newEntity.AggregateVersion()
 		if newEntity.AggregateVersion() != event.Version() {
-			return Error{
+			return &Error{
 				Err:           ErrIncorrectProjectedEntityVersion,
 				Projector:     h.projector.ProjectorType().String(),
-				EventVersion:  event.Version(),
+				Event:         event,
+				EntityID:      id,
 				EntityVersion: entityVersion,
 			}
 		}
@@ -254,28 +281,31 @@ retryOnce:
 
 	// Update or remove the model.
 	if newEntity != nil {
-		if newEntity.EntityID() != h.entityLookupFn(event) {
-			return Error{
-				Err:           eh.ErrMissingEntityID,
+		if newEntity.EntityID() != id {
+			return &Error{
+				Err:           fmt.Errorf("incorrect entity ID after projection"),
 				Projector:     h.projector.ProjectorType().String(),
-				EventVersion:  event.Version(),
+				Event:         event,
+				EntityID:      id,
 				EntityVersion: entityVersion,
 			}
 		}
 		if err := h.repo.Save(ctx, newEntity); err != nil {
-			return Error{
-				Err:           err,
+			return &Error{
+				Err:           fmt.Errorf("could not save: %w", err),
 				Projector:     h.projector.ProjectorType().String(),
-				EventVersion:  event.Version(),
+				Event:         event,
+				EntityID:      id,
 				EntityVersion: entityVersion,
 			}
 		}
 	} else {
-		if err := h.repo.Remove(ctx, h.entityLookupFn(event)); err != nil {
-			return Error{
-				Err:           err,
+		if err := h.repo.Remove(ctx, id); err != nil {
+			return &Error{
+				Err:           fmt.Errorf("could not remove: %w", err),
 				Projector:     h.projector.ProjectorType().String(),
-				EventVersion:  event.Version(),
+				Event:         event,
+				EntityID:      id,
 				EntityVersion: entityVersion,
 			}
 		}

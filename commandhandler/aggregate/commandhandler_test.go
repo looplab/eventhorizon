@@ -99,7 +99,7 @@ func TestCommandHandler_ErrorInHandler(t *testing.T) {
 		Content: "command1",
 	}
 	err := h.HandleCommand(context.Background(), cmd)
-	var aggregateErr eh.AggregateError
+	aggregateErr := &eh.AggregateError{}
 	if !errors.As(err, &aggregateErr) || !errors.Is(err, commandErr) {
 		t.Error("there should be a command error:", err)
 	}

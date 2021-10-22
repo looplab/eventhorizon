@@ -23,8 +23,8 @@ import (
 
 // NewMiddleware returns a new async handling middleware that returns any errors
 // on a error channel.
-func NewMiddleware() (eh.EventHandlerMiddleware, chan Error) {
-	errCh := make(chan Error, 20)
+func NewMiddleware() (eh.EventHandlerMiddleware, chan *Error) {
+	errCh := make(chan *Error, 20)
 	return eh.EventHandlerMiddleware(func(h eh.EventHandler) eh.EventHandler {
 		return &eventHandler{h, errCh}
 	}), errCh
@@ -32,7 +32,7 @@ func NewMiddleware() (eh.EventHandlerMiddleware, chan Error) {
 
 type eventHandler struct {
 	eh.EventHandler
-	errCh chan Error
+	errCh chan *Error
 }
 
 // HandleEvent implements the HandleEvent method of the EventHandler.
@@ -40,7 +40,7 @@ func (h *eventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	go func() {
 		if err := h.EventHandler.HandleEvent(ctx, event); err != nil {
 			// Always try to deliver errors.
-			h.errCh <- Error{err, ctx, event}
+			h.errCh <- &Error{err, ctx, event}
 		}
 	}()
 	return nil
@@ -57,6 +57,16 @@ type Error struct {
 }
 
 // Error implements the Error method of the error interface.
-func (e Error) Error() string {
+func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.Event.String(), e.Err.Error())
+}
+
+// Unwrap implements the errors.Unwrap method.
+func (e *Error) Unwrap() error {
+	return e.Err
+}
+
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e *Error) Cause() error {
+	return e.Unwrap()
 }

@@ -52,7 +52,7 @@ func TestMiddleware_WithValidationError(t *testing.T) {
 	e := errors.New("a validation error")
 	c := CommandWithValidation(cmd, func() error { return e })
 	err := h.HandleCommand(context.Background(), c)
-	var validateErr Error
+	validateErr := &Error{}
 	if !errors.As(err, &validateErr) {
 		t.Error("there should be a validate error:", err)
 	}

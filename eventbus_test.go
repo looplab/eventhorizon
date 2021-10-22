@@ -30,33 +30,33 @@ func TestEventBusError(t *testing.T) {
 		{
 			"both non-nil",
 			errors.New("some error"),
-			NewEvent("some event type", nil, time.Time{}),
-			"some error: (some event type@0)",
+			NewEvent("SomeEventType", nil, time.Time{}),
+			"event bus: some error [SomeEventType]",
 		},
 		{
 			"error nil",
 			nil,
-			NewEvent("some event type", nil, time.Time{}),
-			"%!s(<nil>): (some event type@0)",
+			NewEvent("SomeEventType", nil, time.Time{}),
+			"event bus: unknown error [SomeEventType]",
 		},
 		{
 			"event nil",
 			errors.New("some error"),
 			nil,
-			"some error: (%!s(<nil>))",
+			"event bus: some error",
 		},
 
 		{
 			"both nil",
 			nil,
 			nil,
-			"%!s(<nil>): (%!s(<nil>))",
+			"event bus: unknown error",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			busError := EventBusError{
+			busError := &EventBusError{
 				Err:   tc.err,
 				Event: tc.event,
 			}

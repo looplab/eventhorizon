@@ -43,7 +43,7 @@ func NewMiddleware() eh.CommandHandlerMiddleware {
 			// Call the validation method if it exists.
 			if c, ok := cmd.(Command); ok {
 				if err := c.Validate(); err != nil {
-					return Error{err}
+					return &Error{err}
 				}
 			}
 
@@ -59,17 +59,17 @@ type Error struct {
 }
 
 // Error implements the Error method of the error interface.
-func (e Error) Error() string {
+func (e *Error) Error() string {
 	return fmt.Sprintf("invalid command: %s", e.err.Error())
 }
 
 // Unwrap implements the errors.Unwrap method.
-func (e Error) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.err
 }
 
 // Cause implements the github.com/pkg/errors Unwrap method.
-func (e Error) Cause() error {
+func (e *Error) Cause() error {
 	return e.Unwrap()
 }
 

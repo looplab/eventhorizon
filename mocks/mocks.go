@@ -364,8 +364,8 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.
-func (b *EventBus) Errors() <-chan eh.EventBusError {
-	return make(chan eh.EventBusError)
+func (b *EventBus) Errors() <-chan error {
+	return make(chan error)
 }
 
 // Close implements the Close method of the eventhorizon.EventBus interface.

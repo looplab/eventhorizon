@@ -190,7 +190,13 @@ func (e event) Metadata() map[string]interface{} {
 
 // String implements the String method of the Event interface.
 func (e event) String() string {
-	return fmt.Sprintf("%s@%d", e.eventType, e.version)
+	str := string(e.eventType)
+
+	if e.aggregateID != uuid.Nil && e.version != 0 {
+		str += fmt.Sprintf("(%s, v%d)", e.aggregateID, e.version)
+	}
+
+	return str
 }
 
 // ErrEventDataNotRegistered is when no event data factory was registered.

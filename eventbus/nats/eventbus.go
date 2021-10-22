@@ -38,7 +38,7 @@ type EventBus struct {
 	connOpts     []nats.Option
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
-	errCh        chan eh.EventBusError
+	errCh        chan error
 	cctx         context.Context
 	cancel       context.CancelFunc
 	wg           sync.WaitGroup
@@ -53,7 +53,7 @@ func NewEventBus(url, appID string, options ...Option) (*EventBus, error) {
 		appID:      appID,
 		streamName: appID + "_events",
 		registered: map[eh.EventHandlerType]struct{}{},
-		errCh:      make(chan eh.EventBusError, 100),
+		errCh:      make(chan error, 100),
 		cctx:       ctx,
 		cancel:     cancel,
 		codec:      &json.EventCodec{},
@@ -179,7 +179,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.
-func (b *EventBus) Errors() <-chan eh.EventBusError {
+func (b *EventBus) Errors() <-chan error {
 	return b.errCh
 }
 
@@ -215,7 +215,7 @@ func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHan
 		if err != nil {
 			err = fmt.Errorf("could not unmarshal event: %w", err)
 			select {
-			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx}:
+			case b.errCh <- &eh.EventBusError{Err: err, Ctx: ctx}:
 			default:
 				log.Printf("eventhorizon: missed error in NATS event bus: %s", err)
 			}
@@ -233,7 +233,7 @@ func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHan
 		if err := h.HandleEvent(ctx, event); err != nil {
 			err = fmt.Errorf("could not handle event (%s): %w", h.HandlerType(), err)
 			select {
-			case b.errCh <- eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
+			case b.errCh <- &eh.EventBusError{Err: err, Ctx: ctx, Event: event}:
 			default:
 				log.Printf("eventhorizon: missed error in NATS event bus: %s", err)
 			}

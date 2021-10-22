@@ -34,18 +34,8 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-var (
-	// ErrCouldNotDialDB is when the database could not be dialed.
-	ErrCouldNotDialDB = errors.New("could not dial database")
-	// ErrNoDBClient is when no database client is set.
-	ErrNoDBClient = errors.New("no database client")
-	// ErrCouldNotClearDB is when the database could not be cleared.
-	ErrCouldNotClearDB = errors.New("could not clear database")
-	// ErrModelNotSet is when an model factory is not set on the Repo.
-	ErrModelNotSet = errors.New("model not set")
-	// ErrInvalidQuery is when a query was not returned from the callback to FindCustom.
-	ErrInvalidQuery = errors.New("invalid query")
-)
+// ErrModelNotSet is when an model factory is not set on the Repo.
+var ErrModelNotSet = errors.New("model not set")
 
 // Repo implements an MongoDB repository for entities.
 type Repo struct {
@@ -62,7 +52,7 @@ func NewRepo(uri, db, collection string, options ...Option) (*Repo, error) {
 	opts.SetReadPreference(readpref.Primary())
 	client, err := mongo.Connect(context.TODO(), opts)
 	if err != nil {
-		return nil, ErrCouldNotDialDB
+		return nil, fmt.Errorf("could not connect to DB: %w", err)
 	}
 
 	return NewRepoWithClient(client, db, collection, options...)
@@ -71,7 +61,7 @@ func NewRepo(uri, db, collection string, options ...Option) (*Repo, error) {
 // NewRepoWithClient creates a new Repo with a client.
 func NewRepoWithClient(client *mongo.Client, db, collection string, options ...Option) (*Repo, error) {
 	if client == nil {
-		return nil, ErrNoDBClient
+		return nil, fmt.Errorf("missing DB client")
 	}
 
 	r := &Repo{
@@ -115,21 +105,22 @@ func IntoRepo(ctx context.Context, repo eh.ReadRepo) *Repo {
 // Find implements the Find method of the eventhorizon.ReadRepo interface.
 func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 	if r.newEntity == nil {
-		return nil, eh.RepoError{
-			Err: ErrModelNotSet,
+		return nil, &eh.RepoError{
+			Err:      ErrModelNotSet,
+			Op:       eh.RepoOpFind,
+			EntityID: id,
 		}
 	}
 
 	entity := r.newEntity()
-	if err := r.entities.FindOne(ctx, bson.M{"_id": id.String()}).Decode(entity); err == mongo.ErrNoDocuments {
-		return nil, eh.RepoError{
-			Err:     eh.ErrEntityNotFound,
-			BaseErr: err,
+	if err := r.entities.FindOne(ctx, bson.M{"_id": id.String()}).Decode(entity); err != nil {
+		if err == mongo.ErrNoDocuments {
+			err = eh.ErrEntityNotFound
 		}
-	} else if err != nil {
-		return nil, eh.RepoError{
-			Err:     eh.ErrCouldNotLoadEntity,
-			BaseErr: err,
+		return nil, &eh.RepoError{
+			Err:      err,
+			Op:       eh.RepoOpFind,
+			EntityID: id,
 		}
 	}
 
@@ -139,16 +130,17 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 // FindAll implements the FindAll method of the eventhorizon.ReadRepo interface.
 func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	if r.newEntity == nil {
-		return nil, eh.RepoError{
+		return nil, &eh.RepoError{
 			Err: ErrModelNotSet,
+			Op:  eh.RepoOpFindAll,
 		}
 	}
 
 	cursor, err := r.entities.Find(ctx, bson.M{})
 	if err != nil {
-		return nil, eh.RepoError{
-			Err:     eh.ErrCouldNotLoadEntity,
-			BaseErr: err,
+		return nil, &eh.RepoError{
+			Err: fmt.Errorf("could not find: %w", err),
+			Op:  eh.RepoOpFindAll,
 		}
 	}
 
@@ -156,18 +148,18 @@ func (r *Repo) FindAll(ctx context.Context) ([]eh.Entity, error) {
 	for cursor.Next(ctx) {
 		entity := r.newEntity()
 		if err := cursor.Decode(entity); err != nil {
-			return nil, eh.RepoError{
-				Err:     eh.ErrCouldNotLoadEntity,
-				BaseErr: err,
+			return nil, &eh.RepoError{
+				Err: fmt.Errorf("could not unmarshal: %w", err),
+				Op:  eh.RepoOpFindAll,
 			}
 		}
 		result = append(result, entity)
 	}
 
 	if err := cursor.Close(ctx); err != nil {
-		return nil, eh.RepoError{
-			Err:     eh.ErrCouldNotLoadEntity,
-			BaseErr: err,
+		return nil, &eh.RepoError{
+			Err: fmt.Errorf("could not close cursor: %w", err),
+			Op:  eh.RepoOpFindAll,
 		}
 	}
 
@@ -207,21 +199,23 @@ func (i *iter) Close(ctx context.Context) error {
 // FindCustomIter returns a mgo cursor you can use to stream results of very large datasets
 func (r *Repo) FindCustomIter(ctx context.Context, f func(context.Context, *mongo.Collection) (*mongo.Cursor, error)) (eh.Iter, error) {
 	if r.newEntity == nil {
-		return nil, eh.RepoError{
+		return nil, &eh.RepoError{
 			Err: ErrModelNotSet,
+			Op:  eh.RepoOpFindQuery,
 		}
 	}
 
 	cursor, err := f(ctx, r.entities)
 	if err != nil {
-		return nil, eh.RepoError{
-			Err:     ErrInvalidQuery,
-			BaseErr: err,
+		return nil, &eh.RepoError{
+			Err: fmt.Errorf("could not find: %w", err),
+			Op:  eh.RepoOpFindQuery,
 		}
 	}
 	if cursor == nil {
-		return nil, eh.RepoError{
-			Err: ErrInvalidQuery,
+		return nil, &eh.RepoError{
+			Err: fmt.Errorf("no cursor"),
+			Op:  eh.RepoOpFindQuery,
 		}
 	}
 
@@ -238,21 +232,23 @@ func (r *Repo) FindCustomIter(ctx context.Context, f func(context.Context, *mong
 // query from the callback.
 func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Collection) (*mongo.Cursor, error)) ([]interface{}, error) {
 	if r.newEntity == nil {
-		return nil, eh.RepoError{
+		return nil, &eh.RepoError{
 			Err: ErrModelNotSet,
+			Op:  eh.RepoOpFindQuery,
 		}
 	}
 
 	cursor, err := f(ctx, r.entities)
 	if err != nil {
-		return nil, eh.RepoError{
-			Err:     ErrInvalidQuery,
-			BaseErr: err,
+		return nil, &eh.RepoError{
+			Err: fmt.Errorf("could not find: %w", err),
+			Op:  eh.RepoOpFindQuery,
 		}
 	}
 	if cursor == nil {
-		return nil, eh.RepoError{
-			Err: ErrInvalidQuery,
+		return nil, &eh.RepoError{
+			Err: fmt.Errorf("no cursor"),
+			Op:  eh.RepoOpFindQuery,
 		}
 	}
 
@@ -260,18 +256,18 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 	entity := r.newEntity()
 	for cursor.Next(ctx) {
 		if err := cursor.Decode(entity); err != nil {
-			return nil, eh.RepoError{
-				Err:     eh.ErrCouldNotLoadEntity,
-				BaseErr: err,
+			return nil, &eh.RepoError{
+				Err: fmt.Errorf("could not unmarshal: %w", err),
+				Op:  eh.RepoOpFindQuery,
 			}
 		}
 		result = append(result, entity)
 		entity = r.newEntity()
 	}
 	if err := cursor.Close(ctx); err != nil {
-		return nil, eh.RepoError{
-			Err:     eh.ErrCouldNotLoadEntity,
-			BaseErr: err,
+		return nil, &eh.RepoError{
+			Err: fmt.Errorf("could not close cursor: %w", err),
+			Op:  eh.RepoOpFindQuery,
 		}
 	}
 
@@ -280,25 +276,27 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 
 // Save implements the Save method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
-	if entity.EntityID() == uuid.Nil {
-		return eh.RepoError{
-			Err:     eh.ErrCouldNotSaveEntity,
-			BaseErr: eh.ErrMissingEntityID,
+	id := entity.EntityID()
+	if id == uuid.Nil {
+		return &eh.RepoError{
+			Err: fmt.Errorf("missing entity ID"),
+			Op:  eh.RepoOpSave,
 		}
 	}
 
 	if _, err := r.entities.UpdateOne(ctx,
 		bson.M{
-			"_id": entity.EntityID().String(),
+			"_id": id.String(),
 		},
 		bson.M{
 			"$set": entity,
 		},
 		options.Update().SetUpsert(true),
 	); err != nil {
-		return eh.RepoError{
-			Err:     eh.ErrCouldNotSaveEntity,
-			BaseErr: err,
+		return &eh.RepoError{
+			Err:      fmt.Errorf("could not save/update: %w", err),
+			Op:       eh.RepoOpSave,
+			EntityID: id,
 		}
 	}
 	return nil
@@ -307,13 +305,16 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 // Remove implements the Remove method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 	if r, err := r.entities.DeleteOne(ctx, bson.M{"_id": id.String()}); err != nil {
-		return eh.RepoError{
-			Err:     eh.ErrCouldNotRemoveEntity,
-			BaseErr: err,
+		return &eh.RepoError{
+			Err:      err,
+			Op:       eh.RepoOpRemove,
+			EntityID: id,
 		}
 	} else if r.DeletedCount == 0 {
-		return eh.RepoError{
-			Err: eh.ErrEntityNotFound,
+		return &eh.RepoError{
+			Err:      eh.ErrEntityNotFound,
+			Op:       eh.RepoOpRemove,
+			EntityID: id,
 		}
 	}
 
@@ -323,7 +324,7 @@ func (r *Repo) Remove(ctx context.Context, id uuid.UUID) error {
 // Collection lets the function do custom actions on the collection.
 func (r *Repo) Collection(ctx context.Context, f func(context.Context, *mongo.Collection) error) error {
 	if err := f(ctx, r.entities); err != nil {
-		return eh.RepoError{
+		return &eh.RepoError{
 			Err: err,
 		}
 	}
@@ -348,9 +349,9 @@ func (r *Repo) SetEntityFactory(f func() eh.Entity) {
 // Clear clears the read model database.
 func (r *Repo) Clear(ctx context.Context) error {
 	if err := r.entities.Drop(ctx); err != nil {
-		return eh.RepoError{
-			Err:     ErrCouldNotClearDB,
-			BaseErr: err,
+		return &eh.RepoError{
+			Err: fmt.Errorf("could not drop collection: %w", err),
+			Op:  eh.RepoOpClear,
 		}
 	}
 	return nil
