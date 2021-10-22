@@ -103,6 +103,26 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	}
 	savedEvents = append(savedEvents, event4, event5, event6)
 
+	// Save event for different aggregate IDs.
+	eventSameAggID := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 7))
+	eventOtherAggID := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
+		eh.ForAggregate(mocks.AggregateType, uuid.New(), 8))
+	err = store.Save(ctx, []eh.Event{eventSameAggID, eventOtherAggID}, 6)
+	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "event has different aggregate ID" {
+		t.Error("there should be a event store error:", err)
+	}
+
+	// Save event of different aggregate types.
+	eventSameAggType := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 7))
+	eventOtherAggType := eh.NewEvent(mocks.EventOtherType, nil, timestamp,
+		eh.ForAggregate(eh.AggregateType("OtherAggregate"), id, 8))
+	err = store.Save(ctx, []eh.Event{eventSameAggType, eventOtherAggType}, 6)
+	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "event has different aggregate type" {
+		t.Error("there should be a event store error:", err)
+	}
+
 	// Save event for another aggregate.
 	id2 := uuid.New()
 	event7 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event7"}, timestamp,
