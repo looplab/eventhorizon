@@ -231,7 +231,19 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, groupName string
 
 func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, groupName string) func(ctx context.Context, msg *redis.XMessage) {
 	return func(ctx context.Context, msg *redis.XMessage) {
-		data := msg.Values[dataKey].(string)
+		data, ok := msg.Values[dataKey].(string)
+		if !ok {
+			err := fmt.Errorf("event data is of incorrect type %T", msg.Values[dataKey])
+			select {
+			case b.errCh <- &eh.EventBusError{Err: err, Ctx: ctx}:
+			default:
+				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
+			}
+
+			// TODO: Nack if possible.
+			return
+		}
+
 		event, ctx, err := b.codec.UnmarshalEvent(ctx, []byte(data))
 		if err != nil {
 			err = fmt.Errorf("could not unmarshal event: %w", err)
