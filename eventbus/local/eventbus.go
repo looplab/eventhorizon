@@ -34,7 +34,7 @@ type EventBus struct {
 	group        *Group
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
-	errCh        chan *eh.EventBusError
+	errCh        chan error
 	cctx         context.Context
 	cancel       context.CancelFunc
 	wg           sync.WaitGroup
@@ -48,7 +48,7 @@ func NewEventBus(options ...Option) *EventBus {
 	b := &EventBus{
 		group:      NewGroup(),
 		registered: map[eh.EventHandlerType]struct{}{},
-		errCh:      make(chan *eh.EventBusError, 100),
+		errCh:      make(chan error, 100),
 		cctx:       ctx,
 		cancel:     cancel,
 		codec:      &json.EventCodec{},
@@ -127,7 +127,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.
-func (b *EventBus) Errors() <-chan *eh.EventBusError {
+func (b *EventBus) Errors() <-chan error {
 	return b.errCh
 }
 

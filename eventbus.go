@@ -31,7 +31,7 @@ type EventBus interface {
 	AddHandler(context.Context, EventMatcher, EventHandler) error
 
 	// Errors returns an error channel where async handling errors are sent.
-	Errors() <-chan *EventBusError
+	Errors() <-chan error
 
 	// Close closes the EventBus and waits for all handlers to finish.
 	Close() error

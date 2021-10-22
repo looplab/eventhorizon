@@ -260,7 +260,7 @@ func checkBusErrors(t *testing.T, bus eh.EventBus) {
 	for {
 		select {
 		case err := <-bus.Errors():
-			if err.Err != nil {
+			if err != nil {
 				t.Error("there should be no previous error:", err)
 			}
 		default:
