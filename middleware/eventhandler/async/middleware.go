@@ -60,3 +60,13 @@ type Error struct {
 func (e Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.Event.String(), e.Err.Error())
 }
+
+// Unwrap implements the errors.Unwrap method.
+func (e Error) Unwrap() error {
+	return e.Err
+}
+
+// Cause implements the github.com/pkg/errors Unwrap method.
+func (e Error) Cause() error {
+	return e.Unwrap()
+}
