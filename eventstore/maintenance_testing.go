@@ -68,7 +68,7 @@ func MaintenanceAcceptanceTest(t *testing.T, store eh.EventStore, storeMaintenan
 	eventStoreErr := &eh.EventStoreError{}
 
 	err = storeMaintenance.Replace(ctx, eventWithInvalidVersion)
-	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "could not find original event" {
+	if !errors.As(err, &eventStoreErr) || !errors.Is(err, eh.ErrEventNotFound) {
 		t.Error("there should be a event store error:", err)
 	}
 

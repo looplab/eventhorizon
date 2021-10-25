@@ -47,7 +47,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	eventStoreErr := &eh.EventStoreError{}
 
 	err := store.Save(ctx, []eh.Event{}, 0)
-	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "no events" {
+	if !errors.As(err, &eventStoreErr) || !errors.Is(err, eh.ErrMissingEvents) {
 		t.Error("there should be a event store error:", err)
 	}
 
@@ -68,10 +68,8 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	// }
 
 	// Try to save same event twice.
-	eventStoreErr = &eh.EventStoreError{}
-
 	err = store.Save(ctx, []eh.Event{event1}, 1)
-	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "invalid event version" {
+	if !errors.As(err, &eventStoreErr) || !errors.Is(err, eh.ErrIncorrectEventVersion) {
 		t.Error("there should be a event store error:", err)
 	}
 
@@ -121,7 +119,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 		eh.ForAggregate(mocks.AggregateType, uuid.New(), 8))
 
 	err = store.Save(ctx, []eh.Event{eventSameAggID, eventOtherAggID}, 6)
-	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "event has different aggregate ID" {
+	if !errors.As(err, &eventStoreErr) || !errors.Is(err, eh.ErrMismatchedEventAggregateIDs) {
 		t.Error("there should be a event store error:", err)
 	}
 
@@ -132,7 +130,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 		eh.ForAggregate(eh.AggregateType("OtherAggregate"), id, 8))
 
 	err = store.Save(ctx, []eh.Event{eventSameAggType, eventOtherAggType}, 6)
-	if !errors.As(err, &eventStoreErr) || eventStoreErr.Err.Error() != "event has different aggregate type" {
+	if !errors.As(err, &eventStoreErr) || !errors.Is(err, eh.ErrMismatchedEventAggregateTypes) {
 		t.Error("there should be a event store error:", err)
 	}
 
@@ -149,8 +147,6 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	savedEvents = append(savedEvents, event7)
 
 	// Load events for non-existing aggregate.
-	eventStoreErr = &eh.EventStoreError{}
-
 	events, err := store.Load(ctx, uuid.New())
 	if !errors.As(err, &eventStoreErr) || !errors.Is(err, eh.ErrAggregateNotFound) {
 		t.Error("there should be a not found error:", err)

@@ -123,7 +123,7 @@ func WithEventHandler(h eh.EventHandler) Option {
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
 		return &eh.EventStoreError{
-			Err: fmt.Errorf("no events"),
+			Err: eh.ErrMissingEvents,
 			Op:  eh.EventStoreOpSave,
 		}
 	}
@@ -138,7 +138,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		// Only accept events belonging to the same aggregate.
 		if event.AggregateID() != id {
 			return &eh.EventStoreError{
-				Err:              fmt.Errorf("event has different aggregate ID"),
+				Err:              eh.ErrMismatchedEventAggregateIDs,
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
 				AggregateID:      id,
@@ -149,7 +149,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 		if event.AggregateType() != at {
 			return &eh.EventStoreError{
-				Err:              fmt.Errorf("event has different aggregate type"),
+				Err:              eh.ErrMismatchedEventAggregateTypes,
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
 				AggregateID:      id,
@@ -161,7 +161,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		// Only accept events that apply to the correct aggregate version.
 		if event.Version() != originalVersion+i+1 {
 			return &eh.EventStoreError{
-				Err:              fmt.Errorf("invalid event version"),
+				Err:              eh.ErrIncorrectEventVersion,
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
 				AggregateID:      id,
@@ -285,7 +285,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			); err != nil {
 				return nil, fmt.Errorf("could not update stream: %w", err)
 			} else if r.MatchedCount == 0 {
-				return nil, fmt.Errorf("invalid original aggregate version, new version %d", originalVersion)
+				return nil, eh.ErrEventConflictFromOtherSave
 			}
 		}
 

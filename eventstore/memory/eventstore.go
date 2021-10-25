@@ -90,7 +90,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 
 	if len(events) == 0 {
 		return &eh.EventStoreError{
-			Err: fmt.Errorf("no events"),
+			Err: eh.ErrMissingEvents,
 			Op:  eh.EventStoreOpSave,
 		}
 	}
@@ -105,7 +105,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 		// Only accept events belonging to the same aggregate.
 		if event.AggregateID() != id {
 			return &eh.EventStoreError{
-				Err:              fmt.Errorf("event has different aggregate ID"),
+				Err:              eh.ErrMismatchedEventAggregateIDs,
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
 				AggregateID:      id,
@@ -116,7 +116,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 
 		if event.AggregateType() != at {
 			return &eh.EventStoreError{
-				Err:              fmt.Errorf("event has different aggregate type"),
+				Err:              eh.ErrMismatchedEventAggregateTypes,
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
 				AggregateID:      id,
@@ -128,7 +128,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 		// Only accept events that apply to the correct aggregate version.
 		if event.Version() != originalVersion+i+1 {
 			return &eh.EventStoreError{
-				Err:              fmt.Errorf("invalid event version"),
+				Err:              eh.ErrIncorrectEventVersion,
 				Op:               eh.EventStoreOpSave,
 				AggregateType:    at,
 				AggregateID:      id,
@@ -169,7 +169,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 		if aggregate, ok := s.db[id]; ok {
 			if aggregate.Version != originalVersion {
 				return &eh.EventStoreError{
-					Err:              fmt.Errorf("invalid original aggregate version, new version: %d", aggregate.Version),
+					Err:              eh.ErrEventConflictFromOtherSave,
 					Op:               eh.EventStoreOpSave,
 					AggregateType:    at,
 					AggregateID:      id,

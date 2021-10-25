@@ -65,7 +65,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 
 	if idx == -1 {
 		return &eh.EventStoreError{
-			Err:         fmt.Errorf("could not find original event"),
+			Err:         eh.ErrEventNotFound,
 			Op:          eh.EventStoreOpReplace,
 			AggregateID: id,
 			Events:      []eh.Event{event},
