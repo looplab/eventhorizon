@@ -270,18 +270,22 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 				return nil, fmt.Errorf("could not insert stream: %w", err)
 			}
 		} else {
-			if res := s.streams.FindOneAndUpdate(txCtx,
-				bson.M{"_id": strm.ID},
+			if r, err := s.streams.UpdateOne(txCtx,
+				bson.M{
+					"_id":     strm.ID,
+					"version": originalVersion,
+				},
 				bson.M{
 					"$set": bson.M{
 						"position":   strm.Position,
-						"version":    strm.Version,
 						"updated_at": strm.UpdatedAt,
 					},
+					"$inc": bson.M{"version": len(dbEvents)},
 				},
-				mongoOptions.FindOneAndUpdate().SetUpsert(true),
-			); res.Err() != nil {
-				return nil, fmt.Errorf("could not update stream: %w", res.Err())
+			); err != nil {
+				return nil, fmt.Errorf("could not update stream: %w", err)
+			} else if r.MatchedCount == 0 {
+				return nil, fmt.Errorf("invalid original aggregate version, new version %d", originalVersion)
 			}
 		}
 
