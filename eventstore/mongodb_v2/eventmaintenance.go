@@ -70,7 +70,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 		})
 		if res.Err() != nil {
 			if res.Err() == mongo.ErrNoDocuments {
-				return nil, fmt.Errorf("could not find original event")
+				return nil, eh.ErrEventNotFound
 			}
 
 			return nil, fmt.Errorf("could not find original event: %w", res.Err())

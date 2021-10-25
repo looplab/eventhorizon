@@ -80,7 +80,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 		}
 	} else if r.MatchedCount == 0 {
 		return &eh.EventStoreError{
-			Err:              fmt.Errorf("could not find original event"),
+			Err:              eh.ErrEventNotFound,
 			Op:               eh.EventStoreOpReplace,
 			AggregateType:    at,
 			AggregateID:      id,

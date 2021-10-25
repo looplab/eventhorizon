@@ -16,6 +16,7 @@ package eventhorizon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -33,6 +34,21 @@ type EventStore interface {
 	// Close closes the EventStore.
 	Close() error
 }
+
+var (
+	// Missing events for save operation.
+	ErrMissingEvents = errors.New("missing events")
+	// Events in the same save operation is for different aggregate IDs.
+	ErrMismatchedEventAggregateIDs = errors.New("mismatched event aggregate IDs")
+	// Events in the same save operation is for different aggregate types.
+	ErrMismatchedEventAggregateTypes = errors.New("mismatched event aggregate types")
+	// Events in the same operation have non-serial versions or is not matching the original version.
+	ErrIncorrectEventVersion = errors.New("incorrect event version")
+	// Other events has been saved for this aggregate since the operation started.
+	ErrEventConflictFromOtherSave = errors.New("event conflict from other save")
+	// No matching event could be found (for maintenance operations etc).
+	ErrEventNotFound = errors.New("event not found")
+)
 
 // EventStoreOperation is the operation done when an error happened.
 type EventStoreOperation string
