@@ -16,21 +16,37 @@ package scheduler
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
+	"os"
 	"reflect"
 	"testing"
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/codec/bson"
+	"github.com/looplab/eventhorizon/codec/json"
 	"github.com/looplab/eventhorizon/mocks"
+	"github.com/looplab/eventhorizon/repo/memory"
+	"github.com/looplab/eventhorizon/repo/mongodb"
 	"github.com/looplab/eventhorizon/uuid"
 )
 
+func init() {
+	eh.RegisterCommand(func() eh.Command { return &mocks.Command{} })
+}
+
 func TestMiddleware_Immediate(t *testing.T) {
+	repo := &mocks.Repo{}
+	m, s := NewMiddleware(repo, &json.CommandCodec{})
+
+	s.Start()
+
 	inner := &mocks.CommandHandler{}
-	m, _ := NewMiddleware()
+
 	h := eh.UseCommandHandlerMiddleware(inner, m)
-	cmd := mocks.Command{
+	cmd := &mocks.Command{
 		ID:      uuid.New(),
 		Content: "content",
 	}
@@ -42,13 +58,21 @@ func TestMiddleware_Immediate(t *testing.T) {
 	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
 		t.Error("the command should have been handled:", inner.Commands)
 	}
+
+	s.Stop()
 }
 
 func TestMiddleware_Delayed(t *testing.T) {
+	repo := &mocks.Repo{}
+
+	m, s := NewMiddleware(repo, &json.CommandCodec{})
+
+	s.Start()
+
 	inner := &mocks.CommandHandler{}
-	m, _ := NewMiddleware()
+
 	h := eh.UseCommandHandlerMiddleware(inner, m)
-	cmd := mocks.Command{
+	cmd := &mocks.Command{
 		ID:      uuid.New(),
 		Content: "content",
 	}
@@ -65,18 +89,144 @@ func TestMiddleware_Delayed(t *testing.T) {
 	inner.RUnlock()
 
 	time.Sleep(10 * time.Millisecond)
+
 	inner.RLock()
-	if !reflect.DeepEqual(inner.Commands, []eh.Command{c}) {
+	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
 		t.Error("the command should have been handled:", inner.Commands)
 	}
 	inner.RUnlock()
+
+	s.Stop()
+}
+
+func TestMiddleware_Persisted(t *testing.T) {
+	repo := memory.NewRepo()
+
+	repo.SetEntityFactory(func() eh.Entity { return &PersistedCommand{} })
+
+	testMiddleware_Persisted(t, repo, &json.CommandCodec{})
+}
+
+func TestMiddleware_PersistedIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	// Use MongoDB in Docker with fallback to localhost.
+	addr := os.Getenv("MONGODB_ADDR")
+	if addr == "" {
+		addr = "localhost:27017"
+	}
+
+	url := "mongodb://" + addr
+
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+
+	db := "test-" + hex.EncodeToString(b)
+
+	t.Log("using DB:", db)
+
+	repo, err := mongodb.NewRepo(url, db, "scheduled_commands")
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	if repo == nil {
+		t.Error("there should be a repository")
+	}
+
+	defer repo.Close()
+
+	repo.SetEntityFactory(func() eh.Entity { return &PersistedCommand{} })
+
+	testMiddleware_Persisted(t, repo, &bson.CommandCodec{})
+}
+
+func testMiddleware_Persisted(t *testing.T, repo eh.ReadWriteRepo, codec eh.CommandCodec) {
+	m, s := NewMiddleware(repo, codec)
+
+	s.Start()
+
+	inner := &mocks.CommandHandler{}
+
+	h := eh.UseCommandHandlerMiddleware(inner, m)
+	cmd := &mocks.Command{
+		ID:      uuid.New(),
+		Content: "content",
+	}
+	c := CommandWithExecuteTime(cmd, time.Now().Add(time.Second))
+
+	if err := h.HandleCommand(context.Background(), c); err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	s.Stop()
+
+	time.Sleep(100 * time.Millisecond)
+
+	items, err := repo.FindAll(context.Background())
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	if len(items) != 1 {
+		t.Error("there should be a persisted command")
+	}
+
+	inner.RLock()
+	if len(inner.Commands) != 0 {
+		t.Error("the command should not have been handled yet:", inner.Commands)
+	}
+	inner.RUnlock()
+
+	if err := s.Start(); err != nil {
+		t.Fatal("could not start scheduler:", err)
+	}
+
+	time.Sleep(800 * time.Millisecond)
+
+	inner.RLock()
+	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
+		t.Error("the command should have been handled:", inner.Commands)
+	}
+	inner.RUnlock()
+
+	s.Stop()
+
+	items, err = repo.FindAll(context.Background())
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	if len(items) != 0 {
+		t.Error("there should be no persisted commands")
+	}
+
+	select {
+	case err := <-s.Errors():
+		if err != nil {
+			t.Error("there should be no error:", err)
+		}
+	case <-time.After(10 * time.Millisecond):
+	}
 }
 
 func TestMiddleware_ZeroTime(t *testing.T) {
+	repo := &mocks.Repo{}
+	m, s := NewMiddleware(repo, &json.CommandCodec{})
+
+	s.Start()
+
 	inner := &mocks.CommandHandler{}
-	m, _ := NewMiddleware()
+
 	h := eh.UseCommandHandlerMiddleware(inner, m)
-	cmd := mocks.Command{
+	cmd := &mocks.Command{
 		ID:      uuid.New(),
 		Content: "content",
 	}
@@ -89,16 +239,23 @@ func TestMiddleware_ZeroTime(t *testing.T) {
 	if !reflect.DeepEqual(inner.Commands, []eh.Command{c}) {
 		t.Error("the command should have been handled:", inner.Commands)
 	}
+
+	s.Stop()
 }
 
 func TestMiddleware_Errors(t *testing.T) {
+	repo := &mocks.Repo{}
+	m, s := NewMiddleware(repo, &json.CommandCodec{})
+
+	s.Start()
+
 	handlerErr := errors.New("handler error")
 	inner := &mocks.CommandHandler{
 		Err: handlerErr,
 	}
-	m, errCh := NewMiddleware()
+
 	h := eh.UseCommandHandlerMiddleware(inner, m)
-	cmd := mocks.Command{
+	cmd := &mocks.Command{
 		ID:      uuid.New(),
 		Content: "content",
 	}
@@ -112,85 +269,74 @@ func TestMiddleware_Errors(t *testing.T) {
 		t.Error("the command should not have been handled yet:", inner.Commands)
 	}
 
-	var err *Error
+	var err error
 	select {
-	case err = <-errCh:
+	case err = <-s.Errors():
 	case <-time.After(10 * time.Millisecond):
 	}
 
-	if err.Err != handlerErr {
+	if !errors.Is(err, handlerErr) {
 		t.Error("there should be an error:", err)
 	}
+
+	s.Stop()
 }
 
-func TestMiddleware_ContextCanceled(t *testing.T) {
-	handlerErr := errors.New("handler error")
-	inner := &mocks.CommandHandler{
-		Err: handlerErr,
+func TestMiddleware_Cancel(t *testing.T) {
+	repo := memory.NewRepo()
+
+	repo.SetEntityFactory(func() eh.Entity { return &PersistedCommand{} })
+
+	_, s := NewMiddleware(repo, &json.CommandCodec{})
+
+	s.Start()
+
+	nonExistingID := uuid.New()
+	if err := s.CancelCommand(context.Background(), nonExistingID); err == nil ||
+		err.Error() != "command "+nonExistingID.String()+" not scheduled" {
+		t.Error("there should be an error:", err)
 	}
-	m, errCh := NewMiddleware()
-	h := eh.UseCommandHandlerMiddleware(inner, m)
-	cmd := mocks.Command{
+
+	cmd := &mocks.Command{
 		ID:      uuid.New(),
 		Content: "content",
 	}
-	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	if err := h.HandleCommand(ctx, c); err != nil {
+	id, err := s.ScheduleCommand(context.Background(), cmd, time.Now().Add(50*time.Millisecond))
+	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 
-	if len(inner.Commands) != 0 {
-		t.Error("the command should not have been handled yet:", inner.Commands)
-	}
-
-	var err *Error
-	select {
-	case err = <-errCh:
-	case <-time.After(10 * time.Millisecond):
-	}
-
-	canceledErr := context.Canceled
-	if !errors.Is(err, canceledErr) {
-		t.Error("there should be an error:", err)
-	}
-}
-
-func TestMiddleware_ContextDeadline(t *testing.T) {
-	handlerErr := errors.New("handler error")
-	inner := &mocks.CommandHandler{
-		Err: handlerErr,
-	}
-	m, errCh := NewMiddleware()
-	h := eh.UseCommandHandlerMiddleware(inner, m)
-	cmd := mocks.Command{
-		ID:      uuid.New(),
-		Content: "content",
-	}
-	c := CommandWithExecuteTime(cmd, time.Now().Add(5*time.Millisecond))
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
-	defer cancel()
-
-	if err := h.HandleCommand(ctx, c); err != nil {
+	items, err := repo.FindAll(context.Background())
+	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 
-	if len(inner.Commands) != 0 {
-		t.Error("the command should not have been handled yet:", inner.Commands)
+	if len(items) != 1 {
+		t.Error("there should be a persisted command")
 	}
 
-	var err *Error
+	if err := s.CancelCommand(context.Background(), id); err != nil {
+		t.Error("there should be no error:", err)
+	}
+
 	select {
-	case err = <-errCh:
+	case err = <-s.Errors():
 	case <-time.After(10 * time.Millisecond):
 	}
 
-	deadlineExceededErr := context.DeadlineExceeded
-	if !errors.Is(err, deadlineExceededErr) {
+	if !errors.Is(err, ErrCanceled) {
 		t.Error("there should be an error:", err)
+	}
+
+	s.Stop()
+
+	items, err = repo.FindAll(context.Background())
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	if len(items) != 0 {
+		t.Error("there should be no persisted commands")
 	}
 }
