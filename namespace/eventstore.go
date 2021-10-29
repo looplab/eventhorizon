@@ -111,6 +111,8 @@ func (s *EventStore) eventStore(ctx context.Context) (eh.EventStore, error) {
 
 	if !ok {
 		s.eventStoresMu.Lock()
+		defer s.eventStoresMu.Unlock()
+
 		// Perform an additional existence check within the write lock in the
 		// unlikely event that someone else added the event store right before us.
 		if _, ok := s.eventStores[ns]; !ok {
@@ -123,7 +125,6 @@ func (s *EventStore) eventStore(ctx context.Context) (eh.EventStore, error) {
 
 			s.eventStores[ns] = eventStore
 		}
-		s.eventStoresMu.Unlock()
 	}
 
 	return eventStore, nil

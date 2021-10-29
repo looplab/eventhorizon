@@ -162,6 +162,8 @@ func (r *Repo) repo(ctx context.Context) (eh.ReadWriteRepo, error) {
 
 	if !ok {
 		r.reposMu.Lock()
+		defer r.reposMu.Unlock()
+
 		// Perform an additional existence check within the write lock in the
 		// unlikely event that someone else added the repo right before us.
 		if _, ok := r.repos[ns]; !ok {
@@ -174,8 +176,6 @@ func (r *Repo) repo(ctx context.Context) (eh.ReadWriteRepo, error) {
 
 			r.repos[ns] = repo
 		}
-
-		r.reposMu.Unlock()
 	}
 
 	return repo, nil
