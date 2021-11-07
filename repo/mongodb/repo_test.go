@@ -197,7 +197,7 @@ func extraRepoTests(t *testing.T, r *Repo) {
 		return c.FindOne(ctx, bson.M{"content": "modelCustomFoo"})
 	})
 	if !errors.As(err, &repoErr) || !errors.Is(repoErr.Err, eh.ErrEntityNotFound) {
-		t.Error("there should be a invalid query error:", err)
+		t.Error("there should be a entity not found error:", err)
 	}
 }
 
