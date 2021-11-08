@@ -38,6 +38,7 @@ import (
 // as values.
 type EventStore struct {
 	client                *mongo.Client
+	db                    *mongo.Database
 	aggregates            *mongo.Collection
 	eventHandlerAfterSave eh.EventHandler
 	eventHandlerInTX      eh.EventHandler
@@ -59,14 +60,17 @@ func NewEventStore(uri, db string, options ...Option) (*EventStore, error) {
 }
 
 // NewEventStoreWithClient creates a new EventStore with a client.
-func NewEventStoreWithClient(client *mongo.Client, db string, options ...Option) (*EventStore, error) {
+func NewEventStoreWithClient(client *mongo.Client, dbName string, options ...Option) (*EventStore, error) {
 	if client == nil {
 		return nil, fmt.Errorf("missing DB client")
 	}
 
+	db := client.Database(dbName)
+
 	s := &EventStore{
 		client:     client,
-		aggregates: client.Database(db).Collection("events"),
+		db:         db,
+		aggregates: db.Collection("events"),
 	}
 
 	for _, option := range options {
@@ -118,6 +122,15 @@ func WithEventHandlerInTX(h eh.EventHandler) Option {
 		}
 
 		s.eventHandlerInTX = h
+
+		return nil
+	}
+}
+
+// WithCustomEventsCollectionName uses a different event collection than the default "events".
+func WithCustomEventsCollectionName(collName string) Option {
+	return func(s *EventStore) error {
+		s.aggregates = s.db.Collection(collName)
 
 		return nil
 	}

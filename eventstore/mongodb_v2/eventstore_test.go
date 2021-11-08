@@ -65,6 +65,51 @@ func TestEventStoreIntegration(t *testing.T) {
 	eventstore.AcceptanceTest(t, store, context.Background())
 }
 
+func TestWithCustomCollectionNamesIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	// Use MongoDB in Docker with fallback to localhost.
+	url := os.Getenv("MONGODB_ADDR")
+	if url == "" {
+		url = "localhost:27017"
+	}
+
+	url = "mongodb://" + url
+
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+
+	db := "test-" + hex.EncodeToString(b)
+	customEventsCollName := "foo_events"
+
+	t.Log("using DB:", db)
+
+	h := &mocks.EventBus{}
+
+	store, err := NewEventStore(url, db,
+		WithEventHandler(h),
+		WithCustomEventsCollectionName(customEventsCollName),
+	)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	if store == nil {
+		t.Fatal("there should be a store")
+	}
+
+	defer store.Close()
+
+	if store.events.Name() != customEventsCollName {
+		t.Fatal("events collection should use custom collection name")
+	}
+}
+
 func TestWithEventHandlerIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
