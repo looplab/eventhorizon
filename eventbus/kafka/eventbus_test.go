@@ -31,12 +31,27 @@ func TestAddHandlerIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	bus1, _, err := newTestEventBus("")
+	bus1, appID, err := newTestEventBus("")
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 
 	eventbus.TestAddHandler(t, bus1)
+
+	if err := bus1.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	bus2, _, err := newTestEventBus(appID)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	eventbus.TestAddHandler(t, bus2)
+
+	if err := bus2.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestEventBusIntegration(t *testing.T) {
