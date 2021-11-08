@@ -65,7 +65,7 @@ func TestEventStoreIntegration(t *testing.T) {
 	eventstore.AcceptanceTest(t, store, context.Background())
 }
 
-func TestWithCustomCollectionNamesIntegration(t *testing.T) {
+func TestWithCustomEventsCollectionNameIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
