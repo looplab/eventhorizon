@@ -15,7 +15,7 @@ require (
 	github.com/nats-io/nats-server/v2 v2.4.0 // indirect
 	github.com/nats-io/nats.go v1.12.1
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/segmentio/kafka-go v0.4.17
+	github.com/segmentio/kafka-go v0.4.23
 	github.com/uber/jaeger-client-go v2.29.1+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	go.mongodb.org/mongo-driver v1.7.1
