@@ -42,9 +42,10 @@ var ErrNoCursor = errors.New("no cursor")
 
 // Repo implements an MongoDB repository for entities.
 type Repo struct {
-	client    *mongo.Client
-	entities  *mongo.Collection
-	newEntity func() eh.Entity
+	client          *mongo.Client
+	entities        *mongo.Collection
+	newEntity       func() eh.Entity
+	connectionCheck bool
 }
 
 // NewRepo creates a new Repo.
@@ -79,8 +80,10 @@ func NewRepoWithClient(client *mongo.Client, db, collection string, options ...O
 		}
 	}
 
-	if err := r.client.Ping(context.Background(), readpref.Primary()); err != nil {
-		return nil, fmt.Errorf("could not connect to MongoDB: %w", err)
+	if r.connectionCheck {
+		if err := r.client.Ping(context.Background(), readpref.Primary()); err != nil {
+			return nil, fmt.Errorf("could not connect to MongoDB: %w", err)
+		}
 	}
 
 	return r, nil
@@ -88,6 +91,15 @@ func NewRepoWithClient(client *mongo.Client, db, collection string, options ...O
 
 // Option is an option setter used to configure creation.
 type Option func(*Repo) error
+
+// WithConnectionCheck adds an optional DB connection check when calling New().
+func WithConnectionCheck(h eh.EventHandler) Option {
+	return func(r *Repo) error {
+		r.connectionCheck = true
+
+		return nil
+	}
+}
 
 // InnerRepo implements the InnerRepo method of the eventhorizon.ReadRepo interface.
 func (r *Repo) InnerRepo(ctx context.Context) eh.ReadRepo {
