@@ -110,7 +110,7 @@ func extraRepoTests(t *testing.T, r *Repo) {
 	_, err = r.FindCustom(ctx, func(ctx context.Context, c *mongo.Collection) (*mongo.Cursor, error) {
 		return nil, nil
 	})
-	if !errors.As(err, &repoErr) || repoErr.Err.Error() != "no cursor" {
+	if !errors.As(err, &repoErr) || !errors.Is(repoErr.Err, ErrNoCursor) {
 		t.Error("there should be a invalid query error:", err)
 	}
 
@@ -126,7 +126,7 @@ func extraRepoTests(t *testing.T, r *Repo) {
 		// Be sure to return nil to not execute the query again in FindCustom.
 		return nil, nil
 	})
-	if !errors.As(err, &repoErr) || repoErr.Err.Error() != "no cursor" {
+	if !errors.As(err, &repoErr) || !errors.Is(repoErr.Err, ErrNoCursor) {
 		t.Error("there should be a invalid query error:", err)
 	}
 
@@ -179,6 +179,25 @@ func extraRepoTests(t *testing.T, r *Repo) {
 	err = iter.Close(ctx)
 	if err != nil {
 		t.Error("there should be no error:", err)
+	}
+
+	// FindOneCustom by content.
+	singleResult, err := r.FindOneCustom(ctx, func(ctx context.Context, c *mongo.Collection) *mongo.SingleResult {
+		return c.FindOne(ctx, bson.M{"content": "modelCustom"})
+	})
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	if !reflect.DeepEqual(singleResult, modelCustom) {
+		t.Error("the item should be correct:", singleResult)
+	}
+
+	_, err = r.FindOneCustom(ctx, func(ctx context.Context, c *mongo.Collection) *mongo.SingleResult {
+		return c.FindOne(ctx, bson.M{"content": "modelCustomFoo"})
+	})
+	if !errors.As(err, &repoErr) || !errors.Is(repoErr.Err, eh.ErrEntityNotFound) {
+		t.Error("there should be a entity not found error:", err)
 	}
 }
 

@@ -34,8 +34,11 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-// ErrModelNotSet is when an model factory is not set on the Repo.
+// ErrModelNotSet is when a model factory is not set on the Repo.
 var ErrModelNotSet = errors.New("model not set")
+
+// ErrNoCursor is when a provided callback function returns a nil cursor.
+var ErrNoCursor = errors.New("no cursor")
 
 // Repo implements an MongoDB repository for entities.
 type Repo struct {
@@ -117,7 +120,7 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 
 	entity := r.newEntity()
 	if err := r.entities.FindOne(ctx, bson.M{"_id": id.String()}).Decode(entity); err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			err = eh.ErrEntityNotFound
 		}
 
@@ -223,7 +226,7 @@ func (r *Repo) FindCustomIter(ctx context.Context, f func(context.Context, *mong
 
 	if cursor == nil {
 		return nil, &eh.RepoError{
-			Err: fmt.Errorf("no cursor"),
+			Err: ErrNoCursor,
 			Op:  eh.RepoOpFindQuery,
 		}
 	}
@@ -237,7 +240,7 @@ func (r *Repo) FindCustomIter(ctx context.Context, f func(context.Context, *mong
 // FindCustom uses a callback to specify a custom query for returning models.
 // It can also be used to do queries that does not map to the model by executing
 // the query in the callback and returning nil to block a second execution of
-// the same query in FindCustom. Expect a ErrInvalidQuery if returning a nil
+// the same query in FindCustom. Expect a ErrNoCursor if returning a nil
 // query from the callback.
 func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Collection) (*mongo.Cursor, error)) ([]interface{}, error) {
 	if r.newEntity == nil {
@@ -257,7 +260,7 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 
 	if cursor == nil {
 		return nil, &eh.RepoError{
-			Err: fmt.Errorf("no cursor"),
+			Err: ErrNoCursor,
 			Op:  eh.RepoOpFindQuery,
 		}
 	}
@@ -285,6 +288,30 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 	}
 
 	return result, nil
+}
+
+// FindOneCustom uses a callback to specify a custom query for returning an entity.
+func (r *Repo) FindOneCustom(ctx context.Context, f func(context.Context, *mongo.Collection) *mongo.SingleResult) (eh.Entity, error) {
+	if r.newEntity == nil {
+		return nil, &eh.RepoError{
+			Err: ErrModelNotSet,
+			Op:  eh.RepoOpFindQuery,
+		}
+	}
+
+	entity := r.newEntity()
+	if err := f(ctx, r.entities).Decode(entity); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			err = eh.ErrEntityNotFound
+		}
+
+		return nil, &eh.RepoError{
+			Err: err,
+			Op:  eh.RepoOpFind,
+		}
+	}
+
+	return entity, nil
 }
 
 // Save implements the Save method of the eventhorizon.WriteRepo interface.
