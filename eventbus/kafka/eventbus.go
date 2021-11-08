@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +35,7 @@ type EventBus struct {
 	addr         string
 	appID        string
 	topic        string
+	client       *kafka.Client
 	writer       *kafka.Writer
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
@@ -73,7 +73,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 	}
 
 	// Get or create the topic.
-	client := &kafka.Client{
+	b.client = &kafka.Client{
 		Addr: kafka.TCP(addr),
 	}
 
@@ -82,7 +82,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 	var err error
 
 	for i := 0; i < 10; i++ {
-		resp, err = client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
+		resp, err = b.client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
 			Topics: []kafka.TopicConfig{{
 				Topic:             b.topic,
 				NumPartitions:     5,
@@ -190,31 +190,44 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	}
 
 	// Get or create the subscription.
-	joined := make(chan struct{})
 	groupID := b.appID + "_" + h.HandlerType().String()
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:               []string{b.addr},
 		Topic:                 b.topic,
 		GroupID:               groupID,     // Send messages to only one subscriber per group.
-		MaxBytes:              100e3,       // 100KB
 		MaxWait:               time.Second, // Allow to exit readloop in max 1s.
 		WatchPartitionChanges: true,
 		StartOffset:           kafka.LastOffset, // Don't read old messages.
-		Logger: kafka.LoggerFunc(func(msg string, args ...interface{}) {
-			// NOTE: Hacky way to use logger to find out when the reader is ready.
-			if strings.HasPrefix(msg, "Joined group") {
-				select {
-				case <-joined:
-				default:
-					close(joined) // Close once.
-				}
-			}
-		}),
 	})
 
-	select {
-	case <-joined:
-	case <-time.After(10 * time.Second):
+	req := &kafka.ListGroupsRequest{
+		Addr: b.client.Addr,
+	}
+
+	exist := false
+
+	for i := 0; i < 20; i++ {
+		resp, err := b.client.ListGroups(ctx, req)
+		if err != nil || resp.Error != nil {
+			return fmt.Errorf("could not list Kafka groups: %w", err)
+		}
+
+		for _, grp := range resp.Groups {
+			if grp.GroupID == groupID {
+				exist = true
+
+				break
+			}
+		}
+
+		if exist {
+			break
+		}
+
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	if !exist {
 		return fmt.Errorf("did not join group in time")
 	}
 
