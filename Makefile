@@ -42,11 +42,15 @@ upload_coverage:
 
 .PHONY: run
 run:
-	docker-compose up -d mongodb gpubsub kafka redis nats
+	docker-compose up -d mongodb postgres gpubsub kafka redis nats
 
 .PHONY: run_mongodb
 run_mongodb:
 	docker-compose up -d mongodb
+
+.PHONY: run_postgres
+run_postgres:
+	docker-compose up -d postgres
 
 .PHONY: run_gpubsub
 run_gpubsub:
