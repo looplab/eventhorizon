@@ -23,3 +23,11 @@ type EventCodec interface {
 	// UnmarshalEvent unmarshals an event and supported parts of context from bytes.
 	UnmarshalEvent(context.Context, []byte) (Event, context.Context, error)
 }
+
+// CommandCodec is a codec for marshaling and unmarshaling commands to and from bytes.
+type CommandCodec interface {
+	// MarshalCommand marshals a command and the supported parts of context into bytes.
+	MarshalCommand(context.Context, Command) ([]byte, error)
+	// UnmarshalCommand unmarshals a command and supported parts of context from bytes.
+	UnmarshalCommand(context.Context, []byte) (Command, context.Context, error)
+}
