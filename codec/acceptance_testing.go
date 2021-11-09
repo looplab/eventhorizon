@@ -34,13 +34,13 @@ const (
 )
 
 // EventCodecAcceptanceTest is the acceptance test that all implementations of
-// Codec should pass. It should manually be called from a test case in each
+// EventCodec should pass. It should manually be called from a test case in each
 // implementation:
 //
 //   func TestEventCodec(t *testing.T) {
 //       c := EventCodec{}
 //       expectedBytes = []byte("")
-//       eventbus.AcceptanceTest(t, c, expectedBytes)
+//       codec.EventCodecAcceptanceTest(t, c, expectedBytes)
 //   }
 //
 func EventCodecAcceptanceTest(t *testing.T, c eh.EventCodec, expectedBytes []byte) {
