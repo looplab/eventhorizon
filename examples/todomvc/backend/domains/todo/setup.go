@@ -13,11 +13,15 @@ import (
 	"github.com/looplab/eventhorizon/repo/mongodb"
 )
 
+type HandlerAdder interface {
+	AddHandler(context.Context, eh.EventMatcher, eh.EventHandler) error
+}
+
 // SetupDomain sets up the Todo domain.
 func SetupDomain(
 	commandBus *bus.CommandHandler,
 	eventStore eh.EventStore,
-	eventBus eh.EventBus,
+	local HandlerAdder,
 	repo eh.ReadWriteRepo,
 ) error {
 	ctx := context.Background()
@@ -33,7 +37,7 @@ func SetupDomain(
 	// Create the read model projector.
 	projector := projector.NewEventHandler(&Projector{}, repo)
 	projector.SetEntityFactory(func() eh.Entity { return &TodoList{} })
-	eventBus.AddHandler(ctx, eh.MatchEvents{
+	local.AddHandler(ctx, eh.MatchEvents{
 		Created,
 		Deleted,
 		ItemAdded,

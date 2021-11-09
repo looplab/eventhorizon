@@ -34,11 +34,12 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-// ErrModelNotSet is when a model factory is not set on the Repo.
-var ErrModelNotSet = errors.New("model not set")
-
-// ErrNoCursor is when a provided callback function returns a nil cursor.
-var ErrNoCursor = errors.New("no cursor")
+var (
+	// ErrModelNotSet is when a model factory is not set on the Repo.
+	ErrModelNotSet = errors.New("model not set")
+	// ErrNoCursor is when a provided callback function returns a nil cursor.
+	ErrNoCursor = errors.New("no cursor")
+)
 
 // Repo implements an MongoDB repository for entities.
 type Repo struct {

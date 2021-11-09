@@ -40,11 +40,12 @@ func TestEventStore(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	// Default namespace.
+	t.Log("testing default namespace")
 	eventstore.AcceptanceTest(t, store, context.Background())
 
-	// Other namespace.
 	ctx := NewContext(context.Background(), "other")
+
+	t.Log("testing other namespace")
 	eventstore.AcceptanceTest(t, store, ctx)
 
 	if _, ok := usedNamespaces["default"]; !ok {

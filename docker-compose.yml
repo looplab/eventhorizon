@@ -9,41 +9,37 @@ services:
       context: .
       dockerfile: Dockerfile.test
     depends_on:
-      - mongodb
+      - mongodb-docker
       - gpubsub
       - kafka
       - redis
       - nats
     environment:
-      MONGODB_ADDR: mongodb:27017
+      MONGODB_ADDR: mongodb-docker:27017
       PUBSUB_EMULATOR_HOST: gpubsub:8793
       KAFKA_ADDR: kafka:9092
       REDIS_ADDR: redis:6379
       NATS_ADDR: nats:4222
     command: [-c, make test test_integration]
 
-  # MongoDB replica set setup.
-  mongodb:
-    image: mongo:4.4
-    restart: on-failure
-    depends_on:
-      - mongodb-rs
-    networks:
-      default:
-    entrypoint: [bash, /scripts/mongodb-rs-setup.sh]
-    volumes:
-      - ./scripts/mongodb-rs-setup.sh:/scripts/mongodb-rs-setup.sh
-
-  mongodb-rs:
-    image: mongo:4.4
-    restart: always
+  mongodb-docker:
+    image: bitnami/mongodb:4.4
     ports:
       - 27017:27017
-    command: [--replSet, rs0, --bind_ip_all]
-    healthcheck:
-      test: test $$(echo "rs.status().ok" | mongo --quiet) -eq 1
-      interval: 10s
-      start_period: 30s
+    environment:
+      MONGODB_REPLICA_SET_MODE: primary
+      ALLOW_EMPTY_PASSWORD: "yes"
+    volumes:
+      - mongodb:/data/db
+
+  mongodb:
+    image: bitnami/mongodb:4.4
+    ports:
+      - 27017:27017
+    environment:
+      MONGODB_REPLICA_SET_MODE: primary
+      MONGODB_ADVERTISED_HOSTNAME: localhost # Needed to connect from localhost.
+      ALLOW_EMPTY_PASSWORD: "yes"
     volumes:
       - mongodb:/data/db
 

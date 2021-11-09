@@ -71,7 +71,7 @@ func TestEventBusIntegration(t *testing.T) {
 
 	t.Logf("using topic: %s_events", appID)
 
-	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
+	eventbus.AcceptanceTest(t, bus1, bus2, 3*time.Second)
 }
 
 func TestEventBusLoadtest(t *testing.T) {

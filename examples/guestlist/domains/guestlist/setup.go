@@ -16,7 +16,7 @@ package guestlist
 
 import (
 	"context"
-	"log"
+	"fmt"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/aggregatestore/events"
@@ -28,60 +28,80 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
+type HandlerAdder interface {
+	AddHandler(context.Context, eh.EventMatcher, eh.EventHandler) error
+}
+
 // Setup configures the guestlist.
 func Setup(
 	ctx context.Context,
 	eventStore eh.EventStore,
-	eventBus eh.EventBus,
+	local, global HandlerAdder,
 	commandBus *bus.CommandHandler,
 	invitationRepo, guestListRepo eh.ReadWriteRepo,
-	eventID uuid.UUID) {
-
-	// Add a logger as an observer.
-	eventBus.AddHandler(ctx, eh.MatchAll{},
-		eh.UseEventHandlerMiddleware(&Logger{}, observer.Middleware))
+	eventID uuid.UUID) error {
 
 	// Create the aggregate repository.
 	aggregateStore, err := events.NewAggregateStore(eventStore)
 	if err != nil {
-		log.Fatalf("could not create aggregate store: %s", err)
+		return fmt.Errorf("could not create aggregate store: %w", err)
 	}
 
 	// Create the aggregate command handler and register the commands it handles.
 	invitationHandler, err := aggregate.NewCommandHandler(InvitationAggregateType, aggregateStore)
 	if err != nil {
-		log.Fatalf("could not create command handler: %s", err)
+		return fmt.Errorf("could not create command handler: %w", err)
 	}
 	commandHandler := eh.UseCommandHandlerMiddleware(invitationHandler, LoggingMiddleware)
-	commandBus.SetHandler(commandHandler, CreateInviteCommand)
-	commandBus.SetHandler(commandHandler, AcceptInviteCommand)
-	commandBus.SetHandler(commandHandler, DeclineInviteCommand)
-	commandBus.SetHandler(commandHandler, ConfirmInviteCommand)
-	commandBus.SetHandler(commandHandler, DenyInviteCommand)
+	for _, cmd := range []eh.CommandType{
+		CreateInviteCommand,
+		AcceptInviteCommand,
+		DeclineInviteCommand,
+		ConfirmInviteCommand,
+		DenyInviteCommand,
+	} {
+		if err := commandBus.SetHandler(commandHandler, cmd); err != nil {
+			return fmt.Errorf("could not add command handler for '%s': %w", cmd, err)
+		}
+	}
 
 	// Create and register a read model for individual invitations.
 	invitationProjector := projector.NewEventHandler(
 		NewInvitationProjector(), invitationRepo)
 	invitationProjector.SetEntityFactory(func() eh.Entity { return &Invitation{} })
-	eventBus.AddHandler(ctx, eh.MatchEvents{
+	if err := local.AddHandler(ctx, eh.MatchEvents{
 		InviteCreatedEvent,
 		InviteAcceptedEvent,
 		InviteDeclinedEvent,
 		InviteConfirmedEvent,
 		InviteDeniedEvent,
-	}, invitationProjector)
+	}, invitationProjector); err != nil {
+		return fmt.Errorf("could not add invitation projector: %w", err)
+	}
 
 	// Create and register a read model for a guest list.
 	guestListProjector := NewGuestListProjector(guestListRepo, eventID)
-	eventBus.AddHandler(ctx, eh.MatchEvents{
+	if err := local.AddHandler(ctx, eh.MatchEvents{
 		InviteAcceptedEvent,
 		InviteDeclinedEvent,
 		InviteConfirmedEvent,
 		InviteDeniedEvent,
-	}, guestListProjector)
+	}, guestListProjector); err != nil {
+		return fmt.Errorf("could not add guest list projector: %w", err)
+	}
 
 	// Setup the saga that responds to the accepted guests and limits the total
 	// amount of guests, responding with a confirmation or denial.
 	responseSaga := saga.NewEventHandler(NewResponseSaga(2), commandBus)
-	eventBus.AddHandler(ctx, eh.MatchEvents{InviteAcceptedEvent}, responseSaga)
+	if err := global.AddHandler(ctx, eh.MatchEvents{InviteAcceptedEvent}, responseSaga); err != nil {
+		return fmt.Errorf("could not add response saga to event bus: %w", err)
+	}
+
+	// Add a logger as an observer.
+	if err := global.AddHandler(ctx, eh.MatchAll{},
+		eh.UseEventHandlerMiddleware(&Logger{}, observer.Middleware)); err != nil {
+		return fmt.Errorf("could not add logger to event bus: %w", err)
+	}
+
+	return nil
 }
