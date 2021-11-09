@@ -234,6 +234,8 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Register handler.
 	b.registered[h.HandlerType()] = struct{}{}
 
+	b.wg.Add(1)
+
 	// Handle until context is cancelled.
 	go b.handle(m, h, r)
 
@@ -255,7 +257,6 @@ func (b *EventBus) Close() error {
 
 // Handles all events coming in on the channel.
 func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) {
-	b.wg.Add(1)
 	defer b.wg.Done()
 
 	handler := b.handler(m, h, r)
