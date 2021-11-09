@@ -23,6 +23,7 @@ import (
 
 func TestEventCodec(t *testing.T) {
 	c := &EventCodec{}
+
 	expectedBytes := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(`
 	{
 		"event_type": "CodecEvent",
@@ -46,5 +47,6 @@ func TestEventCodec(t *testing.T) {
 		"metadata": { "num": 42 },
 		"context": { "context_one": "testval" }
 	}`, " ", ""), "\n", ""), "\t", "")
+
 	codec.EventCodecAcceptanceTest(t, c, []byte(expectedBytes))
 }
