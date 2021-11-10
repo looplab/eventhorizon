@@ -65,7 +65,7 @@ func TestEventStoreIntegration(t *testing.T) {
 	eventstore.AcceptanceTest(t, store, context.Background())
 }
 
-func TestWithCustomEventsCollectionNameIntegration(t *testing.T) {
+func TestWithCollectionNameIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
@@ -89,11 +89,8 @@ func TestWithCustomEventsCollectionNameIntegration(t *testing.T) {
 
 	t.Log("using DB:", db)
 
-	h := &mocks.EventBus{}
-
 	store, err := NewEventStore(url, db,
-		WithEventHandler(h),
-		WithCustomEventsCollectionName(collName),
+		WithCollectionName(collName),
 	)
 	if err != nil {
 		t.Fatal("there should be no error:", err)

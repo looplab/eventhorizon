@@ -127,10 +127,10 @@ func WithEventHandlerInTX(h eh.EventHandler) Option {
 	}
 }
 
-// WithCustomEventsCollectionName uses a different event collection than the default "events".
-func WithCustomEventsCollectionName(collName string) Option {
+// WithCollectionName uses a different event collection than the default "events".
+func WithCollectionName(eventsColl string) Option {
 	return func(s *EventStore) error {
-		s.aggregates = s.db.Collection(collName)
+		s.aggregates = s.db.Collection(eventsColl)
 
 		return nil
 	}

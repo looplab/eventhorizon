@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -65,7 +66,7 @@ func TestEventStoreIntegration(t *testing.T) {
 	eventstore.AcceptanceTest(t, store, context.Background())
 }
 
-func TestWithCustomEventsCollectionNameIntegration(t *testing.T) {
+func TestWithCollectionNamesIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
@@ -85,15 +86,13 @@ func TestWithCustomEventsCollectionNameIntegration(t *testing.T) {
 	}
 
 	db := "test-" + hex.EncodeToString(b)
-	customEventsCollName := "foo_events"
+	eventsColl := "foo_events"
+	streamsColl := "bar_streams"
 
 	t.Log("using DB:", db)
 
-	h := &mocks.EventBus{}
-
 	store, err := NewEventStore(url, db,
-		WithEventHandler(h),
-		WithCustomEventsCollectionName(customEventsCollName),
+		WithCollectionNames(eventsColl, streamsColl),
 	)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
@@ -105,8 +104,19 @@ func TestWithCustomEventsCollectionNameIntegration(t *testing.T) {
 
 	defer store.Close()
 
-	if store.events.Name() != customEventsCollName {
+	if store.events.Name() != eventsColl {
 		t.Fatal("events collection should use custom collection name")
+	}
+
+	if store.streams.Name() != streamsColl {
+		t.Fatal("streams collection should use custom collection name")
+	}
+
+	_, err = NewEventStore(url, db,
+		WithCollectionNames("my-collection", "my-collection"),
+	)
+	if !errors.Is(err, ErrCollectionNamesEqual) {
+		t.Fatal("there should be an error")
 	}
 }
 
