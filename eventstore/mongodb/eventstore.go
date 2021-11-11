@@ -130,6 +130,10 @@ func WithEventHandlerInTX(h eh.EventHandler) Option {
 // WithCollectionName uses a different event collection than the default "events".
 func WithCollectionName(eventsColl string) Option {
 	return func(s *EventStore) error {
+		if eventsColl == "" {
+			return fmt.Errorf("missing collection name")
+		}
+
 		s.aggregates = s.db.Collection(eventsColl)
 
 		return nil

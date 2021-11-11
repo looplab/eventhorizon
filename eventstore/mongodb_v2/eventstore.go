@@ -16,7 +16,6 @@ package mongodb_v2
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -33,9 +32,6 @@ import (
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/uuid"
 )
-
-// ErrCollectionNamesEqual is when provided custom collection names are equal.
-var ErrCollectionNamesEqual = errors.New("custom collection names are equal")
 
 // EventStore is an eventhorizon.EventStore for MongoDB, using one collection
 // for all events and another to keep track of all aggregates/streams. It also
@@ -159,7 +155,11 @@ func WithEventHandlerInTX(h eh.EventHandler) Option {
 func WithCollectionNames(eventsColl, streamsColl string) Option {
 	return func(s *EventStore) error {
 		if eventsColl == streamsColl {
-			return ErrCollectionNamesEqual
+			return fmt.Errorf("custom collection names are equal")
+		}
+
+		if eventsColl == "" || streamsColl == "" {
+			return fmt.Errorf("missing collection name")
 		}
 
 		s.events = s.db.Collection(eventsColl)
