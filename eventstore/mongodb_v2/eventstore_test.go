@@ -18,7 +18,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"os"
 	"testing"
 	"time"
@@ -112,10 +111,27 @@ func TestWithCollectionNamesIntegration(t *testing.T) {
 		t.Fatal("streams collection should use custom collection name")
 	}
 
+	// providing the same collection name should result in an error
 	_, err = NewEventStore(url, db,
 		WithCollectionNames("my-collection", "my-collection"),
 	)
-	if !errors.Is(err, ErrCollectionNamesEqual) {
+	if err == nil || err.Error() != "error while applying option: custom collection names are equal" {
+		t.Fatal("there should be an error")
+	}
+
+	// providing empty collection names should result in an error
+	_, err = NewEventStore(url, db,
+		WithCollectionNames("", "my-collection"),
+	)
+	if err == nil || err.Error() != "error while applying option: missing collection name" {
+		t.Fatal("there should be an error")
+	}
+
+	// providing empty collection names should result in an error
+	_, err = NewEventStore(url, db,
+		WithCollectionNames("my-collection", ""),
+	)
+	if err == nil || err.Error() != "error while applying option: missing collection name" {
 		t.Fatal("there should be an error")
 	}
 }
