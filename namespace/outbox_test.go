@@ -7,6 +7,7 @@ import (
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/mocks"
 	"github.com/looplab/eventhorizon/outbox"
 	"github.com/looplab/eventhorizon/outbox/memory"
 )
@@ -37,19 +38,37 @@ func TestOutbox(t *testing.T) {
 
 	o.Start()
 
-	t.Log("testing default namespace")
-	outbox.AcceptanceTest(t, o, context.Background())
+	handlerAddedBefore := mocks.NewEventHandler("handler_before")
+	if err := o.AddHandler(context.Background(), eh.MatchEvents{mocks.EventType}, handlerAddedBefore); err != nil {
+		t.Fatal("there should be no error:", err)
+	}
 
-	ctx := NewContext(context.Background(), "other")
+	t.Log("testing default namespace")
+	outbox.AcceptanceTest(t, o, context.Background(), DefaultNamespace)
+
+	ns := "other"
+	ctx := NewContext(context.Background(), ns)
 
 	t.Log("testing other namespace")
-	outbox.AcceptanceTest(t, o, ctx)
+	outbox.AcceptanceTest(t, o, ctx, ns)
 
-	if _, ok := usedNamespaces["default"]; !ok {
+	if !handlerAddedBefore.Wait(time.Second) {
+		t.Error("did not receive event in time")
+	}
+
+	handlerAddedBefore.Lock()
+
+	if len(handlerAddedBefore.Events) != 6 {
+		t.Errorf("there should be 6 event: %d", len(handlerAddedBefore.Events))
+	}
+
+	handlerAddedBefore.Unlock()
+
+	if _, ok := usedNamespaces[DefaultNamespace]; !ok {
 		t.Error("the default namespace should have been used")
 	}
 
-	if _, ok := usedNamespaces["other"]; !ok {
+	if _, ok := usedNamespaces[ns]; !ok {
 		t.Error("the other namespace should have been used")
 	}
 
