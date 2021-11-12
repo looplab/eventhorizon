@@ -26,13 +26,21 @@ import (
 
 // Outbox is an outbox with support for namespaces passed in the context.
 type Outbox struct {
-	outboxes   map[string]eh.Outbox
-	outboxesMu sync.RWMutex
-	newOutbox  func(ns string) (eh.Outbox, error)
-	errCh      chan error
-	cctx       context.Context
-	cancel     context.CancelFunc
-	wg         sync.WaitGroup
+	outboxes       map[string]eh.Outbox
+	outboxesMu     sync.RWMutex
+	handlers       []*matcherHandler
+	handlersByType map[eh.EventHandlerType]*matcherHandler
+	handlersMu     sync.RWMutex
+	newOutbox      func(ns string) (eh.Outbox, error)
+	errCh          chan error
+	cctx           context.Context
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
+}
+
+type matcherHandler struct {
+	eh.EventMatcher
+	eh.EventHandler
 }
 
 // NewOutbox creates a new outbox which will use the provided factory
@@ -62,11 +70,12 @@ func NewOutbox(factory func(ns string) (eh.Outbox, error)) *Outbox {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Outbox{
-		outboxes:  map[string]eh.Outbox{},
-		newOutbox: factory,
-		errCh:     make(chan error, 100),
-		cctx:      ctx,
-		cancel:    cancel,
+		outboxes:       map[string]eh.Outbox{},
+		handlersByType: map[eh.EventHandlerType]*matcherHandler{},
+		newOutbox:      factory,
+		errCh:          make(chan error, 100),
+		cctx:           ctx,
+		cancel:         cancel,
 	}
 }
 
@@ -77,12 +86,33 @@ func (o *Outbox) HandlerType() eh.EventHandlerType {
 
 // AddHandler implements the AddHandler method of the eventhorizon.Outbox interface.
 func (o *Outbox) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.EventHandler) error {
-	ob, err := o.outbox(ctx)
-	if err != nil {
-		return err
+	if m == nil {
+		return eh.ErrMissingMatcher
 	}
 
-	return ob.AddHandler(ctx, m, h)
+	if h == nil {
+		return eh.ErrMissingHandler
+	}
+
+	o.handlersMu.Lock()
+	defer o.handlersMu.Unlock()
+
+	if _, ok := o.handlersByType[h.HandlerType()]; ok {
+		return eh.ErrHandlerAlreadyAdded
+	}
+
+	mh := &matcherHandler{m, h}
+	o.handlers = append(o.handlers, mh)
+	o.handlersByType[h.HandlerType()] = mh
+
+	o.outboxesMu.RLock()
+	defer o.outboxesMu.RUnlock()
+
+	if ob, ok := o.outboxes[FromContext(ctx)]; ok {
+		return ob.AddHandler(ctx, m, h)
+	}
+
+	return nil
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.Outbox interface.
@@ -155,6 +185,16 @@ func (o *Outbox) outbox(ctx context.Context) (eh.Outbox, error) {
 			if err != nil {
 				return nil, fmt.Errorf("could not create outbox for namespace '%s': %w", ns, err)
 			}
+
+			o.handlersMu.RLock()
+			for _, hm := range o.handlers {
+				if err := ob.AddHandler(ctx, hm.EventMatcher, hm.EventHandler); err != nil {
+					o.handlersMu.RUnlock()
+
+					return nil, fmt.Errorf("could not add handler for outbox in namespace '%s': %w", ns, err)
+				}
+			}
+			o.handlersMu.RUnlock()
 
 			o.wg.Add(1)
 

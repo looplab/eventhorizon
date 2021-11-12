@@ -56,7 +56,7 @@ func TestAddHandler(t *testing.T, o eh.Outbox, ctx context.Context) {
 //       outbox.AcceptanceTest(t, o, context.Background())
 //   }
 //
-func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context) {
+func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context, prefix string) {
 	ctx = mocks.WithContextOne(ctx, "testval")
 
 	// Without handler.
@@ -72,7 +72,7 @@ func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context) {
 	}
 
 	// Event without data (tested in its own handler).
-	otherHandler := mocks.NewEventHandler("other-handler")
+	otherHandler := mocks.NewEventHandler(prefix + "_other_handler")
 	if err := o.AddHandler(ctx, eh.MatchEvents{mocks.EventOtherType}, otherHandler); err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -108,12 +108,12 @@ func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context) {
 	)
 
 	// Add handlers and observers.
-	handler := mocks.NewEventHandler(handlerName)
+	handler := mocks.NewEventHandler(prefix + "_" + handlerName)
 	if err := o.AddHandler(ctx, eh.MatchEvents{mocks.EventType}, handler); err != nil {
 		t.Fatal("there should be no error:", err)
 	}
 
-	anotherHandler := mocks.NewEventHandler("another_handler")
+	anotherHandler := mocks.NewEventHandler(prefix + "_another_handler")
 	if err := o.AddHandler(ctx, eh.MatchEvents{mocks.EventType}, anotherHandler); err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -169,7 +169,7 @@ func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context) {
 	checkOutboxErrors(t, o)
 
 	// Test async errors from handlers.
-	errorHandler := mocks.NewEventHandler("error_handler")
+	errorHandler := mocks.NewEventHandler(prefix + "_error_handler")
 	errorHandler.Err = errors.New("handler error")
 
 	if err := o.AddHandler(ctx, eh.MatchAll{}, errorHandler); err != nil {
@@ -189,7 +189,7 @@ func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context) {
 		t.Error("there should be an async error")
 	case err := <-o.Errors():
 		// Good case.
-		if err.Error() != "outbox: could not handle event (error_handler): handler error [Event("+id.String()+", v3)]" {
+		if err.Error() != "outbox: could not handle event ("+prefix+"_error_handler): handler error [Event("+id.String()+", v3)]" {
 			t.Error("incorrect error sent on outbox:", err)
 		}
 	}

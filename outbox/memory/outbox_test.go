@@ -34,7 +34,7 @@ func TestOutbox(t *testing.T) {
 
 	o.Start()
 
-	outbox.AcceptanceTest(t, o, context.Background())
+	outbox.AcceptanceTest(t, o, context.Background(), "none")
 
 	if err := o.Close(); err != nil {
 		t.Error("there should be no error:", err)
