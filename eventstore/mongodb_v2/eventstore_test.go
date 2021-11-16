@@ -65,6 +65,77 @@ func TestEventStoreIntegration(t *testing.T) {
 	eventstore.AcceptanceTest(t, store, context.Background())
 }
 
+func TestWithCollectionNamesIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	// Use MongoDB in Docker with fallback to localhost.
+	url := os.Getenv("MONGODB_ADDR")
+	if url == "" {
+		url = "localhost:27017"
+	}
+
+	url = "mongodb://" + url
+
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+
+	db := "test-" + hex.EncodeToString(b)
+	eventsColl := "foo_events"
+	streamsColl := "bar_streams"
+
+	t.Log("using DB:", db)
+
+	store, err := NewEventStore(url, db,
+		WithCollectionNames(eventsColl, streamsColl),
+	)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	if store == nil {
+		t.Fatal("there should be a store")
+	}
+
+	defer store.Close()
+
+	if store.events.Name() != eventsColl {
+		t.Fatal("events collection should use custom collection name")
+	}
+
+	if store.streams.Name() != streamsColl {
+		t.Fatal("streams collection should use custom collection name")
+	}
+
+	// providing the same collection name should result in an error
+	_, err = NewEventStore(url, db,
+		WithCollectionNames("my-collection", "my-collection"),
+	)
+	if err == nil || err.Error() != "error while applying option: custom collection names are equal" {
+		t.Fatal("there should be an error")
+	}
+
+	// providing empty collection names should result in an error
+	_, err = NewEventStore(url, db,
+		WithCollectionNames("", "my-collection"),
+	)
+	if err == nil || err.Error() != "error while applying option: missing collection name" {
+		t.Fatal("there should be an error")
+	}
+
+	// providing empty collection names should result in an error
+	_, err = NewEventStore(url, db,
+		WithCollectionNames("my-collection", ""),
+	)
+	if err == nil || err.Error() != "error while applying option: missing collection name" {
+		t.Fatal("there should be an error")
+	}
+}
+
 func TestWithEventHandlerIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

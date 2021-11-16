@@ -38,6 +38,7 @@ import (
 // keep tracks of the global position of events, stored as metadata.
 type EventStore struct {
 	client                *mongo.Client
+	db                    *mongo.Database
 	events                *mongo.Collection
 	streams               *mongo.Collection
 	eventHandlerAfterSave eh.EventHandler
@@ -68,6 +69,7 @@ func NewEventStoreWithClient(client *mongo.Client, dbName string, options ...Opt
 	db := client.Database(dbName)
 	s := &EventStore{
 		client:  client,
+		db:      db,
 		events:  db.Collection("events"),
 		streams: db.Collection("streams"),
 	}
@@ -143,6 +145,25 @@ func WithEventHandlerInTX(h eh.EventHandler) Option {
 		}
 
 		s.eventHandlerInTX = h
+
+		return nil
+	}
+}
+
+// WithCollectionNames uses different collections from the default "events" and "streams" collections.
+// Will return an error if provided parameters are equal.
+func WithCollectionNames(eventsColl, streamsColl string) Option {
+	return func(s *EventStore) error {
+		if eventsColl == streamsColl {
+			return fmt.Errorf("custom collection names are equal")
+		}
+
+		if eventsColl == "" || streamsColl == "" {
+			return fmt.Errorf("missing collection name")
+		}
+
+		s.events = s.db.Collection(eventsColl)
+		s.streams = s.db.Collection(streamsColl)
 
 		return nil
 	}
