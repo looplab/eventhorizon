@@ -60,9 +60,11 @@ func TestEventStoreIntegration(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	defer store.Close()
-
 	eventstore.AcceptanceTest(t, store, context.Background())
+
+	if err := store.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestWithCollectionNamesIntegration(t *testing.T) {

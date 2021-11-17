@@ -73,4 +73,8 @@ func TestReadRepo(t *testing.T) {
 
 	t.Log("testing other namespace")
 	repo.AcceptanceTest(t, r, otherCtx)
+
+	if err := r.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }

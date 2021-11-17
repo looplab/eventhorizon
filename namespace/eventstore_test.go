@@ -55,4 +55,8 @@ func TestEventStore(t *testing.T) {
 	if _, ok := usedNamespaces["other"]; !ok {
 		t.Error("the other namespace should have been used")
 	}
+
+	if err := store.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }

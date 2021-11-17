@@ -77,6 +77,10 @@ func TestReadRepoIntegration(t *testing.T) {
 
 	repo.AcceptanceTest(t, r, context.Background())
 	extraRepoTests(t, r)
+
+	if err := r.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func extraRepoTests(t *testing.T, r *Repo) {
