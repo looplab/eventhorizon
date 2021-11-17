@@ -16,6 +16,7 @@ package namespace
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	eh "github.com/looplab/eventhorizon"
@@ -27,6 +28,10 @@ import (
 func TestEventStore(t *testing.T) {
 	usedNamespaces := map[string]struct{}{}
 
+	var storeCreated sync.WaitGroup
+
+	storeCreated.Add(2)
+
 	store := NewEventStore(func(ns string) (eh.EventStore, error) {
 		usedNamespaces[ns] = struct{}{}
 		s, err := memory.NewEventStore()
@@ -34,19 +39,25 @@ func TestEventStore(t *testing.T) {
 			return nil, err
 		}
 
+		storeCreated.Done()
+
 		return s, nil
 	})
 	if store == nil {
 		t.Fatal("there should be a store")
 	}
 
-	t.Log("testing default namespace")
-	eventstore.AcceptanceTest(t, store, context.Background())
+	if err := store.PreRegisterNamespace(DefaultNamespace); err != nil {
+		t.Error("there should be no error:", err)
+	}
 
-	ctx := NewContext(context.Background(), "other")
+	ns := "other"
+	if err := store.PreRegisterNamespace(ns); err != nil {
+		t.Error("there should be no error:", err)
+	}
 
-	t.Log("testing other namespace")
-	eventstore.AcceptanceTest(t, store, ctx)
+	// Check that both event stores has been created.
+	storeCreated.Wait()
 
 	if _, ok := usedNamespaces["default"]; !ok {
 		t.Error("the default namespace should have been used")
@@ -55,6 +66,14 @@ func TestEventStore(t *testing.T) {
 	if _, ok := usedNamespaces["other"]; !ok {
 		t.Error("the other namespace should have been used")
 	}
+
+	t.Log("testing default namespace")
+	eventstore.AcceptanceTest(t, store, context.Background())
+
+	ctx := NewContext(context.Background(), ns)
+
+	t.Log("testing other namespace")
+	eventstore.AcceptanceTest(t, store, ctx)
 
 	if err := store.Close(); err != nil {
 		t.Error("there should be no error:", err)

@@ -61,6 +61,18 @@ func NewEventStore(factory func(ns string) (eh.EventStore, error)) *EventStore {
 	}
 }
 
+// PreRegisterNamespace will make sure that a namespace exists in the eventstore.
+// In normal cases the eventstore for a namespace is created when an event for
+// that namespace is first seen.
+func (s *EventStore) PreRegisterNamespace(ns string) error {
+	ctx := NewContext(context.Background(), ns)
+
+	// This creates the eventstore for a namespace in case id did not exist.
+	_, err := s.eventStore(ctx)
+
+	return err
+}
+
 // Save implements the Save method of the eventhorizon.EventStore interface.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	store, err := s.eventStore(ctx)
