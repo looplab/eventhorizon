@@ -100,4 +100,8 @@ func TestEventStore(t *testing.T) {
 			t.Error("the event version should be correct:", event, event.Version())
 		}
 	}
+
+	if err := store.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }

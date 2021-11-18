@@ -46,6 +46,10 @@ func TestReadRepo(t *testing.T) {
 
 	repo.AcceptanceTest(t, r, context.Background())
 	extraRepoTests(t, r, baseRepo)
+
+	if err := r.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func extraRepoTests(t *testing.T, r *Repo, baseRepo *memory.Repo) {

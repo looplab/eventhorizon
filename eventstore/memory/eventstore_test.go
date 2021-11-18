@@ -36,6 +36,10 @@ func TestEventStore(t *testing.T) {
 	}
 
 	eventstore.AcceptanceTest(t, store, context.Background())
+
+	if err := store.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
 }
 
 func TestWithEventHandler(t *testing.T) {

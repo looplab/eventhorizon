@@ -115,6 +115,18 @@ func (o *Outbox) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.EventHa
 	return nil
 }
 
+// PreRegisterNamespace will make sure that a namespace exists in the outbox
+// and that processing of that namespace is active. In normal cases the outbox
+// for a namespace is started when an event for that namespace is first seen.
+func (o *Outbox) PreRegisterNamespace(ns string) error {
+	ctx := NewContext(context.Background(), ns)
+
+	// This starts the outbox for a namespace in case it was not already started.
+	_, err := o.outbox(ctx)
+
+	return err
+}
+
 // HandleEvent implements the HandleEvent method of the eventhorizon.Outbox interface.
 func (o *Outbox) HandleEvent(ctx context.Context, event eh.Event) error {
 	ob, err := o.outbox(ctx)
