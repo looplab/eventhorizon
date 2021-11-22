@@ -359,6 +359,33 @@ func TestEventHandler_DeleteModel(t *testing.T) {
 	}
 }
 
+func TestEventHandler_UpdateModelAfterDelete(t *testing.T) {
+	repo := &mocks.Repo{}
+	projector := &TestProjector{}
+	handler := NewEventHandler(projector, repo)
+	handler.SetEntityFactory(func() eh.Entity {
+		return &mocks.Model{}
+	})
+
+	// Entity must be versionable, but empty.
+	repo.Entity = &mocks.Model{}
+
+	ctx := context.Background()
+
+	id := uuid.New()
+	eventData := &mocks.EventData{Content: "event1"}
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	updateEvent := eh.NewEvent(mocks.EventType, eventData, timestamp,
+		eh.ForAggregate(mocks.AggregateType, id, 3))
+
+	err := handler.HandleEvent(ctx, updateEvent)
+
+	errType := &Error{}
+	if !errors.As(err, &errType) || !errors.Is(err, ErrModelRemoved) {
+		t.Error("there should be an error:", err)
+	}
+}
+
 func TestEventHandler_LoadError(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}
