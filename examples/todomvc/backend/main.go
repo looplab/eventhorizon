@@ -78,10 +78,14 @@ func main() {
 	}
 
 	// Create the outbox that will project and publish events.
-	outbox, err := mongoOutbox.NewOutbox(mongodbURI, db)
+	var outbox eh.Outbox
+
+	mongoOutbox, err := mongoOutbox.NewOutbox(mongodbURI, db)
 	if err != nil {
 		log.Fatalf("could not create outbox: %s", err)
 	}
+
+	outbox = tracing.NewOutbox(mongoOutbox)
 
 	go func() {
 		for err := range outbox.Errors() {
@@ -89,11 +93,13 @@ func main() {
 		}
 	}()
 
+	outbox.Start()
+
 	// Create the event store.
 	var eventStore eh.EventStore
 
 	if eventStore, err = mongoEventStore.NewEventStoreWithClient(
-		outbox.Client(), db,
+		mongoOutbox.Client(), db,
 		mongoEventStore.WithEventHandlerInTX(outbox),
 	); err != nil {
 		log.Fatal("could not create event store: ", err)

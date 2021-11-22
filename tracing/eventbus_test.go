@@ -23,7 +23,7 @@ import (
 )
 
 // NOTE: Not named "Integration" to enable running with the unit tests.
-func TestAddHandler(t *testing.T) {
+func TestEventBusAddHandler(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
