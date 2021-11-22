@@ -46,6 +46,8 @@ func (t Type) String() string {
 var (
 	// ErrModelNotSet is when a model factory is not set on the EventHandler.
 	ErrModelNotSet = errors.New("model not set")
+	// ErrModelRemoved is when a model has been removed.
+	ErrModelRemoved = errors.New("model removed")
 	// Returned if the model has not incremented its version as predicted.
 	ErrIncorrectProjectedEntityVersion = errors.New("incorrect projected entity version")
 )
@@ -249,6 +251,16 @@ retryOnce:
 				time.Sleep(100 * time.Millisecond)
 
 				goto retryOnce
+			}
+
+			if entityVersion == 0 && event.Version() > 1 {
+				return &Error{
+					Err:           ErrModelRemoved,
+					Projector:     h.projector.ProjectorType().String(),
+					Event:         event,
+					EntityID:      id,
+					EntityVersion: entityVersion,
+				}
 			}
 
 			return &Error{
