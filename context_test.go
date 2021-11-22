@@ -81,6 +81,24 @@ func TestContextUnmarshaler(t *testing.T) {
 	}
 }
 
+func TestCopyContext(t *testing.T) {
+	if len(contextMarshalFuncs) != 2 {
+		t.Error("there should be two context marshalers")
+	}
+
+	if len(contextUnmarshalFuncs) != 2 {
+		t.Error("there should be two context unmarshalers")
+	}
+
+	from := WithContextTestOne(context.Background(), "testval")
+
+	to := CopyContext(from, context.Background())
+
+	if val, ok := ContextTestOne(to); !ok || val != "testval" {
+		t.Error("the copied context should be correct:", val)
+	}
+}
+
 type contextTestKey int
 
 const (
