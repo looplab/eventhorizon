@@ -1,4 +1,4 @@
-// Copyright (c) 2020 - The Event Horizon authors.
+// Copyright (c) 2021 - The Event Horizon authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,38 +18,37 @@ import (
 	"context"
 
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/middleware/eventhandler/tracing"
 )
 
-// EventBus is an event bus wrapper that adds tracing.
-type EventBus struct {
-	eh.EventBus
+// Outbox is an event bus wrapper that adds tracing.
+type Outbox struct {
+	eh.Outbox
 	h eh.EventHandler
 }
 
-// NewEventBus creates a EventBus.
-func NewEventBus(eventBus eh.EventBus) *EventBus {
-	return &EventBus{
-		EventBus: eventBus,
+// NewOutbox creates a Outbox.
+func NewOutbox(outbox eh.Outbox) *Outbox {
+	return &Outbox{
+		Outbox: outbox,
 		// Wrap the eh.EventHandler part of the bus with tracing middleware,
 		// set as producer to set the correct tags.
-		h: eh.UseEventHandlerMiddleware(eventBus, tracing.NewMiddleware()),
+		h: eh.UseEventHandlerMiddleware(outbox, NewEventHandlerMiddleware()),
 	}
 }
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
-func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
+func (b *Outbox) HandleEvent(ctx context.Context, event eh.Event) error {
 	return b.h.HandleEvent(ctx, event)
 }
 
-// AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
-func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.EventHandler) error {
+// AddHandler implements the AddHandler method of the eventhorizon.Outbox interface.
+func (b *Outbox) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.EventHandler) error {
 	if h == nil {
 		return eh.ErrMissingHandler
 	}
 
 	// Wrap the handlers in tracing middleware.
-	h = eh.UseEventHandlerMiddleware(h, tracing.NewMiddleware())
+	h = eh.UseEventHandlerMiddleware(h, NewEventHandlerMiddleware())
 
-	return b.EventBus.AddHandler(ctx, m, h)
+	return b.Outbox.AddHandler(ctx, m, h)
 }

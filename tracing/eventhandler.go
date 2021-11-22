@@ -23,8 +23,8 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 )
 
-// NewMiddleware returns an event handler middleware that adds tracing spans.
-func NewMiddleware() eh.EventHandlerMiddleware {
+// NewEventHandlerMiddleware returns an event handler middleware that adds tracing spans.
+func NewEventHandlerMiddleware() eh.EventHandlerMiddleware {
 	return eh.EventHandlerMiddleware(func(h eh.EventHandler) eh.EventHandler {
 		return &eventHandler{h}
 	})
