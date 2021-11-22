@@ -25,6 +25,9 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
+// The default command queue size to use.
+var ScheduledCommandsQueueSize = 100
+
 // ErrCanceled is when a scheduled command has been canceled.
 var ErrCanceled = errors.New("canceled")
 
@@ -56,7 +59,7 @@ func (c *command) ExecuteAt() time.Time {
 func NewMiddleware(repo eh.ReadWriteRepo, codec eh.CommandCodec) (eh.CommandHandlerMiddleware, *Scheduler) {
 	s := &Scheduler{
 		repo:             repo,
-		cmdCh:            make(chan *scheduledCommand, 100),
+		cmdCh:            make(chan *scheduledCommand, ScheduledCommandsQueueSize),
 		cancelScheduling: map[uuid.UUID]chan struct{}{},
 		errCh:            make(chan error, 100),
 		codec:            codec,
@@ -127,14 +130,36 @@ func (s *Scheduler) setHandler(h eh.CommandHandler) {
 	s.h = h
 }
 
-// Start starts the scheduler by first loading all persisted commands.
+// Load loads all persisted scheduled commands. It will be limited
+// by ScheduledCommandsQueueSize if Start() has not yet been called.
+func (s *Scheduler) Load(ctx context.Context) error {
+	commands, err := s.Commands(ctx)
+	if err != nil {
+		return fmt.Errorf("could not load scheduled commands: %w", err)
+	}
+
+	for _, pc := range commands {
+		sc := &scheduledCommand{
+			id:        pc.ID,
+			ctx:       pc.Context,
+			cmd:       pc.Command,
+			executeAt: pc.ExecuteAt,
+		}
+
+		select {
+		case s.cmdCh <- sc:
+		default:
+			return fmt.Errorf("could not schedule command, command queue full")
+		}
+	}
+
+	return nil
+}
+
+// Start starts the scheduler.
 func (s *Scheduler) Start() error {
 	if s.h == nil {
 		return fmt.Errorf("command handler not set")
-	}
-
-	if err := s.loadCommands(); err != nil {
-		return fmt.Errorf("could not load commands: %w", err)
 	}
 
 	s.cctx, s.cancel = context.WithCancel(context.Background())
@@ -262,30 +287,6 @@ func (s *Scheduler) CancelCommand(ctx context.Context, id uuid.UUID) error {
 	}
 
 	close(cancel)
-
-	return nil
-}
-
-func (s *Scheduler) loadCommands() error {
-	commands, err := s.Commands(context.Background())
-	if err != nil {
-		return fmt.Errorf("could not load scheduled commands: %w", err)
-	}
-
-	for _, pc := range commands {
-		sc := &scheduledCommand{
-			id:        pc.ID,
-			ctx:       pc.Context,
-			cmd:       pc.Command,
-			executeAt: pc.ExecuteAt,
-		}
-
-		select {
-		case s.cmdCh <- sc:
-		default:
-			return fmt.Errorf("could not schedule command: %w", err)
-		}
-	}
 
 	return nil
 }

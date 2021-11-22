@@ -41,11 +41,14 @@ func TestMiddleware_Immediate(t *testing.T) {
 	repo := &mocks.Repo{}
 	m, s := NewMiddleware(repo, &json.CommandCodec{})
 
-	s.Start()
-
 	inner := &mocks.CommandHandler{}
 
 	h := eh.UseCommandHandlerMiddleware(inner, m)
+
+	if err := s.Start(); err != nil {
+		t.Fatal("could not start scheduler:", err)
+	}
+
 	cmd := &mocks.Command{
 		ID:      uuid.New(),
 		Content: "content",
@@ -59,7 +62,9 @@ func TestMiddleware_Immediate(t *testing.T) {
 		t.Error("the command should have been handled:", inner.Commands)
 	}
 
-	s.Stop()
+	if err := s.Stop(); err != nil {
+		t.Fatal("could not stop scheduler:", err)
+	}
 }
 
 func TestMiddleware_Delayed(t *testing.T) {
@@ -67,11 +72,14 @@ func TestMiddleware_Delayed(t *testing.T) {
 
 	m, s := NewMiddleware(repo, &json.CommandCodec{})
 
-	s.Start()
-
 	inner := &mocks.CommandHandler{}
 
 	h := eh.UseCommandHandlerMiddleware(inner, m)
+
+	if err := s.Start(); err != nil {
+		t.Fatal("could not start scheduler:", err)
+	}
+
 	cmd := &mocks.Command{
 		ID:      uuid.New(),
 		Content: "content",
@@ -96,7 +104,9 @@ func TestMiddleware_Delayed(t *testing.T) {
 	}
 	inner.RUnlock()
 
-	s.Stop()
+	if err := s.Stop(); err != nil {
+		t.Fatal("could not stop scheduler:", err)
+	}
 }
 
 func TestMiddleware_Persisted(t *testing.T) {
@@ -149,11 +159,18 @@ func TestMiddleware_PersistedIntegration(t *testing.T) {
 func testMiddleware_Persisted(t *testing.T, repo eh.ReadWriteRepo, codec eh.CommandCodec) {
 	m, s := NewMiddleware(repo, codec)
 
-	s.Start()
-
 	inner := &mocks.CommandHandler{}
 
 	h := eh.UseCommandHandlerMiddleware(inner, m)
+
+	if err := s.Start(); err != nil {
+		t.Fatal("could not start scheduler:", err)
+	}
+
+	if err := s.Load(context.Background()); err != nil {
+		t.Error("there should be no error:", err)
+	}
+
 	cmd := &mocks.Command{
 		ID:      uuid.New(),
 		Content: "content",
@@ -166,7 +183,9 @@ func testMiddleware_Persisted(t *testing.T, repo eh.ReadWriteRepo, codec eh.Comm
 
 	time.Sleep(100 * time.Millisecond)
 
-	s.Stop()
+	if err := s.Stop(); err != nil {
+		t.Fatal("could not stop scheduler:", err)
+	}
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -189,6 +208,10 @@ func testMiddleware_Persisted(t *testing.T, repo eh.ReadWriteRepo, codec eh.Comm
 		t.Fatal("could not start scheduler:", err)
 	}
 
+	if err := s.Load(context.Background()); err != nil {
+		t.Fatal("could not load scheduled commands:", err)
+	}
+
 	time.Sleep(800 * time.Millisecond)
 
 	inner.RLock()
@@ -197,7 +220,9 @@ func testMiddleware_Persisted(t *testing.T, repo eh.ReadWriteRepo, codec eh.Comm
 	}
 	inner.RUnlock()
 
-	s.Stop()
+	if err := s.Stop(); err != nil {
+		t.Fatal("could not stop scheduler:", err)
+	}
 
 	items, err = repo.FindAll(context.Background())
 	if err != nil {
@@ -221,11 +246,14 @@ func TestMiddleware_ZeroTime(t *testing.T) {
 	repo := &mocks.Repo{}
 	m, s := NewMiddleware(repo, &json.CommandCodec{})
 
-	s.Start()
-
 	inner := &mocks.CommandHandler{}
 
 	h := eh.UseCommandHandlerMiddleware(inner, m)
+
+	if err := s.Start(); err != nil {
+		t.Fatal("could not start scheduler:", err)
+	}
+
 	cmd := &mocks.Command{
 		ID:      uuid.New(),
 		Content: "content",
@@ -240,14 +268,14 @@ func TestMiddleware_ZeroTime(t *testing.T) {
 		t.Error("the command should have been handled:", inner.Commands)
 	}
 
-	s.Stop()
+	if err := s.Stop(); err != nil {
+		t.Fatal("could not stop scheduler:", err)
+	}
 }
 
 func TestMiddleware_Errors(t *testing.T) {
 	repo := &mocks.Repo{}
 	m, s := NewMiddleware(repo, &json.CommandCodec{})
-
-	s.Start()
 
 	handlerErr := errors.New("handler error")
 	inner := &mocks.CommandHandler{
@@ -255,6 +283,11 @@ func TestMiddleware_Errors(t *testing.T) {
 	}
 
 	h := eh.UseCommandHandlerMiddleware(inner, m)
+
+	if err := s.Start(); err != nil {
+		t.Fatal("could not start scheduler:", err)
+	}
+
 	cmd := &mocks.Command{
 		ID:      uuid.New(),
 		Content: "content",
@@ -279,7 +312,9 @@ func TestMiddleware_Errors(t *testing.T) {
 		t.Error("there should be an error:", err)
 	}
 
-	s.Stop()
+	if err := s.Stop(); err != nil {
+		t.Fatal("could not stop scheduler:", err)
+	}
 }
 
 func TestMiddleware_Cancel(t *testing.T) {
@@ -287,9 +322,16 @@ func TestMiddleware_Cancel(t *testing.T) {
 
 	repo.SetEntityFactory(func() eh.Entity { return &PersistedCommand{} })
 
-	_, s := NewMiddleware(repo, &json.CommandCodec{})
+	m, s := NewMiddleware(repo, &json.CommandCodec{})
 
-	s.Start()
+	inner := &mocks.CommandHandler{}
+
+	// Handler is not used in this case.
+	eh.UseCommandHandlerMiddleware(inner, m)
+
+	if err := s.Start(); err != nil {
+		t.Fatal("could not start scheduler:", err)
+	}
 
 	nonExistingID := uuid.New()
 	if err := s.CancelCommand(context.Background(), nonExistingID); err == nil ||
@@ -329,7 +371,9 @@ func TestMiddleware_Cancel(t *testing.T) {
 		t.Error("there should be an error:", err)
 	}
 
-	s.Stop()
+	if err := s.Stop(); err != nil {
+		t.Fatal("could not stop scheduler:", err)
+	}
 
 	items, err = repo.FindAll(context.Background())
 	if err != nil {
