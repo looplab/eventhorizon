@@ -18,7 +18,6 @@ import (
 	"context"
 
 	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/middleware/eventhandler/tracing"
 )
 
 // EventBus is an event bus wrapper that adds tracing.
@@ -33,7 +32,7 @@ func NewEventBus(eventBus eh.EventBus) *EventBus {
 		EventBus: eventBus,
 		// Wrap the eh.EventHandler part of the bus with tracing middleware,
 		// set as producer to set the correct tags.
-		h: eh.UseEventHandlerMiddleware(eventBus, tracing.NewMiddleware()),
+		h: eh.UseEventHandlerMiddleware(eventBus, NewEventHandlerMiddleware()),
 	}
 }
 
@@ -49,7 +48,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	}
 
 	// Wrap the handlers in tracing middleware.
-	h = eh.UseEventHandlerMiddleware(h, tracing.NewMiddleware())
+	h = eh.UseEventHandlerMiddleware(h, NewEventHandlerMiddleware())
 
 	return b.EventBus.AddHandler(ctx, m, h)
 }

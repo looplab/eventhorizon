@@ -23,8 +23,8 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 )
 
-// NewMiddleware returns a new command handler middleware that adds tracing spans.
-func NewMiddleware() eh.CommandHandlerMiddleware {
+// NewCommandHandlerMiddleware returns a new command handler middleware that adds tracing spans.
+func NewCommandHandlerMiddleware() eh.CommandHandlerMiddleware {
 	return eh.CommandHandlerMiddleware(func(h eh.CommandHandler) eh.CommandHandler {
 		return eh.CommandHandlerFunc(func(ctx context.Context, cmd eh.Command) error {
 			opName := fmt.Sprintf("Command(%s)", cmd.CommandType())
