@@ -194,7 +194,7 @@ func (s *Scheduler) ScheduleCommand(ctx context.Context, cmd eh.Command, execute
 		ExecuteAt:  executeAt,
 	}
 
-	if err := s.repo.Save(context.Background(), pc); err != nil {
+	if err := s.repo.Save(ctx, pc); err != nil {
 		return uuid.Nil, &Error{
 			Err:     fmt.Errorf("could not persist command: %w", err),
 			Ctx:     ctx,
@@ -325,7 +325,7 @@ loop:
 						}
 					}
 
-					if err := s.repo.Remove(context.Background(), sc.id); err != nil {
+					if err := s.repo.Remove(sc.ctx, sc.id); err != nil {
 						s.errCh <- &Error{
 							Err:     fmt.Errorf("could not remove persisted command: %w", err),
 							Ctx:     sc.ctx,
@@ -333,7 +333,7 @@ loop:
 						}
 					}
 				case <-cancel:
-					if err := s.repo.Remove(context.Background(), sc.id); err != nil {
+					if err := s.repo.Remove(sc.ctx, sc.id); err != nil {
 						s.errCh <- &Error{
 							Err:     fmt.Errorf("could not remove persisted command: %w", err),
 							Ctx:     sc.ctx,
