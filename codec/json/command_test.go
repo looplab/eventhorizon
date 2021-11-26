@@ -21,30 +21,28 @@ import (
 	"github.com/looplab/eventhorizon/codec"
 )
 
-func TestEventCodec(t *testing.T) {
-	c := &EventCodec{}
+func TestCommandCodec(t *testing.T) {
+	c := &CommandCodec{}
+
 	expectedBytes := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(`
 	{
-		"event_type": "CodecEvent",
-		"data": {
-		  "Bool": true,
-		  "String": "string",
-		  "Number": 42,
-		  "Slice": ["a", "b"],
-		  "Map": { "key": "value" },
-		  "Time": "2009-11-10T23:00:00Z",
-		  "TimeRef": "2009-11-10T23:00:00Z",
-		  "NullTime": null,
-		  "Struct": { "Bool": true, "String": "string", "Number": 42 },
-		  "StructRef": { "Bool": true, "String": "string", "Number": 42 },
-		  "NullStruct": null
+		"command_type": "CodecCommand",
+		"command": {
+			"ID": "10a7ec0f-7f2b-46f5-bca1-877b6e33c9fd",
+			"Bool": true,
+			"String": "string",
+			"Number": 42,
+			"Slice": ["a", "b"],
+			"Map": { "key": "value" },
+			"Time": "2009-11-10T23:00:00Z",
+			"TimeRef": "2009-11-10T23:00:00Z",
+			"NullTime": null,
+			"Struct": { "Bool": true, "String": "string", "Number": 42 },
+			"StructRef": { "Bool": true, "String": "string", "Number": 42 },
+			"NullStruct": null
 		},
-		"timestamp": "2009-11-10T23:00:00Z",
-		"aggregate_type": "Aggregate",
-		"aggregate_id": "10a7ec0f-7f2b-46f5-bca1-877b6e33c9fd",
-		"version": 1,
-		"metadata": { "num": 42 },
 		"context": { "context_one": "testval" }
 	}`, " ", ""), "\n", ""), "\t", "")
-	codec.EventCodecAcceptanceTest(t, c, []byte(expectedBytes))
+
+	codec.CommandCodecAcceptanceTest(t, c, []byte(expectedBytes))
 }

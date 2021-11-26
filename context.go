@@ -182,3 +182,11 @@ func UnmarshalContext(ctx context.Context, vals map[string]interface{}) context.
 
 	return ctx
 }
+
+// CopyContext copies all values that are registered and exists in the `from`
+// context to the `to` context. It basically runs a marshal/unmarshal back-to-back.
+func CopyContext(from, to context.Context) context.Context {
+	vals := MarshalContext(from)
+
+	return UnmarshalContext(to, vals)
+}

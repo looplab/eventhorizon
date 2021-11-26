@@ -16,6 +16,7 @@ package codec
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -26,21 +27,27 @@ import (
 
 func init() {
 	eh.RegisterEventData(EventType, func() eh.EventData { return &EventData{} })
+
+	eh.RegisterCommand(func() eh.Command { return &Command{} })
 }
 
 const (
 	// EventType is a the type for Event.
 	EventType eh.EventType = "CodecEvent"
+	// AggregateType is the type for Aggregate.
+	AggregateType eh.AggregateType = "CodecAggregate"
+	// CommandType is the type for Command.
+	CommandType eh.CommandType = "CodecCommand"
 )
 
 // EventCodecAcceptanceTest is the acceptance test that all implementations of
-// Codec should pass. It should manually be called from a test case in each
+// EventCodec should pass. It should manually be called from a test case in each
 // implementation:
 //
 //   func TestEventCodec(t *testing.T) {
 //       c := EventCodec{}
 //       expectedBytes = []byte("")
-//       eventbus.AcceptanceTest(t, c, expectedBytes)
+//       codec.EventCodecAcceptanceTest(t, c, expectedBytes)
 //   }
 //
 func EventCodecAcceptanceTest(t *testing.T, c eh.EventCodec, expectedBytes []byte) {
@@ -117,3 +124,85 @@ type Nested struct {
 	String string
 	Number float64
 }
+
+// CommandCodecAcceptanceTest is the acceptance test that all implementations of
+// CommandCodec should pass. It should manually be called from a test case in each
+// implementation:
+//
+//   func TestCommandCodec(t *testing.T) {
+//       c := CommandCodec{}
+//       expectedBytes = []byte("")
+//       codec.CommandCodecAcceptanceTest(t, c, expectedBytes)
+//   }
+//
+func CommandCodecAcceptanceTest(t *testing.T, c eh.CommandCodec, expectedBytes []byte) {
+	// Marshaling.
+	ctx := mocks.WithContextOne(context.Background(), "testval")
+	id := uuid.MustParse("10a7ec0f-7f2b-46f5-bca1-877b6e33c9fd")
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	cmd := &Command{
+		ID:      id,
+		Bool:    true,
+		String:  "string",
+		Number:  42.0,
+		Slice:   []string{"a", "b"},
+		Map:     map[string]interface{}{"key": "value"}, // NOTE: Just one key to avoid compare issues.
+		Time:    timestamp,
+		TimeRef: &timestamp,
+		Struct: Nested{
+			Bool:   true,
+			String: "string",
+			Number: 42.0,
+		},
+		StructRef: &Nested{
+			Bool:   true,
+			String: "string",
+			Number: 42.0,
+		},
+	}
+
+	b, err := c.MarshalCommand(ctx, cmd)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	if string(b) != string(expectedBytes) {
+		t.Error("the encoded bytes should be correct:", string(b))
+	}
+
+	// Unmarshaling.
+	decodedCmd, decodedContext, err := c.UnmarshalCommand(context.Background(), b)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	if !reflect.DeepEqual(decodedCmd, cmd) {
+		t.Error("the decoded command was incorrect:", err)
+	}
+
+	if val, ok := mocks.ContextOne(decodedContext); !ok || val != "testval" {
+		t.Error("the decoded context was incorrect:", decodedContext)
+	}
+}
+
+// Command is a mocked eventhorizon.Command, useful in testing.
+type Command struct {
+	ID         uuid.UUID
+	Bool       bool
+	String     string
+	Number     float64
+	Slice      []string
+	Map        map[string]interface{}
+	Time       time.Time
+	TimeRef    *time.Time
+	NullTime   *time.Time
+	Struct     Nested
+	StructRef  *Nested
+	NullStruct *Nested
+}
+
+var _ = eh.Command(&Command{})
+
+func (t *Command) AggregateID() uuid.UUID          { return t.ID }
+func (t *Command) AggregateType() eh.AggregateType { return AggregateType }
+func (t *Command) CommandType() eh.CommandType     { return CommandType }

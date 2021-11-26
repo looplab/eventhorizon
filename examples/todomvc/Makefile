@@ -18,7 +18,7 @@ stop:
 
 .PHONY: run_backend
 run_backend:
-	go run -v backend/*.go
+	go run backend/*.go
 
 .PHONY: build_frontend
 build_frontend:
