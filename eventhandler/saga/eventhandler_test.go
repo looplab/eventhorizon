@@ -16,6 +16,7 @@ package saga
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -49,6 +50,23 @@ func TestEventHandler(t *testing.T) {
 
 	if !reflect.DeepEqual(commandHandler.Commands, saga.commands) {
 		t.Error("the produced commands should be correct:", commandHandler.Commands)
+	}
+}
+
+func TestEventHandler_MissingEventError(t *testing.T) {
+	commandHandler := &mocks.CommandHandler{
+		Commands: []eh.Command{},
+	}
+	saga := &TestSaga{}
+	handler := NewEventHandler(saga, commandHandler)
+
+	ctx := context.Background()
+
+	err := handler.HandleEvent(ctx, nil)
+
+	projectError := &Error{}
+	if !errors.As(err, &projectError) || !errors.Is(err, eh.ErrMissingEvent) {
+		t.Error("there should be an error:", err)
 	}
 }
 

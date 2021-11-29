@@ -30,6 +30,10 @@ import (
 func TestEventHandler(t *testing.T) {
 	h := NewEventHandler()
 
+	if err := h.HandleEvent(context.Background(), nil); !errors.Is(err, eh.ErrMissingEvent) {
+		t.Error("there should be a missing event error:", err)
+	}
+
 	// Event should match when waiting.
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	expectedEvent := eh.NewEvent(mocks.EventType, nil, timestamp,
@@ -37,7 +41,10 @@ func TestEventHandler(t *testing.T) {
 
 	go func() {
 		time.Sleep(time.Millisecond)
-		h.HandleEvent(context.Background(), expectedEvent)
+
+		if err := h.HandleEvent(context.Background(), expectedEvent); err != nil {
+			t.Error("there should be no error:", err)
+		}
 	}()
 
 	l := h.Listen(func(event eh.Event) bool {
@@ -67,7 +74,10 @@ func TestEventHandler(t *testing.T) {
 
 	go func() {
 		time.Sleep(time.Millisecond)
-		h.HandleEvent(context.Background(), otherEvent)
+
+		if err := h.HandleEvent(context.Background(), otherEvent); err != nil {
+			t.Error("there should be no error:", err)
+		}
 	}()
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)

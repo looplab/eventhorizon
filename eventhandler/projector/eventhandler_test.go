@@ -386,6 +386,24 @@ func TestEventHandler_UpdateModelAfterDelete(t *testing.T) {
 	}
 }
 
+func TestEventHandler_MissingEventError(t *testing.T) {
+	repo := &mocks.Repo{}
+	projector := &TestProjector{}
+	handler := NewEventHandler(projector, repo)
+	handler.SetEntityFactory(func() eh.Entity {
+		return &mocks.SimpleModel{}
+	})
+
+	ctx := context.Background()
+
+	err := handler.HandleEvent(ctx, nil)
+
+	projectError := &Error{}
+	if !errors.As(err, &projectError) || !errors.Is(err, eh.ErrMissingEvent) {
+		t.Error("there should be an error:", err)
+	}
+}
+
 func TestEventHandler_LoadError(t *testing.T) {
 	repo := &mocks.Repo{}
 	projector := &TestProjector{}

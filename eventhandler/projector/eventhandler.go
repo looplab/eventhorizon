@@ -175,6 +175,13 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 // It will try to find the correct version of the model, waiting for it the projector
 // has the WithWait option set.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
+	if event == nil {
+		return &Error{
+			Err:       eh.ErrMissingEvent,
+			Projector: h.projector.ProjectorType().String(),
+		}
+	}
+
 	// Used to retry once in case of a version mismatch.
 	triedOnce := false
 retryOnce:

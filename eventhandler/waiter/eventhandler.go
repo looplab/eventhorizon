@@ -51,6 +51,10 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 // It forwards events to the waiters so that they can match the events.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
+	if event == nil {
+		return eh.ErrMissingEvent
+	}
+
 	h.inbox <- event
 
 	return nil

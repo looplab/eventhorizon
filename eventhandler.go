@@ -16,10 +16,14 @@ package eventhorizon
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"runtime"
 	"strings"
 )
+
+// ErrMissingEvent is when there is no event to be handled.
+var ErrMissingEvent = errors.New("missing event")
 
 // EventHandlerType is the type of an event handler, used as its unique identifier.
 type EventHandlerType string

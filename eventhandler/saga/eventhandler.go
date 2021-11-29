@@ -87,6 +87,13 @@ func (h *EventHandler) HandlerType() eh.EventHandlerType {
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
 func (h *EventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
+	if event == nil {
+		return &Error{
+			Err:  eh.ErrMissingEvent,
+			Saga: h.saga.SagaType().String(),
+		}
+	}
+
 	// Run the saga which can issue commands on the provided command handler.
 	if err := h.saga.RunSaga(ctx, event, h.commandHandler); err != nil {
 		return &Error{
