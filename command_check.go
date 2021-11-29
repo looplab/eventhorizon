@@ -15,11 +15,15 @@
 package eventhorizon
 
 import (
+	"errors"
 	"reflect"
 	"time"
 
 	"github.com/looplab/eventhorizon/uuid"
 )
+
+// ErrMissingAggregateID is when a command is missing an aggregate ID.
+var ErrMissingAggregateID = errors.New("missing aggregate ID")
 
 // IsZeroer is used to check if a type is zero-valued, and in that case
 // is not allowed to be used in a command. See CheckCommand.
@@ -39,6 +43,10 @@ func (c *CommandFieldError) Error() string {
 
 // CheckCommand checks a command for errors.
 func CheckCommand(cmd Command) error {
+	if cmd.AggregateID() == uuid.Nil {
+		return ErrMissingAggregateID
+	}
+
 	rv := reflect.Indirect(reflect.ValueOf(cmd))
 	rt := rv.Type()
 

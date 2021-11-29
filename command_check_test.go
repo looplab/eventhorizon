@@ -15,6 +15,7 @@
 package eventhorizon
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -26,6 +27,12 @@ func TestCheckCommand(t *testing.T) {
 	err := CheckCommand(&TestCommandFields{uuid.New(), "command1"})
 	if err != nil {
 		t.Error("there should be no error:", err)
+	}
+
+	// Missing Aggregate ID.
+	err = CheckCommand(&TestCommandUUIDValue{})
+	if !errors.Is(err, ErrMissingAggregateID) {
+		t.Error("there should be a missing aggregate ID error:", err)
 	}
 
 	// Missing required UUID value.
