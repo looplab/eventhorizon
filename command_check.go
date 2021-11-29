@@ -15,10 +15,18 @@
 package eventhorizon
 
 import (
+	"errors"
 	"reflect"
 	"time"
 
 	"github.com/looplab/eventhorizon/uuid"
+)
+
+var (
+	// ErrMissingCommand is when there is no command to be handled.
+	ErrMissingCommand = errors.New("missing command")
+	// ErrMissingAggregateID is when a command is missing an aggregate ID.
+	ErrMissingAggregateID = errors.New("missing aggregate ID")
 )
 
 // IsZeroer is used to check if a type is zero-valued, and in that case
@@ -39,6 +47,14 @@ func (c *CommandFieldError) Error() string {
 
 // CheckCommand checks a command for errors.
 func CheckCommand(cmd Command) error {
+	if cmd == nil {
+		return ErrMissingCommand
+	}
+
+	if cmd.AggregateID() == uuid.Nil {
+		return ErrMissingAggregateID
+	}
+
 	rv := reflect.Indirect(reflect.ValueOf(cmd))
 	rt := rv.Type()
 

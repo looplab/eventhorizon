@@ -55,8 +55,7 @@ func NewCommandHandler(t eh.AggregateType, store eh.AggregateStore) (*CommandHan
 // HandleCommand handles a command with the registered aggregate.
 // Returns ErrAggregateNotFound if no aggregate could be found.
 func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
-	err := eh.CheckCommand(cmd)
-	if err != nil {
+	if err := eh.CheckCommand(cmd); err != nil {
 		return err
 	}
 
