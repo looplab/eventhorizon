@@ -29,6 +29,12 @@ func TestCheckCommand(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
+	// Missing command.
+	err = CheckCommand(nil)
+	if !errors.Is(err, ErrMissingCommand) {
+		t.Error("there should be a missing command error:", err)
+	}
+
 	// Missing Aggregate ID.
 	err = CheckCommand(&TestCommandUUIDValue{})
 	if !errors.Is(err, ErrMissingAggregateID) {

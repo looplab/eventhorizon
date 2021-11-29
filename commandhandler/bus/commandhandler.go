@@ -45,6 +45,10 @@ func NewCommandHandler() *CommandHandler {
 
 // HandleCommand handles a command with a handler capable of handling it.
 func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	if err := eh.CheckCommand(cmd); err != nil {
+		return err
+	}
+
 	h.handlersMu.RLock()
 	defer h.handlersMu.RUnlock()
 
