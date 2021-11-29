@@ -43,6 +43,16 @@ services:
     volumes:
       - mongodb:/data/db
 
+  postgres:
+    image: postgres:14
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: "password"
+    # PGDATA: "/data/postgres"
+    # volumes:
+    #   - postgres:/data/postgres
+
   gpubsub:
     image: gcr.io/google.com/cloudsdktool/cloud-sdk:355.0.0-emulators
     ports:
