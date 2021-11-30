@@ -44,13 +44,21 @@ var (
 // Repo implements an MongoDB repository for entities.
 type Repo struct {
 	client          *mongo.Client
+	clientOwnership clientOwnership
 	entities        *mongo.Collection
 	newEntity       func() eh.Entity
 	connectionCheck bool
 }
 
+type clientOwnership int
+
+const (
+	internalClient clientOwnership = iota
+	externalClient
+)
+
 // NewRepo creates a new Repo.
-func NewRepo(uri, db, collection string, options ...Option) (*Repo, error) {
+func NewRepo(uri, dbName, collection string, options ...Option) (*Repo, error) {
 	opts := mongoOptions.Client().ApplyURI(uri)
 	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
 	opts.SetReadConcern(readconcern.Majority())
@@ -61,18 +69,23 @@ func NewRepo(uri, db, collection string, options ...Option) (*Repo, error) {
 		return nil, fmt.Errorf("could not connect to DB: %w", err)
 	}
 
-	return NewRepoWithClient(client, db, collection, options...)
+	return newRepoWithClient(client, internalClient, dbName, collection, options...)
 }
 
 // NewRepoWithClient creates a new Repo with a client.
-func NewRepoWithClient(client *mongo.Client, db, collection string, options ...Option) (*Repo, error) {
+func NewRepoWithClient(client *mongo.Client, dbName, collection string, options ...Option) (*Repo, error) {
+	return newRepoWithClient(client, externalClient, dbName, collection, options...)
+}
+
+func newRepoWithClient(client *mongo.Client, clientOwnership clientOwnership, dbName, collection string, options ...Option) (*Repo, error) {
 	if client == nil {
 		return nil, fmt.Errorf("missing DB client")
 	}
 
 	r := &Repo{
-		client:   client,
-		entities: client.Database(db).Collection(collection),
+		client:          client,
+		clientOwnership: clientOwnership,
+		entities:        client.Database(dbName).Collection(collection),
 	}
 
 	for _, option := range options {
@@ -415,5 +428,10 @@ func (r *Repo) Clear(ctx context.Context) error {
 
 // Close implements the Close method of the eventhorizon.WriteRepo interface.
 func (r *Repo) Close() error {
+	if r.clientOwnership == externalClient {
+		// Don't close a client we don't own.
+		return nil
+	}
+
 	return r.client.Disconnect(context.Background())
 }
