@@ -33,20 +33,28 @@ var (
 
 // Outbox implements an eventhorizon.Outbox for MongoDB.
 type Outbox struct {
-	client         *mongo.Client
-	outbox         *mongo.Collection
-	handlers       []*matcherHandler
-	handlersByType map[eh.EventHandlerType]*matcherHandler
-	handlersMu     sync.RWMutex
-	errCh          chan error
-	watchToken     string
-	resumeToken    bson.Raw
-	processingMu   sync.Mutex
-	cctx           context.Context
-	cancel         context.CancelFunc
-	wg             sync.WaitGroup
-	codec          eh.EventCodec
+	client          *mongo.Client
+	clientOwnership clientOwnership
+	outbox          *mongo.Collection
+	handlers        []*matcherHandler
+	handlersByType  map[eh.EventHandlerType]*matcherHandler
+	handlersMu      sync.RWMutex
+	errCh           chan error
+	watchToken      string
+	resumeToken     bson.Raw
+	processingMu    sync.Mutex
+	cctx            context.Context
+	cancel          context.CancelFunc
+	wg              sync.WaitGroup
+	codec           eh.EventCodec
 }
+
+type clientOwnership int
+
+const (
+	internalClient clientOwnership = iota
+	externalClient
+)
 
 type matcherHandler struct {
 	eh.EventMatcher
@@ -54,7 +62,7 @@ type matcherHandler struct {
 }
 
 // NewOutbox creates a new Outbox with a MongoDB URI: `mongodb://hostname`.
-func NewOutbox(uri, db string, options ...Option) (*Outbox, error) {
+func NewOutbox(uri, dbName string, options ...Option) (*Outbox, error) {
 	opts := mongoOptions.Client().ApplyURI(uri)
 	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
 	opts.SetReadConcern(readconcern.Majority())
@@ -65,11 +73,15 @@ func NewOutbox(uri, db string, options ...Option) (*Outbox, error) {
 		return nil, fmt.Errorf("could not connect to DB: %w", err)
 	}
 
-	return NewOutboxWithClient(client, db, options...)
+	return newOutboxWithClient(client, internalClient, dbName, options...)
 }
 
 // NewOutboxWithClient creates a new Outbox with a client.
-func NewOutboxWithClient(client *mongo.Client, db string, options ...Option) (*Outbox, error) {
+func NewOutboxWithClient(client *mongo.Client, dbName string, options ...Option) (*Outbox, error) {
+	return newOutboxWithClient(client, externalClient, dbName, options...)
+}
+
+func newOutboxWithClient(client *mongo.Client, clientOwnership clientOwnership, dbName string, options ...Option) (*Outbox, error) {
 	if client == nil {
 		return nil, fmt.Errorf("missing DB client")
 	}
@@ -77,13 +89,14 @@ func NewOutboxWithClient(client *mongo.Client, db string, options ...Option) (*O
 	ctx, cancel := context.WithCancel(context.Background())
 
 	o := &Outbox{
-		client:         client,
-		outbox:         client.Database(db).Collection("outbox"),
-		handlersByType: map[eh.EventHandlerType]*matcherHandler{},
-		errCh:          make(chan error, 100),
-		cctx:           ctx,
-		cancel:         cancel,
-		codec:          &bsonCodec.EventCodec{},
+		client:          client,
+		clientOwnership: clientOwnership,
+		outbox:          client.Database(dbName).Collection("outbox"),
+		handlersByType:  map[eh.EventHandlerType]*matcherHandler{},
+		errCh:           make(chan error, 100),
+		cctx:            ctx,
+		cancel:          cancel,
+		codec:           &bsonCodec.EventCodec{},
 	}
 
 	for _, option := range options {
@@ -216,7 +229,12 @@ func (o *Outbox) Close() error {
 	o.cancel()
 	o.wg.Wait()
 
-	return nil
+	if o.clientOwnership == externalClient {
+		// Don't close a client we don't own.
+		return nil
+	}
+
+	return o.client.Disconnect(context.Background())
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.

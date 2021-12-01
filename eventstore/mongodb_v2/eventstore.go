@@ -38,12 +38,20 @@ import (
 // keep tracks of the global position of events, stored as metadata.
 type EventStore struct {
 	client                *mongo.Client
+	clientOwnership       clientOwnership
 	db                    *mongo.Database
 	events                *mongo.Collection
 	streams               *mongo.Collection
 	eventHandlerAfterSave eh.EventHandler
 	eventHandlerInTX      eh.EventHandler
 }
+
+type clientOwnership int
+
+const (
+	internalClient clientOwnership = iota
+	externalClient
+)
 
 // NewEventStore creates a new EventStore with a MongoDB URI: `mongodb://hostname`.
 func NewEventStore(uri, dbName string, options ...Option) (*EventStore, error) {
@@ -57,21 +65,26 @@ func NewEventStore(uri, dbName string, options ...Option) (*EventStore, error) {
 		return nil, fmt.Errorf("could not connect to DB: %w", err)
 	}
 
-	return NewEventStoreWithClient(client, dbName, options...)
+	return newEventStoreWithClient(client, internalClient, dbName, options...)
 }
 
 // NewEventStoreWithClient creates a new EventStore with a client.
 func NewEventStoreWithClient(client *mongo.Client, dbName string, options ...Option) (*EventStore, error) {
+	return newEventStoreWithClient(client, externalClient, dbName, options...)
+}
+
+func newEventStoreWithClient(client *mongo.Client, clientOwnership clientOwnership, dbName string, options ...Option) (*EventStore, error) {
 	if client == nil {
 		return nil, fmt.Errorf("missing DB client")
 	}
 
 	db := client.Database(dbName)
 	s := &EventStore{
-		client:  client,
-		db:      db,
-		events:  db.Collection("events"),
-		streams: db.Collection("streams"),
+		client:          client,
+		clientOwnership: clientOwnership,
+		db:              db,
+		events:          db.Collection("events"),
+		streams:         db.Collection("streams"),
 	}
 
 	for _, option := range options {
@@ -453,6 +466,11 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 
 // Close implements the Close method of the eventhorizon.EventStore interface.
 func (s *EventStore) Close() error {
+	if s.clientOwnership == externalClient {
+		// Don't close a client we don't own.
+		return nil
+	}
+
 	return s.client.Disconnect(context.Background())
 }
 
