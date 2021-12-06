@@ -45,6 +45,12 @@ func NewCommandHandler() *CommandHandler {
 
 // HandleCommand handles a command with a handler capable of handling it.
 func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	if err := eh.CheckCommand(cmd); err != nil {
 		return err
 	}
