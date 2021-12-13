@@ -77,6 +77,8 @@ func main() {
 		log.Fatal("could not create tracer: ", err)
 	}
 
+	tracing.RegisterContext()
+
 	// Create the outbox that will project and publish events.
 	var outbox eh.Outbox
 
