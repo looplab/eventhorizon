@@ -72,7 +72,7 @@ func NewHandler(
 
 	// Simple HTTP request logging middleware as final handler.
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println(r.Method, r.URL)
+		log.Printf("%s %s\n", r.Method, r.URL.EscapedPath())
 		h.ServeHTTP(w, r)
 	})
 
