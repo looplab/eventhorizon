@@ -22,6 +22,10 @@ import (
 	"github.com/looplab/eventhorizon/eventbus/local"
 )
 
+func init() {
+	RegisterContext()
+}
+
 // NOTE: Not named "Integration" to enable running with the unit tests.
 func TestEventBusAddHandler(t *testing.T) {
 	if testing.Short() {
