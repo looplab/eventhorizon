@@ -23,7 +23,7 @@ services:
     command: [-c, make test test_integration]
 
   mongodb-docker:
-    image: bitnami/mongodb:4.4
+    image: bitnami/mongodb:5.0
     ports:
       - 27017:27017
     environment:
@@ -33,7 +33,7 @@ services:
       - mongodb:/data/db
 
   mongodb:
-    image: bitnami/mongodb:4.4
+    image: bitnami/mongodb:5.0
     ports:
       - 27017:27017
     environment:
@@ -44,7 +44,7 @@ services:
       - mongodb:/data/db
 
   gpubsub:
-    image: gcr.io/google.com/cloudsdktool/cloud-sdk:355.0.0-emulators
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:367.0.0-emulators
     ports:
       - 8793:8793
     entrypoint:
@@ -76,13 +76,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   redis:
-    image: redis:6.2-alpine3.13
+    image: redis:6.2-alpine3.15
     ports:
       - 6379:6379
     entrypoint: [redis-server, --appendonly yes]
 
   nats:
-    image: nats:2.4-alpine3.14
+    image: nats:2.6-alpine3.14
     ports:
       - 4222:4222
     command: [-js]
