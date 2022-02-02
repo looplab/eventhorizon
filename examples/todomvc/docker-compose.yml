@@ -24,15 +24,6 @@ services:
       MONGODB_REPLICA_SET_MODE: primary
       ALLOW_EMPTY_PASSWORD: "yes"
 
-  mongodb:
-    image: bitnami/mongodb:4.4
-    ports:
-      - 27017:27017
-    environment:
-      MONGODB_REPLICA_SET_MODE: primary
-      MONGODB_ADVERTISED_HOSTNAME: localhost # Needed to connect from localhost.
-      ALLOW_EMPTY_PASSWORD: "yes"
-
   redis:
     image: redis:6.2-alpine3.13
     ports:
