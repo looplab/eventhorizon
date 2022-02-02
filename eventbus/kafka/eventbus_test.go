@@ -24,6 +24,8 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventbus"
+	"github.com/segmentio/kafka-go"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAddHandlerIntegration(t *testing.T) {
@@ -123,4 +125,22 @@ func newTestEventBus(appID string) (eh.EventBus, string, error) {
 	}
 
 	return bus, appID, nil
+}
+
+func TestWithStartOffset(t *testing.T) {
+	testCases := map[string]struct {
+		startOffset int64
+	}{
+		"FirstOffset": {kafka.FirstOffset},
+		"zero":        {0},
+	}
+
+	for desc, tc := range testCases {
+		t.Run(desc, func(t *testing.T) {
+			eb, err := NewEventBus("", "", WithStartOffset(tc.startOffset))
+			require.NoError(t, err)
+
+			require.Equal(t, tc.startOffset, eb.startOffset)
+		})
+	}
 }
