@@ -36,7 +36,7 @@ See the example folder for a few examples to get you started.
 
 # Get Involved
 
-- Join our [slack channel](https://gophers.slack.com/messages/eventhorizon/) (sign up [here](https://gophersinvite.herokuapp.com/))
+- Join our [slack channel](https://gophers.slack.com/messages/eventhorizon/) (sign up [here](https://invite.slack.golangbridge.org/))
 - Check out the [contribution guidelines](CONTRIBUTING.md)
 
 # Event Store Implementations
