@@ -143,13 +143,33 @@ func TestWithStartOffset(t *testing.T) {
 	for desc, tc := range testCases {
 		t.Run(desc, func(t *testing.T) {
 			eb, _, err := newTestEventBus("", WithStartOffset(tc.startOffset))
-			if err != nil {
-				t.Fatal("there should be no error:", err)
-			}
 			require.NoError(t, err)
 
 			underlyingEb := eb.(*EventBus)
 			assert.Equal(t, tc.startOffset, underlyingEb.startOffset)
+		})
+	}
+}
+
+func TestWithTopic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	testCases := map[string]struct {
+		topic string
+	}{
+		"test1": {"test_test1"},
+		"test2": {"test_test2"},
+	}
+
+	for desc, tc := range testCases {
+		t.Run(desc, func(t *testing.T) {
+			eb, _, err := newTestEventBus("", WithTopic(tc.topic))
+			require.NoError(t, err)
+
+			underlyingEb := eb.(*EventBus)
+			require.Equal(t, tc.topic, underlyingEb.topic)
 		})
 	}
 }
