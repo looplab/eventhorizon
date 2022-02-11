@@ -18,12 +18,15 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventbus"
+	"github.com/segmentio/kafka-go"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAddHandlerIntegration(t *testing.T) {
@@ -100,7 +103,7 @@ func BenchmarkEventBus(b *testing.B) {
 	eventbus.Benchmark(b, bus)
 }
 
-func newTestEventBus(appID string) (eh.EventBus, string, error) {
+func newTestEventBus(appID string, options ...Option) (eh.EventBus, string, error) {
 	// Connect to localhost if not running inside docker
 	addr := os.Getenv("KAFKA_ADDR")
 	if addr == "" {
@@ -117,10 +120,36 @@ func newTestEventBus(appID string) (eh.EventBus, string, error) {
 		appID = "app-" + hex.EncodeToString(b)
 	}
 
-	bus, err := NewEventBus(addr, appID)
+	bus, err := NewEventBus(addr, appID, options...)
 	if err != nil {
 		return nil, "", fmt.Errorf("could not create event bus: %w", err)
 	}
 
 	return bus, appID, nil
+}
+
+func TestWithStartOffset(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	testCases := map[string]struct {
+		startOffset int64
+	}{
+		"FirstOffset": {kafka.FirstOffset},
+		"zero":        {0},
+	}
+
+	for desc, tc := range testCases {
+		t.Run(desc, func(t *testing.T) {
+			eb, _, err := newTestEventBus("", WithStartOffset(tc.startOffset))
+			if err != nil {
+				t.Fatal("there should be no error:", err)
+			}
+			require.NoError(t, err)
+
+			underlyingEb := eb.(*EventBus)
+			assert.Equal(t, tc.startOffset, underlyingEb.startOffset)
+		})
+	}
 }

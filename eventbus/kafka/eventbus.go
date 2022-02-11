@@ -35,6 +35,7 @@ type EventBus struct {
 	addr         string
 	appID        string
 	topic        string
+	startOffset  int64
 	client       *kafka.Client
 	writer       *kafka.Writer
 	registered   map[eh.EventHandlerType]struct{}
@@ -51,14 +52,15 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	b := &EventBus{
-		addr:       addr,
-		appID:      appID,
-		topic:      appID + "_events",
-		registered: map[eh.EventHandlerType]struct{}{},
-		errCh:      make(chan error, 100),
-		cctx:       ctx,
-		cancel:     cancel,
-		codec:      &json.EventCodec{},
+		addr:        addr,
+		appID:       appID,
+		topic:       appID + "_events",
+		startOffset: kafka.LastOffset, // Default: Don't read old messages.
+		registered:  map[eh.EventHandlerType]struct{}{},
+		errCh:       make(chan error, 100),
+		cctx:        ctx,
+		cancel:      cancel,
+		codec:       &json.EventCodec{},
 	}
 
 	// Apply configuration options.
@@ -134,6 +136,19 @@ func WithCodec(codec eh.EventCodec) Option {
 	}
 }
 
+// WithStartOffset sets the consumer group's offset to start at
+// Defaults to: LastOffset
+// Per the kafka client documentation
+//     StartOffset determines from whence the consumer group should begin
+//     consuming when it finds a partition without a committed offset.  If
+//     non-zero, it must be set to one of FirstOffset or LastOffset.
+func WithStartOffset(startOffset int64) Option {
+	return func(b *EventBus) error {
+		b.startOffset = startOffset
+		return nil
+	}
+}
+
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandlerType() eh.EventHandlerType {
 	return "eventbus"
@@ -197,7 +212,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 		GroupID:               groupID,     // Send messages to only one subscriber per group.
 		MaxWait:               time.Second, // Allow to exit readloop in max 1s.
 		WatchPartitionChanges: true,
-		StartOffset:           kafka.LastOffset, // Don't read old messages.
+		StartOffset:           b.startOffset,
 	})
 
 	req := &kafka.ListGroupsRequest{
