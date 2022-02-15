@@ -287,13 +287,18 @@ func (b *EventBus) Close() error {
 // Handles all events coming in on the channel.
 func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) {
 	defer b.wg.Done()
+	defer func() {
+		if err := r.Close(); err != nil {
+			log.Printf("eventhorizon: failed to close Kafka reader: %s", err)
+		}
+	}()
 
 	handler := b.handler(m, h, r)
 
 	for {
 		select {
 		case <-b.cctx.Done():
-			break
+			return
 		default:
 		}
 
@@ -335,9 +340,6 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 		}
 	}
 
-	if err := r.Close(); err != nil {
-		log.Printf("eventhorizon: failed to close Kafka reader: %s", err)
-	}
 }
 
 func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) *eh.EventBusError {
