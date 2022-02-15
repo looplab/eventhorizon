@@ -149,6 +149,16 @@ func WithStartOffset(startOffset int64) Option {
 	}
 }
 
+// WithTopic uses the specified topic for the event bus topic name
+//
+// Defaults to: appID + "_events"
+func WithTopic(topic string) Option {
+	return func(b *EventBus) error {
+		b.topic = topic
+		return nil
+	}
+}
+
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandlerType() eh.EventHandlerType {
 	return "eventbus"

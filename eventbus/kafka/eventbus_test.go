@@ -18,7 +18,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 	"time"
@@ -26,7 +25,6 @@ import (
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventbus"
 	"github.com/segmentio/kafka-go"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAddHandlerIntegration(t *testing.T) {
@@ -144,12 +142,40 @@ func TestWithStartOffset(t *testing.T) {
 		t.Run(desc, func(t *testing.T) {
 			eb, _, err := newTestEventBus("", WithStartOffset(tc.startOffset))
 			if err != nil {
-				t.Fatal("there should be no error:", err)
+				t.Fatalf("expected no error, got: %s", err.Error())
 			}
-			require.NoError(t, err)
 
 			underlyingEb := eb.(*EventBus)
-			assert.Equal(t, tc.startOffset, underlyingEb.startOffset)
+			if want, got := tc.startOffset, underlyingEb.startOffset; want != got {
+				t.Fatalf("expected topics to be equal, want %d, got: %d", want, got)
+			}
+		})
+	}
+}
+
+func TestWithTopic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	testCases := map[string]struct {
+		topic string
+	}{
+		"test1": {"test_test1"},
+		"test2": {"test_test2"},
+	}
+
+	for desc, tc := range testCases {
+		t.Run(desc, func(t *testing.T) {
+			eb, _, err := newTestEventBus("", WithTopic(tc.topic))
+			if err != nil {
+				t.Fatalf("expected no error, got: %s", err.Error())
+			}
+
+			underlyingEb := eb.(*EventBus)
+			if want, got := tc.topic, underlyingEb.topic; want != got {
+				t.Fatalf("expected topics to be equal, want %s, got: %s", want, got)
+			}
 		})
 	}
 }
