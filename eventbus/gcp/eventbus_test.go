@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/pubsub"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventbus"
 )
@@ -50,6 +51,26 @@ func TestEventBusIntegration(t *testing.T) {
 	}
 
 	bus2, _, err := newTestEventBus(appID)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	t.Logf("using topic: %s_events", appID)
+
+	eventbus.AcceptanceTest(t, bus1, bus2, time.Second)
+}
+
+func TestEventBusWithConfigIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	bus1, appID, err := newTestEventBusWithTopicConfig("")
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	bus2, _, err := newTestEventBusWithTopicConfig(appID)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -102,6 +123,34 @@ func newTestEventBus(appID string) (eh.EventBus, string, error) {
 	}
 
 	bus, err := NewEventBus("project_id", appID)
+	if err != nil {
+		return nil, "", fmt.Errorf("could not create event bus: %w", err)
+	}
+
+	return bus, appID, nil
+}
+
+func newTestEventBusWithTopicConfig(appID string) (eh.EventBus, string, error) {
+	// Connect to localhost if not running inside docker
+	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
+		os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8793")
+	}
+
+	// Get a random app ID.
+	if appID == "" {
+		bts := make([]byte, 8)
+		if _, err := rand.Read(bts); err != nil {
+			return nil, "", fmt.Errorf("could not randomize app ID: %w", err)
+		}
+
+		appID = "app-" + hex.EncodeToString(bts)
+	}
+
+	// Create an empty config. The emulator doesn't support configurable message retention.
+	topicConfig := &pubsub.TopicConfig{
+		// RetentionDuration: 7 * 24 * time.Hour,
+	}
+	bus, err := NewEventBus("project_id", appID, WithTopicOptions(topicConfig))
 	if err != nil {
 		return nil, "", fmt.Errorf("could not create event bus: %w", err)
 	}
