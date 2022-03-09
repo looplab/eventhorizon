@@ -127,7 +127,7 @@ func (s *EventStore) eventStore(ctx context.Context) (eh.EventStore, error) {
 
 		// Perform an additional existence check within the write lock in the
 		// unlikely event that someone else added the event store right before us.
-		if _, ok := s.eventStores[ns]; !ok {
+		if eventStore, ok = s.eventStores[ns]; !ok {
 			var err error
 
 			eventStore, err = s.newEventStore(ns)
