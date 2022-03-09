@@ -107,8 +107,8 @@ func (e *EventStoreError) Error() string {
 
 	if len(e.Events) > 0 {
 		var es []string
-		for _, e := range e.Events {
-			es = append(es, e.String())
+		for _, ev := range e.Events {
+			es = append(es, ev.String())
 		}
 
 		str += " [" + strings.Join(es, ", ") + "]"
