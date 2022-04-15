@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,7 +33,7 @@ import (
 // to all matching registered handlers, in order of registration.
 type EventBus struct {
 	// TODO: Support multiple brokers.
-	addr         string
+	addr         string // comma delimited list of brokers
 	appID        string
 	topic        string
 	startOffset  int64
@@ -216,8 +217,9 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 
 	// Get or create the subscription.
 	groupID := b.appID + "_" + h.HandlerType().String()
+
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:               []string{b.addr},
+		Brokers:               strings.Split(b.addr, ","),
 		Topic:                 b.topic,
 		GroupID:               groupID,     // Send messages to only one subscriber per group.
 		MaxWait:               time.Second, // Allow to exit readloop in max 1s.
