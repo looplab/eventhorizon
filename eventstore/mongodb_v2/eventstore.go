@@ -354,7 +354,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 		if s.eventHandlerInTX != nil {
 			for _, e := range events {
-				if err := s.eventHandlerInTX.HandleEvent(ctx, e); err != nil {
+				if err := s.eventHandlerInTX.HandleEvent(txCtx, e); err != nil {
 					return nil, fmt.Errorf("could not handle event in transaction: %w", err)
 				}
 			}
