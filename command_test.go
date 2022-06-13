@@ -28,6 +28,7 @@ func TestCreateCommand(t *testing.T) {
 	}
 
 	RegisterCommand(func() Command { return &TestCommandRegister{} })
+	defer UnregisterCommand(TestCommandRegisterType)
 
 	cmd, err := CreateCommand(TestCommandRegisterType)
 	if err != nil {
@@ -85,6 +86,17 @@ func TestUnregisterCommandTwice(t *testing.T) {
 	RegisterCommand(func() Command { return &TestCommandUnregisterTwice{} })
 	UnregisterCommand(TestCommandUnregisterTwiceType)
 	UnregisterCommand(TestCommandUnregisterTwiceType)
+}
+
+func TestRegisteredCommands(t *testing.T) {
+	commands = make(map[CommandType]func() Command)
+	RegisterCommand(func() Command { return &TestCommandRegister{} })
+	defer UnregisterCommand(TestCommandRegisterType)
+
+	commands := RegisteredCommands()
+	if len(commands) != 1 {
+		t.Error("there should be one command:", commands)
+	}
 }
 
 const (

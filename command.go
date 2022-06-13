@@ -120,5 +120,18 @@ func CreateCommand(commandType CommandType) (Command, error) {
 	return nil, ErrCommandNotRegistered
 }
 
+// ListCommands returns a list of all registered command types.
+func RegisteredCommands() map[CommandType]func() Command {
+	commandsMu.Lock()
+	defer commandsMu.Unlock()
+
+	mapCopy := make(map[CommandType]func() Command)
+	for key, val := range commands {
+		mapCopy[key] = val
+	}
+
+	return mapCopy
+}
+
 var commands = make(map[CommandType]func() Command)
 var commandsMu sync.RWMutex

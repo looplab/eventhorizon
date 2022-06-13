@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,9 +33,10 @@ import (
 // to all matching registered handlers, in order of registration.
 type EventBus struct {
 	// TODO: Support multiple brokers.
-	addr         string
+	addresses    []string
 	appID        string
 	topic        string
+	startOffset  int64
 	client       *kafka.Client
 	writer       *kafka.Writer
 	registered   map[eh.EventHandlerType]struct{}
@@ -47,18 +49,21 @@ type EventBus struct {
 }
 
 // NewEventBus creates an EventBus, with optional GCP connection settings.
-func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
+func NewEventBus(addressList, appID string, options ...Option) (*EventBus, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	addrSplit := strings.Split(addressList, ",")
+
 	b := &EventBus{
-		addr:       addr,
-		appID:      appID,
-		topic:      appID + "_events",
-		registered: map[eh.EventHandlerType]struct{}{},
-		errCh:      make(chan error, 100),
-		cctx:       ctx,
-		cancel:     cancel,
-		codec:      &json.EventCodec{},
+		addresses:   addrSplit,
+		appID:       appID,
+		topic:       appID + "_events",
+		startOffset: kafka.LastOffset, // Default: Don't read old messages.
+		registered:  map[eh.EventHandlerType]struct{}{},
+		errCh:       make(chan error, 100),
+		cctx:        ctx,
+		cancel:      cancel,
+		codec:       &json.EventCodec{},
 	}
 
 	// Apply configuration options.
@@ -74,7 +79,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 
 	// Get or create the topic.
 	b.client = &kafka.Client{
-		Addr: kafka.TCP(addr),
+		Addr: kafka.TCP(addrSplit...),
 	}
 
 	var resp *kafka.CreateTopicsResponse
@@ -112,7 +117,7 @@ func NewEventBus(addr, appID string, options ...Option) (*EventBus, error) {
 	}
 
 	b.writer = &kafka.Writer{
-		Addr:         kafka.TCP(addr),
+		Addr:         kafka.TCP(addrSplit...),
 		Topic:        b.topic,
 		BatchSize:    1,                // Write every event to the bus without delay.
 		RequiredAcks: kafka.RequireOne, // Stronger consistency.
@@ -130,6 +135,29 @@ func WithCodec(codec eh.EventCodec) Option {
 	return func(b *EventBus) error {
 		b.codec = codec
 
+		return nil
+	}
+}
+
+// WithStartOffset sets the consumer group's offset to start at
+// Defaults to: LastOffset
+// Per the kafka client documentation
+//     StartOffset determines from whence the consumer group should begin
+//     consuming when it finds a partition without a committed offset.  If
+//     non-zero, it must be set to one of FirstOffset or LastOffset.
+func WithStartOffset(startOffset int64) Option {
+	return func(b *EventBus) error {
+		b.startOffset = startOffset
+		return nil
+	}
+}
+
+// WithTopic uses the specified topic for the event bus topic name
+//
+// Defaults to: appID + "_events"
+func WithTopic(topic string) Option {
+	return func(b *EventBus) error {
+		b.topic = topic
 		return nil
 	}
 }
@@ -191,13 +219,14 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 
 	// Get or create the subscription.
 	groupID := b.appID + "_" + h.HandlerType().String()
+
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:               []string{b.addr},
+		Brokers:               b.addresses,
 		Topic:                 b.topic,
 		GroupID:               groupID,     // Send messages to only one subscriber per group.
 		MaxWait:               time.Second, // Allow to exit readloop in max 1s.
 		WatchPartitionChanges: true,
-		StartOffset:           kafka.LastOffset, // Don't read old messages.
+		StartOffset:           b.startOffset,
 	})
 
 	req := &kafka.ListGroupsRequest{

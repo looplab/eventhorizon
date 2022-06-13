@@ -36,6 +36,7 @@ type EventBus struct {
 	client       *pubsub.Client
 	clientOpts   []option.ClientOption
 	topic        *pubsub.Topic
+	topicConfig  *pubsub.TopicConfig
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan error
@@ -84,8 +85,14 @@ func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) 
 	if ok, err := b.topic.Exists(b.cctx); err != nil {
 		return nil, err
 	} else if !ok {
-		if b.topic, err = b.client.CreateTopic(b.cctx, name); err != nil {
-			return nil, err
+		if b.topicConfig != nil {
+			if b.topic, err = b.client.CreateTopicWithConfig(b.cctx, name, b.topicConfig); err != nil {
+				return nil, err
+			}
+		} else {
+			if b.topic, err = b.client.CreateTopic(b.cctx, name); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -110,6 +117,16 @@ func WithCodec(codec eh.EventCodec) Option {
 func WithPubSubOptions(opts ...option.ClientOption) Option {
 	return func(b *EventBus) error {
 		b.clientOpts = opts
+
+		return nil
+	}
+}
+
+// WithTopicOptions adds the options to the pubsub.TopicConfig.
+// This allows control over the Topic creation, including message retention.
+func WithTopicOptions(topicConfig *pubsub.TopicConfig) Option {
+	return func(b *EventBus) error {
+		b.topicConfig = topicConfig
 
 		return nil
 	}

@@ -100,7 +100,7 @@ func BenchmarkEventBus(b *testing.B) {
 	eventbus.Benchmark(b, bus)
 }
 
-func newTestEventBus(appID string) (eh.EventBus, string, error) {
+func newTestEventBus(appID string, options ...Option) (eh.EventBus, string, error) {
 	// Connect to localhost if not running inside docker
 	addr := os.Getenv("KAFKA_ADDR")
 	if addr == "" {
@@ -117,10 +117,64 @@ func newTestEventBus(appID string) (eh.EventBus, string, error) {
 		appID = "app-" + hex.EncodeToString(b)
 	}
 
-	bus, err := NewEventBus(addr, appID)
+	bus, err := NewEventBus(addr, appID, options...)
 	if err != nil {
 		return nil, "", fmt.Errorf("could not create event bus: %w", err)
 	}
 
 	return bus, appID, nil
+}
+
+func TestWithStartOffset(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	testCases := map[string]struct {
+		startOffset int64
+	}{
+		"FirstOffset": {kafka.FirstOffset},
+		"zero":        {0},
+	}
+
+	for desc, tc := range testCases {
+		t.Run(desc, func(t *testing.T) {
+			eb, _, err := newTestEventBus("", WithStartOffset(tc.startOffset))
+			if err != nil {
+				t.Fatalf("expected no error, got: %s", err.Error())
+			}
+
+			underlyingEb := eb.(*EventBus)
+			if want, got := tc.startOffset, underlyingEb.startOffset; want != got {
+				t.Fatalf("expected topics to be equal, want %d, got: %d", want, got)
+			}
+		})
+	}
+}
+
+func TestWithTopic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	testCases := map[string]struct {
+		topic string
+	}{
+		"test1": {"test_test1"},
+		"test2": {"test_test2"},
+	}
+
+	for desc, tc := range testCases {
+		t.Run(desc, func(t *testing.T) {
+			eb, _, err := newTestEventBus("", WithTopic(tc.topic))
+			if err != nil {
+				t.Fatalf("expected no error, got: %s", err.Error())
+			}
+
+			underlyingEb := eb.(*EventBus)
+			if want, got := tc.topic, underlyingEb.topic; want != got {
+				t.Fatalf("expected topics to be equal, want %s, got: %s", want, got)
+			}
+		})
+	}
 }
