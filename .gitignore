@@ -33,3 +33,4 @@ coverage.out
 # Editors
 .vscode
 .idea
+tests

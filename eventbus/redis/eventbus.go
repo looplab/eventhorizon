@@ -32,18 +32,21 @@ import (
 // EventBus is a local event bus that delegates handling of published events
 // to all matching registered handlers, in order of registration.
 type EventBus struct {
-	appID        string
-	clientID     string
-	streamName   string
-	client       *redis.Client
-	clientOpts   *redis.Options
-	registered   map[eh.EventHandlerType]struct{}
-	registeredMu sync.RWMutex
-	errCh        chan error
-	cctx         context.Context
-	cancel       context.CancelFunc
-	wg           sync.WaitGroup
-	codec        eh.EventCodec
+	appID           string
+	clientID        string
+	streamName      string
+	idx             string // redis group start id, default "$"
+	client          *redis.Client
+	clientOpts      *redis.Options
+	registered      map[eh.EventHandlerType]struct{}
+	registeredMu    sync.RWMutex
+	errCh           chan error
+	cctx            context.Context
+	cancel          context.CancelFunc
+	wg              sync.WaitGroup
+	codec           eh.EventCodec
+	isFailed        IsFailed
+	failedCheckStep time.Duration
 }
 
 // NewEventBus creates an EventBus, with optional settings.
@@ -51,14 +54,17 @@ func NewEventBus(addr, appID, clientID string, options ...Option) (*EventBus, er
 	ctx, cancel := context.WithCancel(context.Background())
 
 	b := &EventBus{
-		appID:      appID,
-		clientID:   clientID,
-		streamName: appID + "_events",
-		registered: map[eh.EventHandlerType]struct{}{},
-		errCh:      make(chan error, 100),
-		cctx:       ctx,
-		cancel:     cancel,
-		codec:      &json.EventCodec{},
+		appID:           appID,
+		clientID:        clientID,
+		streamName:      appID + "_events",
+		idx:             "$",
+		registered:      map[eh.EventHandlerType]struct{}{},
+		errCh:           make(chan error, 100),
+		cctx:            ctx,
+		cancel:          cancel,
+		codec:           &json.EventCodec{},
+		isFailed:        defaultIsFailedCheck,
+		failedCheckStep: defaultFailedIdleTime,
 	}
 
 	// Apply configuration options.
@@ -91,6 +97,9 @@ func NewEventBus(addr, appID, clientID string, options ...Option) (*EventBus, er
 // Option is an option setter used to configure creation.
 type Option func(*EventBus) error
 
+// IsFailed is a function to assert that does a message processed failed.
+type IsFailed func(*redis.XPendingExt) bool
+
 // WithCodec uses the specified codec for encoding events.
 func WithCodec(codec eh.EventCodec) Option {
 	return func(b *EventBus) error {
@@ -109,6 +118,27 @@ func WithRedisOptions(opts *redis.Options) Option {
 	}
 }
 
+func WithRedisGroupStartId(idx string) Option {
+	return func(b *EventBus) error {
+		b.idx = idx
+		return nil
+	}
+}
+
+func WithFailedCheckOption(isf IsFailed) Option {
+	return func(b *EventBus) error {
+		b.isFailed = isf
+		return nil
+	}
+}
+
+func WithFailedCheckStepOption(step time.Duration) Option {
+	return func(b *EventBus) error {
+		b.failedCheckStep = step
+		return nil
+	}
+}
+
 // HandlerType implements the HandlerType method of the eventhorizon.EventHandler interface.
 func (b *EventBus) HandlerType() eh.EventHandlerType {
 	return "eventbus"
@@ -118,6 +148,10 @@ const (
 	aggregateTypeKey = "aggregate_type"
 	eventTypeKey     = "event_type"
 	dataKey          = "data"
+	// by default, a message idled in pending list more than 1 minute,
+	// we think it is failed.
+	defaultFailedIdleTime = time.Minute
+	defaultPendingCount   = 100
 )
 
 // HandleEvent implements the HandleEvent method of the eventhorizon.EventHandler interface.
@@ -164,7 +198,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// TODO: Filter subscription.
 	groupName := fmt.Sprintf("%s_%s", b.appID, h.HandlerType())
 
-	res, err := b.client.XGroupCreateMkStream(ctx, b.streamName, groupName, "$").Result()
+	res, err := b.client.XGroupCreateMkStream(ctx, b.streamName, groupName, b.idx).Result()
 	if err != nil {
 		// Ignore group exists non-errors.
 		if !strings.HasPrefix(err.Error(), "BUSYGROUP") {
@@ -177,10 +211,12 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	// Register handler.
 	b.registered[h.HandlerType()] = struct{}{}
 
-	b.wg.Add(1)
+	b.wg.Add(2)
 
 	// Handle until context is cancelled.
 	go b.handle(m, h, groupName)
+	// Handle failed msg until context is cancelled.
+	go b.findAndHandleFailed(m, h, groupName)
 
 	return nil
 }
@@ -198,6 +234,80 @@ func (b *EventBus) Close() error {
 	return b.client.Close()
 }
 
+func (b *EventBus) findAndHandleFailed(m eh.EventMatcher, h eh.EventHandler, groupName string) {
+	defer b.wg.Done()
+	handler := b.handler(m, h, groupName)
+	var longestIdleTime, sleepTime time.Duration
+
+	for {
+		streams, err := b.client.XPendingExt(b.cctx, &redis.XPendingExtArgs{
+			Stream: b.streamName,
+			Group:  groupName,
+			Start:  "-",
+			End:    "+",
+			Count:  defaultPendingCount,
+		}).Result()
+
+		if b.handleRedisError(err) {
+			continue
+		}
+
+		ids := make([]string, 0)
+
+		for _, stream := range streams {
+			if stream.Idle > longestIdleTime {
+				longestIdleTime = stream.Idle
+			}
+			if b.isFailed(&stream) {
+				ids = append(ids, stream.ID)
+			}
+		}
+
+		if len(ids) > 0 {
+			msgs, err := b.client.XClaim(b.cctx, &redis.XClaimArgs{
+				Stream:   b.streamName,
+				Group:    groupName,
+				Consumer: groupName + "_" + b.clientID,
+				Messages: ids,
+			}).Result()
+
+			if b.handleRedisError(err) {
+				continue
+			}
+
+			for _, msg := range msgs {
+				log.Printf("tring to rehandle msg %s.\n", msg.ID)
+				handler(b.cctx, &msg)
+			}
+		} else {
+			sleepTime = b.failedCheckStep - longestIdleTime
+			if sleepTime > 0 && len(streams) < defaultPendingCount {
+				time.Sleep(sleepTime)
+			}
+		}
+	}
+}
+
+func (b *EventBus) handleRedisError(err error) bool {
+	if errors.Is(err, context.Canceled) {
+		return false
+	} else if err != nil {
+		err = fmt.Errorf("could not receive: %w", err)
+		select {
+		case b.errCh <- &eh.EventBusError{Err: err}:
+		default:
+			log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
+		}
+
+		// Retry the receive loop if there was an error.
+		time.Sleep(time.Second)
+
+		return true
+	} else {
+		return false
+	}
+}
+
 // Handles all events coming in on the channel.
 func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, groupName string) {
 	defer b.wg.Done()
@@ -210,19 +320,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, groupName string
 			Consumer: groupName + "_" + b.clientID,
 			Streams:  []string{b.streamName, ">"},
 		}).Result()
-		if errors.Is(err, context.Canceled) {
-			break
-		} else if err != nil {
-			err = fmt.Errorf("could not receive: %w", err)
-			select {
-			case b.errCh <- &eh.EventBusError{Err: err}:
-			default:
-				log.Printf("eventhorizon: missed error in Redis event bus: %s", err)
-			}
-
-			// Retry the receive loop if there was an error.
-			time.Sleep(time.Second)
-
+		if b.handleRedisError(err) {
 			continue
 		}
 
@@ -304,4 +402,8 @@ func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, groupName strin
 			}
 		}
 	}
+}
+
+func defaultIsFailedCheck(xpe *redis.XPendingExt) bool {
+	return xpe.Idle > defaultFailedIdleTime
 }
