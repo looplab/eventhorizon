@@ -24,19 +24,19 @@ import (
 	"os/signal"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/commandhandler/bus"
-	redisEventBus "github.com/looplab/eventhorizon/eventbus/redis"
-	mongoEventStore "github.com/looplab/eventhorizon/eventstore/mongodb"
-	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
-	mongoOutbox "github.com/looplab/eventhorizon/outbox/mongodb"
-	mongoRepo "github.com/looplab/eventhorizon/repo/mongodb"
-	"github.com/looplab/eventhorizon/repo/version"
-	"github.com/looplab/eventhorizon/tracing"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/commandhandler/bus"
+	redisEventBus "github.com/2908755265/eventhorizon/eventbus/redis"
+	mongoEventStore "github.com/2908755265/eventhorizon/eventstore/mongodb"
+	"github.com/2908755265/eventhorizon/middleware/eventhandler/observer"
+	mongoOutbox "github.com/2908755265/eventhorizon/outbox/mongodb"
+	mongoRepo "github.com/2908755265/eventhorizon/repo/mongodb"
+	"github.com/2908755265/eventhorizon/repo/version"
+	"github.com/2908755265/eventhorizon/tracing"
+	"github.com/2908755265/eventhorizon/uuid"
 
-	"github.com/looplab/eventhorizon/examples/todomvc/backend/domains/todo"
-	"github.com/looplab/eventhorizon/examples/todomvc/backend/handler"
+	"github.com/2908755265/eventhorizon/examples/todomvc/backend/domains/todo"
+	"github.com/2908755265/eventhorizon/examples/todomvc/backend/handler"
 )
 
 func main() {

@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/looplab/eventhorizon/uuid"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 // DefaultMinVersionDeadline is the deadline to use when creating a min version

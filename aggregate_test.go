@@ -19,7 +19,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/looplab/eventhorizon/uuid"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 func TestCreateAggregate(t *testing.T) {

@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/2908755265/eventhorizon"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 )

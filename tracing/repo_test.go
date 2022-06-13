@@ -18,10 +18,10 @@ import (
 	"context"
 	"testing"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/repo"
-	"github.com/looplab/eventhorizon/repo/memory"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/mocks"
+	"github.com/2908755265/eventhorizon/repo"
+	"github.com/2908755265/eventhorizon/repo/memory"
 )
 
 // NOTE: Not named "Integration" to enable running with the unit tests.

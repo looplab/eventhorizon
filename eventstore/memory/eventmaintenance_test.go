@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/looplab/eventhorizon/eventstore"
+	"github.com/2908755265/eventhorizon/eventstore"
 )
 
 func TestEventStoreMaintenance(t *testing.T) {

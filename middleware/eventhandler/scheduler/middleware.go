@@ -20,7 +20,7 @@ import (
 
 	"github.com/gorhill/cronexpr"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/2908755265/eventhorizon"
 )
 
 // NewMiddleware creates a new scheduler middleware that runs until the context is canceled.

@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"sync"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 // Repo is a middleware that adds caching to a read repository. It will update

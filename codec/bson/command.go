@@ -20,7 +20,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/2908755265/eventhorizon"
 )
 
 // CommandCodec is a codec for marshaling and unmarshaling commands

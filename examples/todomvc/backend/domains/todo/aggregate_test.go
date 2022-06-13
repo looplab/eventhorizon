@@ -23,10 +23,10 @@ import (
 
 	"github.com/kr/pretty"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/aggregatestore/events"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/aggregatestore/events"
+	"github.com/2908755265/eventhorizon/mocks"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 func TestAggregateHandleCommand(t *testing.T) {

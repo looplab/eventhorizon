@@ -21,8 +21,8 @@ import (
 
 	"github.com/jpillora/backoff"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 // Repo is a middleware that adds version checking to a read repository.

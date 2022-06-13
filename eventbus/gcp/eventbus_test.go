@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/eventbus"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/eventbus"
 )
 
 func TestAddHandlerIntegration(t *testing.T) {

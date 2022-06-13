@@ -24,13 +24,13 @@ import (
 	"testing"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/codec/bson"
-	"github.com/looplab/eventhorizon/codec/json"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/repo/memory"
-	"github.com/looplab/eventhorizon/repo/mongodb"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/codec/bson"
+	"github.com/2908755265/eventhorizon/codec/json"
+	"github.com/2908755265/eventhorizon/mocks"
+	"github.com/2908755265/eventhorizon/repo/memory"
+	"github.com/2908755265/eventhorizon/repo/mongodb"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 func init() {

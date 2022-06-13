@@ -17,7 +17,7 @@ package events
 import (
 	"context"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/2908755265/eventhorizon"
 )
 
 // VersionedAggregate is an interface representing a versioned aggregate created

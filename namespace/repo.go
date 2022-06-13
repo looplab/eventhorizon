@@ -20,8 +20,8 @@ import (
 	"strings"
 	"sync"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 // Repo is a repo with support for namespaces passed in the context.

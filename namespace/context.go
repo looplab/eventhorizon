@@ -17,7 +17,7 @@ package namespace
 import (
 	"context"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/2908755265/eventhorizon"
 )
 
 // DefaultNamespace is the namespace to use if not set in the context.

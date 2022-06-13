@@ -21,11 +21,11 @@ import (
 	"testing"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/repo"
-	"github.com/looplab/eventhorizon/repo/memory"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/mocks"
+	"github.com/2908755265/eventhorizon/repo"
+	"github.com/2908755265/eventhorizon/repo/memory"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 // NOTE: Not named "Integration" to enable running with the unit tests.

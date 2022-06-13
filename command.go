@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/looplab/eventhorizon/uuid"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 // Command is a domain command that is sent to a Dispatcher.

@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/mocks"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 // AcceptanceTest is the acceptance test that all implementations of EventStore

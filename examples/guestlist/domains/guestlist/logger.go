@@ -18,7 +18,7 @@ import (
 	"context"
 	"log"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/2908755265/eventhorizon"
 )
 
 // LoggingMiddleware is a tiny command handle middleware for logging.

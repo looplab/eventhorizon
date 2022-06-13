@@ -23,8 +23,8 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/codec/json"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/codec/json"
 )
 
 // EventBus is a NATS Jetstream event bus that delegates handling of published

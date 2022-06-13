@@ -24,15 +24,15 @@ import (
 	"testing"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/commandhandler/bus"
-	localEventBus "github.com/looplab/eventhorizon/eventbus/local"
-	mongoEventStore "github.com/looplab/eventhorizon/eventstore/mongodb"
-	"github.com/looplab/eventhorizon/repo/mongodb"
-	"github.com/looplab/eventhorizon/repo/version"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/commandhandler/bus"
+	localEventBus "github.com/2908755265/eventhorizon/eventbus/local"
+	mongoEventStore "github.com/2908755265/eventhorizon/eventstore/mongodb"
+	"github.com/2908755265/eventhorizon/repo/mongodb"
+	"github.com/2908755265/eventhorizon/repo/version"
+	"github.com/2908755265/eventhorizon/uuid"
 
-	"github.com/looplab/eventhorizon/examples/guestlist/domains/guestlist"
+	"github.com/2908755265/eventhorizon/examples/guestlist/domains/guestlist"
 )
 
 func ExampleIntegration() {

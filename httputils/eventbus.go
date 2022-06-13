@@ -22,8 +22,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/codec/json"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/codec/json"
 )
 
 // EventBusHandler is a simple event handler for observing events.

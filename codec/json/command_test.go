@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/looplab/eventhorizon/codec"
+	"github.com/2908755265/eventhorizon/codec"
 )
 
 func TestCommandCodec(t *testing.T) {

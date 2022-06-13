@@ -22,9 +22,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 	// Register uuid.UUID as BSON type.
-	_ "github.com/looplab/eventhorizon/codec/bson"
+	_ "github.com/2908755265/eventhorizon/codec/bson"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/2908755265/eventhorizon"
 )
 
 // Replace implements the Replace method of the eventhorizon.EventStore interface.

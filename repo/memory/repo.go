@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"sync"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 // ErrModelNotSet is when an model factory is not set on the Repo.

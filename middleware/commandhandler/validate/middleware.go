@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/2908755265/eventhorizon"
 )
 
 // Command is a command with its own validation method.

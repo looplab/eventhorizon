@@ -20,8 +20,8 @@ import (
 	"net/http"
 	"path"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/2908755265/eventhorizon"
+	"github.com/2908755265/eventhorizon/uuid"
 )
 
 // QueryHandler returns one or all items from a eventhorizon.ReadRepo. If the

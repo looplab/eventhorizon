@@ -21,7 +21,7 @@ import (
 	"strings"
 	"sync"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/2908755265/eventhorizon"
 )
 
 // Outbox is an outbox with support for namespaces passed in the context.

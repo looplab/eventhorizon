@@ -15,7 +15,7 @@
 package guestlist
 
 import (
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/2908755265/eventhorizon"
 )
 
 const (

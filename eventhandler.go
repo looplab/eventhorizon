@@ -54,7 +54,7 @@ func (f EventHandlerFunc) HandleEvent(ctx context.Context, e Event) error {
 
 // HandlerType implements the HandlerType method of the EventHandler by returning
 // the name of the package and function:
-// "github.com/looplab/eventhorizon.Function" becomes "eventhorizon-Function".
+// "github.com/2908755265/eventhorizon.Function" becomes "eventhorizon-Function".
 func (f EventHandlerFunc) HandlerType() EventHandlerType {
 	fullName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name() // Extract full func name: github.com/...
 	parts := strings.Split(fullName, "/")                              // Split URL.
