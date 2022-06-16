@@ -73,6 +73,11 @@ func (h *eventHandler) HandlerType() eh.EventHandlerType {
 	return h.handlerType
 }
 
+// InnerHandler implements MiddlewareChain
+func (h *eventHandler) InnerHandler() eh.EventHandler {
+	return h.EventHandler
+}
+
 // NewMiddleware creates a middleware that lets multiple handlers handle an event
 // depending on their group. It works by suffixing the group name to the handler type.
 // To create an observer that is unique for every added handler use the RandomGroup.

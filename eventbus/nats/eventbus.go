@@ -25,6 +25,7 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/codec/json"
+	"github.com/looplab/eventhorizon/middleware/eventhandler/ephemeral"
 )
 
 // EventBus is a NATS Jetstream event bus that delegates handling of published
@@ -43,6 +44,7 @@ type EventBus struct {
 	cancel       context.CancelFunc
 	wg           sync.WaitGroup
 	codec        eh.EventCodec
+	unsubscribe  []func()
 }
 
 // NewEventBus creates an EventBus, with optional settings.
@@ -164,7 +166,6 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	consumerName := fmt.Sprintf("%s_%s", b.appID, h.HandlerType())
 
 	sub, err := b.js.QueueSubscribe(subject, consumerName, b.handler(b.cctx, m, h),
-		nats.Durable(consumerName),
 		nats.DeliverNew(),
 		nats.ManualAck(),
 		nats.AckExplicit(),
@@ -173,6 +174,11 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	)
 	if err != nil {
 		return fmt.Errorf("could not subscribe to queue: %w", err)
+	}
+
+	// capture the subscription of ephemeral consumers so we can unsubscribe when we exit.
+	if b.handlerIsEphemeral(h) {
+		b.unsubscribe = append(b.unsubscribe, func() { sub.Unsubscribe() })
 	}
 
 	// Register handler.
@@ -191,10 +197,30 @@ func (b *EventBus) Errors() <-chan error {
 	return b.errCh
 }
 
+// handlerIsEphemeral traverses the middleware chain and checks for the
+// ephemeral middleware and quires it's status.
+func (b *EventBus) handlerIsEphemeral(h eh.EventHandler) bool {
+	for {
+		if obs, ok := h.(ephemeral.EphemeralHandler); ok {
+			return obs.IsEphemeralHandler()
+		} else if c, ok := h.(eh.EventHandlerChain); ok {
+			if h = c.InnerHandler(); h != nil {
+				continue
+			}
+		}
+		return false
+	}
+}
+
 // Close implements the Close method of the eventhorizon.EventBus interface.
 func (b *EventBus) Close() error {
 	b.cancel()
 	b.wg.Wait()
+
+	// unsubscribe any ephemeral subscribers we created.
+	for _, unSub := range b.unsubscribe {
+		unSub()
+	}
 
 	b.conn.Close()
 

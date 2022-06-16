@@ -36,6 +36,11 @@ type eventHandler struct {
 	errCh chan *Error
 }
 
+// InnerHandler implements EventHandlerChain
+func (h *eventHandler) InnerHandler() eh.EventHandler {
+	return h.EventHandler
+}
+
 // HandleEvent implements the HandleEvent method of the EventHandler.
 func (h *eventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	go func() {

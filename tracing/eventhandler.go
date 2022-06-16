@@ -34,6 +34,11 @@ type eventHandler struct {
 	eh.EventHandler
 }
 
+// InnerHandler implements MiddlewareChain
+func (h *eventHandler) InnerHandler() eh.EventHandler {
+	return h.EventHandler
+}
+
 // HandleEvent implements the HandleEvent method of the EventHandler.
 func (h *eventHandler) HandleEvent(ctx context.Context, event eh.Event) error {
 	opName := fmt.Sprintf("%s.Event(%s)", h.HandlerType(), event.EventType())
