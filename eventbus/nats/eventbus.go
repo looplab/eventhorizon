@@ -37,6 +37,7 @@ type EventBus struct {
 	js           nats.JetStreamContext
 	stream       *nats.StreamInfo
 	connOpts     []nats.Option
+	streamConfig *nats.StreamConfig
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan error
@@ -90,9 +91,15 @@ func NewEventBus(url, appID string, options ...Option) (*EventBus, error) {
 	// Create the stream, which stores messages received on the subject.
 	subjects := b.streamName + ".*.*"
 	cfg := &nats.StreamConfig{
-		Name:     b.streamName,
-		Subjects: []string{subjects},
-		Storage:  nats.FileStorage,
+		Name:      b.streamName,
+		Subjects:  []string{subjects},
+		Storage:   nats.FileStorage,
+		Retention: nats.InterestPolicy,
+	}
+
+	// Use the custom stream config if provided.
+	if b.streamConfig != nil {
+		cfg = b.streamConfig
 	}
 
 	if b.stream, err = b.js.AddStream(cfg); err != nil {
@@ -119,6 +126,14 @@ func WithNATSOptions(opts ...nats.Option) Option {
 	return func(b *EventBus) error {
 		b.connOpts = opts
 
+		return nil
+	}
+}
+
+// WithStreamConfig can customize the config for created NATS JetStream.
+func WithStreamConfig(opts *nats.StreamConfig) Option {
+	return func(b *EventBus) error {
+		b.streamConfig = opts
 		return nil
 	}
 }
