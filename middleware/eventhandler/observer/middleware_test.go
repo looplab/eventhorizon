@@ -74,5 +74,10 @@ func TestMiddleware(t *testing.T) {
 		t.Error("the handler type should be correct:", h5.HandlerType())
 	}
 
+	_, ok := h5.(eh.EventHandlerChain)
+	if !ok {
+		t.Error("handler is not an EventHandlerChain")
+	}
+
 	t.Log(h5.HandlerType())
 }

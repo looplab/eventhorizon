@@ -37,6 +37,11 @@ func TestMiddleware(t *testing.T) {
 	m, errCh := NewMiddleware()
 	h := eh.UseEventHandlerMiddleware(inner, m)
 
+	_, ok := h.(eh.EventHandlerChain)
+	if !ok {
+		t.Error("handler is not an EventHandlerChain")
+	}
+
 	if err := h.HandleEvent(context.Background(), event); err != nil {
 		t.Error("there should never be an error:", err)
 	}
