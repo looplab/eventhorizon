@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/looplab/eventhorizon/uuid"
 )
@@ -56,6 +57,13 @@ type AggregateStore interface {
 
 	// Save saves the uncommitted events for an aggregate.
 	Save(context.Context, Aggregate) error
+}
+
+// SnapshotStrategy determines if a snapshot should be taken or not.
+type SnapshotStrategy interface {
+	ShouldTakeSnapshot(lastSnapshotVersion int,
+		lastSnapshotTimestamp time.Time,
+		event Event) bool
 }
 
 var (
@@ -148,7 +156,8 @@ func (e *AggregateError) Cause() error {
 // used to create concrete aggregate types when loading from the database.
 //
 // An example would be:
-//     RegisterAggregate(func(id UUID) Aggregate { return &MyAggregate{id} })
+//
+//	RegisterAggregate(func(id UUID) Aggregate { return &MyAggregate{id} })
 func RegisterAggregate(factory func(uuid.UUID) Aggregate) {
 	// Check that the created aggregate matches the registered type.
 	// TODO: Explore the use of reflect/gob for creating concrete types without

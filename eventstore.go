@@ -31,8 +31,17 @@ type EventStore interface {
 	// Load loads all events for the aggregate id from the store.
 	Load(context.Context, uuid.UUID) ([]Event, error)
 
+	// LoadFrom loads all events from version for the aggregate id from the store.
+	LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]Event, error)
+
 	// Close closes the EventStore.
 	Close() error
+}
+
+// SnapshotStore is an interface for snapshot store.
+type SnapshotStore interface {
+	LoadSnapshot(ctx context.Context, id uuid.UUID) (*Snapshot, error)
+	SaveSnapshot(ctx context.Context, id uuid.UUID, snapshot Snapshot) error
 }
 
 var (
@@ -64,6 +73,11 @@ const (
 	EventStoreOpRename = "rename"
 	// Errors during clearing of the event store.
 	EventStoreOpClear = "clear"
+
+	// Errors during loading of snapshot.
+	EventStoreOpLoadSnapshot = "load_snapshot"
+	// Errors during saving of snapshot.
+	EventStoreOpSaveSnapshot = "save_snapshot"
 )
 
 // EventStoreError is an error in the event store.

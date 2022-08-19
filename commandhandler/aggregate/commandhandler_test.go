@@ -28,6 +28,7 @@ import (
 func TestNewCommandHandler(t *testing.T) {
 	store := &mocks.AggregateStore{
 		Aggregates: make(map[uuid.UUID]eh.Aggregate),
+		Snapshots:  make(map[uuid.UUID]eh.Snapshot),
 	}
 
 	h, err := NewCommandHandler(mocks.AggregateType, store)
@@ -76,6 +77,7 @@ func TestCommandHandler(t *testing.T) {
 func TestCommandHandler_AggregateNotFound(t *testing.T) {
 	store := &mocks.AggregateStore{
 		Aggregates: map[uuid.UUID]eh.Aggregate{},
+		Snapshots:  make(map[uuid.UUID]eh.Snapshot),
 	}
 
 	h, err := NewCommandHandler(mocks.AggregateType, store)
@@ -155,6 +157,7 @@ func BenchmarkCommandHandler(b *testing.B) {
 		Aggregates: map[uuid.UUID]eh.Aggregate{
 			a.EntityID(): a,
 		},
+		Snapshots: make(map[uuid.UUID]eh.Snapshot),
 	}
 
 	h, err := NewCommandHandler(mocks.AggregateType, store)
@@ -183,6 +186,7 @@ func createAggregateAndHandler(t *testing.T) (*mocks.Aggregate, *CommandHandler,
 		Aggregates: map[uuid.UUID]eh.Aggregate{
 			a.EntityID(): a,
 		},
+		Snapshots: make(map[uuid.UUID]eh.Snapshot),
 	}
 
 	h, err := NewCommandHandler(mocks.AggregateType, store)
