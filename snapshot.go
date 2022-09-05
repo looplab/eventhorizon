@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/looplab/eventhorizon/uuid"
 )
 
 // Snapshotable is an interface for creating and applying a Snapshot record.
@@ -49,7 +51,7 @@ var ErrSnapshotDataNotRegistered = errors.New("snapshot data not registered")
 // An example would be:
 //
 //	RegisterSnapshotData("aggregateType1", func() SnapshotData { return &MySnapshotData{} })
-func RegisterSnapshotData(aggregateType AggregateType, factory func() SnapshotData) {
+func RegisterSnapshotData(aggregateType AggregateType, factory func(id uuid.UUID) SnapshotData) {
 	if aggregateType == AggregateType("") {
 		panic("eventhorizon: attempt to register empty aggregate type")
 	}

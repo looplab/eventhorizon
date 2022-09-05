@@ -618,6 +618,8 @@ func (s *EventStore) Close() error {
 type SnapshotRecord struct {
 	Id            uuid.UUID        `bson:"_id"`
 	RawData       []byte           `bson:"data"`
+	Timestamp     time.Time        `bson:"timestamp"`
+	Version       int              `bson:"version"`
 	AggregateType eh.AggregateType `bson:"aggregate_type"`
 }
 
