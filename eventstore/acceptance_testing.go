@@ -269,6 +269,8 @@ func SnapshotAcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Conte
 	assert.Equal(t, snapshot.AggregateType, loaded.AggregateType)
 	assert.Equal(t, snapshot.State, loaded.State)
 
+	snapshot.Version += 1
+	snapshot.Timestamp = time.Now()
 	snapshot.State = &TestData{
 		Data: "this is new incredible data",
 	}

@@ -120,6 +120,18 @@ func newEventStoreWithClient(client *mongo.Client, clientOwnership clientOwnersh
 		return nil, fmt.Errorf("could not ensure events index: %w", err)
 	}
 
+	if _, err := s.snapshots.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.M{"aggregate_id": 1},
+	}); err != nil {
+		return nil, fmt.Errorf("could not ensure snapshot aggregate_id index: %w", err)
+	}
+
+	if _, err := s.snapshots.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.M{"version": 1},
+	}); err != nil {
+		return nil, fmt.Errorf("could not ensure snapshot version index: %w", err)
+	}
+
 	// Make sure the $all stream exists.
 	if err := s.streams.FindOne(ctx, bson.M{
 		"_id": "$all",
@@ -498,7 +510,7 @@ func (s *EventStore) loadFromCursor(ctx context.Context, id uuid.UUID, cursor *m
 }
 
 func (s *EventStore) LoadSnapshot(ctx context.Context, id uuid.UUID) (*eh.Snapshot, error) {
-	result := s.snapshots.FindOne(ctx, bson.M{"_id": id})
+	result := s.snapshots.FindOne(ctx, bson.M{"aggregate_id": id}, options.FindOne().SetSort(bson.M{"version": -1}))
 	if err := result.Err(); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
@@ -521,7 +533,7 @@ func (s *EventStore) LoadSnapshot(ctx context.Context, id uuid.UUID) (*eh.Snapsh
 		}
 	}
 
-	if snapshot.State, err = eh.CreateSnapshotData(record.Id, record.AggregateType); err != nil {
+	if snapshot.State, err = eh.CreateSnapshotData(record.AggregateID, record.AggregateType); err != nil {
 		return nil, &eh.EventStoreError{
 			Err:         fmt.Errorf("could not decode snapshot: %w", err),
 			Op:          eh.EventStoreOpLoadSnapshot,
@@ -568,7 +580,7 @@ func (s *EventStore) SaveSnapshot(ctx context.Context, id uuid.UUID, snapshot eh
 	}
 
 	record := SnapshotRecord{
-		Id:            id,
+		AggregateID:   id,
 		AggregateType: snapshot.AggregateType,
 		Timestamp:     time.Now(),
 		Version:       snapshot.Version,
@@ -586,14 +598,9 @@ func (s *EventStore) SaveSnapshot(ctx context.Context, id uuid.UUID, snapshot eh
 		}
 	}
 
-	if _, err := s.snapshots.UpdateOne(ctx,
-		bson.M{
-			"_id": id.String(),
-		},
-		bson.M{
-			"$set": record,
-		},
-		options.Update().SetUpsert(true),
+	if _, err := s.snapshots.InsertOne(ctx,
+		record,
+		options.InsertOne(),
 	); err != nil {
 		return &eh.EventStoreError{
 			Err:         fmt.Errorf("could not save snapshot: %w", err),
@@ -616,7 +623,7 @@ func (s *EventStore) Close() error {
 }
 
 type SnapshotRecord struct {
-	Id            uuid.UUID        `bson:"_id"`
+	AggregateID   uuid.UUID        `bson:"aggregate_id"`
 	RawData       []byte           `bson:"data"`
 	Timestamp     time.Time        `bson:"timestamp"`
 	Version       int              `bson:"version"`
