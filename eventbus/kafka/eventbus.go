@@ -287,13 +287,18 @@ func (b *EventBus) Close() error {
 // Handles all events coming in on the channel.
 func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) {
 	defer b.wg.Done()
+	defer func() {
+		if err := r.Close(); err != nil {
+			log.Printf("eventhorizon: failed to close Kafka reader: %s", err)
+		}
+	}()
 
 	handler := b.handler(m, h, r)
 
 	for {
 		select {
 		case <-b.cctx.Done():
-			break
+			return
 		default:
 		}
 
@@ -314,30 +319,37 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 			continue
 		}
 
-		if err := handler(b.cctx, msg); err != nil {
+		for {
 			select {
-			case b.errCh <- err:
+			case <-b.cctx.Done():
+				return
 			default:
-				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
 			}
 
-			continue
-		}
+			if err := handler(b.cctx, msg); err != nil {
+				select {
+				case b.errCh <- err:
+				default:
+					log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+				}
 
-		// Use a new context to always finish the commit.
-		if err := r.CommitMessages(context.Background(), msg); err != nil {
-			err = fmt.Errorf("could not commit message: %w", err)
-			select {
-			case b.errCh <- &eh.EventBusError{Err: err}:
-			default:
-				log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+				time.Sleep(time.Second)
+			} else {
+				// Use a new context to always finish the commit.
+				if err := r.CommitMessages(context.Background(), msg); err != nil {
+					err = fmt.Errorf("could not commit message: %w", err)
+					select {
+					case b.errCh <- &eh.EventBusError{Err: err}:
+					default:
+						log.Printf("eventhorizon: missed error in Kafka event bus: %s", err)
+					}
+				}
+
+				break
 			}
 		}
 	}
 
-	if err := r.Close(); err != nil {
-		log.Printf("eventhorizon: failed to close Kafka reader: %s", err)
-	}
 }
 
 func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) *eh.EventBusError {
