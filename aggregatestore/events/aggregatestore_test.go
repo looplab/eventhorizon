@@ -17,6 +17,7 @@ package events
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -24,6 +25,7 @@ import (
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 	"github.com/looplab/eventhorizon/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewAggregateStore(t *testing.T) {
@@ -253,6 +255,46 @@ func TestAggregateStore_SaveEvents(t *testing.T) {
 	agg.err = nil
 }
 
+func TestAggregateStore_TakeSnapshot(t *testing.T) {
+	eventStore := &mocks.EventStore{
+		Events: make([]eh.Event, 0),
+	}
+
+	store, err := NewAggregateStore(eventStore, WithSnapshotStrategy(NewEveryNumberEventSnapshotStrategy(2)))
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	ctx := context.Background()
+
+	id := uuid.New()
+	agg := NewTestAggregateOther(id)
+
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+
+	for i := 0; i < 3; i++ {
+		agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: fmt.Sprintf("event%d", i)}, timestamp)
+
+		if err := store.Save(ctx, agg); err != nil {
+			t.Error("should not be an error")
+		}
+	}
+
+	assert.NotNil(t, eventStore.Snapshot, "snapshot should be taken")
+
+	agg2, err := store.Load(ctx, agg.AggregateType(), agg.EntityID())
+	if err != nil {
+		t.Error("should not be an error")
+	}
+
+	a, ok := agg2.(*TestAggregateOther)
+	if !ok {
+		t.Error("wrong aggregate type")
+	}
+
+	assert.Equal(t, 1, a.appliedEvents)
+}
+
 func TestAggregateStore_AggregateNotRegistered(t *testing.T) {
 	store, _ := createStore(t)
 
@@ -296,7 +338,8 @@ const TestAggregateOtherType eh.AggregateType = "TestAggregateOther"
 
 type TestAggregateOther struct {
 	*AggregateBase
-	err error
+	err           error
+	appliedEvents int
 }
 
 var _ = VersionedAggregate(&TestAggregateOther{})
@@ -316,5 +359,21 @@ func (a *TestAggregateOther) ApplyEvent(ctx context.Context, event eh.Event) err
 		return a.err
 	}
 
+	a.appliedEvents++
+
 	return nil
+}
+
+func (a *TestAggregateOther) CreateSnapshot() *eh.Snapshot {
+	return &eh.Snapshot{
+		Version:       a.AggregateVersion(),
+		Timestamp:     time.Now(),
+		AggregateType: TestAggregateType,
+		State:         a,
+	}
+}
+
+func (a *TestAggregateOther) ApplySnapshot(snapshot *eh.Snapshot) {
+	agg := snapshot.State.(*TestAggregateOther)
+	a.id = agg.id
 }

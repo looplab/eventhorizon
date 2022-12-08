@@ -35,25 +35,27 @@ type EventStore struct {
 // function to create new event stores for the provided namespace.
 //
 // Usage:
-//    eventStore := NewEventStore(func(ns string) (eh.EventStore, error) {
-//        s, err := mongodb.NewEventStore("mongodb://", ns)
-//        if err != nil {
-//            return nil, err
-//        }
-//        return s, nil
-//    })
+//
+//	eventStore := NewEventStore(func(ns string) (eh.EventStore, error) {
+//	    s, err := mongodb.NewEventStore("mongodb://", ns)
+//	    if err != nil {
+//	        return nil, err
+//	    }
+//	    return s, nil
+//	})
 //
 // Usage shared DB client:
-//    client, err := mongo.Connect(ctx)
-//    ...
 //
-//    eventStore := NewEventStore(func(ns string) (eh.EventStore, error) {
-//        s, err := mongodb.NewEventStoreWithClient(client, ns)
-//        if err != nil {
-//            return nil, err
-//        }
-//        return s, nil
-//    })
+//	client, err := mongo.Connect(ctx)
+//	...
+//
+//	eventStore := NewEventStore(func(ns string) (eh.EventStore, error) {
+//	    s, err := mongodb.NewEventStoreWithClient(client, ns)
+//	    if err != nil {
+//	        return nil, err
+//	    }
+//	    return s, nil
+//	})
 func NewEventStore(factory func(ns string) (eh.EventStore, error)) *EventStore {
 	return &EventStore{
 		eventStores:   map[string]eh.EventStore{},
@@ -91,6 +93,16 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	}
 
 	return store.Load(ctx, id)
+}
+
+// LoadFrom loads all events from version for the aggregate id from the store.
+func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
+	store, err := s.eventStore(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return store.LoadFrom(ctx, id, version)
 }
 
 // Close implements the Close method of the eventhorizon.EventStore interface.

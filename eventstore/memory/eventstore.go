@@ -190,6 +190,11 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
 func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
+	return s.LoadFrom(ctx, id, 1)
+}
+
+// LoadFrom loads all events from version for the aggregate id from the store.
+func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
 	s.dbMu.RLock()
 	defer s.dbMu.RUnlock()
 
@@ -205,6 +210,10 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	events := make([]eh.Event, len(aggregate.Events))
 
 	for i, event := range aggregate.Events {
+		if event.Version() < version {
+			continue
+		}
+
 		e, err := copyEvent(ctx, event)
 		if err != nil {
 			return nil, &eh.EventStoreError{

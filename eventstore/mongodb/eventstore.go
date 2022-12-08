@@ -324,6 +324,11 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
 func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
+	return s.LoadFrom(ctx, id, 1)
+}
+
+// LoadFrom loads all events from version for the aggregate id from the store.
+func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
 	var aggregate aggregateRecord
 	if err := s.aggregates.FindOne(ctx, bson.M{"_id": id}).Decode(&aggregate); err != nil {
 		// Translate to our own not found error.
@@ -341,6 +346,10 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	events := make([]eh.Event, len(aggregate.Events))
 
 	for i, e := range aggregate.Events {
+		if e.Version < version {
+			continue
+		}
+
 		// Create an event of the correct type and decode from raw BSON.
 		if len(e.RawData) > 0 {
 			var err error

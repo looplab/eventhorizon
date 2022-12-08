@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/uuid"
@@ -27,7 +28,10 @@ import (
 // uses an event store for loading and saving events used to build the aggregate
 // and an event handler to handle resulting events.
 type AggregateStore struct {
-	store eh.EventStore
+	store            eh.EventStore
+	snapshotStore    eh.SnapshotStore
+	isSnapshotStore  bool
+	snapshotStrategy eh.SnapshotStrategy
 }
 
 var (
@@ -39,10 +43,10 @@ var (
 	ErrMismatchedEventType = errors.New("mismatched event type and aggregate type")
 )
 
-// NewAggregateStore creates a aggregate store with an event store and an event
+// NewAggregateStore creates an aggregate store with an event store and an event
 // handler that will handle resulting events (for example by publishing them
 // on an event bus).
-func NewAggregateStore(store eh.EventStore) (*AggregateStore, error) {
+func NewAggregateStore(store eh.EventStore, options ...Option) (*AggregateStore, error) {
 	if store == nil {
 		return nil, ErrInvalidEventStore
 	}
@@ -51,7 +55,29 @@ func NewAggregateStore(store eh.EventStore) (*AggregateStore, error) {
 		store: store,
 	}
 
+	d.snapshotStrategy = &NoSnapshotStrategy{}
+
+	for _, option := range options {
+		if err := option(d); err != nil {
+			return nil, fmt.Errorf("error while applying option: %w", err)
+		}
+	}
+
+	d.snapshotStore, d.isSnapshotStore = store.(eh.SnapshotStore)
+
 	return d, nil
+}
+
+// Option is an option setter used to configure creation.
+type Option func(*AggregateStore) error
+
+// WithSnapshotStrategy add the strategy to use when determining if a snapshot should be taken
+func WithSnapshotStrategy(s eh.SnapshotStrategy) Option {
+	return func(as *AggregateStore) error {
+		as.snapshotStrategy = s
+
+		return nil
+	}
 }
 
 // Load implements the Load method of the eventhorizon.AggregateStore interface.
@@ -79,7 +105,26 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 		}
 	}
 
-	events, err := r.store.Load(ctx, a.EntityID())
+	fromVersion := 1
+
+	if sa, ok := a.(eh.Snapshotable); ok && r.isSnapshotStore {
+		snapshot, err := r.snapshotStore.LoadSnapshot(ctx, id)
+		if err != nil {
+			return nil, &eh.AggregateStoreError{
+				Err:           err,
+				Op:            eh.AggregateStoreOpLoad,
+				AggregateType: aggregateType,
+				AggregateID:   id,
+			}
+		}
+
+		if snapshot != nil {
+			sa.ApplySnapshot(snapshot)
+			fromVersion = snapshot.Version + 1
+		}
+	}
+
+	events, err := r.store.LoadFrom(ctx, a.EntityID(), fromVersion)
 	if err != nil && !errors.Is(err, eh.ErrAggregateNotFound) {
 		return nil, &eh.AggregateStoreError{
 			Err:           err,
@@ -139,6 +184,44 @@ func (r *AggregateStore) Save(ctx context.Context, agg eh.Aggregate) error {
 			Op:            eh.AggregateStoreOpSave,
 			AggregateType: agg.AggregateType(),
 			AggregateID:   agg.EntityID(),
+		}
+	}
+
+	return r.takeSnapshot(ctx, agg, events[len(events)-1])
+}
+
+func (r *AggregateStore) takeSnapshot(ctx context.Context, agg eh.Aggregate, lastEvent eh.Event) error {
+	a, ok := agg.(eh.Snapshotable)
+	if !ok || !r.isSnapshotStore {
+		return nil
+	}
+
+	s, err := r.snapshotStore.LoadSnapshot(ctx, agg.EntityID())
+	if err != nil {
+		return &eh.AggregateStoreError{
+			Err:           err,
+			Op:            eh.AggregateStoreOpSave,
+			AggregateType: agg.AggregateType(),
+			AggregateID:   agg.EntityID(),
+		}
+	}
+
+	version := 0
+	timestamp := time.Now()
+
+	if s != nil {
+		version = s.Version
+		timestamp = s.Timestamp
+	}
+
+	if res := r.snapshotStrategy.ShouldTakeSnapshot(version, timestamp, lastEvent); res {
+		if err = r.snapshotStore.SaveSnapshot(ctx, agg.EntityID(), *a.CreateSnapshot()); err != nil {
+			return &eh.AggregateStoreError{
+				Err:           err,
+				Op:            eh.AggregateStoreOpSave,
+				AggregateType: agg.AggregateType(),
+				AggregateID:   agg.EntityID(),
+			}
 		}
 	}
 

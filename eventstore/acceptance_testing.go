@@ -25,17 +25,17 @@ import (
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 	"github.com/looplab/eventhorizon/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 // AcceptanceTest is the acceptance test that all implementations of EventStore
 // should pass. It should manually be called from a test case in each
 // implementation:
 //
-//   func TestEventStore(t *testing.T) {
-//       store := NewEventStore()
-//       eventstore.AcceptanceTest(t, store, context.Background())
-//   }
-//
+//	func TestEventStore(t *testing.T) {
+//	    store := NewEventStore()
+//	    eventstore.AcceptanceTest(t, store, context.Background())
+//	}
 func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh.Event {
 	savedEvents := []eh.Event{}
 
@@ -212,6 +212,80 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	}
 
 	return savedEvents
+}
+
+func SnapshotAcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) {
+	snapshotStore, ok := store.(eh.SnapshotStore)
+	if !ok {
+		return
+	}
+
+	id := uuid.New()
+
+	eventStoreErr := &eh.EventStoreError{}
+
+	err := snapshotStore.SaveSnapshot(ctx, id, eh.Snapshot{})
+	if !errors.As(err, &eventStoreErr) {
+		t.Error("there should be a event store error:", err)
+	}
+
+	err = snapshotStore.SaveSnapshot(ctx, id, eh.Snapshot{
+		AggregateType: "test",
+	})
+	if !errors.As(err, &eventStoreErr) {
+		t.Error("there should be a event store error:", err)
+	}
+
+	type TestData struct {
+		Data string
+	}
+
+	snapshot := eh.Snapshot{
+		Version:       1,
+		AggregateType: "test",
+		Timestamp:     time.Now(),
+		State: &TestData{
+			Data: "this is incredible data",
+		},
+	}
+
+	eh.RegisterSnapshotData("test", func(uuid.UUID) eh.SnapshotData { return &TestData{} })
+
+	if err := snapshotStore.SaveSnapshot(ctx, id, snapshot); err != nil {
+		t.Error("there should not be an error")
+	}
+
+	loaded, err := snapshotStore.LoadSnapshot(ctx, uuid.New())
+	if loaded != nil {
+		t.Error("snapshot should be nil, it doesnt exists")
+	}
+
+	loaded, err = snapshotStore.LoadSnapshot(ctx, id)
+	if err != nil {
+		t.Error("there should  be an error")
+	}
+
+	assert.Equal(t, snapshot.Version, loaded.Version)
+	assert.Equal(t, snapshot.AggregateType, loaded.AggregateType)
+	assert.Equal(t, snapshot.State, loaded.State)
+
+	snapshot.Version += 1
+	snapshot.Timestamp = time.Now()
+	snapshot.State = &TestData{
+		Data: "this is new incredible data",
+	}
+	if err := snapshotStore.SaveSnapshot(ctx, id, snapshot); err != nil {
+		t.Error("there should not be a error")
+	}
+
+	loaded, err = snapshotStore.LoadSnapshot(ctx, id)
+	if err != nil {
+		t.Error("there should not be a error")
+	}
+
+	assert.Equal(t, snapshot.Version, loaded.Version)
+	assert.Equal(t, snapshot.AggregateType, loaded.AggregateType)
+	assert.Equal(t, snapshot.State, loaded.State)
 }
 
 func eventsToString(events []eh.Event) string {

@@ -95,6 +95,19 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 	return nil
 }
 
+func (a *Aggregate) CreateSnapshot() *eh.Snapshot {
+	return &eh.Snapshot{
+		Timestamp: time.Now(),
+		State:     a,
+	}
+}
+
+func (a *Aggregate) ApplySnapshot(snapshot *eh.Snapshot) {
+	agg := snapshot.State.(*Aggregate)
+	a.ID = agg.ID
+	a.Commands = agg.Commands
+}
+
 // EventData is a mocked event data, useful in testing.
 type EventData struct {
 	Content string
@@ -268,6 +281,7 @@ func (m *EventHandler) Wait(d time.Duration) bool {
 // AggregateStore is a mocked AggregateStore, useful in testing.
 type AggregateStore struct {
 	Aggregates map[uuid.UUID]eh.Aggregate
+	Snapshots  map[uuid.UUID]eh.Snapshot
 	Context    context.Context
 	// Used to simulate errors in HandleCommand.
 	Err error
@@ -298,11 +312,25 @@ func (m *AggregateStore) Save(ctx context.Context, aggregate eh.Aggregate) error
 	return nil
 }
 
+func (m *AggregateStore) TakeSnapshot(ctx context.Context, agg eh.Aggregate) error {
+	if m.Err != nil {
+		return m.Err
+	}
+
+	if agg2, ok := agg.(eh.Snapshotable); ok {
+		m.Context = ctx
+		m.Snapshots[agg.EntityID()] = *agg2.CreateSnapshot()
+	}
+
+	return nil
+}
+
 // EventStore is a mocked eventhorizon.EventStore, useful in testing.
 type EventStore struct {
-	Events  []eh.Event
-	Loaded  uuid.UUID
-	Context context.Context
+	Events   []eh.Event
+	Snapshot eh.Snapshot
+	Loaded   uuid.UUID
+	Context  context.Context
 	// Used to simulate errors in the store.
 	Err error
 }
@@ -333,6 +361,26 @@ func (m *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	return m.Events, nil
 }
 
+// LoadFrom loads all events from version for the aggregate id from the store.
+func (m *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+
+	m.Loaded = id
+	m.Context = ctx
+
+	var events []eh.Event
+
+	for _, e := range m.Events {
+		if e.Version() >= version {
+			events = append(events, e)
+		}
+	}
+
+	return events, nil
+}
+
 // Replace implements the Replace method of the eventhorizon.EventStore interface.
 func (m *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	if m.Err != nil {
@@ -347,6 +395,24 @@ func (m *EventStore) Replace(ctx context.Context, event eh.Event) error {
 
 // Close implements the Close method of the eventhorizon.EventStore interface.
 func (m *EventStore) Close() error {
+	return nil
+}
+
+func (m *EventStore) LoadSnapshot(ctx context.Context, id uuid.UUID) (*eh.Snapshot, error) {
+	m.Context = ctx
+	m.Loaded = id
+
+	return &m.Snapshot, nil
+}
+
+func (m *EventStore) SaveSnapshot(ctx context.Context, id uuid.UUID, snapshot eh.Snapshot) error {
+	if m.Err != nil {
+		return m.Err
+	}
+
+	m.Snapshot = snapshot
+	m.Context = ctx
+
 	return nil
 }
 
