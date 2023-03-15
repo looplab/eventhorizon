@@ -3,7 +3,7 @@
 [![Coverage Status](https://img.shields.io/coveralls/looplab/eventhorizon.svg)](https://coveralls.io/r/looplab/eventhorizon)
 [![Go Report Card](https://goreportcard.com/badge/looplab/eventhorizon)](https://goreportcard.com/report/looplab/eventhorizon)
 
-# Event Horizon
+# Event Horizon - TEST
 
 Event Horizon is a CQRS/ES toolkit for Go.
 
