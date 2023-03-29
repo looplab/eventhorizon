@@ -33,37 +33,39 @@ import (
 // to all matching registered handlers, in order of registration.
 type EventBus struct {
 	// TODO: Support multiple brokers.
-	addresses    []string
-	appID        string
-	topic        string
-	startOffset  int64
-	client       *kafka.Client
-	writer       *kafka.Writer
-	registered   map[eh.EventHandlerType]struct{}
-	registeredMu sync.RWMutex
-	errCh        chan error
-	cctx         context.Context
-	cancel       context.CancelFunc
-	wg           sync.WaitGroup
-	codec        eh.EventCodec
+	addresses       []string
+	appID           string
+	topic           string
+	topicPartitions int
+	startOffset     int64
+	client          *kafka.Client
+	writer          *kafka.Writer
+	registered      map[eh.EventHandlerType]struct{}
+	registeredMu    sync.RWMutex
+	errCh           chan error
+	cctx            context.Context
+	cancel          context.CancelFunc
+	wg              sync.WaitGroup
+	codec           eh.EventCodec
 }
 
-// NewEventBus creates an EventBus, with optional GCP connection settings.
+// NewEventBus creates an EventBus, with optional settings.
 func NewEventBus(addressList, appID string, options ...Option) (*EventBus, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	addrSplit := strings.Split(addressList, ",")
 
 	b := &EventBus{
-		addresses:   addrSplit,
-		appID:       appID,
-		topic:       appID + "_events",
-		startOffset: kafka.LastOffset, // Default: Don't read old messages.
-		registered:  map[eh.EventHandlerType]struct{}{},
-		errCh:       make(chan error, 100),
-		cctx:        ctx,
-		cancel:      cancel,
-		codec:       &json.EventCodec{},
+		addresses:       addrSplit,
+		appID:           appID,
+		topic:           appID + "_events",
+		topicPartitions: 5,
+		startOffset:     kafka.LastOffset, // Default: Don't read old messages.
+		registered:      map[eh.EventHandlerType]struct{}{},
+		errCh:           make(chan error, 100),
+		cctx:            ctx,
+		cancel:          cancel,
+		codec:           &json.EventCodec{},
 	}
 
 	// Apply configuration options.
@@ -90,7 +92,7 @@ func NewEventBus(addressList, appID string, options ...Option) (*EventBus, error
 		resp, err = b.client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
 			Topics: []kafka.TopicConfig{{
 				Topic:             b.topic,
-				NumPartitions:     5,
+				NumPartitions:     b.topicPartitions,
 				ReplicationFactor: 1,
 			}},
 		})
@@ -142,9 +144,10 @@ func WithCodec(codec eh.EventCodec) Option {
 // WithStartOffset sets the consumer group's offset to start at
 // Defaults to: LastOffset
 // Per the kafka client documentation
-//     StartOffset determines from whence the consumer group should begin
-//     consuming when it finds a partition without a committed offset.  If
-//     non-zero, it must be set to one of FirstOffset or LastOffset.
+//
+//	StartOffset determines from whence the consumer group should begin
+//	consuming when it finds a partition without a committed offset.  If
+//	non-zero, it must be set to one of FirstOffset or LastOffset.
 func WithStartOffset(startOffset int64) Option {
 	return func(b *EventBus) error {
 		b.startOffset = startOffset
@@ -152,12 +155,27 @@ func WithStartOffset(startOffset int64) Option {
 	}
 }
 
-// WithTopic uses the specified topic for the event bus topic name
+// WithTopic uses the specified topic for the event bus topic name.
 //
 // Defaults to: appID + "_events"
 func WithTopic(topic string) Option {
 	return func(b *EventBus) error {
 		b.topic = topic
+		return nil
+	}
+}
+
+// WithTopicPartitions uses the specified number of
+// partitions when creating the event bus topic.
+//
+// Defaults to: 5
+func WithTopicPartitions(numPartitions int) Option {
+	return func(b *EventBus) error {
+		if numPartitions < 1 {
+			return errors.New("number of partitions must be greater than 0")
+		}
+
+		b.topicPartitions = numPartitions
 		return nil
 	}
 }
