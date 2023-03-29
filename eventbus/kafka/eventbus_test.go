@@ -127,6 +127,33 @@ func newTestEventBus(appID string, options ...Option) (eh.EventBus, string, erro
 	return bus, appID, nil
 }
 
+func TestWithAutoCreateTopic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	testCases := map[string]struct {
+		autoCreate bool
+	}{
+		"true":  {true},
+		"false": {false},
+	}
+
+	for desc, tc := range testCases {
+		t.Run(desc, func(t *testing.T) {
+			eb, _, err := newTestEventBus("", WithAutoCreateTopic(tc.autoCreate))
+			if err != nil {
+				t.Fatalf("expected no error, got: %s", err.Error())
+			}
+
+			underlyingEb := eb.(*EventBus)
+			if want, got := tc.autoCreate, underlyingEb.autoCreateTopic; want != got {
+				t.Fatalf("expected autoCreateTopic to be %t, got: %t", want, got)
+			}
+		})
+	}
+}
+
 func TestWithStartOffset(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

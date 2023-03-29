@@ -35,6 +35,7 @@ type EventBus struct {
 	// TODO: Support multiple brokers.
 	addresses       []string
 	appID           string
+	autoCreateTopic bool
 	topic           string
 	topicPartitions int
 	startOffset     int64
@@ -58,6 +59,7 @@ func NewEventBus(addressList, appID string, options ...Option) (*EventBus, error
 	b := &EventBus{
 		addresses:       addrSplit,
 		appID:           appID,
+		autoCreateTopic: true,
 		topic:           appID + "_events",
 		topicPartitions: 5,
 		startOffset:     kafka.LastOffset, // Default: Don't read old messages.
@@ -79,43 +81,17 @@ func NewEventBus(addressList, appID string, options ...Option) (*EventBus, error
 		}
 	}
 
-	// Get or create the topic.
 	b.client = &kafka.Client{
 		Addr: kafka.TCP(addrSplit...),
 	}
 
-	var resp *kafka.CreateTopicsResponse
-
-	var err error
-
-	for i := 0; i < 10; i++ {
-		resp, err = b.client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
-			Topics: []kafka.TopicConfig{{
-				Topic:             b.topic,
-				NumPartitions:     b.topicPartitions,
-				ReplicationFactor: 1,
-			}},
-		})
-
-		if errors.Is(err, kafka.BrokerNotAvailable) {
-			time.Sleep(5 * time.Second)
-
-			continue
-		} else if err != nil {
-			return nil, fmt.Errorf("error creating Kafka topic: %w", err)
-		} else {
-			break
+	// Get or create the topic.
+	if b.autoCreateTopic {
+		if err := b.createTopic(); err != nil {
+			return nil, fmt.Errorf("error creating topic: %w", err)
 		}
-	}
-
-	if resp == nil {
-		return nil, fmt.Errorf("could not get/create Kafka topic in time: %w", err)
-	}
-
-	if topicErr, ok := resp.Errors[b.topic]; ok && topicErr != nil {
-		if !errors.Is(topicErr, kafka.TopicAlreadyExists) {
-			return nil, fmt.Errorf("invalid Kafka topic: %w", topicErr)
-		}
+	} else if err := b.verifyTopic(); err != nil {
+		return nil, fmt.Errorf("error verifying topic: %w", err)
 	}
 
 	b.writer = &kafka.Writer{
@@ -129,8 +105,87 @@ func NewEventBus(addressList, appID string, options ...Option) (*EventBus, error
 	return b, nil
 }
 
+// Creates the Kafka topic, with retries.
+func (b *EventBus) createTopic() error {
+	var resp *kafka.CreateTopicsResponse
+	var err error
+
+	for i := 0; i < 10; i++ {
+		resp, err = b.client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
+			Topics: []kafka.TopicConfig{{
+				Topic:             b.topic,
+				NumPartitions:     b.topicPartitions,
+				ReplicationFactor: 1,
+			}},
+		})
+
+		if errors.Is(err, kafka.BrokerNotAvailable) {
+			time.Sleep(5 * time.Second)
+			continue
+		} else if err != nil {
+			return fmt.Errorf("error creating Kafka topic: %w", err)
+		} else {
+			break
+		}
+	}
+
+	if resp == nil {
+		return fmt.Errorf("could not create Kafka topic in time: %w", err)
+	}
+
+	if topicErr, ok := resp.Errors[b.topic]; ok && topicErr != nil {
+		if !errors.Is(topicErr, kafka.TopicAlreadyExists) {
+			return fmt.Errorf("invalid Kafka topic: %w", topicErr)
+		}
+	}
+
+	return nil
+}
+
+// Verifies that the Kafka topic exists, with retries.
+func (b *EventBus) verifyTopic() error {
+	var resp *kafka.MetadataResponse
+	var err error
+
+	for i := 0; i < 10; i++ {
+		resp, err = b.client.Metadata(context.Background(), &kafka.MetadataRequest{
+			Topics: []string{b.topic},
+		})
+
+		if errors.Is(err, kafka.BrokerNotAvailable) {
+			time.Sleep(5 * time.Second)
+			continue
+		} else if err != nil {
+			return fmt.Errorf("error getting Kafka topic: %w", err)
+		} else {
+			break
+		}
+	}
+
+	if resp == nil {
+		return fmt.Errorf("could not get Kafka topic in time: %w", err)
+	}
+
+	if len(resp.Topics) != 1 {
+		return fmt.Errorf("could not get Kafka topic: %w", err)
+	}
+
+	return nil
+}
+
 // Option is an option setter used to configure creation.
 type Option func(*EventBus) error
+
+// WithAutoCreateTopic specifies whether the event bus should
+// automatically create the topic if it does not exist.
+//
+// Defaults to: true
+func WithAutoCreateTopic(autoCreate bool) Option {
+	return func(b *EventBus) error {
+		b.autoCreateTopic = autoCreate
+		return nil
+	}
+}
 
 // WithCodec uses the specified codec for encoding events.
 func WithCodec(codec eh.EventCodec) Option {
@@ -167,6 +222,9 @@ func WithTopic(topic string) Option {
 
 // WithTopicPartitions uses the specified number of
 // partitions when creating the event bus topic.
+//
+// This option is ignored if the topic already exists
+// or if automatic topic creation is disabled.
 //
 // Defaults to: 5
 func WithTopicPartitions(numPartitions int) Option {
