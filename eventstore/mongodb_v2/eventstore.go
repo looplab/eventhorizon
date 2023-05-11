@@ -41,11 +41,10 @@ import (
 
 // EventStore is an eventhorizon.EventStore for MongoDB, using one collection
 // for all events and another to keep track of all aggregates/streams. It also
-// keep tracks of the global position of events, stored as metadata.
+// keeps track of the global position of events, stored as metadata.
 type EventStore struct {
 	client                  *mongo.Client
 	clientOwnership         clientOwnership
-	db                      *mongo.Database
 	events                  *mongo.Collection
 	streams                 *mongo.Collection
 	snapshots               *mongo.Collection
@@ -90,7 +89,6 @@ func newEventStoreWithClient(client *mongo.Client, clientOwnership clientOwnersh
 	s := &EventStore{
 		client:          client,
 		clientOwnership: clientOwnership,
-		db:              db,
 		events:          db.Collection("events"),
 		streams:         db.Collection("streams"),
 		snapshots:       db.Collection("snapshots"),
@@ -202,8 +200,23 @@ func WithCollectionNames(eventsColl, streamsColl string) Option {
 			return fmt.Errorf("missing collection name")
 		}
 
-		s.events = s.db.Collection(eventsColl)
-		s.streams = s.db.Collection(streamsColl)
+		db := s.events.Database()
+		s.events = db.Collection(eventsColl)
+		s.streams = db.Collection(streamsColl)
+
+		return nil
+	}
+}
+
+// WithSnapshotCollectionName uses different collections from the default "snapshots" collections.
+func WithSnapshotCollectionName(snapshotColl string) Option {
+	return func(s *EventStore) error {
+		if snapshotColl == "" {
+			return fmt.Errorf("missing collection name")
+		}
+
+		db := s.events.Database()
+		s.snapshots = db.Collection(snapshotColl)
 
 		return nil
 	}
@@ -688,7 +701,7 @@ type evt struct {
 }
 
 // newEvt returns a new evt for an event.
-func newEvt(ctx context.Context, event eh.Event) (*evt, error) {
+func newEvt(_ context.Context, event eh.Event) (*evt, error) {
 	e := &evt{
 		EventType:     event.EventType(),
 		Timestamp:     event.Timestamp(),

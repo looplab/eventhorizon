@@ -127,6 +127,19 @@ func WithWatchToken(token string) Option {
 	}
 }
 
+// WithCollectionName uses different collections from the default "outbox" collection.
+func WithCollectionName(outboxColl string) Option {
+	return func(s *Outbox) error {
+		if outboxColl == "" {
+			return fmt.Errorf("missing collection name")
+		}
+
+		s.outbox = s.outbox.Database().Collection(outboxColl)
+
+		return nil
+	}
+}
+
 // Client returns the MongoDB client used by the outbox. To use the outbox with
 // the EventStore it needs to be created with the same client.
 func (o *Outbox) Client() *mongo.Client {
@@ -139,7 +152,7 @@ func (o *Outbox) HandlerType() eh.EventHandlerType {
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.Outbox interface.
-func (o *Outbox) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.EventHandler) error {
+func (o *Outbox) AddHandler(_ context.Context, m eh.EventMatcher, h eh.EventHandler) error {
 	if m == nil {
 		return eh.ErrMissingMatcher
 	}
