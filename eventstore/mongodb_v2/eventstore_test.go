@@ -112,7 +112,7 @@ func TestWithCollectionNamesIntegration(t *testing.T) {
 	_, err = NewEventStore(url, db,
 		WithCollectionNames("", "my-collection"),
 	)
-	if err == nil || err.Error() != "error while applying option: missing collection name" {
+	if err == nil || err.Error() != "error while applying option: events collection: missing collection name" {
 		t.Fatal("there should be an error")
 	}
 
@@ -120,7 +120,21 @@ func TestWithCollectionNamesIntegration(t *testing.T) {
 	_, err = NewEventStore(url, db,
 		WithCollectionNames("my-collection", ""),
 	)
-	if err == nil || err.Error() != "error while applying option: missing collection name" {
+	if err == nil || err.Error() != "error while applying option: streams collection: missing collection name" {
+		t.Fatal("there should be an error")
+	}
+	// providing invalid streams collection names should result in an error
+	_, err = NewEventStore(url, db,
+		WithCollectionNames("my-collection", "name with spaces"),
+	)
+	if err == nil || err.Error() != "error while applying option: streams collection: invalid char in collection name (space)" {
+		t.Fatal("there should be an error")
+	}
+	// providing invalid events collection names should result in an error
+	_, err = NewEventStore(url, db,
+		WithCollectionNames("my collection", "a-good-name"),
+	)
+	if err == nil || err.Error() != "error while applying option: events collection: invalid char in collection name (space)" {
 		t.Fatal("there should be an error")
 	}
 }
@@ -155,7 +169,15 @@ func TestWithSnapshotCollectionNamesIntegration(t *testing.T) {
 	_, err = NewEventStore(url, db,
 		WithSnapshotCollectionName(""),
 	)
-	if err == nil || err.Error() != "error while applying option: missing collection name" {
+	if err == nil || err.Error() != "error while applying option: snapshot collection: missing collection name" {
+		t.Fatal("there should be an error")
+	}
+
+	// providing invalid snapshot collection names should result in an error
+	_, err = NewEventStore(url, db,
+		WithSnapshotCollectionName("no space-allowed"),
+	)
+	if err == nil || err.Error() != "error while applying option: snapshot collection: invalid char in collection name (space)" {
 		t.Fatal("there should be an error")
 	}
 }

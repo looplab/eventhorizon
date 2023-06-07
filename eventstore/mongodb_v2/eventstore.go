@@ -24,6 +24,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/looplab/eventhorizon/mongoutils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -192,12 +193,12 @@ func WithEventHandlerInTX(h eh.EventHandler) Option {
 // Will return an error if provided parameters are equal.
 func WithCollectionNames(eventsColl, streamsColl string) Option {
 	return func(s *EventStore) error {
-		if eventsColl == streamsColl {
+		if err := mongoutils.CheckCollectionName(eventsColl); err != nil {
+			return fmt.Errorf("events collection: %w", err)
+		} else if err := mongoutils.CheckCollectionName(streamsColl); err != nil {
+			return fmt.Errorf("streams collection: %w", err)
+		} else if eventsColl == streamsColl {
 			return fmt.Errorf("custom collection names are equal")
-		}
-
-		if eventsColl == "" || streamsColl == "" {
-			return fmt.Errorf("missing collection name")
 		}
 
 		db := s.events.Database()
@@ -211,8 +212,8 @@ func WithCollectionNames(eventsColl, streamsColl string) Option {
 // WithSnapshotCollectionName uses different collections from the default "snapshots" collections.
 func WithSnapshotCollectionName(snapshotColl string) Option {
 	return func(s *EventStore) error {
-		if snapshotColl == "" {
-			return fmt.Errorf("missing collection name")
+		if err := mongoutils.CheckCollectionName(snapshotColl); err != nil {
+			return fmt.Errorf("snapshot collection: %w", err)
 		}
 
 		db := s.events.Database()

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	bsonCodec "github.com/looplab/eventhorizon/codec/bson"
+	"github.com/looplab/eventhorizon/mongoutils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -130,8 +131,8 @@ func WithWatchToken(token string) Option {
 // WithCollectionName uses different collections from the default "outbox" collection.
 func WithCollectionName(outboxColl string) Option {
 	return func(s *Outbox) error {
-		if outboxColl == "" {
-			return fmt.Errorf("missing collection name")
+		if err := mongoutils.CheckCollectionName(outboxColl); err != nil {
+			return fmt.Errorf("outbox collection: %w", err)
 		}
 
 		s.outbox = s.outbox.Database().Collection(outboxColl)

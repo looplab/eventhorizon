@@ -78,6 +78,25 @@ func TestWithCollectionNameIntegration(t *testing.T) {
 	}
 }
 
+func TestWithCollectionNameInvalidNames(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	url, db := makeDB(t)
+
+	nameWithSpaces := "foo outbox"
+	_, err := NewOutbox(url, db, WithCollectionName(nameWithSpaces))
+	if err == nil || err.Error() != "error while applying option: outbox collection: invalid char in collection name (space)" {
+		t.Fatal("there should be an error")
+	}
+
+	_, err = NewOutbox(url, db, WithCollectionName(""))
+	if err == nil || err.Error() != "error while applying option: outbox collection: missing collection name" {
+		t.Fatal("there should be an error")
+	}
+}
+
 func makeDB(t *testing.T) (string, string) {
 	// Use MongoDB in Docker with fallback to localhost.
 	url := os.Getenv("MONGODB_ADDR")
