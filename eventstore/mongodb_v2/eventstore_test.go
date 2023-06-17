@@ -74,25 +74,10 @@ func TestWithCollectionNamesIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGODB_ADDR")
-	if url == "" {
-		url = "localhost:27017"
-	}
+	url, db := makeDB(t)
 
-	url = "mongodb://" + url
-
-	// Get a random DB name.
-	b := make([]byte, 4)
-	if _, err := rand.Read(b); err != nil {
-		t.Fatal(err)
-	}
-
-	db := "test-" + hex.EncodeToString(b)
 	eventsColl := "foo_events"
 	streamsColl := "bar_streams"
-
-	t.Log("using DB:", db)
 
 	store, err := NewEventStore(url, db,
 		WithCollectionNames(eventsColl, streamsColl),
@@ -127,7 +112,7 @@ func TestWithCollectionNamesIntegration(t *testing.T) {
 	_, err = NewEventStore(url, db,
 		WithCollectionNames("", "my-collection"),
 	)
-	if err == nil || err.Error() != "error while applying option: missing collection name" {
+	if err == nil || err.Error() != "error while applying option: events collection: missing collection name" {
 		t.Fatal("there should be an error")
 	}
 
@@ -135,9 +120,87 @@ func TestWithCollectionNamesIntegration(t *testing.T) {
 	_, err = NewEventStore(url, db,
 		WithCollectionNames("my-collection", ""),
 	)
-	if err == nil || err.Error() != "error while applying option: missing collection name" {
+	if err == nil || err.Error() != "error while applying option: streams collection: missing collection name" {
 		t.Fatal("there should be an error")
 	}
+	// providing invalid streams collection names should result in an error
+	_, err = NewEventStore(url, db,
+		WithCollectionNames("my-collection", "name with spaces"),
+	)
+	if err == nil || err.Error() != "error while applying option: streams collection: invalid char in collection name (space)" {
+		t.Fatal("there should be an error")
+	}
+	// providing invalid events collection names should result in an error
+	_, err = NewEventStore(url, db,
+		WithCollectionNames("my collection", "a-good-name"),
+	)
+	if err == nil || err.Error() != "error while applying option: events collection: invalid char in collection name (space)" {
+		t.Fatal("there should be an error")
+	}
+}
+
+func TestWithSnapshotCollectionNamesIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	url, db := makeDB(t)
+
+	snapshotColl := "foo_snapshots"
+
+	store, err := NewEventStore(url, db,
+		WithSnapshotCollectionName(snapshotColl),
+	)
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	if store == nil {
+		t.Fatal("there should be a store")
+	}
+
+	defer store.Close()
+
+	if store.snapshots.Name() != snapshotColl {
+		t.Fatal("snapshots collection should use custom collection name")
+	}
+
+	// providing empty snapshot collection names should result in an error
+	_, err = NewEventStore(url, db,
+		WithSnapshotCollectionName(""),
+	)
+	if err == nil || err.Error() != "error while applying option: snapshot collection: missing collection name" {
+		t.Fatal("there should be an error")
+	}
+
+	// providing invalid snapshot collection names should result in an error
+	_, err = NewEventStore(url, db,
+		WithSnapshotCollectionName("no space-allowed"),
+	)
+	if err == nil || err.Error() != "error while applying option: snapshot collection: invalid char in collection name (space)" {
+		t.Fatal("there should be an error")
+	}
+}
+
+func makeDB(t *testing.T) (string, string) {
+	// Use MongoDB in Docker with fallback to localhost.
+	url := os.Getenv("MONGODB_ADDR")
+	if url == "" {
+		url = "localhost:27017"
+	}
+
+	url = "mongodb://" + url
+
+	// Get a random DB name.
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+
+	db := "test-" + hex.EncodeToString(b)
+
+	t.Log("using DB:", db)
+	return url, db
 }
 
 func TestWithEventHandlerIntegration(t *testing.T) {
