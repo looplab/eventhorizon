@@ -2,7 +2,6 @@ package eventsorter
 
 import (
 	"context"
-	"github.com/AltScore/lcib-api/pkg/xeh/ehmocks"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/uuid"
 	"github.com/stretchr/testify/mock"
@@ -14,7 +13,7 @@ import (
 type EventSorterTestSuite struct {
 	suite.Suite
 
-	innerStore  *ehmocks.EventStoreMock
+	innerStore  *EventStoreMock
 	eventSorter *EventSorter
 
 	unsortedEventList []eh.Event
@@ -28,7 +27,7 @@ func TestEventSorterTestSuite(t *testing.T) {
 
 // before each test
 func (s *EventSorterTestSuite) SetupTest() {
-	s.innerStore = &ehmocks.EventStoreMock{}
+	s.innerStore = &EventStoreMock{}
 
 	s.eventSorter = NewEventSorter(s.innerStore)
 
@@ -87,7 +86,7 @@ func (s *EventSorterTestSuite) Test_can_sort_event_list_on_Load() {
 
 func (s *EventSorterTestSuite) Test_can_sort_event_list_on_LoadFrom() {
 	// Given a event store with no events
-	s.innerStore.On("LoadFrom", mock.Anything, mock.Anything, 2).Return(s.unsortedEventList, nil)
+	s.innerStore.On("LoadFrom", mock.Anything, mock.Anything, 2).Return(s.unsortedEventList[0:2], nil)
 
 	// When we load the events
 	events, err := s.eventSorter.LoadFrom(context.TODO(), uuid.New(), 2)
