@@ -43,6 +43,7 @@ import (
 // EventStore is an eventhorizon.EventStore for MongoDB, using one collection
 // for all events and another to keep track of all aggregates/streams. It also
 // keeps track of the global position of events, stored as metadata.
+// This implementation warrants event order by Version on Load and LoadFrom methods.
 type EventStore struct {
 	client                  *mongo.Client
 	clientOwnership         clientOwnership
@@ -430,7 +431,8 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
 func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
-	cursor, err := s.events.Find(ctx, bson.M{"aggregate_id": id})
+	opts := options.Find().SetSort(bson.M{"version": 1})
+	cursor, err := s.events.Find(ctx, bson.M{"aggregate_id": id}, opts)
 	if err != nil {
 		return nil, &eh.EventStoreError{
 			Err:         fmt.Errorf("could not find event: %w", err),
@@ -444,7 +446,8 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 
 // LoadFrom implements LoadFrom method of the eventhorizon.SnapshotStore interface.
 func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
-	cursor, err := s.events.Find(ctx, bson.M{"aggregate_id": id, "version": bson.M{"$gte": version}})
+	opts := options.Find().SetSort(bson.M{"version": 1})
+	cursor, err := s.events.Find(ctx, bson.M{"aggregate_id": id, "version": bson.M{"$gte": version}}, opts)
 	if err != nil {
 		return nil, &eh.EventStoreError{
 			Err:         fmt.Errorf("could not find event: %w", err),
