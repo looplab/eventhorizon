@@ -229,7 +229,7 @@ func (r *AggregateStore) takeSnapshot(ctx context.Context, agg eh.Aggregate, las
 }
 
 func (r *AggregateStore) applyEvents(ctx context.Context, a VersionedAggregate, events []eh.Event) error {
-	for _, event := range sortEventsByVersion(events) {
+	for _, event := range events {
 		if event.AggregateType() != a.AggregateType() {
 			return ErrMismatchedEventType
 		}
@@ -242,44 +242,4 @@ func (r *AggregateStore) applyEvents(ctx context.Context, a VersionedAggregate, 
 	}
 
 	return nil
-}
-
-func sortEventsByVersion(events []eh.Event) []eh.Event {
-	if len(events) == 0 {
-		return events
-	}
-
-	min, max := findMinAndMaxVersions(events)
-	sortedEvents := make([]eh.Event, max-min+1)
-	for _, event := range events {
-		sortedEvents[event.Version()-min] = event
-	}
-
-	if len(sortedEvents) == len(events) {
-		return sortedEvents
-	}
-
-	// remove version gaps (this should not happen)
-	i := 0
-	for _, event := range sortedEvents {
-		if event != nil {
-			sortedEvents[i] = event
-			i++
-		}
-	}
-	return sortedEvents[:i]
-}
-
-func findMinAndMaxVersions(events []eh.Event) (int, int) {
-	min := events[0].Version()
-	max := min
-	for _, event := range events {
-		v := event.Version()
-		if v < min {
-			min = v
-		} else if v > max {
-			max = v
-		}
-	}
-	return min, max
 }
