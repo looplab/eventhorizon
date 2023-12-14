@@ -295,6 +295,50 @@ func TestAggregateStore_TakeSnapshot(t *testing.T) {
 	assert.Equal(t, 1, a.appliedEvents)
 }
 
+func TestAggregateStore_TakeSnapshot_no_additional_events_after_snapshot_was_saved(t *testing.T) {
+	eventStore := &mocks.EventStore{
+		Events: make([]eh.Event, 0),
+	}
+
+	// The snapshot should have all the events applied to it, so no additional events should be applied
+	const eventCount = 3
+
+	store, err := NewAggregateStore(eventStore, WithSnapshotStrategy(NewEveryNumberEventSnapshotStrategy(eventCount)))
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	ctx := context.Background()
+
+	id := uuid.New()
+	agg := NewTestAggregateOther(id)
+
+	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+
+	for i := 0; i < eventCount; i++ {
+		agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: fmt.Sprintf("event%d", i)}, timestamp)
+
+		if err := store.Save(ctx, agg); err != nil {
+			t.Error("should not be an error")
+		}
+	}
+
+	assert.NotNil(t, eventStore.Snapshot, "snapshot should be taken")
+
+	agg2, err := store.Load(ctx, agg.AggregateType(), agg.EntityID())
+	if err != nil {
+		t.Error("should not be an error")
+	}
+
+	a, ok := agg2.(*TestAggregateOther)
+	if !ok {
+		t.Error("wrong aggregate type")
+	}
+
+	assert.Equal(t, eventCount, a.AggregateVersion(), "aggregate version should be set correctly")
+	assert.Equal(t, 0, a.appliedEvents, "no additional events after snapshot was taken")
+}
+
 func TestAggregateStore_AggregateNotRegistered(t *testing.T) {
 	store, _ := createStore(t)
 
