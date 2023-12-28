@@ -40,6 +40,8 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
+const Ascending = 1
+
 // EventStore is an eventhorizon.EventStore for MongoDB, using one collection
 // for all events and another to keep track of all aggregates/streams. It also
 // keeps track of the global position of events, stored as metadata.
@@ -588,7 +590,7 @@ func (s *EventStore) LoadSnapshot(ctx context.Context, id uuid.UUID) (*eh.Snapsh
 
 func (s *EventStore) makeFindOptions() *mongoOptions.FindOptions {
 	if s.sortEventsOnDb {
-		return options.Find().SetSort(bson.M{"version": -1})
+		return options.Find().SetSort(bson.M{"version": Ascending})
 	}
 	return options.Find()
 }
