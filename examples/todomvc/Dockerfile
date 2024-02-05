@@ -1,4 +1,4 @@
-FROM golang:1.17-alpine3.14 as builder
+FROM golang:1.20-alpine3.14 as builder
 
 RUN apk -U upgrade && \
     apk add --update ca-certificates tzdata curl gzip
