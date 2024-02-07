@@ -1,10 +1,7 @@
-// module github.com/looplab/eventhorizon
 module github.com/reidlai/eventhorizon
 
 // go 1.17
 go 1.20
-
-replace github.com/looplab/eventhorizon => ./
 
 require (
 	cloud.google.com/go/pubsub v1.36.1
@@ -76,4 +73,9 @@ require (
 	google.golang.org/grpc v1.61.0 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+replace (
+	github.com/looplab/eventhorizon => ./
+	github.com/reidlai/eventhorizon => ./
 )
