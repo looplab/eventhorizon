@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mongodb_v2
+package mongodb_v2_test
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/looplab/eventhorizon/eventstore"
+	mongodb "github.com/looplab/eventhorizon/eventstore/mongodb_v2"
 )
 
 func TestEventStoreMaintenanceIntegration(t *testing.T) {
@@ -47,7 +48,7 @@ func TestEventStoreMaintenanceIntegration(t *testing.T) {
 
 	t.Log("using DB:", db)
 
-	store, err := NewEventStore(url, db)
+	store, err := mongodb.NewEventStore(url, db)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
