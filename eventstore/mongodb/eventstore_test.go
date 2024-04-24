@@ -104,7 +104,7 @@ func TestWithCollectionNameIntegration(t *testing.T) {
 
 	defer store.Close()
 
-	if store.aggregates.Name() != collName {
+	if store.EventsCollectionName() != collName {
 		t.Fatal("events collection should use custom collection name")
 	}
 
