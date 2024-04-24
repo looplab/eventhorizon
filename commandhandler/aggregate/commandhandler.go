@@ -17,6 +17,7 @@ package aggregate
 import (
 	"context"
 	"errors"
+	"sync"
 
 	eh "github.com/looplab/eventhorizon"
 )
@@ -34,27 +35,68 @@ var ErrNilAggregateStore = errors.New("aggregate store is nil")
 // 5. The new events are stored in the event store.
 // 6. The events are published on the event bus after a successful store.
 type CommandHandler struct {
-	t     eh.AggregateType
-	store eh.AggregateStore
+	t         eh.AggregateType
+	store     eh.AggregateStore
+	useAtomic bool
+	rwMutex   *sync.RWMutex
+	a         map[string]*sync.Mutex
 }
 
 // NewCommandHandler creates a new CommandHandler for an aggregate type.
-func NewCommandHandler(t eh.AggregateType, store eh.AggregateStore) (*CommandHandler, error) {
+func NewCommandHandler(aggregateType eh.AggregateType, store eh.AggregateStore, opt ...Option) (*CommandHandler, error) {
 	if store == nil {
 		return nil, ErrNilAggregateStore
 	}
 
 	h := &CommandHandler{
-		t:     t,
+		t:     aggregateType,
 		store: store,
+	}
+
+	for i := range opt {
+		opt[i](h)
 	}
 
 	return h, nil
 }
 
+// Option is an option for a CommandHandler.
+type Option func(*CommandHandler)
+
+// WithUseAtomic enables atomic handling of commands.
+func WithUseAtomic() Option {
+	return func(h *CommandHandler) {
+		h.rwMutex = new(sync.RWMutex)
+		h.a = make(map[string]*sync.Mutex)
+		h.useAtomic = true
+	}
+}
+
 // HandleCommand handles a command with the registered aggregate.
 // Returns ErrAggregateNotFound if no aggregate could be found.
 func (h *CommandHandler) HandleCommand(ctx context.Context, cmd eh.Command) error {
+	if h.useAtomic {
+		h.rwMutex.RLock()
+		_, ok := h.a[cmd.AggregateType().String()]
+		h.rwMutex.RUnlock()
+
+		if !ok {
+			h.rwMutex.Lock()
+			h.a[cmd.AggregateID().String()] = &sync.Mutex{}
+			h.rwMutex.Unlock()
+		}
+
+		h.rwMutex.RLock()
+		defer h.rwMutex.RUnlock()
+
+		h.a[cmd.AggregateID().String()].Lock()
+		defer h.a[cmd.AggregateID().String()].Unlock()
+	}
+
+	return h.handleCommand(ctx, cmd)
+}
+
+func (h *CommandHandler) handleCommand(ctx context.Context, cmd eh.Command) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

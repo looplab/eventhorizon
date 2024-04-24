@@ -51,27 +51,44 @@ func TestNewCommandHandler(t *testing.T) {
 }
 
 func TestCommandHandler(t *testing.T) {
-	a, h, _ := createAggregateAndHandler(t)
+	var (
+		aggregate *mocks.Aggregate
+		handler   *CommandHandler
+	)
 
-	ctx := context.WithValue(context.Background(), "testkey", "testval")
+	test := func() {
+		ctx := context.WithValue(context.Background(), "testkey", "testval")
 
-	cmd := &mocks.Command{
-		ID:      a.EntityID(),
-		Content: "command1",
+		cmd := &mocks.Command{
+			ID:      aggregate.EntityID(),
+			Content: "command1",
+		}
+
+		err := handler.HandleCommand(ctx, cmd)
+		if err != nil {
+			t.Error("there should be no error:", err)
+		}
+
+		if !reflect.DeepEqual(aggregate.Commands, []eh.Command{cmd}) {
+			t.Error("the handled command should be correct:", aggregate.Commands)
+		}
+
+		if val, ok := aggregate.Context.Value("testkey").(string); !ok || val != "testval" {
+			t.Error("the context should be correct:", aggregate.Context)
+		}
 	}
 
-	err := h.HandleCommand(ctx, cmd)
-	if err != nil {
-		t.Error("there should be no error:", err)
-	}
+	t.Run("non-atomic", func(t *testing.T) {
+		aggregate, handler, _ = createAggregateAndHandler(t, false)
 
-	if !reflect.DeepEqual(a.Commands, []eh.Command{cmd}) {
-		t.Error("the handeled command should be correct:", a.Commands)
-	}
+		test()
+	})
 
-	if val, ok := a.Context.Value("testkey").(string); !ok || val != "testval" {
-		t.Error("the context should be correct:", a.Context)
-	}
+	t.Run("atomic", func(t *testing.T) {
+		aggregate, handler, _ = createAggregateAndHandler(t, true)
+
+		test()
+	})
 }
 
 func TestCommandHandler_AggregateNotFound(t *testing.T) {
@@ -101,7 +118,7 @@ func TestCommandHandler_AggregateNotFound(t *testing.T) {
 }
 
 func TestCommandHandler_ErrorInHandler(t *testing.T) {
-	a, h, _ := createAggregateAndHandler(t)
+	a, h, _ := createAggregateAndHandler(t, false)
 
 	commandErr := errors.New("command error")
 	a.Err = commandErr
@@ -117,12 +134,12 @@ func TestCommandHandler_ErrorInHandler(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(a.Commands, []eh.Command{}) {
-		t.Error("the handeled command should be correct:", a.Commands)
+		t.Error("the handled command should be correct:", a.Commands)
 	}
 }
 
 func TestCommandHandler_ErrorWhenSaving(t *testing.T) {
-	a, h, store := createAggregateAndHandler(t)
+	a, h, store := createAggregateAndHandler(t, false)
 
 	saveErr := errors.New("save error")
 	store.Err = saveErr
@@ -138,7 +155,7 @@ func TestCommandHandler_ErrorWhenSaving(t *testing.T) {
 }
 
 func TestCommandHandler_NoHandlers(t *testing.T) {
-	_, h, _ := createAggregateAndHandler(t)
+	_, h, _ := createAggregateAndHandler(t, false)
 
 	cmd := &mocks.Command{
 		ID:      uuid.New(),
@@ -180,13 +197,51 @@ func BenchmarkCommandHandler(b *testing.B) {
 	}
 }
 
-func createAggregateAndHandler(t *testing.T) (*mocks.Aggregate, *CommandHandler, *mocks.AggregateStore) {
+func BenchmarkCommandHandlerAtomic(b *testing.B) {
 	a := mocks.NewAggregate(uuid.New())
 	store := &mocks.AggregateStore{
 		Aggregates: map[uuid.UUID]eh.Aggregate{
 			a.EntityID(): a,
 		},
 		Snapshots: make(map[uuid.UUID]eh.Snapshot),
+	}
+
+	h, err := NewCommandHandler(mocks.AggregateType, store, WithUseAtomic())
+	if err != nil {
+		b.Fatal("there should be no error:", err)
+	}
+
+	ctx := context.WithValue(context.Background(), "testkey", "testval")
+
+	cmd := &mocks.Command{
+		ID:      a.EntityID(),
+		Content: "command1",
+	}
+	for i := 0; i < b.N; i++ {
+		h.HandleCommand(ctx, cmd)
+	}
+
+	if len(a.Commands) != b.N {
+		b.Error("the num handled commands should be correct:", len(a.Commands), b.N)
+	}
+}
+
+func createAggregateAndHandler(t *testing.T, useAtomic bool) (*mocks.Aggregate, *CommandHandler, *mocks.AggregateStore) {
+	a := mocks.NewAggregate(uuid.New())
+	store := &mocks.AggregateStore{
+		Aggregates: map[uuid.UUID]eh.Aggregate{
+			a.EntityID(): a,
+		},
+		Snapshots: make(map[uuid.UUID]eh.Snapshot),
+	}
+
+	if useAtomic {
+		h, err := NewCommandHandler(mocks.AggregateType, store, WithUseAtomic())
+		if err != nil {
+			t.Fatal("there should be no error:", err)
+		}
+
+		return a, h, store
 	}
 
 	h, err := NewCommandHandler(mocks.AggregateType, store)
