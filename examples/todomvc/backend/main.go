@@ -115,7 +115,7 @@ func main() {
 	// Create the repository and wrap in a version repository.
 	var todoRepo eh.ReadWriteRepo
 
-	if todoRepo, err = mongoRepo.NewRepo(mongodbURI, db, "todos"); err != nil {
+	if todoRepo, err = mongoRepo.NewRepo(mongodbURI, db, mongoRepo.WithCollectionName("todos")); err != nil {
 		log.Fatal("could not create invitation repository: ", err)
 	}
 

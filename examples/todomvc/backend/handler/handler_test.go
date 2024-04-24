@@ -782,7 +782,7 @@ func NewIntegrationTestSession(ctx context.Context) (
 		log.Fatalf("could not create event store: %s", err)
 	}
 
-	repo, err := mongodb.NewRepo(url, dbPrefix, "todos")
+	repo, err := mongodb.NewRepo(url, dbPrefix, mongodb.WithCollectionName("todos"))
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}

@@ -87,7 +87,7 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	commandBus := bus.NewCommandHandler()
 
 	// Create the read repositories.
-	invitationRepo, err := mongodb.NewRepo(url, dbPrefix, "invitations")
+	invitationRepo, err := mongodb.NewRepo(url, dbPrefix, mongodb.WithCollectionName("invitations"))
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
@@ -95,7 +95,7 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	// A version repo is needed for the projector to handle eventual consistency.
 	invitationVersionRepo := version.NewRepo(invitationRepo)
 
-	guestListRepo, err := mongodb.NewRepo(url, dbPrefix, "guest_lists")
+	guestListRepo, err := mongodb.NewRepo(url, dbPrefix, mongodb.WithCollectionName("guest_lists"))
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}
