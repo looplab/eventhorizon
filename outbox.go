@@ -48,7 +48,7 @@ type OutboxError struct {
 	Err error
 	// Ctx is the context used when the error happened.
 	Ctx context.Context
-	// Event is the event handeled when the error happened.
+	// Event is the event handled when the error happened.
 	Event Event
 }
 
