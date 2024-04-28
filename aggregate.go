@@ -182,6 +182,18 @@ func RegisterAggregate(factory func(uuid.UUID) Aggregate) {
 	aggregates[aggregateType] = factory
 }
 
+// RegisterAggregate un-registers an aggregate by a given type.
+func UnregisterAggregate(aggregateType AggregateType) {
+	aggregatesMu.Lock()
+	defer aggregatesMu.Unlock()
+
+	if _, ok := aggregates[aggregateType]; !ok {
+		panic(fmt.Sprintf("eventhorizon: aggregate of type %q was never registered", aggregateType))
+	}
+
+	delete(aggregates, aggregateType)
+}
+
 // CreateAggregate creates an aggregate of a type with an ID using the factory
 // registered with RegisterAggregate.
 func CreateAggregate(aggregateType AggregateType, id uuid.UUID) (Aggregate, error) {
