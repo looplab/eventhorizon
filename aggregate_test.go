@@ -82,10 +82,21 @@ func TestRegisterAggregateTwice(t *testing.T) {
 	})
 }
 
+func TestUnregisterAggregateUnregistered(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil || r != "eventhorizon: aggregate of type \"TestAggregateUnregistered\" was never registered" {
+			t.Error("there should have been a panic:", r)
+		}
+	}()
+
+	UnregisterAggregate(TestAggregateUnregisteredType)
+}
+
 const (
 	TestAggregateRegisterType      AggregateType = "TestAggregateRegister"
 	TestAggregateRegisterEmptyType AggregateType = ""
 	TestAggregateRegisterTwiceType AggregateType = "TestAggregateRegisterTwice"
+	TestAggregateUnregisteredType  AggregateType = "TestAggregateUnregistered"
 )
 
 type TestAggregateRegister struct {
