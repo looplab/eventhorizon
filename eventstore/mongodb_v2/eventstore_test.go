@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mongodb_v2
+package mongodb_v2_test
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventstore"
+	mongodb "github.com/looplab/eventhorizon/eventstore/mongodb_v2"
 	"github.com/looplab/eventhorizon/mocks"
 	"github.com/looplab/eventhorizon/uuid"
 )
@@ -51,7 +52,7 @@ func TestEventStoreIntegration(t *testing.T) {
 
 	t.Log("using DB:", db)
 
-	store, err := NewEventStore(url, db)
+	store, err := mongodb.NewEventStore(url, db)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -79,8 +80,8 @@ func TestWithCollectionNamesIntegration(t *testing.T) {
 	eventsColl := "foo_events"
 	streamsColl := "bar_streams"
 
-	store, err := NewEventStore(url, db,
-		WithCollectionNames(eventsColl, streamsColl),
+	store, err := mongodb.NewEventStore(url, db,
+		mongodb.WithCollectionNames(eventsColl, streamsColl),
 	)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
@@ -92,47 +93,47 @@ func TestWithCollectionNamesIntegration(t *testing.T) {
 
 	defer store.Close()
 
-	if store.events.Name() != eventsColl {
+	if store.EventsCollectionName() != eventsColl {
 		t.Fatal("events collection should use custom collection name")
 	}
 
-	if store.streams.Name() != streamsColl {
+	if store.StreamsCollectionName() != streamsColl {
 		t.Fatal("streams collection should use custom collection name")
 	}
 
 	// providing the same collection name should result in an error
-	_, err = NewEventStore(url, db,
-		WithCollectionNames("my-collection", "my-collection"),
+	_, err = mongodb.NewEventStore(url, db,
+		mongodb.WithCollectionNames("my-collection", "my-collection"),
 	)
 	if err == nil || err.Error() != "error while applying option: custom collection names are equal" {
 		t.Fatal("there should be an error")
 	}
 
 	// providing empty collection names should result in an error
-	_, err = NewEventStore(url, db,
-		WithCollectionNames("", "my-collection"),
+	_, err = mongodb.NewEventStore(url, db,
+		mongodb.WithCollectionNames("", "my-collection"),
 	)
 	if err == nil || err.Error() != "error while applying option: events collection: missing collection name" {
 		t.Fatal("there should be an error")
 	}
 
 	// providing empty collection names should result in an error
-	_, err = NewEventStore(url, db,
-		WithCollectionNames("my-collection", ""),
+	_, err = mongodb.NewEventStore(url, db,
+		mongodb.WithCollectionNames("my-collection", ""),
 	)
 	if err == nil || err.Error() != "error while applying option: streams collection: missing collection name" {
 		t.Fatal("there should be an error")
 	}
 	// providing invalid streams collection names should result in an error
-	_, err = NewEventStore(url, db,
-		WithCollectionNames("my-collection", "name with spaces"),
+	_, err = mongodb.NewEventStore(url, db,
+		mongodb.WithCollectionNames("my-collection", "name with spaces"),
 	)
 	if err == nil || err.Error() != "error while applying option: streams collection: invalid char in collection name (space)" {
 		t.Fatal("there should be an error")
 	}
 	// providing invalid events collection names should result in an error
-	_, err = NewEventStore(url, db,
-		WithCollectionNames("my collection", "a-good-name"),
+	_, err = mongodb.NewEventStore(url, db,
+		mongodb.WithCollectionNames("my collection", "a-good-name"),
 	)
 	if err == nil || err.Error() != "error while applying option: events collection: invalid char in collection name (space)" {
 		t.Fatal("there should be an error")
@@ -148,8 +149,8 @@ func TestWithSnapshotCollectionNamesIntegration(t *testing.T) {
 
 	snapshotColl := "foo_snapshots"
 
-	store, err := NewEventStore(url, db,
-		WithSnapshotCollectionName(snapshotColl),
+	store, err := mongodb.NewEventStore(url, db,
+		mongodb.WithSnapshotCollectionName(snapshotColl),
 	)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
@@ -161,21 +162,21 @@ func TestWithSnapshotCollectionNamesIntegration(t *testing.T) {
 
 	defer store.Close()
 
-	if store.snapshots.Name() != snapshotColl {
+	if store.SnapshotsCollectionName() != snapshotColl {
 		t.Fatal("snapshots collection should use custom collection name")
 	}
 
 	// providing empty snapshot collection names should result in an error
-	_, err = NewEventStore(url, db,
-		WithSnapshotCollectionName(""),
+	_, err = mongodb.NewEventStore(url, db,
+		mongodb.WithSnapshotCollectionName(""),
 	)
 	if err == nil || err.Error() != "error while applying option: snapshot collection: missing collection name" {
 		t.Fatal("there should be an error")
 	}
 
 	// providing invalid snapshot collection names should result in an error
-	_, err = NewEventStore(url, db,
-		WithSnapshotCollectionName("no space-allowed"),
+	_, err = mongodb.NewEventStore(url, db,
+		mongodb.WithSnapshotCollectionName("no space-allowed"),
 	)
 	if err == nil || err.Error() != "error while applying option: snapshot collection: invalid char in collection name (space)" {
 		t.Fatal("there should be an error")
@@ -228,8 +229,8 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 
 	h := &mocks.EventBus{}
 
-	store, err := NewEventStore(url, db,
-		WithEventHandler(h),
+	store, err := mongodb.NewEventStore(url, db,
+		mongodb.WithEventHandler(h),
 	)
 	if err != nil {
 		t.Fatal("there should be no error:", err)
@@ -315,7 +316,7 @@ func BenchmarkEventStore(b *testing.B) {
 
 	b.Log("using DB:", db)
 
-	store, err := NewEventStore(url, db)
+	store, err := mongodb.NewEventStore(url, db)
 	if err != nil {
 		b.Fatal("there should be no error:", err)
 	}
