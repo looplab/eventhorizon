@@ -16,6 +16,7 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -33,23 +34,26 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
+const (
+	defaultCollectionName = "events"
+)
+
 // EventStore implements an eventhorizon.EventStore for MongoDB using a single
 // collection with one document per aggregate/stream which holds its events
 // as values.
 type EventStore struct {
-	client                *mongo.Client
-	clientOwnership       clientOwnership
-	db                    *mongo.Database
-	aggregates            *mongo.Collection
+	database              eh.MongoDB
+	dbOwnership           dbOwnership
+	collectionName        string
 	eventHandlerAfterSave eh.EventHandler
 	eventHandlerInTX      eh.EventHandler
 }
 
-type clientOwnership int
+type dbOwnership int
 
 const (
-	internalClient clientOwnership = iota
-	externalClient
+	internalDB dbOwnership = iota
+	externalDB
 )
 
 // NewEventStore creates a new EventStore with a MongoDB URI: `mongodb://hostname`.
@@ -64,97 +68,47 @@ func NewEventStore(uri, dbName string, options ...Option) (*EventStore, error) {
 		return nil, fmt.Errorf("could not connect to DB: %w", err)
 	}
 
-	return newEventStoreWithClient(client, internalClient, dbName, options...)
+	return newMongoDBEventStore(eh.NewMongoDBWithClient(client, dbName), internalDB, options...)
 }
 
 // NewEventStoreWithClient creates a new EventStore with a client.
 func NewEventStoreWithClient(client *mongo.Client, dbName string, options ...Option) (*EventStore, error) {
-	return newEventStoreWithClient(client, externalClient, dbName, options...)
+	return newMongoDBEventStore(eh.NewMongoDBWithClient(client, dbName), externalDB, options...)
 }
 
-func newEventStoreWithClient(client *mongo.Client, clientOwnership clientOwnership, dbName string, options ...Option) (*EventStore, error) {
-	if client == nil {
-		return nil, fmt.Errorf("missing DB client")
-	}
+// NewMongoDBEventStore creates a new EventStore using the eventhorizon.MongoDB interface.
+func NewMongoDBEventStore(db eh.MongoDB, options ...Option) (*EventStore, error) {
+	return newMongoDBEventStore(db, externalDB, options...)
+}
 
-	db := client.Database(dbName)
+func newMongoDBEventStore(db eh.MongoDB, dbOwnership dbOwnership, options ...Option) (*EventStore, error) {
+	if db == nil {
+		return nil, fmt.Errorf("missing DB")
+	}
 
 	s := &EventStore{
-		client:          client,
-		clientOwnership: clientOwnership,
-		db:              db,
-		aggregates:      db.Collection("events"),
+		dbOwnership:    dbOwnership,
+		database:       db,
+		collectionName: defaultCollectionName,
 	}
 
-	for _, option := range options {
-		if err := option(s); err != nil {
+	for i := range options {
+		if err := options[i](s); err != nil {
 			return nil, fmt.Errorf("error while applying option: %w", err)
 		}
 	}
 
-	if err := s.client.Ping(context.Background(), readpref.Primary()); err != nil {
+	if err := s.database.Ping(context.Background(), readpref.Primary()); err != nil {
 		return nil, fmt.Errorf("could not connect to MongoDB: %w", err)
 	}
 
 	return s, nil
 }
 
-// Option is an option setter used to configure creation.
-type Option func(*EventStore) error
-
-// WithEventHandler adds an event handler that will be called after saving events.
-// An example would be to add an event bus to publish events.
-func WithEventHandler(h eh.EventHandler) Option {
-	return func(s *EventStore) error {
-		if s.eventHandlerAfterSave != nil {
-			return fmt.Errorf("another event handler is already set")
-		}
-
-		if s.eventHandlerInTX != nil {
-			return fmt.Errorf("another TX event handler is already set")
-		}
-
-		s.eventHandlerAfterSave = h
-
-		return nil
-	}
-}
-
-// WithEventHandlerInTX adds an event handler that will be called during saving of
-// events. An example would be to add an outbox to further process events.
-// For an outbox to be atomic it needs to use the same transaction as the save
-// operation, which is passed down using the context.
-func WithEventHandlerInTX(h eh.EventHandler) Option {
-	return func(s *EventStore) error {
-		if s.eventHandlerAfterSave != nil {
-			return fmt.Errorf("another event handler is already set")
-		}
-
-		if s.eventHandlerInTX != nil {
-			return fmt.Errorf("another TX event handler is already set")
-		}
-
-		s.eventHandlerInTX = h
-
-		return nil
-	}
-}
-
-// WithCollectionName uses a different event collection than the default "events".
-func WithCollectionName(eventsColl string) Option {
-	return func(s *EventStore) error {
-		if eventsColl == "" {
-			return fmt.Errorf("missing collection name")
-		}
-
-		s.aggregates = s.db.Collection(eventsColl)
-
-		return nil
-	}
-}
-
 // Save implements the Save method of the eventhorizon.EventStore interface.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
+	const errMessage = "could not save events: %w"
+
 	if len(events) == 0 {
 		return &eh.EventStoreError{
 			Err: eh.ErrMissingEvents,
@@ -221,7 +175,8 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	}
 
 	// Run the operation in a transaction if using an outbox, otherwise it's not needed.
-	saveEvents := func(ctx mongo.SessionContext) error {
+	saveEvents := func(ctx mongo.SessionContext, c *mongo.Collection) error {
+
 		// Either insert a new aggregate or append to an existing.
 		if originalVersion == 0 {
 			aggregate := aggregateRecord{
@@ -229,14 +184,15 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 				Version:     len(dbEvents),
 				Events:      dbEvents,
 			}
-			if _, err := s.aggregates.InsertOne(ctx, aggregate); err != nil {
+
+			if _, err := c.InsertOne(ctx, aggregate); err != nil {
 				return fmt.Errorf("could not insert events (new): %w", err)
 			}
 		} else {
 			// Increment aggregate version on insert of new event record, and
 			// only insert if version of aggregate is matching (ie not changed
 			// since loading the aggregate).
-			if r, err := s.aggregates.UpdateOne(ctx,
+			if r, err := c.UpdateOne(ctx,
 				bson.M{
 					"_id":     id,
 					"version": originalVersion,
@@ -255,34 +211,23 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		return nil
 	}
 
+	var handleEvents bool
+
 	// Run the operation in a transaction if using an outbox, otherwise it's not needed.
 	if s.eventHandlerInTX != nil {
-		sess, err := s.client.StartSession(nil)
-		if err != nil {
-			return &eh.EventStoreError{
-				Err:              fmt.Errorf("could not start transaction: %w", err),
-				Op:               eh.EventStoreOpSave,
-				AggregateType:    at,
-				AggregateID:      id,
-				AggregateVersion: originalVersion,
-				Events:           events,
-			}
-		}
-
-		defer sess.EndSession(ctx)
-
-		if _, err := sess.WithTransaction(ctx, func(ctx mongo.SessionContext) (interface{}, error) {
-			if err := saveEvents(ctx); err != nil {
-				return nil, err
-			}
-
-			for _, e := range events {
-				if err := s.eventHandlerInTX.HandleEvent(ctx, e); err != nil {
-					return nil, fmt.Errorf("could not handle event in transaction: %w", err)
+		if err := s.database.CollectionExecWithTransaction(ctx, s.collectionName, func(txCtx mongo.SessionContext, c *mongo.Collection) error {
+			if err := saveEvents(txCtx, c); err != nil {
+				return &eh.EventStoreError{
+					Err:              err,
+					Op:               eh.EventStoreOpSave,
+					AggregateType:    at,
+					AggregateID:      id,
+					AggregateVersion: originalVersion,
+					Events:           events,
 				}
 			}
 
-			return nil, nil
+			return nil
 		}); err != nil {
 			return &eh.EventStoreError{
 				Err:              err,
@@ -293,16 +238,33 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 				Events:           events,
 			}
 		}
+
+		handleEvents = true
 	} else {
-		dummySessionCtx := mongo.NewSessionContext(ctx, nil)
-		if err := saveEvents(dummySessionCtx); err != nil {
-			return &eh.EventStoreError{
-				Err:              err,
-				Op:               eh.EventStoreOpSave,
-				AggregateType:    at,
-				AggregateID:      id,
-				AggregateVersion: originalVersion,
-				Events:           events,
+		if err := s.database.CollectionExec(ctx, s.collectionName, func(ctx context.Context, c *mongo.Collection) error {
+			dummySessionCtx := mongo.NewSessionContext(ctx, nil)
+
+			if err := saveEvents(dummySessionCtx, c); err != nil {
+				return &eh.EventStoreError{
+					Err:              err,
+					Op:               eh.EventStoreOpSave,
+					AggregateType:    at,
+					AggregateID:      id,
+					AggregateVersion: originalVersion,
+					Events:           events,
+				}
+			}
+
+			return nil
+		}); err != nil {
+			return fmt.Errorf(errMessage, err)
+		}
+	}
+
+	if handleEvents {
+		for i := range events {
+			if err := s.eventHandlerInTX.HandleEvent(ctx, events[i]); err != nil {
+				return fmt.Errorf("could not handle event in transaction: %w", err)
 			}
 		}
 	}
@@ -329,18 +291,27 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 
 // LoadFrom loads all events from version for the aggregate id from the store.
 func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
+	const errMessage = "could not load events: %w"
+
 	var aggregate aggregateRecord
-	if err := s.aggregates.FindOne(ctx, bson.M{"_id": id}).Decode(&aggregate); err != nil {
-		// Translate to our own not found error.
-		if err == mongo.ErrNoDocuments {
-			err = eh.ErrAggregateNotFound
+
+	if err := s.database.CollectionExec(ctx, s.collectionName, func(ctx context.Context, c *mongo.Collection) error {
+		if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&aggregate); err != nil {
+			// Translate to our own not found error.
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				err = eh.ErrAggregateNotFound
+			}
+
+			return &eh.EventStoreError{
+				Err:         err,
+				Op:          eh.EventStoreOpLoad,
+				AggregateID: id,
+			}
 		}
 
-		return nil, &eh.EventStoreError{
-			Err:         err,
-			Op:          eh.EventStoreOpLoad,
-			AggregateID: id,
-		}
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf(errMessage, err)
 	}
 
 	events := make([]eh.Event, len(aggregate.Events))
@@ -398,13 +369,16 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 
 // Close implements the Close method of the eventhorizon.EventStore interface.
 func (s *EventStore) Close() error {
-	if s.clientOwnership == externalClient {
+	if s.dbOwnership == externalDB {
 		// Don't close a client we don't own.
 		return nil
 	}
 
-	return s.client.Disconnect(context.Background())
+	return s.database.Close()
 }
+
+// EventsCollectionName returns the name of the events collection.
+func (s *EventStore) EventsCollectionName() string { return s.collectionName }
 
 // aggregateRecord is the Database representation of an aggregate.
 type aggregateRecord struct {
