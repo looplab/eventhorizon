@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mongodb
+package mongodb_test
 
 import (
 	"context"
@@ -30,6 +30,7 @@ import (
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
 	"github.com/looplab/eventhorizon/repo"
+	mongodb "github.com/looplab/eventhorizon/repo/mongodb"
 	"github.com/looplab/eventhorizon/uuid"
 )
 
@@ -56,7 +57,7 @@ func TestReadRepoIntegration(t *testing.T) {
 
 	t.Log("using DB:", db)
 
-	r, err := NewRepo(url, db, "mocks.Model")
+	r, err := mongodb.NewRepo(url, db, mongodb.WithCollectionName("mocks.Model"))
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -64,8 +65,6 @@ func TestReadRepoIntegration(t *testing.T) {
 	if r == nil {
 		t.Error("there should be a repository")
 	}
-
-	defer r.Close()
 
 	r.SetEntityFactory(func() eh.Entity {
 		return &mocks.Model{}
@@ -83,7 +82,7 @@ func TestReadRepoIntegration(t *testing.T) {
 	}
 }
 
-func extraRepoTests(t *testing.T, r *Repo) {
+func extraRepoTests(t *testing.T, r *mongodb.Repo) {
 	ctx := context.Background()
 
 	// Insert a custom item.
@@ -114,7 +113,7 @@ func extraRepoTests(t *testing.T, r *Repo) {
 	_, err = r.FindCustom(ctx, func(ctx context.Context, c *mongo.Collection) (*mongo.Cursor, error) {
 		return nil, nil
 	})
-	if !errors.As(err, &repoErr) || !errors.Is(repoErr.Err, ErrNoCursor) {
+	if !errors.As(err, &repoErr) || !errors.Is(repoErr.Err, mongodb.ErrNoCursor) {
 		t.Error("there should be a invalid query error:", err)
 	}
 
@@ -130,7 +129,7 @@ func extraRepoTests(t *testing.T, r *Repo) {
 		// Be sure to return nil to not execute the query again in FindCustom.
 		return nil, nil
 	})
-	if !errors.As(err, &repoErr) || !errors.Is(repoErr.Err, ErrNoCursor) {
+	if !errors.As(err, &repoErr) || !errors.Is(repoErr.Err, mongodb.ErrNoCursor) {
 		t.Error("there should be a invalid query error:", err)
 	}
 
@@ -210,12 +209,12 @@ func TestIntoRepoIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	if r := IntoRepo(context.Background(), nil); r != nil {
+	if r := mongodb.IntoRepo(context.Background(), nil); r != nil {
 		t.Error("the repository should be nil:", r)
 	}
 
 	other := &mocks.Repo{}
-	if r := IntoRepo(context.Background(), other); r != nil {
+	if r := mongodb.IntoRepo(context.Background(), other); r != nil {
 		t.Error("the repository should be correct:", r)
 	}
 
@@ -237,14 +236,14 @@ func TestIntoRepoIntegration(t *testing.T) {
 
 	t.Log("using DB:", db)
 
-	inner, err := NewRepo(url, db, "mocks.Model")
+	inner, err := mongodb.NewRepo(url, db, mongodb.WithCollectionName("mocks.Model"))
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
 	defer inner.Close()
 
 	outer := &mocks.Repo{ParentRepo: inner}
-	if r := IntoRepo(context.Background(), outer); r != inner {
+	if r := mongodb.IntoRepo(context.Background(), outer); r != inner {
 		t.Error("the repository should be correct:", r)
 	}
 }

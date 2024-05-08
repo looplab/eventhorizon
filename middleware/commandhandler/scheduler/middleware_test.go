@@ -140,7 +140,7 @@ func TestMiddleware_PersistedIntegration(t *testing.T) {
 
 	t.Log("using DB:", db)
 
-	repo, err := mongodb.NewRepo(url, db, "scheduled_commands")
+	repo, err := mongodb.NewRepo(url, db, mongodb.WithCollectionName("scheduled_commands"))
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
