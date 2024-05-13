@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -44,7 +45,10 @@ type BasicMongoDB struct {
 	dbName   string
 	errChan  chan error
 
-	mtx *sync.Mutex
+	mtx     *sync.Mutex
+	cctx    context.Context
+	cancel  context.CancelFunc
+	closeWG *sync.WaitGroup
 }
 
 // NewMongoDBWithClient returns a new MongoDB instance.
@@ -72,12 +76,17 @@ func NewMongoDB(uri string, dbName string) (*BasicMongoDB, error) {
 
 // NewMongoDBWithClient returns a new MongoDB instance.
 func NewMongoDBWithClient(client *mongo.Client, dbName string) *BasicMongoDB {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	return &BasicMongoDB{
 		client:   client,
 		database: client.Database(dbName),
 		dbName:   dbName,
 		errChan:  make(chan error, 10),
 		mtx:      new(sync.Mutex),
+		cctx:     ctx,
+		cancel:   cancel,
+		closeWG:  new(sync.WaitGroup),
 	}
 }
 
@@ -85,6 +94,9 @@ func NewMongoDBWithClient(client *mongo.Client, dbName string) *BasicMongoDB {
 func (db *BasicMongoDB) Close() error {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+
+	db.cancel()
+	db.closeWG.Wait()
 
 	close(db.errChan)
 
@@ -171,30 +183,63 @@ func (db *BasicMongoDB) CollectionWatchChangeStream(
 	fn func(context.Context, <-chan bson.Raw) error,
 	opts ...*options.ChangeStreamOptions,
 ) error {
-	const errMessage = "could not watch change stream: %w"
-
-	stream, err := db.database.Collection(collectionName).Watch(ctx, pipeline, opts...)
-	if err != nil {
-		return fmt.Errorf(errMessage, err)
-	}
-
 	changeChan := make(chan bson.Raw)
 
-	go func() {
-		defer close(changeChan)
-
-		for stream.Next(ctx) {
-			changeChan <- stream.Current
-		}
-
-		if err := stream.Err(); err != nil {
-			db.errChan <- err
-		}
-
-		*resumeToken = stream.ResumeToken()
-	}()
+	go db.listenForChanges(ctx, collectionName, pipeline, resumeToken, changeChan, opts...)
 
 	return fn(ctx, changeChan)
+}
+
+func (db *BasicMongoDB) listenForChanges(
+	ctx context.Context,
+	collectionName string,
+	pipeline interface{},
+	resumeToken *bson.Raw,
+	changeChan chan<- bson.Raw,
+	opts ...*options.ChangeStreamOptions,
+) {
+	const errMessage = "error in change stream: %w"
+
+	db.closeWG.Add(1)
+	defer db.closeWG.Done()
+
+	defer close(changeChan)
+
+	for {
+		select {
+		case <-db.cctx.Done():
+			return
+		default:
+			// open new stream
+			db.mtx.Lock()
+			stream, err := db.database.Collection(collectionName).Watch(ctx, pipeline, opts...)
+			db.mtx.Unlock()
+
+			if err != nil {
+				time.Sleep(time.Second)
+
+				continue
+			}
+
+			// loop to receive events from the stream
+			for stream.Next(ctx) {
+				changeChan <- stream.Current
+			}
+
+			// check for errors or closure of the stream
+			if err := stream.Err(); err != nil {
+				db.errChan <- fmt.Errorf(errMessage, err)
+			}
+
+			// setting resume token
+			*resumeToken = stream.ResumeToken()
+
+			// closing the stream
+			if err := stream.Close(ctx); err != nil {
+				db.errChan <- fmt.Errorf(errMessage, err)
+			}
+		}
+	}
 }
 
 // CollectionDrop implements the CollectionDrop method of the MongoDB interface.

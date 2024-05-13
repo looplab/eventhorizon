@@ -128,7 +128,7 @@ func TestMiddleware_PersistedIntegration(t *testing.T) {
 		addr = "localhost:27017"
 	}
 
-	url := "mongodb://" + addr + "/?readPreference=primary&directConnection=true&ssl=false"
+	url := "mongodb://" + addr
 
 	// Get a random DB name.
 	b := make([]byte, 4)

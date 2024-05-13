@@ -44,6 +44,7 @@ invitation: Hades - confirmed
 invitation: Poseidon - denied
 invitation: Zeus - declined
 guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
+
 		return
 	}
 
@@ -52,14 +53,21 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	if addr == "" {
 		addr = "localhost:27017"
 	}
+
 	url := "mongodb://" + addr
-	dbPrefix := "guestlist_outbox"
+	dbName := "guestlist_outbox"
+
+	dbConn, err := eh.NewMongoDB(url, dbName)
+	if err != nil {
+		log.Fatalf("could not create database connection: %s", err)
+	}
 
 	// Create the outbox that will project and publish events.
-	outbox, err := mongoOutbox.NewOutbox(url, dbPrefix)
+	outbox, err := mongoOutbox.NewMongoDBOutbox(dbConn)
 	if err != nil {
 		log.Fatalf("could not create outbox: %s", err)
 	}
+
 	go func() {
 		for e := range outbox.Errors() {
 			log.Printf("outbox: %s", e.Error())
@@ -67,8 +75,8 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	}()
 
 	// Create the event store.
-	eventStore, err := mongoEventStore.NewEventStoreWithClient(
-		outbox.Client(), dbPrefix,
+	eventStore, err := mongoEventStore.NewMongoDBEventStore(
+		dbConn,
 		mongoEventStore.WithEventHandlerInTX(outbox),
 	)
 	if err != nil {
@@ -87,18 +95,21 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	commandBus := bus.NewCommandHandler()
 
 	// Create the read repositories.
-	invitationRepo, err := mongodb.NewRepo(url, dbPrefix, mongodb.WithCollectionName("invitations"))
+	invitationRepo, err := mongodb.NewMongoDBRepo(dbConn, mongodb.WithCollectionName("invitations"))
 	if err != nil {
 		log.Fatalf("could not create invitation repository: %s", err)
 	}
+
 	invitationRepo.SetEntityFactory(func() eh.Entity { return &guestlist.Invitation{} })
+
 	// A version repo is needed for the projector to handle eventual consistency.
 	invitationVersionRepo := version.NewRepo(invitationRepo)
 
-	guestListRepo, err := mongodb.NewRepo(url, dbPrefix, mongodb.WithCollectionName("guest_lists"))
+	guestListRepo, err := mongodb.NewMongoDBRepo(dbConn, mongodb.WithCollectionName("guest_lists"))
 	if err != nil {
 		log.Fatalf("could not create guest list repository: %s", err)
 	}
+
 	guestListRepo.SetEntityFactory(func() eh.Entity { return &guestlist.GuestList{} })
 
 	ctx := context.Background()
@@ -125,7 +136,9 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	// Setup a test utility waiter that waits for all 11 events to occur before
 	// evaluating results.
 	var wg sync.WaitGroup
+
 	wg.Add(11)
+
 	if err := eventBus.AddHandler(ctx, eh.MatchAll{}, eh.EventHandlerFunc(
 		func(ctx context.Context, e eh.Event) error {
 			wg.Done()
@@ -139,9 +152,11 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	if err := eventStore.Clear(ctx); err != nil {
 		log.Fatal("could not clear event store:", err)
 	}
+
 	if err := invitationRepo.Clear(ctx); err != nil {
 		log.Fatal("could not clear invitation repo:", err)
 	}
+
 	if err := guestListRepo.Clear(ctx); err != nil {
 		log.Fatal("could not clear guest list repo:", err)
 	}
@@ -160,12 +175,15 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	if err := commandBus.HandleCommand(ctx, &guestlist.CreateInvite{ID: athenaID, Name: "Athena", Age: 42}); err != nil {
 		log.Println("error:", err)
 	}
+
 	if err := commandBus.HandleCommand(ctx, &guestlist.CreateInvite{ID: hadesID, Name: "Hades"}); err != nil {
 		log.Println("error:", err)
 	}
+
 	if err := commandBus.HandleCommand(ctx, &guestlist.CreateInvite{ID: zeusID, Name: "Zeus"}); err != nil {
 		log.Println("error:", err)
 	}
+
 	if err := commandBus.HandleCommand(ctx, &guestlist.CreateInvite{ID: poseidonID, Name: "Poseidon"}); err != nil {
 		log.Println("error:", err)
 	}
@@ -177,13 +195,16 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	if err := commandBus.HandleCommand(ctx, &guestlist.AcceptInvite{ID: athenaID}); err != nil {
 		log.Println("error:", err)
 	}
+
 	if err = commandBus.HandleCommand(ctx, &guestlist.DeclineInvite{ID: athenaID}); err != nil {
 		// NOTE: This error is supposed to be printed!
 		log.Println("error:", err)
 	}
+
 	if err := commandBus.HandleCommand(ctx, &guestlist.AcceptInvite{ID: hadesID}); err != nil {
 		log.Println("error:", err)
 	}
+
 	if err := commandBus.HandleCommand(ctx, &guestlist.DeclineInvite{ID: zeusID}); err != nil {
 		log.Println("error:", err)
 	}
@@ -200,9 +221,11 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	// Read all invites.
 	invitationStrs := []string{}
 	invitations, err := invitationRepo.FindAll(ctx)
+
 	if err != nil {
 		log.Println("error:", err)
 	}
+
 	for _, i := range invitations {
 		if i, ok := i.(*guestlist.Invitation); ok {
 			invitationStrs = append(invitationStrs, fmt.Sprintf("%s - %s", i.Name, i.Status))
@@ -211,6 +234,7 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 
 	// Sort the output to be able to compare test results.
 	sort.Strings(invitationStrs)
+
 	for _, s := range invitationStrs {
 		log.Printf("invitation: %s\n", s)
 		fmt.Printf("invitation: %s\n", s)
@@ -221,6 +245,7 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	if err != nil {
 		log.Println("error:", err)
 	}
+
 	if l, ok := l.(*guestlist.GuestList); ok {
 		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
@@ -232,17 +257,25 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	if err := eventBus.Close(); err != nil {
 		log.Println("error closing event bus:", err)
 	}
+
 	if err := outbox.Close(); err != nil {
 		log.Println("error closing outbox:", err)
 	}
+
 	if err := invitationRepo.Close(); err != nil {
 		log.Println("error closing invitation repo:", err)
 	}
+
 	if err := guestListRepo.Close(); err != nil {
 		log.Println("error closing guest list repo:", err)
 	}
+
 	if err := eventStore.Close(); err != nil {
 		log.Println("error closing event store:", err)
+	}
+
+	if err := dbConn.Close(); err != nil {
+		log.Println("error closing db connection:", err)
 	}
 
 	// Output:

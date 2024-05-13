@@ -1,4 +1,4 @@
-package mongodb
+package mongodb_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/looplab/eventhorizon/outbox"
+	"github.com/looplab/eventhorizon/outbox/mongodb"
 )
 
 func init() {
@@ -22,7 +23,7 @@ func TestOutboxAddHandler(t *testing.T) {
 
 	url, db := makeDB(t)
 
-	o, err := NewOutbox(url, db)
+	o, err := mongodb.NewOutbox(url, db)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,11 +38,11 @@ func TestOutboxIntegration(t *testing.T) {
 
 	url, db := makeDB(t)
 
-	// Shorter sweeps for testing
-	PeriodicSweepInterval = 2 * time.Second
-	PeriodicSweepAge = 2 * time.Second
-
-	o, err := NewOutbox(url, db)
+	o, err := mongodb.NewOutbox(url, db,
+		// using shorter sweeps for testing
+		mongodb.WithPeriodicSweepInterval(2*time.Second),
+		mongodb.WithPeriodicSweepAge(2*time.Second),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +63,7 @@ func TestWithCollectionNameIntegration(t *testing.T) {
 
 	url, db := makeDB(t)
 
-	o, err := NewOutbox(url, db, WithCollectionName("foo-outbox"))
+	o, err := mongodb.NewOutbox(url, db, mongodb.WithCollectionName("foo-outbox"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +74,7 @@ func TestWithCollectionNameIntegration(t *testing.T) {
 		t.Fatal("there should be a store")
 	}
 
-	if o.outbox.Name() != "foo-outbox" {
+	if o.CollectionName() != "foo-outbox" {
 		t.Fatal("collection name should use custom collection name")
 	}
 }
@@ -86,12 +87,12 @@ func TestWithCollectionNameInvalidNames(t *testing.T) {
 	url, db := makeDB(t)
 
 	nameWithSpaces := "foo outbox"
-	_, err := NewOutbox(url, db, WithCollectionName(nameWithSpaces))
+	_, err := mongodb.NewOutbox(url, db, mongodb.WithCollectionName(nameWithSpaces))
 	if err == nil || err.Error() != "error while applying option: outbox collection: invalid char in collection name (space)" {
 		t.Fatal("there should be an error")
 	}
 
-	_, err = NewOutbox(url, db, WithCollectionName(""))
+	_, err = mongodb.NewOutbox(url, db, mongodb.WithCollectionName(""))
 	if err == nil || err.Error() != "error while applying option: outbox collection: missing collection name" {
 		t.Fatal("there should be an error")
 	}
@@ -137,12 +138,12 @@ func BenchmarkOutbox(b *testing.B) {
 
 	b.Log("using DB:", db)
 
-	// Shorter sweeps for testing.
-	PeriodicSweepInterval = 1 * time.Second
-	PeriodicSweepAge = 1 * time.Second
-	PeriodicCleanupAge = 5 * time.Second
-
-	o, err := NewOutbox(url, db)
+	o, err := mongodb.NewOutbox(url, db,
+		// with shorter sweeps for testing.
+		mongodb.WithPeriodicSweepInterval(1*time.Second),
+		mongodb.WithPeriodicSweepAge(1*time.Second),
+		mongodb.WithPeriodicCleanupAge(5*time.Second),
+	)
 	if err != nil {
 		b.Fatal(err)
 	}

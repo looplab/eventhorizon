@@ -79,10 +79,15 @@ func main() {
 
 	tracing.RegisterContext()
 
+	dbConn, err := eh.NewMongoDB(mongodbURI, db)
+	if err != nil {
+		log.Fatal("could not create database connection: ", err)
+	}
+
 	// Create the outbox that will project and publish events.
 	var outbox eh.Outbox
 
-	mongoOutbox, err := mongoOutbox.NewOutbox(mongodbURI, db)
+	mongoOutbox, err := mongoOutbox.NewMongoDBOutbox(dbConn)
 	if err != nil {
 		log.Fatalf("could not create outbox: %s", err)
 	}
@@ -100,8 +105,8 @@ func main() {
 	// Create the event store.
 	var eventStore eh.EventStore
 
-	if eventStore, err = mongoEventStore.NewEventStoreWithClient(
-		mongoOutbox.Client(), db,
+	if eventStore, err = mongoEventStore.NewMongoDBEventStore(
+		dbConn,
 		mongoEventStore.WithEventHandlerInTX(outbox),
 	); err != nil {
 		log.Fatal("could not create event store: ", err)
@@ -228,6 +233,10 @@ func main() {
 
 	if err := traceCloser.Close(); err != nil {
 		log.Print("could not close tracer: ", err)
+	}
+
+	if err := dbConn.Close(); err != nil {
+		log.Println("error closing db connection:", err)
 	}
 
 	log.Println("exiting")
