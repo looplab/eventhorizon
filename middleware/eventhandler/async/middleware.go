@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 // NewMiddleware returns a new async handling middleware that returns any errors

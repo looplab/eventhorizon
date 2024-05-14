@@ -18,7 +18,7 @@ import (
 	"encoding/base64"
 	"testing"
 
-	"github.com/looplab/eventhorizon/codec"
+	"github.com/Clarilab/eventhorizon/codec"
 )
 
 func TestEventCodec(t *testing.T) {

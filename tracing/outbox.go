@@ -17,7 +17,7 @@ package tracing
 import (
 	"context"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 // Outbox is an event bus wrapper that adds tracing.

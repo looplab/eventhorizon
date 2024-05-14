@@ -15,7 +15,7 @@
 package todo
 
 import (
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 const (

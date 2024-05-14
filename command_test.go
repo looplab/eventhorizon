@@ -18,7 +18,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/looplab/eventhorizon/uuid"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 func TestCreateCommand(t *testing.T) {

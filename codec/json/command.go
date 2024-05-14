@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 // CommandCodec is a codec for marshaling and unmarshaling commands

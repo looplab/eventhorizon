@@ -17,45 +17,48 @@ package events
 import (
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // AggregateBase is a event sourced aggregate base to embed in a domain aggregate.
 //
 // A typical example:
-//   type UserAggregate struct {
-//       *events.AggregateBase
 //
-//       name string
-//   }
+//	type UserAggregate struct {
+//	    *events.AggregateBase
+//
+//	    name string
+//	}
 //
 // Using a new function to create aggregates and setting up the
 // aggregate base is recommended:
-//   func NewUserAggregate(id uuid.UUID) *InvitationAggregate {
-//       return &UserAggregate{
-//           AggregateBase: events.NewAggregateBase(UserAggregateType, id),
-//       }
-//   }
+//
+//	func NewUserAggregate(id uuid.UUID) *InvitationAggregate {
+//	    return &UserAggregate{
+//	        AggregateBase: events.NewAggregateBase(UserAggregateType, id),
+//	    }
+//	}
 //
 // The aggregate must also be registered, in this case:
-//   func init() {
-//       eh.RegisterAggregate(func(id uuid.UUID) eh.Aggregate {
-//           return NewUserAggregate(id)
-//       })
-//   }
+//
+//	func init() {
+//	    eh.RegisterAggregate(func(id uuid.UUID) eh.Aggregate {
+//	        return NewUserAggregate(id)
+//	    })
+//	}
 //
 // The aggregate must return an error if the event can not be applied, or nil
 // to signal success (which will increment the version).
-//   func (a *Aggregate) ApplyEvent(event Event) error {
-//       switch event.EventType() {
-//       case AddUserEvent:
-//           // Apply the event data to the aggregate.
-//       }
-//   }
+//
+//	func (a *Aggregate) ApplyEvent(event Event) error {
+//	    switch event.EventType() {
+//	    case AddUserEvent:
+//	        // Apply the event data to the aggregate.
+//	    }
+//	}
 //
 // See the examples folder for a complete use case.
-//
 type AggregateBase struct {
 	id     uuid.UUID
 	t      eh.AggregateType

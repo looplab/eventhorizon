@@ -18,7 +18,7 @@ import (
 	"context"
 	"log"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 // NewMiddleware returns a new lock middle ware using a provided lock implementation.

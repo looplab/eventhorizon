@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/looplab/eventhorizon/outbox"
+	"github.com/Clarilab/eventhorizon/outbox"
 )
 
 func init() {

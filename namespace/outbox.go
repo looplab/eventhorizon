@@ -21,7 +21,7 @@ import (
 	"strings"
 	"sync"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 // Outbox is an outbox with support for namespaces passed in the context.
@@ -47,25 +47,27 @@ type matcherHandler struct {
 // function to create new outboxes for the provided namespace.
 //
 // Usage:
-//    outbox := NewOutbox(func(ns string) (eh.Outbox, error) {
-//        s, err := mongodb.NewOutbox("mongodb://", ns)
-//        if err != nil {
-//            return nil, err
-//        }
-//        return s, nil
-//    })
+//
+//	outbox := NewOutbox(func(ns string) (eh.Outbox, error) {
+//	    s, err := mongodb.NewOutbox("mongodb://", ns)
+//	    if err != nil {
+//	        return nil, err
+//	    }
+//	    return s, nil
+//	})
 //
 // Usage shared DB client:
-//    client, err := mongo.Connect(ctx)
-//    ...
 //
-//    outbox := NewOutbox(func(ns string) (eh.Outbox, error) {
-//        s, err := mongodb.NewOutboxWithClient(client, ns)
-//        if err != nil {
-//            return nil, err
-//        }
-//        return s, nil
-//    })
+//	client, err := mongo.Connect(ctx)
+//	...
+//
+//	outbox := NewOutbox(func(ns string) (eh.Outbox, error) {
+//	    s, err := mongodb.NewOutboxWithClient(client, ns)
+//	    if err != nil {
+//	        return nil, err
+//	    }
+//	    return s, nil
+//	})
 func NewOutbox(factory func(ns string) (eh.Outbox, error)) *Outbox {
 	ctx, cancel := context.WithCancel(context.Background())
 

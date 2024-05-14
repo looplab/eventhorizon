@@ -25,10 +25,10 @@ import (
 
 	"github.com/kr/pretty"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/middleware/eventhandler/observer"
+	"github.com/Clarilab/eventhorizon/mocks"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 func TestAddHandler(t *testing.T, bus1 eh.EventBus) {
@@ -58,12 +58,11 @@ func TestAddHandler(t *testing.T, bus1 eh.EventBus) {
 // should pass. It should manually be called from a test case in each
 // implementation:
 //
-//   func TestEventBus(t *testing.T) {
-//       bus1 := NewEventBus()
-//       bus2 := NewEventBus()
-//       eventbus.AcceptanceTest(t, bus1, bus2)
-//   }
-//
+//	func TestEventBus(t *testing.T) {
+//	    bus1 := NewEventBus()
+//	    bus2 := NewEventBus()
+//	    eventbus.AcceptanceTest(t, bus1, bus2)
+//	}
 func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration) {
 	ctx := context.Background()
 	ctx = mocks.WithContextOne(ctx, "testval")

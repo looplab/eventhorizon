@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/mocks"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 func init() {
@@ -44,12 +44,11 @@ const (
 // EventCodec should pass. It should manually be called from a test case in each
 // implementation:
 //
-//   func TestEventCodec(t *testing.T) {
-//       c := EventCodec{}
-//       expectedBytes = []byte("")
-//       codec.EventCodecAcceptanceTest(t, c, expectedBytes)
-//   }
-//
+//	func TestEventCodec(t *testing.T) {
+//	    c := EventCodec{}
+//	    expectedBytes = []byte("")
+//	    codec.EventCodecAcceptanceTest(t, c, expectedBytes)
+//	}
 func EventCodecAcceptanceTest(t *testing.T, c eh.EventCodec, expectedBytes []byte) {
 	// Marshaling.
 	ctx := mocks.WithContextOne(context.Background(), "testval")
@@ -129,12 +128,11 @@ type Nested struct {
 // CommandCodec should pass. It should manually be called from a test case in each
 // implementation:
 //
-//   func TestCommandCodec(t *testing.T) {
-//       c := CommandCodec{}
-//       expectedBytes = []byte("")
-//       codec.CommandCodecAcceptanceTest(t, c, expectedBytes)
-//   }
-//
+//	func TestCommandCodec(t *testing.T) {
+//	    c := CommandCodec{}
+//	    expectedBytes = []byte("")
+//	    codec.CommandCodecAcceptanceTest(t, c, expectedBytes)
+//	}
 func CommandCodecAcceptanceTest(t *testing.T, c eh.CommandCodec, expectedBytes []byte) {
 	// Marshaling.
 	ctx := mocks.WithContextOne(context.Background(), "testval")

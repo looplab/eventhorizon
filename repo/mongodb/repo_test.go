@@ -27,11 +27,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/repo"
-	mongodb "github.com/looplab/eventhorizon/repo/mongodb"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/mocks"
+	"github.com/Clarilab/eventhorizon/repo"
+	mongodb "github.com/Clarilab/eventhorizon/repo/mongodb"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 func TestReadRepoIntegration(t *testing.T) {

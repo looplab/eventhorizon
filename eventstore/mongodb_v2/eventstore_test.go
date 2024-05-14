@@ -22,11 +22,11 @@ import (
 	"testing"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/eventstore"
-	mongodb "github.com/looplab/eventhorizon/eventstore/mongodb_v2"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/eventstore"
+	mongodb "github.com/Clarilab/eventhorizon/eventstore/mongodb_v2"
+	"github.com/Clarilab/eventhorizon/mocks"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 func TestEventStoreIntegration(t *testing.T) {

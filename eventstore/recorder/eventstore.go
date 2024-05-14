@@ -18,7 +18,7 @@ import (
 	"context"
 	"sync"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 // EventStore wraps an eventhorizon.EventStore and adds debug event recording.

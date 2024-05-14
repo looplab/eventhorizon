@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/looplab/eventhorizon/uuid"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // EventStore is an interface for an event sourcing event store.

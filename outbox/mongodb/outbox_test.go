@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/looplab/eventhorizon/outbox"
-	"github.com/looplab/eventhorizon/outbox/mongodb"
+	"github.com/Clarilab/eventhorizon/outbox"
+	"github.com/Clarilab/eventhorizon/outbox/mongodb"
 )
 
 func init() {

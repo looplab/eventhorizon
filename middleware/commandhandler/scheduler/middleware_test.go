@@ -24,13 +24,13 @@ import (
 	"testing"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/codec/bson"
-	"github.com/looplab/eventhorizon/codec/json"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/repo/memory"
-	"github.com/looplab/eventhorizon/repo/mongodb"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/codec/bson"
+	"github.com/Clarilab/eventhorizon/codec/json"
+	"github.com/Clarilab/eventhorizon/mocks"
+	"github.com/Clarilab/eventhorizon/repo/memory"
+	"github.com/Clarilab/eventhorizon/repo/mongodb"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 func init() {

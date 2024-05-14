@@ -18,7 +18,7 @@ import (
 	"context"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 // DefaultMinVersionDeadline is the deadline to use when creating a min version

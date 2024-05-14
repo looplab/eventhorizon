@@ -21,8 +21,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // EventCodec is a codec for marshaling and unmarshaling events

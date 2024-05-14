@@ -19,11 +19,11 @@ import (
 	"log"
 	"net/http"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/httputils"
-	"github.com/looplab/eventhorizon/middleware/eventhandler/observer"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/httputils"
+	"github.com/Clarilab/eventhorizon/middleware/eventhandler/observer"
 
-	"github.com/looplab/eventhorizon/examples/todomvc/backend/domains/todo"
+	"github.com/Clarilab/eventhorizon/examples/todomvc/backend/domains/todo"
 )
 
 // NewHandler returns a http.Handler that interacts exposes the command handler,

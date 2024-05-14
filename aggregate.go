@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/looplab/eventhorizon/uuid"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // Aggregate is an interface representing a versioned data entity created from

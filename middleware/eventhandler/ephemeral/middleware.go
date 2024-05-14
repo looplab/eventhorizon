@@ -15,7 +15,7 @@
 package ephemeral
 
 import (
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 // EphemeralHandler is used to check for an ephemeral observer middleware in a chain.

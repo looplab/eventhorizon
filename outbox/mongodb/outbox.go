@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	bsonCodec "github.com/looplab/eventhorizon/codec/bson"
+	bsonCodec "github.com/Clarilab/eventhorizon/codec/bson"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,7 +18,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 var (
