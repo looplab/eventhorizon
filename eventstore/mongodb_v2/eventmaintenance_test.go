@@ -21,8 +21,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/looplab/eventhorizon/eventstore"
-	mongodb "github.com/looplab/eventhorizon/eventstore/mongodb_v2"
+	"github.com/Clarilab/eventhorizon/eventstore"
+	mongodb "github.com/Clarilab/eventhorizon/eventstore/mongodb_v2"
 )
 
 func TestEventStoreMaintenanceIntegration(t *testing.T) {

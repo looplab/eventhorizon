@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/looplab/eventhorizon/uuid"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // ReadRepo is a read repository for entities.

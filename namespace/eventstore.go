@@ -20,8 +20,8 @@ import (
 	"strings"
 	"sync"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // EventStore is an event store with support for namespaces passed in the context.

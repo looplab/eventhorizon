@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/repo/version"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/repo/version"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // Projector is a projector of events onto models.

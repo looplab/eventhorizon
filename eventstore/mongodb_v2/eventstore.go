@@ -32,10 +32,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 
 	// Register uuid.UUID as BSON type.
-	_ "github.com/looplab/eventhorizon/codec/bson"
+	_ "github.com/Clarilab/eventhorizon/codec/bson"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 const (

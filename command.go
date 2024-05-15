@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/looplab/eventhorizon/uuid"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // Command is a domain command that is sent to a Dispatcher.
@@ -64,7 +64,8 @@ var ErrCommandNotRegistered = errors.New("command not registered")
 // used to create concrete command types.
 //
 // An example would be:
-//     RegisterCommand(func() Command { return &MyCommand{} })
+//
+//	RegisterCommand(func() Command { return &MyCommand{} })
 func RegisterCommand(factory func() Command) {
 	// Check that the created command matches the type registered.
 	// TODO: Explore the use of reflect/gob for creating concrete types without

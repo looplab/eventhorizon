@@ -15,8 +15,8 @@
 package guestlist
 
 import (
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 func init() {

@@ -20,20 +20,19 @@ import (
 	"testing"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/mocks"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // MaintenanceAcceptanceTest is the acceptance test that all implementations of
 // EventStoreMaintenance should pass. It should manually be called from a test
 // case in each implementation:
 //
-//   func TestEventStore(t *testing.T) {
-//       store := NewEventStore()
-//       eventstore.AcceptanceTest(t, store, context.Background())
-//   }
-//
+//	func TestEventStore(t *testing.T) {
+//	    store := NewEventStore()
+//	    eventstore.AcceptanceTest(t, store, context.Background())
+//	}
 func MaintenanceAcceptanceTest(t *testing.T, store eh.EventStore, storeMaintenance eh.EventStoreMaintenance, ctx context.Context) {
 	type contextKey string
 

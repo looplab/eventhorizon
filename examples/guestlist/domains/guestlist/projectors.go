@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"sync"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/eventhandler/projector"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/eventhandler/projector"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // Invitation is a read model object for an invitation.

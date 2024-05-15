@@ -1,4 +1,4 @@
-module github.com/looplab/eventhorizon
+module github.com/Clarilab/eventhorizon
 
 go 1.17
 

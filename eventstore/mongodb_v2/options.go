@@ -3,8 +3,8 @@ package mongodb_v2
 import (
 	"fmt"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mongoutils"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/mongoutils"
 )
 
 // Option is an option setter used to configure creation.

@@ -21,20 +21,19 @@ import (
 	"testing"
 	"time"
 
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/uuid"
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/mocks"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // AcceptanceTest is the acceptance test that all implementations of Repo
 // should pass. It should manually be called from a test case in each
 // implementation:
 //
-//   func TestRepo(t *testing.T) {
-//       store := NewRepo()
-//       repo.AcceptanceTest(t, store, context.Background())
-//   }
-//
+//	func TestRepo(t *testing.T) {
+//	    store := NewRepo()
+//	    repo.AcceptanceTest(t, store, context.Background())
+//	}
 func AcceptanceTest(t *testing.T, repo eh.ReadWriteRepo, ctx context.Context) {
 	// Find non-existing item.
 	entity, err := repo.Find(ctx, uuid.New())

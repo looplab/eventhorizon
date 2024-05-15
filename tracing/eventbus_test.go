@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/looplab/eventhorizon/eventbus"
-	"github.com/looplab/eventhorizon/eventbus/local"
+	"github.com/Clarilab/eventhorizon/eventbus"
+	"github.com/Clarilab/eventhorizon/eventbus/local"
 )
 
 func init() {

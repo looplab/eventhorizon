@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
+	bsonCodec "github.com/Clarilab/eventhorizon/codec/bson"
+	"github.com/Clarilab/eventhorizon/uuid"
 	"github.com/jinzhu/copier"
-	bsonCodec "github.com/looplab/eventhorizon/codec/bson"
-	"github.com/looplab/eventhorizon/uuid"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 var (

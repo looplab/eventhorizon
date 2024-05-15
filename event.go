@@ -20,14 +20,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/looplab/eventhorizon/uuid"
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // Event is a domain event describing a change that has happened to an aggregate.
 //
 // An event struct and type name should:
-//   1) Be in past tense (CustomerMoved)
-//   2) Contain the intent (CustomerMoved vs CustomerAddressCorrected).
+//  1. Be in past tense (CustomerMoved)
+//  2. Contain the intent (CustomerMoved vs CustomerAddressCorrected).
 //
 // The event should contain all the data needed when applying/handling it.
 type Event interface {
@@ -213,7 +213,8 @@ var ErrEventDataNotRegistered = errors.New("event data not registered")
 // used to create concrete event data structs when loading from the database.
 //
 // An example would be:
-//     RegisterEventData(MyEventType, func() Event { return &MyEventData{} })
+//
+//	RegisterEventData(MyEventType, func() Event { return &MyEventData{} })
 func RegisterEventData(eventType EventType, factory func() EventData) {
 	if eventType == EventType("") {
 		panic("eventhorizon: attempt to register empty event type")

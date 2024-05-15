@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/looplab/eventhorizon/mongoutils"
+	"github.com/Clarilab/eventhorizon/mongoutils"
 )
 
 // Option is an option setter used to configure creation.

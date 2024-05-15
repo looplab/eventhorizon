@@ -19,7 +19,7 @@ import (
 	"errors"
 	"sync"
 
-	eh "github.com/looplab/eventhorizon"
+	eh "github.com/Clarilab/eventhorizon"
 )
 
 var (

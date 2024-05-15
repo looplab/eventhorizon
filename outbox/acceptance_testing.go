@@ -20,10 +20,10 @@ import (
 	"testing"
 	"time"
 
+	eh "github.com/Clarilab/eventhorizon"
+	"github.com/Clarilab/eventhorizon/mocks"
+	"github.com/Clarilab/eventhorizon/uuid"
 	"github.com/kr/pretty"
-	eh "github.com/looplab/eventhorizon"
-	"github.com/looplab/eventhorizon/mocks"
-	"github.com/looplab/eventhorizon/uuid"
 )
 
 func TestAddHandler(t *testing.T, o eh.Outbox, ctx context.Context) {
@@ -51,11 +51,10 @@ func TestAddHandler(t *testing.T, o eh.Outbox, ctx context.Context) {
 // should pass. It should manually be called from a test case in each
 // implementation:
 //
-//   func TestOutbox(t *testing.T) {
-//       o := NewOutbox()
-//       outbox.AcceptanceTest(t, o, context.Background())
-//   }
-//
+//	func TestOutbox(t *testing.T) {
+//	    o := NewOutbox()
+//	    outbox.AcceptanceTest(t, o, context.Background())
+//	}
 func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context, prefix string) {
 	ctx = mocks.WithContextOne(ctx, "testval")
 
