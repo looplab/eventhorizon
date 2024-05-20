@@ -22,7 +22,7 @@ import (
 	"github.com/Clarilab/eventhorizon/uuid"
 )
 
-// Replace implements the Replace method of the eventhorizon.EventStore interface.
+// Replace implements the Replace method of the eventhorizon.EventStoreMaintenance interface.
 func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	id := event.AggregateID()
 
@@ -81,7 +81,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	return nil
 }
 
-// RenameEvent implements the RenameEvent method of the eventhorizon.EventStore interface.
+// RenameEvent implements the RenameEvent method of the eventhorizon.EventStoreMaintenance interface.
 func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) error {
 	s.dbMu.Lock()
 	defer s.dbMu.Unlock()
@@ -116,6 +116,16 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 	for id, aggregate := range updated {
 		s.db[id] = aggregate
 	}
+
+	return nil
+}
+
+// Clear implements the Clear method of the eventhorizon.EventStoreMaintenance interface.
+func (s *EventStore) Clear(ctx context.Context) error {
+	s.dbMu.Lock()
+	defer s.dbMu.Unlock()
+
+	s.db = map[uuid.UUID]aggregateRecord{}
 
 	return nil
 }

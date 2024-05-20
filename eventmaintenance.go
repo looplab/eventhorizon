@@ -21,10 +21,13 @@ import (
 // EventStoreMaintenance is an interface with maintenance tools for an EventStore.
 // NOTE: Should not be used in apps, useful for migration tools etc.
 type EventStoreMaintenance interface {
-	// Replace an event, the version must match. Useful for maintenance actions.
+	// Replace replaces an event, the version must match. Useful for maintenance actions.
 	// Returns ErrAggregateNotFound if there is no aggregate.
-	Replace(context.Context, Event) error
+	Replace(ctx context.Context, event Event) error
 
 	// RenameEvent renames all instances of the event type.
 	RenameEvent(ctx context.Context, from, to EventType) error
+
+	// Clear clears the event storage.
+	Clear(ctx context.Context) error
 }

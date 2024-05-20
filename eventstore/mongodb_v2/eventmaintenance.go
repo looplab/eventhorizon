@@ -28,7 +28,7 @@ import (
 	eh "github.com/Clarilab/eventhorizon"
 )
 
-// Replace implements the Replace method of the eventhorizon.EventStore interface.
+// Replace implements the Replace method of the eventhorizon.EventStoreMaintenance interface.
 func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	const errMessage = "could not replace event: %w"
 
@@ -97,7 +97,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	return nil
 }
 
-// RenameEvent implements the RenameEvent method of the eventhorizon.EventStore interface.
+// RenameEvent implements the RenameEvent method of the eventhorizon.EventStoreMaintenance interface.
 func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) error {
 	const errMessage = "could not rename event: %w"
 
@@ -126,7 +126,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 	return nil
 }
 
-// Clear clears the event storage.
+// Clear implements the Clear method of the eventhorizon.EventStoreMaintenance interface.
 func (s *EventStore) Clear(ctx context.Context) error {
 	if err := s.database.CollectionDrop(ctx, s.eventsCollectionName); err != nil {
 		return &eh.EventStoreError{
