@@ -140,5 +140,19 @@ func (s *EventStore) Clear(ctx context.Context) error {
 		}
 	}
 
+	// Make sure the $all stream exists.
+	if err := s.database.CollectionExec(ctx, s.streamsCollectionName, func(ctx context.Context, c *mongo.Collection) error {
+		if _, err := c.InsertOne(ctx, bson.M{
+			"_id":      "$all",
+			"position": 0,
+		}); err != nil {
+			return &eh.EventStoreError{Err: fmt.Errorf("could not create the $all stream document: %w", err)}
+		}
+
+		return nil
+	}); err != nil {
+		return &eh.EventStoreError{Err: fmt.Errorf("could not ensure the $all stream existence: %w", err)}
+	}
+
 	return nil
 }
