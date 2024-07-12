@@ -40,6 +40,7 @@ func MaintenanceAcceptanceTest(t *testing.T, store eh.EventStore, storeMaintenan
 
 	// Save some events.
 	id := uuid.New()
+
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 1))
@@ -102,6 +103,36 @@ func MaintenanceAcceptanceTest(t *testing.T, store eh.EventStore, storeMaintenan
 		}
 	}
 
+	// Remove events.
+
+	// ensure there are events in the store.
+	events, err = store.Load(ctx, id)
+	if err != nil {
+		t.Error("there should be no error", err)
+	}
+
+	if len(events) == 0 {
+		t.Fatal("there should events in the store")
+	}
+
+	err = storeMaintenance.Remove(ctx, id)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	events, err = store.Load(ctx, id)
+	if err == nil {
+		t.Error("there should be an error", err)
+	}
+
+	if !errors.Is(err, eh.ErrAggregateNotFound) {
+		t.Error("there should be an aggregate not found error", err)
+	}
+
+	if len(events) != 0 {
+		t.Fatal("there should be no events left in the store")
+	}
+
 	// Save events of the old type.
 	oldEventType := eh.EventType("old_event_type")
 	id1 := uuid.New()
@@ -160,5 +191,58 @@ func MaintenanceAcceptanceTest(t *testing.T, store eh.EventStore, storeMaintenan
 		eh.IgnorePositionMetadata(),
 	); err != nil {
 		t.Error("the event was incorrect:", err)
+	}
+
+	// Clear events.
+
+	// ensure there are events in the store.
+	events, err = store.Load(ctx, id1)
+	if err != nil {
+		t.Error("there should be no error", err)
+	}
+
+	if len(events) == 0 {
+		t.Fatal("there should events in the store")
+	}
+
+	events, err = store.Load(ctx, id2)
+	if err != nil {
+		t.Error("there should be no error", err)
+	}
+
+	if len(events) == 0 {
+		t.Fatal("there should events in the store")
+	}
+
+	// actually clearing the store
+	err = storeMaintenance.Clear(ctx)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	events, err = store.Load(ctx, id1)
+	if err == nil {
+		t.Error("there should be an error", err)
+	}
+
+	if !errors.Is(err, eh.ErrAggregateNotFound) {
+		t.Error("there should be an aggregate not found error", err)
+	}
+
+	if len(events) != 0 {
+		t.Fatal("there should be no events left in the store")
+	}
+
+	events, err = store.Load(ctx, id2)
+	if err == nil {
+		t.Error("there should be an error", err)
+	}
+
+	if !errors.Is(err, eh.ErrAggregateNotFound) {
+		t.Error("there should be an aggregate not found error", err)
+	}
+
+	if len(events) != 0 {
+		t.Fatal("there should be no events left in the store")
 	}
 }
