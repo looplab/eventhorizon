@@ -20,6 +20,7 @@ import (
 
 	// Register uuid.UUID as BSON type.
 	_ "github.com/Clarilab/eventhorizon/codec/bson"
+	"github.com/Clarilab/eventhorizon/uuid"
 
 	eh "github.com/Clarilab/eventhorizon"
 )
@@ -58,6 +59,24 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 	}
 
 	return maintenance.RenameEvent(ctx, from, to)
+}
+
+// Remove implements the Remove method of the eventhorizon.EventStoreMaintenance interface.
+func (s *EventStore) Remove(ctx context.Context, id uuid.UUID) error {
+	store, err := s.eventStore(ctx)
+	if err != nil {
+		return err
+	}
+
+	maintenance, ok := store.(eh.EventStoreMaintenance)
+	if !ok {
+		return &eh.EventStoreError{
+			Err: fmt.Errorf("event store does not support removing events storage"),
+			Op:  eh.EventStoreOpRemove,
+		}
+	}
+
+	return maintenance.Remove(ctx, id)
 }
 
 // Clear implements the Clear method of the eventhorizon.EventStoreMaintenance interface.

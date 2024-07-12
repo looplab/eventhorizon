@@ -71,6 +71,8 @@ const (
 	EventStoreOpReplace = "replace"
 	// Errors during renaming of event types.
 	EventStoreOpRename = "rename"
+	// Errors during removing of events.
+	EventStoreOpRemove = "remove"
 	// Errors during clearing of the event store.
 	EventStoreOpClear = "clear"
 

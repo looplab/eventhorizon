@@ -16,6 +16,8 @@ package eventhorizon
 
 import (
 	"context"
+
+	"github.com/Clarilab/eventhorizon/uuid"
 )
 
 // EventStoreMaintenance is an interface with maintenance tools for an EventStore.
@@ -27,6 +29,9 @@ type EventStoreMaintenance interface {
 
 	// RenameEvent renames all instances of the event type.
 	RenameEvent(ctx context.Context, from, to EventType) error
+
+	// Remove removes all events for a given aggregate.
+	Remove(ctx context.Context, aggregateID uuid.UUID) error
 
 	// Clear clears the event storage.
 	Clear(ctx context.Context) error
