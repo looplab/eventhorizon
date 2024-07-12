@@ -23,6 +23,7 @@ import (
 
 	// Register uuid.UUID as BSON type.
 	_ "github.com/Clarilab/eventhorizon/codec/bson"
+	"github.com/Clarilab/eventhorizon/uuid"
 
 	eh "github.com/Clarilab/eventhorizon"
 )
@@ -125,6 +126,31 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 			return &eh.EventStoreError{
 				Err: fmt.Errorf("could not update events of type '%s': %w", from, err),
 				Op:  eh.EventStoreOpRename,
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf(errMessage, err)
+	}
+
+	return nil
+}
+
+// Remove implements the Remove method of the eventhorizon.EventStoreMaintenance interface.
+func (s *EventStore) Remove(ctx context.Context, id uuid.UUID) error {
+	const errMessage = "could not remove event: %w"
+
+	if err := s.database.CollectionExec(ctx, s.collectionName, func(ctx context.Context, c *mongo.Collection) error {
+		filter := bson.M{
+			"_id": id.String(),
+		}
+
+		if _, err := c.DeleteOne(ctx, filter); err != nil {
+			return &eh.EventStoreError{
+				Err:         fmt.Errorf("could not delete event with id '%s': %w", id, err),
+				Op:          eh.EventStoreOpRemove,
+				AggregateID: id,
 			}
 		}
 

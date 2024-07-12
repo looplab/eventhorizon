@@ -120,6 +120,16 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 	return nil
 }
 
+// Remove implements the Remove method of the eventhorizon.EventStoreMaintenance interface.
+func (s *EventStore) Remove(ctx context.Context, id uuid.UUID) error {
+	s.dbMu.Lock()
+	defer s.dbMu.Unlock()
+
+	delete(s.db, id)
+
+	return nil
+}
+
 // Clear implements the Clear method of the eventhorizon.EventStoreMaintenance interface.
 func (s *EventStore) Clear(ctx context.Context) error {
 	s.dbMu.Lock()

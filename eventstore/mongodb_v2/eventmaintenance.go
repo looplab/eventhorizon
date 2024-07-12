@@ -24,6 +24,7 @@ import (
 
 	// Register uuid.UUID as BSON type.
 	_ "github.com/Clarilab/eventhorizon/codec/bson"
+	"github.com/Clarilab/eventhorizon/uuid"
 
 	eh "github.com/Clarilab/eventhorizon"
 )
@@ -103,8 +104,9 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 
 	// Find and rename all events.
 	// TODO: Maybe use change info.
-	if err := s.database.CollectionExec(ctx, s.eventsCollectionName, func(ctx context.Context, c *mongo.Collection) error {
-		if _, err := c.UpdateMany(ctx,
+	if err := s.database.CollectionExecWithTransaction(ctx, s.eventsCollectionName, func(txCtx mongo.SessionContext, c *mongo.Collection) error {
+		if _, err := c.UpdateMany(
+			txCtx,
 			bson.M{
 				"event_type": from.String(),
 			},
@@ -115,6 +117,66 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 			return &eh.EventStoreError{
 				Err: fmt.Errorf("could not update events of type '%s': %w", from, err),
 				Op:  eh.EventStoreOpRename,
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf(errMessage, err)
+	}
+
+	return nil
+}
+
+// Clear implements the Clear method of the eventhorizon.EventStoreMaintenance interface.
+func (s *EventStore) Remove(ctx context.Context, id uuid.UUID) error {
+	const errMessage = "could not remove events: %w"
+
+	if err := s.database.CollectionExecWithTransaction(ctx, s.streamsCollectionName, func(txCtx mongo.SessionContext, c *mongo.Collection) error {
+		if _, err := c.DeleteMany(
+			txCtx,
+			bson.M{"_id": id},
+		); err != nil {
+			return &eh.EventStoreError{
+				Err: fmt.Errorf("could not delete stream for aggregate '%s': %w", id, err),
+				Op:  eh.EventStoreOpRemove,
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf(errMessage, err)
+	}
+
+	if err := s.database.CollectionExecWithTransaction(ctx, s.eventsCollectionName, func(txCtx mongo.SessionContext, c *mongo.Collection) error {
+		if _, err := c.DeleteMany(
+			txCtx,
+			bson.M{"aggregate_id": id},
+		); err != nil {
+			return &eh.EventStoreError{
+				Err: fmt.Errorf("could not delete events for aggregate '%s': %w", id, err),
+				Op:  eh.EventStoreOpRemove,
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf(errMessage, err)
+	}
+
+	if err := s.database.CollectionExecWithTransaction(ctx, s.snapshotsCollectionName, func(txCtx mongo.SessionContext, c *mongo.Collection) error {
+		if _, err := c.DeleteMany(
+			txCtx,
+			bson.M{"aggregate_id": id},
+		); err != nil {
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				// no snapshots to delete, just return it's fine.
+				return nil
+			}
+
+			return &eh.EventStoreError{
+				Err: fmt.Errorf("could not delete snapshots for aggregate '%s': %w", id, err),
+				Op:  eh.EventStoreOpRemove,
 			}
 		}
 
