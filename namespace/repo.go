@@ -166,7 +166,7 @@ func (r *Repo) repo(ctx context.Context) (eh.ReadWriteRepo, error) {
 
 		// Perform an additional existence check within the write lock in the
 		// unlikely event that someone else added the repo right before us.
-		if _, ok := r.repos[ns]; !ok {
+		if repo, ok = r.repos[ns]; !ok {
 			var err error
 
 			repo, err = r.newRepo(ns)
