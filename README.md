@@ -54,6 +54,7 @@ See the example folder for a few examples to get you started.
 - AWS DynamoDB: https://github.com/seedboxtech/eh-dynamo
 - Postgress: https://github.com/giautm/eh-pg
 - Redis: https://github.com/TerraSkye/eh-redis
+- ScyllaDB: https://github.com/datdao/eh-scylla
 
 # Event Bus Implementations
 
