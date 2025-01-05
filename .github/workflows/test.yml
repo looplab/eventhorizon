@@ -24,7 +24,7 @@ jobs:
           make test_cover
 
       - name: Store coverage
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: unit.coverprofile
@@ -51,7 +51,7 @@ jobs:
           make test_integration_cover
 
       - name: Store coverage
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: integration.coverprofile
@@ -69,7 +69,7 @@ jobs:
           go-version: 1.16
 
       - name: Load coverage
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: coverage
 

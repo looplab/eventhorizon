@@ -30,7 +30,7 @@ test_loadtest:
 
 .PHONY: test_all_docker
 test_all_docker:
-	docker-compose up --build --force-recreate eventhorizon-test
+	docker compose up --build --force-recreate eventhorizon-test
 
 .PHONY: merge_coverage
 merge_coverage:
@@ -42,31 +42,31 @@ upload_coverage:
 
 .PHONY: run
 run:
-	docker-compose up -d mongodb gpubsub kafka redis nats
+	docker compose up -d mongodb gpubsub kafka redis nats
 
 .PHONY: run_mongodb
 run_mongodb:
-	docker-compose up -d mongodb
+	docker compose up -d mongodb
 
 .PHONY: run_gpubsub
 run_gpubsub:
-	docker-compose up -d gpubsub
+	docker compose up -d gpubsub
 
 .PHONY: run_kafka
 run_kafka:
-	docker-compose up -d kafka
+	docker compose up -d kafka
 
 .PHONY: run_redis
 run_redis:
-	docker-compose up -d redis
+	docker compose up -d redis
 
 .PHONY: run_nats
 run_nats:
-	docker-compose up -d nats
+	docker compose up -d nats
 
 .PHONY: stop
 stop:
-	docker-compose down
+	docker compose down
 
 .PHONY: clean
 clean:
