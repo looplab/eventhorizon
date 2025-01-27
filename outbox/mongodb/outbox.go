@@ -13,7 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -282,7 +281,7 @@ func (o *Outbox) runPeriodicallyUntilCancelled(f func(context.Context) error, d 
 }
 
 func (o *Outbox) processWithWatch(ctx context.Context) error {
-	opts := options.ChangeStream().
+	opts := mongoOptions.ChangeStream().
 		SetBatchSize(1)
 	if o.resumeToken != nil {
 		opts = opts.SetResumeAfter(o.resumeToken)
