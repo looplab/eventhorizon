@@ -32,6 +32,7 @@ type EventStore interface {
 	Load(context.Context, uuid.UUID) ([]Event, error)
 
 	// LoadFrom loads all events from version for the aggregate id from the store.
+	// Event store should provide events in version order
 	LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]Event, error)
 
 	// Close closes the EventStore.
