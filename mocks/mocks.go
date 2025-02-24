@@ -381,6 +381,26 @@ func (m *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 	return events, nil
 }
 
+// LoadUntil loads all events until version for the aggregate id from the store.
+func (m *EventStore) LoadUntil(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+
+	m.Loaded = id
+	m.Context = ctx
+
+	var events []eh.Event
+
+	for _, e := range m.Events {
+		if e.Version() <= version {
+			events = append(events, e)
+		}
+	}
+
+	return events, nil
+}
+
 // Replace implements the Replace method of the eventhorizon.EventStore interface.
 func (m *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	if m.Err != nil {
