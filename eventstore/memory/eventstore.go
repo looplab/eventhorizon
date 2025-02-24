@@ -232,6 +232,45 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 	return events, nil
 }
 
+// LoadUntil loads all events until version for the aggregate id from the store.
+func (s *EventStore) LoadUntil(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
+	s.dbMu.RLock()
+	defer s.dbMu.RUnlock()
+
+	aggregate, ok := s.db[id]
+	if !ok {
+		return nil, &eh.EventStoreError{
+			Err:         eh.ErrAggregateNotFound,
+			Op:          eh.EventStoreOpLoad,
+			AggregateID: id,
+		}
+	}
+
+	events := make([]eh.Event, len(aggregate.Events))
+
+	for i, event := range aggregate.Events {
+		if event.Version() > version {
+			continue
+		}
+
+		e, err := copyEvent(ctx, event)
+		if err != nil {
+			return nil, &eh.EventStoreError{
+				Err:              fmt.Errorf("could not copy event: %w", err),
+				Op:               eh.EventStoreOpLoad,
+				AggregateType:    e.AggregateType(),
+				AggregateID:      id,
+				AggregateVersion: e.Version(),
+				Events:           events,
+			}
+		}
+
+		events[i] = e
+	}
+
+	return events, nil
+}
+
 type aggregateRecord struct {
 	AggregateID uuid.UUID
 	Version     int

@@ -105,6 +105,16 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 	return store.LoadFrom(ctx, id, version)
 }
 
+// LoadUntil loads all events until version for the aggregate id from the store.
+func (s *EventStore) LoadUntil(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
+	store, err := s.eventStore(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return store.LoadUntil(ctx, id, version)
+}
+
 // Close implements the Close method of the eventhorizon.EventStore interface.
 func (s *EventStore) Close() error {
 	s.eventStoresMu.RLock()
