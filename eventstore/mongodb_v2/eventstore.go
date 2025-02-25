@@ -373,6 +373,7 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 }
 
 // LoadFrom implements LoadFrom method of the eventhorizon.EventStore interface.
+// LoadFrom loads all events starting from the given up to the latest version for the aggregate id from the store.
 func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
 	const errMessage = "could not load events: %w"
 
@@ -403,6 +404,7 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 }
 
 // LoadUntil implements LoadUntil method of the eventhorizon.EventStore interface.
+// LoadUntil loads all events from the first up to the given version for the aggregate id from the store.
 func (s *EventStore) LoadUntil(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
 	const errMessage = "could not load events: %w"
 
