@@ -289,14 +289,50 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	return s.LoadFrom(ctx, id, 1)
 }
 
-// LoadFrom loads all events from version for the aggregate id from the store.
+// LoadFrom implements LoadFrom method of the eventhorizon.EventStore interface.
+// LoadFrom loads all events starting from the given up to the latest version for the aggregate id from the store.
 func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
-	const errMessage = "could not load events: %w"
+	options := mongoOptions.FindOneOptions{}
+	options.Projection = bson.M{
+		"events": bson.M{
+			"$filter": bson.M{
+				"input": "$events",
+				"as":    "events",
+				"cond": bson.M{
+					"version": bson.M{"$gte": version},
+				},
+			},
+		},
+	}
 
+	return s.load(ctx, id, &options)
+}
+
+// LoadUntil implements LoadUntil method of the eventhorizon.EventStore interface.
+// LoadUntil loads all events from the first up to the given version for the aggregate id from the store.
+func (s *EventStore) LoadUntil(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
+	options := mongoOptions.FindOneOptions{}
+	options.Projection = bson.M{
+		"events": bson.M{
+			"$filter": bson.M{
+				"input": "$events",
+				"as":    "events",
+				"cond": bson.M{
+					"version": bson.M{"$lte": version},
+				},
+			},
+		},
+	}
+
+	return s.load(ctx, id, &options)
+}
+
+func (s *EventStore) load(ctx context.Context, id uuid.UUID, options *mongoOptions.FindOneOptions) ([]eh.Event, error) {
+	const errMessage = "could not load events: %w"
 	var aggregate aggregateRecord
 
 	if err := s.database.CollectionExec(ctx, s.collectionName, func(ctx context.Context, c *mongo.Collection) error {
-		if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&aggregate); err != nil {
+		if err := c.FindOne(ctx, bson.M{"_id": id}, options).Decode(&aggregate); err != nil {
 			// Translate to our own not found error.
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				err = eh.ErrAggregateNotFound
@@ -317,10 +353,6 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 	events := make([]eh.Event, len(aggregate.Events))
 
 	for i, e := range aggregate.Events {
-		if e.Version < version {
-			continue
-		}
-
 		// Create an event of the correct type and decode from raw BSON.
 		if len(e.RawData) > 0 {
 			var err error

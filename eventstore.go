@@ -34,6 +34,9 @@ type EventStore interface {
 	// LoadFrom loads all events from version for the aggregate id from the store.
 	LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]Event, error)
 
+	// LoadUntil loads all events until version for the aggregate id from the store.
+	LoadUntil(ctx context.Context, id uuid.UUID, version int) ([]Event, error)
+
 	// Close closes the EventStore.
 	Close() error
 }

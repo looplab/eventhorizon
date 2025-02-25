@@ -372,7 +372,8 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	return s.LoadFrom(ctx, id, 0)
 }
 
-// LoadFrom implements LoadFrom method of the eventhorizon.SnapshotStore interface.
+// LoadFrom implements LoadFrom method of the eventhorizon.EventStore interface.
+// LoadFrom loads all events starting from the given up to the latest version for the aggregate id from the store.
 func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
 	const errMessage = "could not load events: %w"
 
@@ -380,6 +381,37 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 
 	err := s.database.CollectionExec(ctx, s.eventsCollectionName, func(ctx context.Context, c *mongo.Collection) (err error) {
 		cursor, err = c.Find(ctx, bson.M{"aggregate_id": id, "version": bson.M{"$gte": version}})
+		if err != nil {
+			return &eh.EventStoreError{
+				Err:         fmt.Errorf("could not find event: %w", err),
+				Op:          eh.EventStoreOpLoad,
+				AggregateID: id,
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf(errMessage, err)
+	}
+
+	result, err := s.loadFromCursor(ctx, id, cursor)
+	if err != nil {
+		return nil, fmt.Errorf(errMessage, err)
+	}
+
+	return result, nil
+}
+
+// LoadUntil implements LoadUntil method of the eventhorizon.EventStore interface.
+// LoadUntil loads all events from the first up to the given version for the aggregate id from the store.
+func (s *EventStore) LoadUntil(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
+	const errMessage = "could not load events: %w"
+
+	var cursor *mongo.Cursor
+
+	err := s.database.CollectionExec(ctx, s.eventsCollectionName, func(ctx context.Context, c *mongo.Collection) (err error) {
+		cursor, err = c.Find(ctx, bson.M{"aggregate_id": id, "version": bson.M{"$lte": version}})
 		if err != nil {
 			return &eh.EventStoreError{
 				Err:         fmt.Errorf("could not find event: %w", err),
