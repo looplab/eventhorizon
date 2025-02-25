@@ -193,7 +193,7 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	return s.LoadFrom(ctx, id, 1)
 }
 
-// LoadFrom loads all events from version for the aggregate id from the store.
+// LoadFrom loads all events starting from the given up to the latest version for the aggregate id from the store.
 func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
 	s.dbMu.RLock()
 	defer s.dbMu.RUnlock()
@@ -232,7 +232,7 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 	return events, nil
 }
 
-// LoadUntil loads all events until version for the aggregate id from the store.
+// LoadUntil loads all events from the first up to the given version for the aggregate id from the store.
 func (s *EventStore) LoadUntil(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
 	s.dbMu.RLock()
 	defer s.dbMu.RUnlock()

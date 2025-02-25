@@ -289,10 +289,8 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 	return s.LoadFrom(ctx, id, 1)
 }
 
-// LoadFrom loads all events from version for the aggregate id from the store.
+// LoadFrom loads all events starting from the given up to the latest version for the aggregate id from the store.
 func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
-	const errMessage = "could not load events: %w"
-
 	options := mongoOptions.FindOneOptions{}
 	options.Projection = bson.M{
 		"events": bson.M{
@@ -300,7 +298,7 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 				"input": "$events",
 				"as":    "events",
 				"cond": bson.M{
-					"version": bson.M{"$lte": version},
+					"version": bson.M{"$gte": version},
 				},
 			},
 		},
@@ -309,7 +307,7 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 	return s.load(ctx, id, &options)
 }
 
-// LoadUntil loads all events until version for the aggregate id from the store.
+// LoadUntil loads all events from the first up to the given version for the aggregate id from the store.
 func (s *EventStore) LoadUntil(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
 	options := mongoOptions.FindOneOptions{}
 	options.Projection = bson.M{
