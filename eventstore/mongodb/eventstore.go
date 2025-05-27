@@ -211,8 +211,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		return nil
 	}
 
-	var handleEvents bool
-
 	// Run the operation in a transaction if using an outbox, otherwise it's not needed.
 	if s.eventHandlerInTX != nil {
 		if err := s.database.CollectionExecWithTransaction(ctx, s.collectionName, func(txCtx mongo.SessionContext, c *mongo.Collection) error {
@@ -227,6 +225,12 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 				}
 			}
 
+			for i := range events {
+				if err := s.eventHandlerInTX.HandleEvent(ctx, events[i]); err != nil {
+					return fmt.Errorf("could not handle event in transaction: %w", err)
+				}
+			}
+
 			return nil
 		}); err != nil {
 			return &eh.EventStoreError{
@@ -238,8 +242,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 				Events:           events,
 			}
 		}
-
-		handleEvents = true
 	} else {
 		if err := s.database.CollectionExec(ctx, s.collectionName, func(ctx context.Context, c *mongo.Collection) error {
 			dummySessionCtx := mongo.NewSessionContext(ctx, nil)
@@ -258,14 +260,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			return nil
 		}); err != nil {
 			return fmt.Errorf(errMessage, err)
-		}
-	}
-
-	if handleEvents {
-		for i := range events {
-			if err := s.eventHandlerInTX.HandleEvent(ctx, events[i]); err != nil {
-				return fmt.Errorf("could not handle event in transaction: %w", err)
-			}
 		}
 	}
 

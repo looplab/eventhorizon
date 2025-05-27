@@ -332,6 +332,14 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			}
 		}
 
+		if s.eventHandlerInTX != nil {
+			for i := range events {
+				if err := s.eventHandlerInTX.HandleEvent(ctx, events[i]); err != nil {
+					return fmt.Errorf("could not handle event: %w", err)
+				}
+			}
+		}
+
 		return nil
 	}); err != nil {
 		return &eh.EventStoreError{
@@ -341,14 +349,6 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			AggregateID:      id,
 			AggregateVersion: originalVersion,
 			Events:           events,
-		}
-	}
-
-	if s.eventHandlerInTX != nil {
-		for i := range events {
-			if err := s.eventHandlerInTX.HandleEvent(ctx, events[i]); err != nil {
-				return fmt.Errorf("could not handle event: %w", err)
-			}
 		}
 	}
 
