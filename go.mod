@@ -1,6 +1,6 @@
 module github.com/looplab/eventhorizon
 
-go 1.17
+go 1.23.0
 
 require (
 	cloud.google.com/go/pubsub v1.17.1
