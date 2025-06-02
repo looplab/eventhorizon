@@ -379,8 +379,10 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 
 	var cursor *mongo.Cursor
 
+	opts := mongoOptions.Find().SetSort(bson.D{{Key: "_id", Value: 1}})
+
 	err := s.database.CollectionExec(ctx, s.eventsCollectionName, func(ctx context.Context, c *mongo.Collection) (err error) {
-		cursor, err = c.Find(ctx, bson.M{"aggregate_id": id, "version": bson.M{"$gte": version}})
+		cursor, err = c.Find(ctx, bson.M{"aggregate_id": id, "version": bson.M{"$gte": version}}, opts)
 		if err != nil {
 			return &eh.EventStoreError{
 				Err:         fmt.Errorf("could not find event: %w", err),
@@ -410,8 +412,11 @@ func (s *EventStore) LoadUntil(ctx context.Context, id uuid.UUID, version int) (
 
 	var cursor *mongo.Cursor
 
+	// sorting events to ensure the correct order of the events.
+	opts := mongoOptions.Find().SetSort(bson.D{{Key: "_id", Value: 1}})
+
 	err := s.database.CollectionExec(ctx, s.eventsCollectionName, func(ctx context.Context, c *mongo.Collection) (err error) {
-		cursor, err = c.Find(ctx, bson.M{"aggregate_id": id, "version": bson.M{"$lte": version}})
+		cursor, err = c.Find(ctx, bson.M{"aggregate_id": id, "version": bson.M{"$lte": version}}, opts)
 		if err != nil {
 			return &eh.EventStoreError{
 				Err:         fmt.Errorf("could not find event: %w", err),
