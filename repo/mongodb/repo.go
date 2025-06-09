@@ -21,7 +21,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -357,7 +356,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 		bson.M{
 			"$set": entity,
 		},
-		options.Update().SetUpsert(true),
+		mongoOptions.Update().SetUpsert(true),
 	); err != nil {
 		return &eh.RepoError{
 			Err:      fmt.Errorf("could not save/update: %w", err),
