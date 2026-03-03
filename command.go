@@ -16,8 +16,6 @@ package eventhorizon
 
 import (
 	"errors"
-	"fmt"
-	"sync"
 
 	"github.com/looplab/eventhorizon/uuid"
 )
@@ -64,74 +62,37 @@ var ErrCommandNotRegistered = errors.New("command not registered")
 // used to create concrete command types.
 //
 // An example would be:
-//     RegisterCommand(func() Command { return &MyCommand{} })
+//
+//	RegisterCommand(func() Command { return &MyCommand{} })
 func RegisterCommand(factory func() Command) {
-	// Check that the created command matches the type registered.
-	// TODO: Explore the use of reflect/gob for creating concrete types without
-	// a factory func.
 	cmd := factory()
 	if cmd == nil {
 		panic("eventhorizon: created command is nil")
 	}
 
-	commandType := cmd.CommandType()
-	if commandType == CommandType("") {
-		panic("eventhorizon: attempt to register empty command type")
-	}
-
-	commandsMu.Lock()
-	defer commandsMu.Unlock()
-
-	if _, ok := commands[commandType]; ok {
-		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", commandType))
-	}
-
-	commands[commandType] = factory
+	commands.register(cmd.CommandType(), factory)
 }
 
 // UnregisterCommand removes the registration of the command factory for
 // a type. This is mainly useful in mainenance situations where the command type
 // needs to be switched at runtime.
 func UnregisterCommand(commandType CommandType) {
-	if commandType == CommandType("") {
-		panic("eventhorizon: attempt to unregister empty command type")
-	}
-
-	commandsMu.Lock()
-	defer commandsMu.Unlock()
-
-	if _, ok := commands[commandType]; !ok {
-		panic(fmt.Sprintf("eventhorizon: unregister of non-registered type %q", commandType))
-	}
-
-	delete(commands, commandType)
+	commands.unregister(commandType)
 }
 
 // CreateCommand creates an command of a type with an ID using the factory
 // registered with RegisterCommand.
 func CreateCommand(commandType CommandType) (Command, error) {
-	commandsMu.RLock()
-	defer commandsMu.RUnlock()
-
-	if factory, ok := commands[commandType]; ok {
+	if factory, ok := commands.get(commandType); ok {
 		return factory(), nil
 	}
 
 	return nil, ErrCommandNotRegistered
 }
 
-// ListCommands returns a list of all registered command types.
+// RegisteredCommands returns a list of all registered command types.
 func RegisteredCommands() map[CommandType]func() Command {
-	commandsMu.Lock()
-	defer commandsMu.Unlock()
-
-	mapCopy := make(map[CommandType]func() Command)
-	for key, val := range commands {
-		mapCopy[key] = val
-	}
-
-	return mapCopy
+	return commands.all()
 }
 
-var commands = make(map[CommandType]func() Command)
-var commandsMu sync.RWMutex
+var commands = newTypeRegistry[CommandType, func() Command]("command")

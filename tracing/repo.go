@@ -45,15 +45,7 @@ func (r *Repo) InnerRepo(ctx context.Context) eh.ReadRepo {
 // IntoRepo tries to convert a eh.ReadRepo into a Repo by recursively looking at
 // inner repos. Returns nil if none was found.
 func IntoRepo(ctx context.Context, repo eh.ReadRepo) *Repo {
-	if repo == nil {
-		return nil
-	}
-
-	if r, ok := repo.(*Repo); ok {
-		return r
-	}
-
-	return IntoRepo(ctx, repo.InnerRepo(ctx))
+	return eh.IntoRepo[Repo](ctx, repo)
 }
 
 // Find implements the Find method of the eventhorizon.ReadModel interface.

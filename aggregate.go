@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/looplab/eventhorizon/uuid"
@@ -159,41 +158,22 @@ func (e *AggregateError) Cause() error {
 //
 //	RegisterAggregate(func(id UUID) Aggregate { return &MyAggregate{id} })
 func RegisterAggregate(factory func(uuid.UUID) Aggregate) {
-	// Check that the created aggregate matches the registered type.
-	// TODO: Explore the use of reflect/gob for creating concrete types without
-	// a factory func.
 	aggregate := factory(uuid.New())
 	if aggregate == nil {
 		panic("eventhorizon: created aggregate is nil")
 	}
 
-	aggregateType := aggregate.AggregateType()
-	if aggregateType == AggregateType("") {
-		panic("eventhorizon: attempt to register empty aggregate type")
-	}
-
-	aggregatesMu.Lock()
-	defer aggregatesMu.Unlock()
-
-	if _, ok := aggregates[aggregateType]; ok {
-		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", aggregateType))
-	}
-
-	aggregates[aggregateType] = factory
+	aggregates.register(aggregate.AggregateType(), factory)
 }
 
 // CreateAggregate creates an aggregate of a type with an ID using the factory
 // registered with RegisterAggregate.
 func CreateAggregate(aggregateType AggregateType, id uuid.UUID) (Aggregate, error) {
-	aggregatesMu.RLock()
-	defer aggregatesMu.RUnlock()
-
-	if factory, ok := aggregates[aggregateType]; ok {
+	if factory, ok := aggregates.get(aggregateType); ok {
 		return factory(id), nil
 	}
 
 	return nil, ErrAggregateNotRegistered
 }
 
-var aggregates = make(map[AggregateType]func(uuid.UUID) Aggregate)
-var aggregatesMu sync.RWMutex
+var aggregates = newTypeRegistry[AggregateType, func(uuid.UUID) Aggregate]("aggregate")

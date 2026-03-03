@@ -17,7 +17,6 @@ package eventhorizon
 import (
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/looplab/eventhorizon/uuid"
@@ -213,54 +212,27 @@ var ErrEventDataNotRegistered = errors.New("event data not registered")
 // used to create concrete event data structs when loading from the database.
 //
 // An example would be:
-//     RegisterEventData(MyEventType, func() Event { return &MyEventData{} })
+//
+//	RegisterEventData(MyEventType, func() Event { return &MyEventData{} })
 func RegisterEventData(eventType EventType, factory func() EventData) {
-	if eventType == EventType("") {
-		panic("eventhorizon: attempt to register empty event type")
-	}
-
-	eventDataFactoriesMu.Lock()
-	defer eventDataFactoriesMu.Unlock()
-
-	// TODO: Explore the use of reflect/gob for creating concrete types without
-	// a factory func.
-	if _, ok := eventDataFactories[eventType]; ok {
-		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", eventType))
-	}
-
-	eventDataFactories[eventType] = factory
+	eventDataFactories.register(eventType, factory)
 }
 
 // UnregisterEventData removes the registration of the event data factory for
 // a type. This is mainly useful in mainenance situations where the event data
 // needs to be switched in a migrations.
 func UnregisterEventData(eventType EventType) {
-	if eventType == EventType("") {
-		panic("eventhorizon: attempt to unregister empty event type")
-	}
-
-	eventDataFactoriesMu.Lock()
-	defer eventDataFactoriesMu.Unlock()
-
-	if _, ok := eventDataFactories[eventType]; !ok {
-		panic(fmt.Sprintf("eventhorizon: unregister of non-registered type %q", eventType))
-	}
-
-	delete(eventDataFactories, eventType)
+	eventDataFactories.unregister(eventType)
 }
 
 // CreateEventData creates an event data of a type using the factory registered
 // with RegisterEventData.
 func CreateEventData(eventType EventType) (EventData, error) {
-	eventDataFactoriesMu.RLock()
-	defer eventDataFactoriesMu.RUnlock()
-
-	if factory, ok := eventDataFactories[eventType]; ok {
+	if factory, ok := eventDataFactories.get(eventType); ok {
 		return factory(), nil
 	}
 
 	return nil, ErrEventDataNotRegistered
 }
 
-var eventDataFactories = make(map[EventType]func() EventData)
-var eventDataFactoriesMu sync.RWMutex
+var eventDataFactories = newTypeRegistry[EventType, func() EventData]("event")
