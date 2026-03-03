@@ -151,13 +151,13 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	}
 
 	// Check for correct event in handler 1 or 2.
-	if !(handlerBus1.Wait(timeout) || handlerBus2.Wait(timeout)) {
+	if !handlerBus1.Wait(timeout) && !handlerBus2.Wait(timeout) {
 		t.Error("did not receive event in time")
 	}
 
 	expectedEvents = []eh.Event{event2}
-	if !(eh.CompareEventSlices(handlerBus1.Events, expectedEvents) ||
-		eh.CompareEventSlices(handlerBus2.Events, expectedEvents)) {
+	if !eh.CompareEventSlices(handlerBus1.Events, expectedEvents) &&
+		!eh.CompareEventSlices(handlerBus2.Events, expectedEvents) {
 		t.Error("the events were incorrect:")
 		t.Log(handlerBus1.Events)
 		t.Log(handlerBus2.Events)
@@ -369,7 +369,7 @@ func benchmark(t bench, bus eh.EventBus, numAggregates, numHandlers, numEvents i
 		version int
 	}
 
-	for i := 0; i < numAggregates; i++ {
+	for range numAggregates {
 		aggregates = append(aggregates, &struct {
 			id      uuid.UUID
 			version int
@@ -378,7 +378,7 @@ func benchmark(t bench, bus eh.EventBus, numAggregates, numHandlers, numEvents i
 
 	t.ResetTimer()
 
-	for n := 0; n < numEvents; n++ {
+	for n := range numEvents {
 		a := aggregates[rand.Intn(len(aggregates))]
 		a.version++
 

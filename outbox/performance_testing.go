@@ -81,7 +81,7 @@ func Benchmark(b *testing.B, o eh.Outbox) {
 		version int
 	}
 
-	for i := 0; i < numAggregates; i++ {
+	for range numAggregates {
 		aggregates = append(aggregates, &struct {
 			id      uuid.UUID
 			version int
@@ -91,7 +91,7 @@ func Benchmark(b *testing.B, o eh.Outbox) {
 	b.Log("setup complete")
 	b.ResetTimer()
 
-	for n := 0; n < numEvents; n++ {
+	for n := range numEvents {
 		a := aggregates[rand.Intn(len(aggregates))]
 		a.version++
 

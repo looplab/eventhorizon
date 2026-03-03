@@ -272,7 +272,7 @@ func TestAggregateStore_TakeSnapshot(t *testing.T) {
 
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		agg.AppendEvent(mocks.EventType, &mocks.EventData{Content: fmt.Sprintf("event%d", i)}, timestamp)
 
 		if err := store.Save(ctx, agg); err != nil {
