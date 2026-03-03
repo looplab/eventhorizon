@@ -43,11 +43,11 @@ import (
 // for all events and another to keep track of all aggregates/streams. It also
 // keeps track of the global position of events, stored as metadata.
 type EventStore struct {
-	client                  *mongo.Client
-	clientOwnership         clientOwnership
-	events                  *mongo.Collection
-	streams                 *mongo.Collection
-	snapshots               *mongo.Collection
+	client                *mongo.Client
+	clientOwnership       clientOwnership
+	events                *mongo.Collection
+	streams               *mongo.Collection
+	snapshots             *mongo.Collection
 	eventHandlerAfterSave eh.EventHandler
 	eventHandlerInTX      eh.EventHandler
 }
@@ -81,7 +81,7 @@ func NewEventStoreWithClient(client *mongo.Client, dbName string, options ...Opt
 
 func newEventStoreWithClient(client *mongo.Client, clientOwnership clientOwnership, dbName string, options ...Option) (*EventStore, error) {
 	if client == nil {
-		return nil, fmt.Errorf("missing DB client")
+		return nil, errors.New("missing DB client")
 	}
 
 	db := client.Database(dbName)
@@ -154,11 +154,11 @@ type Option func(*EventStore) error
 func WithEventHandler(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
 		if s.eventHandlerAfterSave != nil {
-			return fmt.Errorf("another event handler is already set")
+			return errors.New("another event handler is already set")
 		}
 
 		if s.eventHandlerInTX != nil {
-			return fmt.Errorf("another TX event handler is already set")
+			return errors.New("another TX event handler is already set")
 		}
 
 		s.eventHandlerAfterSave = h
@@ -174,11 +174,11 @@ func WithEventHandler(h eh.EventHandler) Option {
 func WithEventHandlerInTX(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
 		if s.eventHandlerAfterSave != nil {
-			return fmt.Errorf("another event handler is already set")
+			return errors.New("another event handler is already set")
 		}
 
 		if s.eventHandlerInTX != nil {
-			return fmt.Errorf("another TX event handler is already set")
+			return errors.New("another TX event handler is already set")
 		}
 
 		s.eventHandlerInTX = h
@@ -196,7 +196,7 @@ func WithCollectionNames(eventsColl, streamsColl string) Option {
 		} else if err := mongoutils.CheckCollectionName(streamsColl); err != nil {
 			return fmt.Errorf("streams collection: %w", err)
 		} else if eventsColl == streamsColl {
-			return fmt.Errorf("custom collection names are equal")
+			return errors.New("custom collection names are equal")
 		}
 
 		db := s.events.Database()
@@ -575,7 +575,7 @@ func (s *EventStore) LoadSnapshot(ctx context.Context, id uuid.UUID) (*eh.Snapsh
 func (s *EventStore) SaveSnapshot(ctx context.Context, id uuid.UUID, snapshot eh.Snapshot) (err error) {
 	if snapshot.AggregateType == "" {
 		return &eh.EventStoreError{
-			Err:           fmt.Errorf("aggregate type is empty"),
+			Err:           errors.New("aggregate type is empty"),
 			Op:            eh.EventStoreOpSaveSnapshot,
 			AggregateID:   id,
 			AggregateType: snapshot.AggregateType,
@@ -584,7 +584,7 @@ func (s *EventStore) SaveSnapshot(ctx context.Context, id uuid.UUID, snapshot eh
 
 	if snapshot.State == nil {
 		return &eh.EventStoreError{
-			Err:           fmt.Errorf("snapshots state is nil"),
+			Err:           errors.New("snapshots state is nil"),
 			Op:            eh.EventStoreOpSaveSnapshot,
 			AggregateID:   id,
 			AggregateType: snapshot.AggregateType,

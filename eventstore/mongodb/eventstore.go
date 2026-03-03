@@ -128,11 +128,11 @@ func WithEventHandler(h eh.EventHandler) Option {
 func WithEventHandlerInTX(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
 		if s.eventHandlerAfterSave != nil {
-			return fmt.Errorf("another event handler is already set")
+			return errors.New("another event handler is already set")
 		}
 
 		if s.eventHandlerInTX != nil {
-			return fmt.Errorf("another TX event handler is already set")
+			return errors.New("another TX event handler is already set")
 		}
 
 		s.eventHandlerInTX = h
@@ -145,7 +145,7 @@ func WithEventHandlerInTX(h eh.EventHandler) Option {
 func WithCollectionName(eventsColl string) Option {
 	return func(s *EventStore) error {
 		if eventsColl == "" {
-			return fmt.Errorf("missing collection name")
+			return errors.New("missing collection name")
 		}
 
 		s.aggregates = s.db.Collection(eventsColl)

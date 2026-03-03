@@ -16,6 +16,7 @@ package mongodb_v2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -90,7 +91,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 		}, e); err != nil {
 			return nil, err
 		} else if r.MatchedCount == 0 {
-			return nil, fmt.Errorf("could not find original event to replace")
+			return nil, errors.New("could not find original event to replace")
 		}
 
 		return nil, nil

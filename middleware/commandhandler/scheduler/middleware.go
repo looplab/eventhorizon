@@ -149,7 +149,7 @@ func (s *Scheduler) Load(ctx context.Context) error {
 		select {
 		case s.cmdCh <- sc:
 		default:
-			return fmt.Errorf("could not schedule command, command queue full")
+			return errors.New("could not schedule command, command queue full")
 		}
 	}
 
@@ -159,7 +159,7 @@ func (s *Scheduler) Load(ctx context.Context) error {
 // Start starts the scheduler.
 func (s *Scheduler) Start() error {
 	if s.h == nil {
-		return fmt.Errorf("command handler not set")
+		return errors.New("command handler not set")
 	}
 
 	s.cctx, s.cancel = context.WithCancel(context.Background())
@@ -231,7 +231,7 @@ func (s *Scheduler) ScheduleCommand(ctx context.Context, cmd eh.Command, execute
 	case s.cmdCh <- &scheduledCommand{id, ctx, cmd, executeAt}:
 	default:
 		return uuid.Nil, &Error{
-			Err:     fmt.Errorf("command queue full"),
+			Err:     errors.New("command queue full"),
 			Ctx:     ctx,
 			Command: cmd,
 		}

@@ -313,7 +313,7 @@ retryOnce:
 	if newEntity != nil {
 		if newEntity.EntityID() != id {
 			return &Error{
-				Err:           fmt.Errorf("incorrect entity ID after projection"),
+				Err:           errors.New("incorrect entity ID after projection"),
 				Projector:     h.projector.ProjectorType().String(),
 				Event:         event,
 				EntityID:      id,

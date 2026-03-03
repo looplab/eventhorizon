@@ -83,7 +83,7 @@ func NewOutboxWithClient(client *mongo.Client, dbName string, options ...Option)
 
 func newOutboxWithClient(client *mongo.Client, clientOwnership clientOwnership, dbName string, options ...Option) (*Outbox, error) {
 	if client == nil {
-		return nil, fmt.Errorf("missing DB client")
+		return nil, errors.New("missing DB client")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -294,7 +294,7 @@ func (o *Outbox) processWithWatch(ctx context.Context) error {
 		match["fullDocument.watch_token"] = o.watchToken
 	}
 
-	stream, err := o.outbox.Watch(ctx, mongo.Pipeline{bson.D{{"$match", match}}}, opts)
+	stream, err := o.outbox.Watch(ctx, mongo.Pipeline{bson.D{{Key: "$match", Value: match}}}, opts)
 	if err != nil {
 		return fmt.Errorf("could not watch outbox: %w", err)
 	}
