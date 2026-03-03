@@ -121,6 +121,7 @@ func (r *AggregateStore) Load(ctx context.Context, aggregateType eh.AggregateTyp
 		if snapshot != nil {
 			sa.ApplySnapshot(snapshot)
 			fromVersion = snapshot.Version + 1
+			a.SetAggregateVersion(snapshot.Version)
 		}
 	}
 
