@@ -205,7 +205,9 @@ retryOnce:
 
 	// Get or create the model.
 	entity, err := h.repo.Find(findCtx, id)
-	if errors.Is(err, eh.ErrEntityNotFound) {
+
+	switch {
+	case errors.Is(err, eh.ErrEntityNotFound):
 		if h.factoryFn == nil {
 			return &Error{
 				Err:       ErrModelNotSet,
@@ -216,7 +218,7 @@ retryOnce:
 		}
 
 		entity = h.factoryFn()
-	} else if errors.Is(err, eh.ErrIncorrectEntityVersion) {
+	case errors.Is(err, eh.ErrIncorrectEntityVersion):
 		if h.useRetryOnce && !triedOnce {
 			triedOnce = true
 
@@ -231,7 +233,7 @@ retryOnce:
 			Event:     event,
 			EntityID:  id,
 		}
-	} else if err != nil {
+	case err != nil:
 		return &Error{
 			Err:       fmt.Errorf("could not load entity: %w", err),
 			Projector: h.projector.ProjectorType().String(),

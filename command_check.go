@@ -95,8 +95,7 @@ func isZero(v reflect.Value) bool {
 		return v.IsNil()
 	case reflect.Array:
 		// Special case to check zero values of UUIDs.
-		switch obj := v.Interface().(type) {
-		case uuid.UUID:
+		if obj, ok := v.Interface().(uuid.UUID); ok {
 			return obj == uuid.Nil
 		}
 
@@ -113,8 +112,7 @@ func isZero(v reflect.Value) bool {
 		return v.Interface() == z.Interface()
 	case reflect.Struct:
 		// Special case to get zero values by method.
-		switch obj := v.Interface().(type) {
-		case time.Time:
+		if obj, ok := v.Interface().(time.Time); ok {
 			return obj.IsZero()
 		}
 

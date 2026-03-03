@@ -67,12 +67,12 @@ func RegisterSnapshotData(aggregateType AggregateType, factory func(id uuid.UUID
 }
 
 // CreateSnapshotData create a concrete instance using the registered snapshot factories.
-func CreateSnapshotData(AggregateID uuid.UUID, aggregateType AggregateType) (SnapshotData, error) {
+func CreateSnapshotData(aggregateID uuid.UUID, aggregateType AggregateType) (SnapshotData, error) {
 	snapshotDataFactoriesMu.RLock()
 	defer snapshotDataFactoriesMu.RUnlock()
 
 	if factory, ok := snapshotDataFactories[aggregateType]; ok {
-		return factory(AggregateID), nil
+		return factory(aggregateID), nil
 	}
 
 	return nil, ErrSnapshotDataNotRegistered

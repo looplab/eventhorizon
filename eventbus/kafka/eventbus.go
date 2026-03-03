@@ -119,12 +119,13 @@ func (b *EventBus) createTopic() error {
 			}},
 		})
 
-		if errors.Is(err, kafka.BrokerNotAvailable) {
+		switch {
+		case errors.Is(err, kafka.BrokerNotAvailable):
 			time.Sleep(5 * time.Second)
 			continue
-		} else if err != nil {
+		case err != nil:
 			return fmt.Errorf("error creating Kafka topic: %w", err)
-		} else {
+		default:
 			break
 		}
 	}
@@ -152,12 +153,13 @@ func (b *EventBus) verifyTopic() error {
 			Topics: []string{b.topic},
 		})
 
-		if errors.Is(err, kafka.BrokerNotAvailable) {
+		switch {
+		case errors.Is(err, kafka.BrokerNotAvailable):
 			time.Sleep(5 * time.Second)
 			continue
-		} else if err != nil {
+		case err != nil:
 			return fmt.Errorf("error getting Kafka topic: %w", err)
-		} else {
+		default:
 			break
 		}
 	}
