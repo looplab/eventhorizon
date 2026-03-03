@@ -71,7 +71,7 @@ func Example() {
 			return nil
 		},
 	)); err != nil {
-		t.Fatal(err)
+		log.Fatalf("could not add handler: %s", err)
 	}
 
 	// Setup the guestlist.
@@ -85,7 +85,7 @@ func Example() {
 		invitationRepo, guestListRepo,
 		eventID,
 	); err != nil {
-		t.Fatal(err)
+		log.Fatalf("could not setup guestlist: %s", err)
 	}
 
 	// --- Execute commands on the domain --------------------------------------
