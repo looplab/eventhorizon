@@ -17,6 +17,7 @@ package eventhorizon
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -86,9 +87,7 @@ func WithMetadata(metadata map[string]any) EventOption {
 			if evt.metadata == nil {
 				evt.metadata = metadata
 			} else {
-				for k, v := range metadata {
-					evt.metadata[k] = v
-				}
+				maps.Copy(evt.metadata, metadata)
 			}
 		}
 	}

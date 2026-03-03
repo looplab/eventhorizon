@@ -17,6 +17,7 @@ package eventhorizon
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 
 	"github.com/looplab/eventhorizon/uuid"
@@ -127,9 +128,7 @@ func RegisteredCommands() map[CommandType]func() Command {
 	defer commandsMu.Unlock()
 
 	mapCopy := make(map[CommandType]func() Command)
-	for key, val := range commands {
-		mapCopy[key] = val
-	}
+	maps.Copy(mapCopy, commands)
 
 	return mapCopy
 }
