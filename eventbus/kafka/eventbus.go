@@ -110,7 +110,7 @@ func (b *EventBus) createTopic() error {
 	var resp *kafka.CreateTopicsResponse
 	var err error
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		resp, err = b.client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
 			Topics: []kafka.TopicConfig{{
 				Topic:             b.topic,
@@ -148,7 +148,7 @@ func (b *EventBus) verifyTopic() error {
 	var resp *kafka.MetadataResponse
 	var err error
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		resp, err = b.client.Metadata(context.Background(), &kafka.MetadataRequest{
 			Topics: []string{b.topic},
 		})
@@ -319,7 +319,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 		Addr: b.client.Addr,
 	}
 
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		resp, err := b.client.ListGroups(ctx, req)
 		if err != nil || resp.Error != nil {
 			return fmt.Errorf("could not list Kafka groups: %w", err)
@@ -334,7 +334,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	return fmt.Errorf("did not join group in time")
+	return errors.New("did not join group in time")
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.
@@ -415,7 +415,6 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 			}
 		}
 	}
-
 }
 
 func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) *eh.EventBusError {

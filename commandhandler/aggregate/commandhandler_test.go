@@ -25,6 +25,8 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
+type contextKey string
+
 func TestNewCommandHandler(t *testing.T) {
 	store := &mocks.AggregateStore{
 		Aggregates: make(map[uuid.UUID]eh.Aggregate),
@@ -53,7 +55,7 @@ func TestNewCommandHandler(t *testing.T) {
 func TestCommandHandler(t *testing.T) {
 	a, h, _ := createAggregateAndHandler(t)
 
-	ctx := context.WithValue(context.Background(), "testkey", "testval")
+	ctx := context.WithValue(context.Background(), contextKey("testkey"), "testval")
 
 	cmd := &mocks.Command{
 		ID:      a.EntityID(),
@@ -69,7 +71,7 @@ func TestCommandHandler(t *testing.T) {
 		t.Error("the handeled command should be correct:", a.Commands)
 	}
 
-	if val, ok := a.Context.Value("testkey").(string); !ok || val != "testval" {
+	if val, ok := a.Context.Value(contextKey("testkey")).(string); !ok || val != "testval" {
 		t.Error("the context should be correct:", a.Context)
 	}
 }
@@ -165,13 +167,13 @@ func BenchmarkCommandHandler(b *testing.B) {
 		b.Fatal("there should be no error:", err)
 	}
 
-	ctx := context.WithValue(context.Background(), "testkey", "testval")
+	ctx := context.WithValue(context.Background(), contextKey("testkey"), "testval")
 
 	cmd := &mocks.Command{
 		ID:      a.EntityID(),
 		Content: "command1",
 	}
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := h.HandleCommand(ctx, cmd); err != nil {
 			b.Fatal(err)
 		}
