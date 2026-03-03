@@ -8,18 +8,18 @@ import "github.com/google/uuid"
 type UUID = uuid.UUID
 
 // Nil is an empty UUID.
-var Nil = UUID(uuid.Nil)
+var Nil = uuid.Nil
 
 // New creates a new UUID.
 func New() UUID {
-	return UUID(uuid.New())
+	return uuid.New()
 }
 
 // Parse parses a UUID from a string, or returns an error.
 func Parse(s string) (UUID, error) {
 	id, err := uuid.Parse(s)
 
-	return UUID(id), err
+	return id, err
 }
 
 // MustParse parses a UUID from a string, or panics.
