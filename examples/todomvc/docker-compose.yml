@@ -17,30 +17,35 @@ services:
       TRACING_URL: tracing
 
   mongodb-docker:
-    image: bitnami/mongodb:4.4
+    image: mongo:8.2
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
       - 27017:27017
-    environment:
-      MONGODB_REPLICA_SET_MODE: primary
-      ALLOW_EMPTY_PASSWORD: "yes"
+    healthcheck:
+      test: >
+        mongosh --eval "try { rs.status().ok } catch(e) { rs.initiate({_id:'rs0', members:[{_id:0, host:'mongodb-docker:27017'}]}).ok }"
+      interval: 5s
+      start_period: 10s
 
   mongodb:
-    image: bitnami/mongodb:4.4
+    image: mongo:8.2
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
       - 27017:27017
-    environment:
-      MONGODB_REPLICA_SET_MODE: primary
-      MONGODB_ADVERTISED_HOSTNAME: localhost # Needed to connect from localhost.
-      ALLOW_EMPTY_PASSWORD: "yes"
+    healthcheck:
+      test: >
+        mongosh --eval "try { rs.status().ok } catch(e) { rs.initiate({_id:'rs0', members:[{_id:0, host:'localhost:27017'}]}).ok }"
+      interval: 5s
+      start_period: 10s
 
   redis:
-    image: redis:6.2-alpine3.13
+    image: redis:8.0.2-alpine
     ports:
       - 6379:6379
     entrypoint: [redis-server, --appendonly yes]
 
   tracing:
-    image: docker.io/jaegertracing/all-in-one:1.16
+    image: docker.io/jaegertracing/all-in-one:1.76
     ports:
       - 9411:9411
       - 16686:16686

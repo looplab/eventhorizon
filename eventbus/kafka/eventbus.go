@@ -305,11 +305,17 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 		StartOffset:           b.startOffset,
 	})
 
+	// Register handler.
+	b.registered[h.HandlerType()] = struct{}{}
+
+	b.wg.Add(1)
+
+	// Handle until context is cancelled.
+	go b.handle(m, h, r)
+
 	req := &kafka.ListGroupsRequest{
 		Addr: b.client.Addr,
 	}
-
-	exist := false
 
 	for i := 0; i < 20; i++ {
 		resp, err := b.client.ListGroups(ctx, req)
@@ -319,32 +325,14 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 
 		for _, grp := range resp.Groups {
 			if grp.GroupID == groupID {
-				exist = true
-
-				break
+				return nil
 			}
-		}
-
-		if exist {
-			break
 		}
 
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	if !exist {
-		return fmt.Errorf("did not join group in time")
-	}
-
-	// Register handler.
-	b.registered[h.HandlerType()] = struct{}{}
-
-	b.wg.Add(1)
-
-	// Handle until context is cancelled.
-	go b.handle(m, h, r)
-
-	return nil
+	return fmt.Errorf("did not join group in time")
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.

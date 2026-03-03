@@ -175,19 +175,19 @@ func testMiddleware_Persisted(t *testing.T, repo eh.ReadWriteRepo, codec eh.Comm
 		ID:      uuid.New(),
 		Content: "content",
 	}
-	c := CommandWithExecuteTime(cmd, time.Now().Add(time.Second))
+	c := CommandWithExecuteTime(cmd, time.Now().Add(200*time.Millisecond))
 
 	if err := h.HandleCommand(context.Background(), c); err != nil {
 		t.Error("there should be no error:", err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	if err := s.Stop(); err != nil {
 		t.Fatal("could not stop scheduler:", err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	items, err := repo.FindAll(context.Background())
 	if err != nil {
@@ -212,7 +212,7 @@ func testMiddleware_Persisted(t *testing.T, repo eh.ReadWriteRepo, codec eh.Comm
 		t.Fatal("could not load scheduled commands:", err)
 	}
 
-	time.Sleep(800 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond)
 
 	inner.RLock()
 	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
