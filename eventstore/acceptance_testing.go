@@ -260,6 +260,10 @@ func SnapshotAcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Conte
 		t.Error("snapshot should be nil, it doesnt exists")
 	}
 
+	if err != nil {
+		t.Error("there should not be an error:", err)
+	}
+
 	loaded, err = snapshotStore.LoadSnapshot(ctx, id)
 	if err != nil {
 		t.Error("there should  be an error")
