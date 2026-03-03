@@ -27,7 +27,6 @@ import (
 	"github.com/looplab/eventhorizon/mongoutils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -524,7 +523,7 @@ func (s *EventStore) loadFromCursor(ctx context.Context, id uuid.UUID, cursor *m
 }
 
 func (s *EventStore) LoadSnapshot(ctx context.Context, id uuid.UUID) (*eh.Snapshot, error) {
-	result := s.snapshots.FindOne(ctx, bson.M{"aggregate_id": id}, options.FindOne().SetSort(bson.M{"version": -1}))
+	result := s.snapshots.FindOne(ctx, bson.M{"aggregate_id": id}, mongoOptions.FindOne().SetSort(bson.M{"version": -1}))
 	if err := result.Err(); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
@@ -614,7 +613,7 @@ func (s *EventStore) SaveSnapshot(ctx context.Context, id uuid.UUID, snapshot eh
 
 	if _, err := s.snapshots.InsertOne(ctx,
 		record,
-		options.InsertOne(),
+		mongoOptions.InsertOne(),
 	); err != nil {
 		return &eh.EventStoreError{
 			Err:         fmt.Errorf("could not save snapshot: %w", err),
