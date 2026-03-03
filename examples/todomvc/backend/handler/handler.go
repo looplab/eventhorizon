@@ -16,6 +16,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -39,8 +40,10 @@ func NewHandler(
 	// Add the event bus as a websocket that sends the events as JSON.
 	eventBusHandler := httputils.NewEventBusHandler()
 	observerMiddleware := observer.NewMiddleware(observer.NamedGroup("todomvc"))
-	eventBus.AddHandler(context.Background(), eh.MatchAll{},
-		eh.UseEventHandlerMiddleware(eventBusHandler, observerMiddleware))
+	if err := eventBus.AddHandler(context.Background(), eh.MatchAll{},
+		eh.UseEventHandlerMiddleware(eventBusHandler, observerMiddleware)); err != nil {
+		return nil, fmt.Errorf("could not add event bus handler: %w", err)
+	}
 	h.Handle("/api/events/", eventBusHandler)
 
 	// Add the todo read repo to query items as JSON objects.

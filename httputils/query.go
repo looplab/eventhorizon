@@ -76,6 +76,6 @@ func QueryHandler(repo eh.ReadRepo) http.Handler {
 			return
 		}
 
-		w.Write(b)
+		_, _ = w.Write(b)
 	})
 }

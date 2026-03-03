@@ -172,7 +172,9 @@ func BenchmarkCommandHandler(b *testing.B) {
 		Content: "command1",
 	}
 	for i := 0; i < b.N; i++ {
-		h.HandleCommand(ctx, cmd)
+		if err := h.HandleCommand(ctx, cmd); err != nil {
+			b.Fatal(err)
+		}
 	}
 
 	if len(a.Commands) != b.N {

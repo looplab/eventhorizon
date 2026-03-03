@@ -29,7 +29,7 @@ func NewMiddleware(ctx context.Context) (eh.EventHandlerMiddleware, *Scheduler) 
 
 	return eh.EventHandlerMiddleware(func(h eh.EventHandler) eh.EventHandler {
 		m := &eventHandler{h, s.newChannel()}
-		go m.run(ctx)
+		go func() { _ = m.run(ctx) }()
 
 		return m
 	}), s

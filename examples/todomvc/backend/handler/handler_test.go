@@ -100,12 +100,14 @@ func TestGetAll(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemAdded},
-		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
+	if err := eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemAdded},
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware)); err != nil {
+		t.Fatal(err)
+	}
 	l := waiter.Listen(nil)
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	l.Wait(ctx)
+	l.Wait(ctx) //nolint:errcheck
 	cancelTimeout()
 
 	w = httptest.NewRecorder()
@@ -149,12 +151,14 @@ func TestCreate(t *testing.T) {
 	ctx := context.Background()
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(ctx, eh.MatchEvents{todo.Created},
-		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
+	if err := eventBus.AddHandler(ctx, eh.MatchEvents{todo.Created},
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware)); err != nil {
+		t.Fatal(err)
+	}
 	l := waiter.Listen(nil)
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	l.Wait(ctx)
+	l.Wait(ctx) //nolint:errcheck
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
@@ -215,12 +219,14 @@ func TestDelete(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(ctx, eh.MatchEvents{todo.Deleted},
-		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
+	if err := eventBus.AddHandler(ctx, eh.MatchEvents{todo.Deleted},
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware)); err != nil {
+		t.Fatal(err)
+	}
 	l := waiter.Listen(nil)
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	l.Wait(ctx)
+	l.Wait(ctx) //nolint:errcheck
 	cancelTimeout()
 
 	_, err = todoRepo.Find(ctx, id)

@@ -255,7 +255,9 @@ func copyEvent(ctx context.Context, event eh.Event) (eh.Event, error) {
 			return nil, fmt.Errorf("could not create event data: %w", err)
 		}
 
-		copier.Copy(data, event.Data())
+		if err = copier.Copy(data, event.Data()); err != nil {
+			return nil, fmt.Errorf("could not copy event data: %w", err)
+		}
 	}
 
 	return eh.NewEvent(

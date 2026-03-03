@@ -92,7 +92,7 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 
 	// Setup the guestlist.
 	eventID := uuid.New()
-	guestlist.Setup(
+	if err := guestlist.Setup(
 		ctx,
 		eventStore,
 		eventBus, // Use the event bus both as local and global handler.
@@ -100,7 +100,9 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 		commandBus,
 		invitationVersionRepo, guestListRepo,
 		eventID,
-	)
+	); err != nil {
+		log.Fatalf("could not setup guestlist: %s", err)
+	}
 
 	// Setup a test utility waiter that waits for all 11 events to occur before
 	// evaluating results.
