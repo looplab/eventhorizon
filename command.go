@@ -73,6 +73,22 @@ func RegisterCommand(factory func() Command) {
 	commands.register(cmd.CommandType(), factory)
 }
 
+// RegisterCommandType registers a command type using generics. The type
+// parameter T must be a struct whose pointer implements Command.
+//
+// An example would be:
+//
+//	RegisterCommandType[MyCommand]()
+func RegisterCommandType[T any, PT interface {
+	*T
+	Command
+}]() {
+	factory := func() Command { return PT(new(T)) }
+	cmd := factory()
+
+	commands.register(cmd.CommandType(), factory)
+}
+
 // UnregisterCommand removes the registration of the command factory for
 // a type. This is mainly useful in mainenance situations where the command type
 // needs to be switched at runtime.

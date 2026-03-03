@@ -218,6 +218,15 @@ func RegisterEventData(eventType EventType, factory func() EventData) {
 	eventDataFactories.register(eventType, factory)
 }
 
+// RegisterEventDataType registers an event data type using generics.
+//
+// An example would be:
+//
+//	RegisterEventDataType[MyEventData](MyEventType)
+func RegisterEventDataType[T any](eventType EventType) {
+	eventDataFactories.register(eventType, func() EventData { return new(T) })
+}
+
 // UnregisterEventData removes the registration of the event data factory for
 // a type. This is mainly useful in mainenance situations where the event data
 // needs to be switched in a migrations.
