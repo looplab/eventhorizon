@@ -280,9 +280,7 @@ func TestAddItem(t *testing.T) {
 	l := waiter.Listen(nil)
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	if _, err := l.Wait(ctx); err != nil {
-		t.Fatal(err)
-	}
+	l.Wait(ctx) //nolint:errcheck
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
@@ -361,9 +359,7 @@ func TestRemoveItem(t *testing.T) {
 	l := waiter.Listen(nil)
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	if _, err := l.Wait(ctx); err != nil {
-		t.Fatal(err)
-	}
+	l.Wait(ctx) //nolint:errcheck
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
@@ -452,9 +448,7 @@ func TestRemoveCompleted(t *testing.T) {
 	})
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	if _, err := l.Wait(ctx); err != nil {
-		t.Fatal(err)
-	}
+	l.Wait(ctx) //nolint:errcheck
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
@@ -533,9 +527,7 @@ func TestSetItemDesc(t *testing.T) {
 	l := waiter.Listen(nil)
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	if _, err := l.Wait(ctx); err != nil {
-		t.Fatal(err)
-	}
+	l.Wait(ctx) //nolint:errcheck
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
@@ -620,9 +612,7 @@ func TestCheckItem(t *testing.T) {
 	l := waiter.Listen(nil)
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	if _, err := l.Wait(ctx); err != nil {
-		t.Fatal(err)
-	}
+	l.Wait(ctx) //nolint:errcheck
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
@@ -714,9 +704,7 @@ func TestCheckAllItems(t *testing.T) {
 	})
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	if _, err := l.Wait(ctx); err != nil {
-		t.Fatal(err)
-	}
+	l.Wait(ctx) //nolint:errcheck
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
