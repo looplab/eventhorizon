@@ -145,11 +145,6 @@ func (b *EventBus) Close() error {
 	return nil
 }
 
-type evt struct {
-	ctxVals map[string]any
-	event   eh.Event
-}
-
 // Handles all events coming in on the channel.
 func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte) {
 	defer b.wg.Done()

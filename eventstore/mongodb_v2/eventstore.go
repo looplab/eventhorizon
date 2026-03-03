@@ -48,9 +48,8 @@ type EventStore struct {
 	events                  *mongo.Collection
 	streams                 *mongo.Collection
 	snapshots               *mongo.Collection
-	eventHandlerAfterSave   eh.EventHandler
-	eventHandlerInTX        eh.EventHandler
-	skipNonRegisteredEvents bool
+	eventHandlerAfterSave eh.EventHandler
+	eventHandlerInTX      eh.EventHandler
 }
 
 type clientOwnership int
