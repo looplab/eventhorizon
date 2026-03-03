@@ -16,6 +16,7 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -74,7 +75,7 @@ func NewEventStoreWithClient(client *mongo.Client, dbName string, options ...Opt
 
 func newEventStoreWithClient(client *mongo.Client, clientOwnership clientOwnership, dbName string, options ...Option) (*EventStore, error) {
 	if client == nil {
-		return nil, fmt.Errorf("missing DB client")
+		return nil, errors.New("missing DB client")
 	}
 
 	db := client.Database(dbName)
@@ -107,11 +108,11 @@ type Option func(*EventStore) error
 func WithEventHandler(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
 		if s.eventHandlerAfterSave != nil {
-			return fmt.Errorf("another event handler is already set")
+			return errors.New("another event handler is already set")
 		}
 
 		if s.eventHandlerInTX != nil {
-			return fmt.Errorf("another TX event handler is already set")
+			return errors.New("another TX event handler is already set")
 		}
 
 		s.eventHandlerAfterSave = h
