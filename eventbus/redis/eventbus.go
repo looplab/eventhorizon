@@ -129,7 +129,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 
 	args := &redis.XAddArgs{
 		Stream: b.streamName,
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			aggregateTypeKey: event.AggregateType().String(),
 			eventTypeKey:     event.EventType().String(),
 			dataKey:          data,

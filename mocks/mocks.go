@@ -568,12 +568,12 @@ const (
 
 // Register the marshalers and unmarshalers for ContextOne.
 func init() {
-	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]any) {
 		if val, ok := ContextOne(ctx); ok {
 			vals[contextKeyOneStr] = val
 		}
 	})
-	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]any) context.Context {
 		if val, ok := vals[contextKeyOneStr].(string); ok {
 			return WithContextOne(ctx, val)
 		}

@@ -1,0 +1,27 @@
+linters:
+  enable-all: true
+  disable:
+    # The linter are deprecated since v1.39.0 because the repository has be archived by the owner.
+    # With disabling them, we can avoid the warn message. With enable all, we already have the replacements active.
+    - golint
+    - interfacer
+    - maligned
+    - scopelint
+
+    - gomnd # Ignore "magic numbers", used for event versions etc.
+    - godox # Allow TODOs.
+    - goconst # Not sure we want ta have consts for some dups.
+    - gochecknoglobals # We rely on globals for some type registrations.
+    - gochecknoinits # We rely on inits for some type registrations.
+    - paralleltest # Did not improve test times much (at all?).
+    - testpackage # Disabled for now as it requires substantial changes.
+    - tagliatelle # Undesired style advice.
+    - gofumpt # Not sure we want to run gofumpt.
+    - gci # Not sure we want to run gci.
+
+    - lll # Disabled until fixed.
+    - funlen # Disabled until fixed.
+    - dupl # Ignore duplicate code for now.
+    - gocognit # Disabled until fixed.
+    - nestif # Disabled until fixed.
+    - gocyclo # Disabled until fixed.

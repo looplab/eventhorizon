@@ -220,7 +220,7 @@ func (i *iter) Next(ctx context.Context) bool {
 	return true
 }
 
-func (i *iter) Value() interface{} {
+func (i *iter) Value() any {
 	return i.data
 }
 
@@ -267,7 +267,7 @@ func (r *Repo) FindCustomIter(ctx context.Context, f func(context.Context, *mong
 // the query in the callback and returning nil to block a second execution of
 // the same query in FindCustom. Expect a ErrNoCursor if returning a nil
 // query from the callback.
-func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Collection) (*mongo.Cursor, error)) ([]interface{}, error) {
+func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Collection) (*mongo.Cursor, error)) ([]any, error) {
 	if r.newEntity == nil {
 		return nil, &eh.RepoError{
 			Err: ErrModelNotSet,
@@ -290,7 +290,7 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 		}
 	}
 
-	result := []interface{}{}
+	result := []any{}
 	entity := r.newEntity()
 
 	for cursor.Next(ctx) {

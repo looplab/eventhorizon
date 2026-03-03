@@ -26,8 +26,8 @@ import (
 // Event is a domain event describing a change that has happened to an aggregate.
 //
 // An event struct and type name should:
-//   1) Be in past tense (CustomerMoved)
-//   2) Contain the intent (CustomerMoved vs CustomerAddressCorrected).
+//  1. Be in past tense (CustomerMoved)
+//  2. Contain the intent (CustomerMoved vs CustomerAddressCorrected).
 //
 // The event should contain all the data needed when applying/handling it.
 type Event interface {
@@ -47,7 +47,7 @@ type Event interface {
 	Version() int
 
 	// Metadata is app-specific metadata such as request ID, originating user etc.
-	Metadata() map[string]interface{}
+	Metadata() map[string]any
 
 	// A string representation of the event.
 	String() string
@@ -62,7 +62,7 @@ func (et EventType) String() string {
 }
 
 // EventData is any additional data for an event.
-type EventData interface{}
+type EventData any
 
 // EventOption is an option to use when creating events.
 type EventOption func(Event)
@@ -80,7 +80,7 @@ func ForAggregate(aggregateType AggregateType, aggregateID uuid.UUID, version in
 
 // WithMetadata adds metadata when creating an event.
 // Note that the values types must be supported by the event marshalers in use.
-func WithMetadata(metadata map[string]interface{}) EventOption {
+func WithMetadata(metadata map[string]any) EventOption {
 	return func(e Event) {
 		if evt, ok := e.(*event); ok {
 			if evt.metadata == nil {
@@ -96,7 +96,7 @@ func WithMetadata(metadata map[string]interface{}) EventOption {
 
 // WithGlobalPosition sets the global event position in the metadata.
 func WithGlobalPosition(position int) EventOption {
-	md := map[string]interface{}{
+	md := map[string]any{
 		"position": position,
 	}
 
@@ -107,7 +107,7 @@ func WithGlobalPosition(position int) EventOption {
 // Currently it adds the command type and optionally a command ID (if the
 // CommandIDer interface is implemented).
 func FromCommand(cmd Command) EventOption {
-	md := map[string]interface{}{
+	md := map[string]any{
 		"command_type": cmd.CommandType().String(),
 	}
 
@@ -157,7 +157,7 @@ type event struct {
 	aggregateType AggregateType
 	aggregateID   uuid.UUID
 	version       int
-	metadata      map[string]interface{}
+	metadata      map[string]any
 }
 
 // EventType implements the EventType method of the Event interface.
@@ -191,7 +191,7 @@ func (e event) Version() int {
 }
 
 // Metadata implements the Metadata method of the Event interface.
-func (e event) Metadata() map[string]interface{} {
+func (e event) Metadata() map[string]any {
 	return e.metadata
 }
 
@@ -213,7 +213,8 @@ var ErrEventDataNotRegistered = errors.New("event data not registered")
 // used to create concrete event data structs when loading from the database.
 //
 // An example would be:
-//     RegisterEventData(MyEventType, func() Event { return &MyEventData{} })
+//
+//	RegisterEventData(MyEventType, func() Event { return &MyEventData{} })
 func RegisterEventData(eventType EventType, factory func() EventData) {
 	if eventType == EventType("") {
 		panic("eventhorizon: attempt to register empty event type")

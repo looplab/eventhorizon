@@ -271,7 +271,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 		defer sess.EndSession(ctx)
 
-		if _, err := sess.WithTransaction(ctx, func(ctx mongo.SessionContext) (interface{}, error) {
+		if _, err := sess.WithTransaction(ctx, func(ctx mongo.SessionContext) (any, error) {
 			if err := saveEvents(ctx); err != nil {
 				return nil, err
 			}
@@ -418,14 +418,14 @@ type aggregateRecord struct {
 // evt is the internal event record for the MongoDB event store used
 // to save and load events from the DB.
 type evt struct {
-	EventType     eh.EventType           `bson:"event_type"`
-	RawData       bson.Raw               `bson:"data,omitempty"`
-	data          eh.EventData           `bson:"-"`
-	Timestamp     time.Time              `bson:"timestamp"`
-	AggregateType eh.AggregateType       `bson:"aggregate_type"`
-	AggregateID   uuid.UUID              `bson:"_id"`
-	Version       int                    `bson:"version"`
-	Metadata      map[string]interface{} `bson:"metadata"`
+	EventType     eh.EventType     `bson:"event_type"`
+	RawData       bson.Raw         `bson:"data,omitempty"`
+	data          eh.EventData     `bson:"-"`
+	Timestamp     time.Time        `bson:"timestamp"`
+	AggregateType eh.AggregateType `bson:"aggregate_type"`
+	AggregateID   uuid.UUID        `bson:"_id"`
+	Version       int              `bson:"version"`
+	Metadata      map[string]any   `bson:"metadata"`
 }
 
 // newEvt returns a new evt for an event.

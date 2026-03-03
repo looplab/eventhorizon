@@ -413,7 +413,7 @@ func (o *Outbox) processOutboxEvent(ctx context.Context, r *outboxDoc, now time.
 		return nil
 	}
 
-	var processedHandlers []interface{}
+	var processedHandlers []any
 
 	// Process all handlers without returning handler errors.
 	for _, handlerType := range r.Handlers {

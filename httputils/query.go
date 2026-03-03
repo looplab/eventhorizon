@@ -36,7 +36,7 @@ func QueryHandler(repo eh.ReadRepo) http.Handler {
 		}
 
 		var (
-			data interface{}
+			data any
 			err  error
 		)
 		// If there is a trailing slash in the URL we return all items,

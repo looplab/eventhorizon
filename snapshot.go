@@ -34,12 +34,12 @@ type Snapshot struct {
 	Version       int
 	AggregateType AggregateType
 	Timestamp     time.Time
-	State         interface{}
+	State         any
 }
 
 var snapshotDataFactories = make(map[AggregateType]func(uuid2 uuid.UUID) SnapshotData)
 
-type SnapshotData interface{}
+type SnapshotData any
 
 var snapshotDataFactoriesMu sync.RWMutex
 

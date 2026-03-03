@@ -58,12 +58,11 @@ func TestAddHandler(t *testing.T, bus1 eh.EventBus) {
 // should pass. It should manually be called from a test case in each
 // implementation:
 //
-//   func TestEventBus(t *testing.T) {
-//       bus1 := NewEventBus()
-//       bus2 := NewEventBus()
-//       eventbus.AcceptanceTest(t, bus1, bus2)
-//   }
-//
+//	func TestEventBus(t *testing.T) {
+//	    bus1 := NewEventBus()
+//	    bus2 := NewEventBus()
+//	    eventbus.AcceptanceTest(t, bus1, bus2)
+//	}
 func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration) {
 	ctx := context.Background()
 	ctx = mocks.WithContextOne(ctx, "testval")
@@ -73,7 +72,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 1),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
+		eh.WithMetadata(map[string]any{"meta": "data", "num": 42.0}),
 	)
 
 	if err := bus1.HandleEvent(ctx, event1); err != nil {
@@ -145,7 +144,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	// Event with data.
 	event2 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event2"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 2),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
+		eh.WithMetadata(map[string]any{"meta": "data", "num": 42.0}),
 	)
 	if err := bus1.HandleEvent(ctx, event2); err != nil {
 		t.Error("there should be no error:", err)
@@ -252,7 +251,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 
 	event3 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event3"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 3),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
+		eh.WithMetadata(map[string]any{"meta": "data", "num": 42.0}),
 	)
 	if err := bus1.HandleEvent(ctx, event3); err != nil {
 		t.Error("there should be no error:", err)
@@ -304,9 +303,9 @@ func Benchmark(b *testing.B, bus eh.EventBus) {
 }
 
 type bench interface {
-	Log(args ...interface{})
-	Error(args ...interface{})
-	Fatal(args ...interface{})
+	Log(args ...any)
+	Error(args ...any)
+	Fatal(args ...any)
 
 	ResetTimer()
 	StopTimer()

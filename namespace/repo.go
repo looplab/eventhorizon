@@ -35,31 +35,33 @@ type Repo struct {
 // create new repos for the provided namespace.
 //
 // Usage:
-//    repo := NewRepo(func(ns string) (eh.ReadWriteRepo, error) {
-//        r, err := mongodb.NewRepo("mongodb://", "db", "model")
-//        if err != nil {
-//            return nil, err
-//        }
-//        r.SetEntityFactory(func() eh.Entity{
-//            return &Model{}
-//        })
-//        return r, nil
-//    })
+//
+//	repo := NewRepo(func(ns string) (eh.ReadWriteRepo, error) {
+//	    r, err := mongodb.NewRepo("mongodb://", "db", "model")
+//	    if err != nil {
+//	        return nil, err
+//	    }
+//	    r.SetEntityFactory(func() eh.Entity{
+//	        return &Model{}
+//	    })
+//	    return r, nil
+//	})
 //
 // Usage shared DB client:
-//    client, err := mongo.Connect(ctx)
-//    ...
 //
-//    repo := NewRepo(func(ns string) (eh.ReadWriteRepo, error) {
-//        r, err := mongodb.NewRepoWithClient(client, "db", "model")
-//        if err != nil {
-//            return nil, err
-//        }
-//        r.SetEntityFactory(func() eh.Entity{
-//            return &Model{}
-//        })
-//        return r, nil
-//    })
+//	client, err := mongo.Connect(ctx)
+//	...
+//
+//	repo := NewRepo(func(ns string) (eh.ReadWriteRepo, error) {
+//	    r, err := mongodb.NewRepoWithClient(client, "db", "model")
+//	    if err != nil {
+//	        return nil, err
+//	    }
+//	    r.SetEntityFactory(func() eh.Entity{
+//	        return &Model{}
+//	    })
+//	    return r, nil
+//	})
 func NewRepo(factory func(ns string) (eh.ReadWriteRepo, error)) *Repo {
 	return &Repo{
 		repos:   map[string]eh.ReadWriteRepo{},

@@ -146,7 +146,7 @@ func (b *EventBus) Close() error {
 }
 
 type evt struct {
-	ctxVals map[string]interface{}
+	ctxVals map[string]any
 	event   eh.Event
 }
 

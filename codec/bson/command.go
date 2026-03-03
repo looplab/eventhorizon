@@ -70,7 +70,7 @@ func (_ CommandCodec) UnmarshalCommand(ctx context.Context, b []byte) (eh.Comman
 
 // command is the internal structure used on the wire only.
 type command struct {
-	CommandType eh.CommandType         `bson:"command_type"`
-	Command     bson.Raw               `bson:"command"`
-	Context     map[string]interface{} `bson:"context"`
+	CommandType eh.CommandType `bson:"command_type"`
+	Command     bson.Raw       `bson:"command"`
+	Context     map[string]any `bson:"context"`
 }

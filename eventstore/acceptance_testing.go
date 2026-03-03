@@ -76,7 +76,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	// Save event, version 2, with metadata.
 	event2 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event2"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 2),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
+		eh.WithMetadata(map[string]any{"meta": "data", "num": 42.0}),
 	)
 
 	err = store.Save(ctx, []eh.Event{event2}, 1)

@@ -231,7 +231,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		}
 	}
 
-	dbEvents := make([]interface{}, len(events))
+	dbEvents := make([]any, len(events))
 	id := events[0].AggregateID()
 	at := events[0].AggregateType()
 
@@ -296,7 +296,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 	defer sess.EndSession(ctx)
 
-	if _, err := sess.WithTransaction(ctx, func(txCtx mongo.SessionContext) (interface{}, error) {
+	if _, err := sess.WithTransaction(ctx, func(txCtx mongo.SessionContext) (any, error) {
 		// Fetch and increment global version in the all-stream.
 		r := s.streams.FindOneAndUpdate(txCtx,
 			bson.M{"_id": "$all"},
@@ -689,15 +689,15 @@ type stream struct {
 // evt is the internal event record for the MongoDB event store used
 // to save and load events from the DB.
 type evt struct {
-	Position      int                    `bson:"_id"`
-	EventType     eh.EventType           `bson:"event_type"`
-	Timestamp     time.Time              `bson:"timestamp"`
-	AggregateType eh.AggregateType       `bson:"aggregate_type"`
-	AggregateID   uuid.UUID              `bson:"aggregate_id"`
-	Version       int                    `bson:"version"`
-	RawData       bson.Raw               `bson:"data,omitempty"`
-	data          eh.EventData           `bson:"-"`
-	Metadata      map[string]interface{} `bson:"metadata"`
+	Position      int              `bson:"_id"`
+	EventType     eh.EventType     `bson:"event_type"`
+	Timestamp     time.Time        `bson:"timestamp"`
+	AggregateType eh.AggregateType `bson:"aggregate_type"`
+	AggregateID   uuid.UUID        `bson:"aggregate_id"`
+	Version       int              `bson:"version"`
+	RawData       bson.Raw         `bson:"data,omitempty"`
+	data          eh.EventData     `bson:"-"`
+	Metadata      map[string]any   `bson:"metadata"`
 }
 
 // newEvt returns a new evt for an event.
@@ -712,7 +712,7 @@ func newEvt(_ context.Context, event eh.Event) (*evt, error) {
 	}
 
 	if e.Metadata == nil {
-		e.Metadata = map[string]interface{}{}
+		e.Metadata = map[string]any{}
 	}
 
 	// Marshal event data if there is any.

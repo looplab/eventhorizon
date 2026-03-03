@@ -40,7 +40,7 @@ const (
 //
 // See: https://github.com/elastic/apm/issues/122
 func RegisterContext() {
-	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]any) {
 		if span := opentracing.SpanFromContext(ctx); span != nil {
 			tracer := opentracing.GlobalTracer()
 
@@ -61,7 +61,7 @@ func RegisterContext() {
 			vals[tracingSpanKeyStr] = string(js)
 		}
 	})
-	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]any) context.Context {
 		if js, ok := vals[tracingSpanKeyStr].(string); ok {
 			tracer := opentracing.GlobalTracer()
 

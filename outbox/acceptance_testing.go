@@ -51,11 +51,10 @@ func TestAddHandler(t *testing.T, o eh.Outbox, ctx context.Context) {
 // should pass. It should manually be called from a test case in each
 // implementation:
 //
-//   func TestOutbox(t *testing.T) {
-//       o := NewOutbox()
-//       outbox.AcceptanceTest(t, o, context.Background())
-//   }
-//
+//	func TestOutbox(t *testing.T) {
+//	    o := NewOutbox()
+//	    outbox.AcceptanceTest(t, o, context.Background())
+//	}
 func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context, prefix string) {
 	ctx = mocks.WithContextOne(ctx, "testval")
 
@@ -64,7 +63,7 @@ func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context, prefix strin
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 1),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
+		eh.WithMetadata(map[string]any{"meta": "data", "num": 42.0}),
 	)
 
 	if err := o.HandleEvent(ctx, event1); err != nil {
@@ -121,7 +120,7 @@ func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context, prefix strin
 	// Event with data.
 	event2 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event2"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 2),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
+		eh.WithMetadata(map[string]any{"meta": "data", "num": 42.0}),
 	)
 	if err := o.HandleEvent(ctx, event2); err != nil {
 		t.Error("there should be no error:", err)
@@ -178,7 +177,7 @@ func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context, prefix strin
 
 	event3 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event3"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 3),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
+		eh.WithMetadata(map[string]any{"meta": "data", "num": 42.0}),
 	)
 	if err := o.HandleEvent(ctx, event3); err != nil {
 		t.Error("there should be no error:", err)
