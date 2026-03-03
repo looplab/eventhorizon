@@ -50,7 +50,7 @@ func TestStaticFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r := httptest.NewRequest("GET", "/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
@@ -74,7 +74,7 @@ func TestGetAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r := httptest.NewRequest("GET", "/api/todos/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/api/todos/", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
@@ -137,7 +137,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	id := uuid.New()
-	r := httptest.NewRequest("POST", "/api/todos/create",
+	r := httptest.NewRequest(http.MethodPost, "/api/todos/create",
 		strings.NewReader(`{"id":"`+id.String()+`"}`))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
@@ -207,7 +207,7 @@ func TestDelete(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	r := httptest.NewRequest("POST", "/api/todos/delete",
+	r := httptest.NewRequest(http.MethodPost, "/api/todos/delete",
 		strings.NewReader(`{"id":"`+id.String()+`"}`))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
@@ -261,7 +261,7 @@ func TestAddItem(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	r := httptest.NewRequest("POST", "/api/todos/add_item",
+	r := httptest.NewRequest(http.MethodPost, "/api/todos/add_item",
 		strings.NewReader(`{"id":"`+id.String()+`", "desc":"desc"}`))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
@@ -273,12 +273,16 @@ func TestAddItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemAdded},
-		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
+	if err := eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemAdded},
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware)); err != nil {
+		t.Fatal(err)
+	}
 	l := waiter.Listen(nil)
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	l.Wait(ctx)
+	if _, err := l.Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
@@ -338,7 +342,7 @@ func TestRemoveItem(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	r := httptest.NewRequest("POST", "/api/todos/remove_item",
+	r := httptest.NewRequest(http.MethodPost, "/api/todos/remove_item",
 		strings.NewReader(`{"id":"`+id.String()+`", "item_id":0}`))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
@@ -350,12 +354,16 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemRemoved},
-		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
+	if err := eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemRemoved},
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware)); err != nil {
+		t.Fatal(err)
+	}
 	l := waiter.Listen(nil)
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	l.Wait(ctx)
+	if _, err := l.Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
@@ -423,7 +431,7 @@ func TestRemoveCompleted(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	r := httptest.NewRequest("POST", "/api/todos/remove_completed",
+	r := httptest.NewRequest(http.MethodPost, "/api/todos/remove_completed",
 		strings.NewReader(`{"id":"`+id.String()+`"}`))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
@@ -435,14 +443,18 @@ func TestRemoveCompleted(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemRemoved},
-		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
+	if err := eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemRemoved},
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware)); err != nil {
+		t.Fatal(err)
+	}
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5
 	})
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	l.Wait(ctx)
+	if _, err := l.Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
@@ -502,7 +514,7 @@ func TestSetItemDesc(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	r := httptest.NewRequest("POST", "/api/todos/set_item_desc",
+	r := httptest.NewRequest(http.MethodPost, "/api/todos/set_item_desc",
 		strings.NewReader(`{"id":"`+id.String()+`", "desc":"new desc"}`))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
@@ -514,12 +526,16 @@ func TestSetItemDesc(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemDescriptionSet},
-		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
+	if err := eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemDescriptionSet},
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware)); err != nil {
+		t.Fatal(err)
+	}
 	l := waiter.Listen(nil)
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	l.Wait(ctx)
+	if _, err := l.Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
@@ -585,7 +601,7 @@ func TestCheckItem(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	r := httptest.NewRequest("POST", "/api/todos/check_item",
+	r := httptest.NewRequest(http.MethodPost, "/api/todos/check_item",
 		strings.NewReader(`{"id":"`+id.String()+`", "item_id":1, "checked":true}`))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
@@ -597,12 +613,16 @@ func TestCheckItem(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemChecked},
-		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
+	if err := eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemChecked},
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware)); err != nil {
+		t.Fatal(err)
+	}
 	l := waiter.Listen(nil)
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	l.Wait(ctx)
+	if _, err := l.Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)
@@ -673,7 +693,7 @@ func TestCheckAllItems(t *testing.T) {
 		t.Error("there should be no error:", err)
 	}
 
-	r := httptest.NewRequest("POST", "/api/todos/check_all_items",
+	r := httptest.NewRequest(http.MethodPost, "/api/todos/check_all_items",
 		strings.NewReader(`{"id":"`+id.String()+`", "item_id":1, "checked":true}`))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
@@ -685,14 +705,18 @@ func TestCheckAllItems(t *testing.T) {
 	}
 
 	waiter := waiter.NewEventHandler()
-	eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemRemoved},
-		eh.UseEventHandlerMiddleware(waiter, observer.Middleware))
+	if err := eventBus.AddHandler(ctx, eh.MatchEvents{todo.ItemRemoved},
+		eh.UseEventHandlerMiddleware(waiter, observer.Middleware)); err != nil {
+		t.Fatal(err)
+	}
 	l := waiter.Listen(func(e eh.Event) bool {
 		return e.Version() == 5
 	})
 	var cancelTimeout func()
 	ctx, cancelTimeout = context.WithTimeout(ctx, time.Second)
-	l.Wait(ctx)
+	if _, err := l.Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
 	cancelTimeout()
 
 	m, err := todoRepo.Find(ctx, id)

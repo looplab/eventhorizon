@@ -29,7 +29,7 @@ import (
 // last part of the path as an ID to return one item.
 func QueryHandler(repo eh.ReadRepo) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
+		if r.Method != http.MethodGet {
 			http.Error(w, "unsupported method: "+r.Method, http.StatusMethodNotAllowed)
 
 			return
@@ -76,6 +76,7 @@ func QueryHandler(repo eh.ReadRepo) http.Handler {
 			return
 		}
 
-		_, _ = w.Write(b)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(b) //nolint:gosec
 	})
 }

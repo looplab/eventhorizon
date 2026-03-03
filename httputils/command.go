@@ -28,7 +28,7 @@ import (
 // body that will be unmarshaled into the command.
 func CommandHandler(commandHandler eh.CommandHandler, commandType eh.CommandType) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
+		if r.Method != http.MethodPost {
 			http.Error(w, "unsupported method: "+r.Method, http.StatusMethodNotAllowed)
 
 			return
