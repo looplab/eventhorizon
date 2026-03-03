@@ -2,7 +2,7 @@ default: test
 
 .PHONY: lint
 lint:
-	docker run --rm -v $$(pwd):/app -w /app golangci/golangci-lint:v1.42.1 golangci-lint run -v --timeout 2m
+	docker run --rm -v $$(pwd):/app -w /app golangci/golangci-lint:v$$(grep "golangci-lint" .tool-versions | awk '{print $$2}') golangci-lint run -v --timeout 2m
 
 .PHONY: test
 test:
