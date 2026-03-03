@@ -235,7 +235,7 @@ func (o *Outbox) processFullOutbox(ctx context.Context) error {
 		// Take started but non-finished events after 15 sec,
 		// or non-started events after 10 min.
 		if !r.TakenAt.Before(now.Add(-PeriodicSweepAge)) &&
-			!(r.TakenAt.IsZero() && r.CreatedAt.Before(now.Add(-PeriodicCleanupAge))) {
+			(!r.TakenAt.IsZero() || !r.CreatedAt.Before(now.Add(-PeriodicCleanupAge))) {
 			continue
 		}
 

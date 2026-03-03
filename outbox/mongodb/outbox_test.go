@@ -2,8 +2,8 @@ package mongodb
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
-	"math/rand"
 	"os"
 	"testing"
 	"time"

@@ -24,5 +24,5 @@ func Parse(s string) (UUID, error) {
 
 // MustParse parses a UUID from a string, or panics.
 func MustParse(s string) UUID {
-	return UUID(uuid.MustParse(s))
+	return uuid.MustParse(s)
 }

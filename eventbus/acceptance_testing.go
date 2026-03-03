@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 	"testing"
 	"time"
@@ -379,7 +379,7 @@ func benchmark(t bench, bus eh.EventBus, numAggregates, numHandlers, numEvents i
 	t.ResetTimer()
 
 	for n := range numEvents {
-		a := aggregates[rand.Intn(len(aggregates))]
+		a := aggregates[rand.IntN(len(aggregates))] //nolint:gosec
 		a.version++
 
 		timestamp := time.Date(2009, time.November, 10, 23, n, 0, 0, time.UTC)
