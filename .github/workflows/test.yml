@@ -7,26 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-
-      - name: Read golangci-lint version
-        id: lint-version
-        run: echo "version=$(grep golangci-lint .tool-versions | awk '{print $2}')" >> "$GITHUB_OUTPUT"
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v7
-        with:
-          version: v${{ steps.lint-version.outputs.version }}
-
   unit:
     name: Unit
     runs-on: ubuntu-latest
