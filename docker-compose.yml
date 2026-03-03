@@ -1,5 +1,4 @@
-version: "3.4"
-
+---
 volumes:
   mongodb:
 
@@ -23,66 +22,62 @@ services:
     command: [-c, make test test_integration]
 
   mongodb-docker:
-    image: bitnami/mongodb:5.0
+    image: mongo:8.2
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
       - 27017:27017
-    environment:
-      MONGODB_REPLICA_SET_MODE: primary
-      ALLOW_EMPTY_PASSWORD: "yes"
     volumes:
       - mongodb:/data/db
+    healthcheck:
+      test: >
+        mongosh --eval "try { rs.status().ok } catch(e) { rs.initiate({_id:'rs0', members:[{_id:0, host:'mongodb-docker:27017'}]}).ok }"
+      interval: 5s
+      start_period: 10s
 
   mongodb:
-    image: bitnami/mongodb:5.0
+    image: mongo:8.2
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
       - 27017:27017
-    environment:
-      MONGODB_REPLICA_SET_MODE: primary
-      MONGODB_ADVERTISED_HOSTNAME: localhost # Needed to connect from localhost.
-      ALLOW_EMPTY_PASSWORD: "yes"
     volumes:
       - mongodb:/data/db
+    healthcheck:
+      test: >
+        mongosh --eval "try { rs.status().ok } catch(e) { rs.initiate({_id:'rs0', members:[{_id:0, host:'localhost:27017'}]}).ok }"
+      interval: 5s
+      start_period: 10s
 
   gpubsub:
-    image: gcr.io/google.com/cloudsdktool/cloud-sdk:367.0.0-emulators
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:513.0.0-emulators
     ports:
       - 8793:8793
     entrypoint:
       [gcloud, beta, emulators, pubsub, start, --host-port=0.0.0.0:8793]
 
-  zookeeper:
-    image: bitnami/zookeeper:3.6.2
-    ports:
-      - 2181:2181
-    environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes"
-
   kafka:
-    image: wurstmeister/kafka
-    depends_on:
-      - zookeeper
+    image: apache/kafka-native:4.0.0
     ports:
       - 9093:9093
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9093
-      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9094
+      KAFKA_LISTENERS: HOST://:9093,DOCKER://:9092,CONTROLLER://:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: HOST:PLAINTEXT,DOCKER:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9093,DOCKER://kafka:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 5
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      CLUSTER_ID: eventhorizon-test-kafka
 
   redis:
-    image: redis:6.2-alpine3.15
+    image: redis:8.0.2-alpine
     ports:
       - 6379:6379
     entrypoint: [redis-server, --appendonly yes]
 
   nats:
-    image: nats:2.6-alpine3.14
+    image: nats:2.12.4-alpine
     ports:
       - 4222:4222
     command: [-js]
