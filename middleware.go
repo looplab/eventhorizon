@@ -20,13 +20,7 @@ type CommandHandlerMiddleware func(CommandHandler) CommandHandler
 
 // UseCommandHandlerMiddleware wraps a CommandHandler in one or more middleware.
 func UseCommandHandlerMiddleware(h CommandHandler, middleware ...CommandHandlerMiddleware) CommandHandler {
-	// Apply in reverse order.
-	for i := len(middleware) - 1; i >= 0; i-- {
-		m := middleware[i]
-		h = m(h)
-	}
-
-	return h
+	return applyMiddleware(h, middleware)
 }
 
 // EventHandlerMiddleware is a function that middlewares can implement to be
@@ -46,10 +40,12 @@ type EventHandlerChain interface {
 
 // UseEventHandlerMiddleware wraps a EventHandler in one or more middleware.
 func UseEventHandlerMiddleware(h EventHandler, middleware ...EventHandlerMiddleware) EventHandler {
-	// Apply in reverse order.
+	return applyMiddleware(h, middleware)
+}
+
+func applyMiddleware[H any, M ~func(H) H](h H, middleware []M) H {
 	for i := len(middleware) - 1; i >= 0; i-- {
-		m := middleware[i]
-		h = m(h)
+		h = middleware[i](h)
 	}
 
 	return h

@@ -90,7 +90,7 @@ func TestUnregisterCommandTwice(t *testing.T) {
 }
 
 func TestRegisteredCommands(t *testing.T) {
-	commands = make(map[CommandType]func() Command)
+	commands.reset()
 	RegisterCommand(func() Command { return &TestCommandRegister{} })
 	defer UnregisterCommand(TestCommandRegisterType)
 
