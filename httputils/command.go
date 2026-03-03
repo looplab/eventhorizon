@@ -17,7 +17,7 @@ package httputils
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	eh "github.com/looplab/eventhorizon"
@@ -41,7 +41,7 @@ func CommandHandler(commandHandler eh.CommandHandler, commandType eh.CommandType
 			return
 		}
 
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "could not read command: "+err.Error(), http.StatusBadRequest)
 

@@ -234,8 +234,8 @@ func (o *Outbox) processFullOutbox(ctx context.Context) error {
 	for _, r := range o.db {
 		// Take started but non-finished events after 15 sec,
 		// or non-started events after 10 min.
-		if !(r.TakenAt.Before(now.Add(-PeriodicSweepAge)) ||
-			(r.TakenAt.IsZero() && r.CreatedAt.Before(now.Add(-PeriodicCleanupAge)))) {
+		if !r.TakenAt.Before(now.Add(-PeriodicSweepAge)) &&
+			!(r.TakenAt.IsZero() && r.CreatedAt.Before(now.Add(-PeriodicCleanupAge))) {
 			continue
 		}
 
@@ -313,7 +313,9 @@ func copyEvent(ctx context.Context, event eh.Event) (eh.Event, error) {
 			return nil, fmt.Errorf("could not create event data: %w", err)
 		}
 
-		copier.Copy(data, event.Data())
+		if err = copier.Copy(data, event.Data()); err != nil {
+			return nil, fmt.Errorf("could not copy event data: %w", err)
+		}
 	}
 
 	return eh.NewEvent(

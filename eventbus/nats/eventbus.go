@@ -193,7 +193,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 
 	// capture the subscription of ephemeral consumers so we can unsubscribe when we exit.
 	if b.handlerIsEphemeral(h) {
-		b.unsubscribe = append(b.unsubscribe, func() { sub.Unsubscribe() })
+		b.unsubscribe = append(b.unsubscribe, func() { _ = sub.Unsubscribe() })
 	}
 
 	// Register handler.
@@ -246,15 +246,10 @@ func (b *EventBus) Close() error {
 func (b *EventBus) handle(sub *nats.Subscription) {
 	defer b.wg.Done()
 
-	for {
-		select {
-		case <-b.cctx.Done():
-			if b.cctx.Err() != context.Canceled {
-				log.Printf("eventhorizon: context error in NATS event bus: %s", b.cctx.Err())
-			}
+	<-b.cctx.Done()
 
-			return
-		}
+	if b.cctx.Err() != context.Canceled {
+		log.Printf("eventhorizon: context error in NATS event bus: %s", b.cctx.Err())
 	}
 }
 
@@ -268,14 +263,14 @@ func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHan
 			default:
 				log.Printf("eventhorizon: missed error in NATS event bus: %s", err)
 			}
-			msg.Nak()
+			_ = msg.Nak()
 
 			return
 		}
 
 		// Ignore non-matching events.
 		if !m.Match(event) {
-			msg.AckSync()
+			_ = msg.AckSync()
 
 			return
 		}
@@ -289,12 +284,12 @@ func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHan
 				log.Printf("eventhorizon: missed error in NATS event bus: %s", err)
 			}
 
-			msg.Nak()
+			_ = msg.Nak()
 
 			return
 		}
 
-		msg.AckSync()
+		_ = msg.AckSync()
 	}
 }
 

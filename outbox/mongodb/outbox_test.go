@@ -11,10 +11,6 @@ import (
 	"github.com/looplab/eventhorizon/outbox"
 )
 
-func init() {
-	rand.Seed(time.Now().Unix())
-}
-
 func TestOutboxAddHandler(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
