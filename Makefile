@@ -10,9 +10,7 @@ test:
 
 .PHONY: test_cover
 test_cover:
-	go list -f '{{if len .TestGoFiles}}"cd {{.Dir}} && go test -race -short -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
-	go run ./hack/coverage/coverage.go . unit.coverprofile
-	@find . -name \.coverprofile -type f -delete
+	go test -race -short -coverprofile=unit.coverprofile ./...
 
 .PHONY: test_integration
 test_integration:
@@ -20,9 +18,7 @@ test_integration:
 
 .PHONY: test_integration_cover
 test_integration_cover:
-	go list -f '{{if len .TestGoFiles}}"cd {{.Dir}} && go test -race -run Integration -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -L 1 sh -c
-	go run ./hack/coverage/coverage.go . integration.coverprofile
-	@find . -name \.coverprofile -type f -delete
+	go test -race -run Integration -coverprofile=integration.coverprofile ./...
 
 .PHONY: test_loadtest
 test_loadtest:
@@ -31,10 +27,6 @@ test_loadtest:
 .PHONY: test_all_docker
 test_all_docker:
 	docker compose up --build --force-recreate eventhorizon-test
-
-.PHONY: merge_coverage
-merge_coverage:
-	go run ./hack/coverage/coverage.go .
 
 .PHONY: upload_coverage
 upload_coverage:
@@ -70,8 +62,7 @@ stop:
 
 .PHONY: clean
 clean:
-	@find . -name \.coverprofile -type f -delete
-	@rm -f coverage.out
+	@rm -f coverage.out unit.coverprofile integration.coverprofile
 
 .PHONY: mongodb_shell
 mongodb_shell:
