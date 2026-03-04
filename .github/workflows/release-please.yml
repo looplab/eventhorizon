@@ -1,0 +1,62 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - uses: actions/checkout@v4
+        if: steps.release.outputs.release_created == 'true'
+        with:
+          fetch-depth: 0
+
+      - name: Enhance release notes
+        if: steps.release.outputs.release_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+          PREV_TAG: v${{ steps.release.outputs.previous_tag }}
+        run: |
+          conventional_pattern='^(feat|fix|perf|revert|deps|docs|chore|ci|refactor|style|test|build)(\(.+\))?!?:'
+
+          other_commits=$(git log "${PREV_TAG}..${TAG_NAME}" --oneline --no-merges \
+            | grep -vE "$conventional_pattern" || true)
+
+          gh_notes=$(gh api repos/${{ github.repository }}/releases/generate-notes \
+            -f tag_name="${TAG_NAME}" -f previous_tag_name="${PREV_TAG}" \
+            -q '.body' || true)
+
+          new_contributors=$(echo "$gh_notes" | sed -n '/## New Contributors/,$p' || true)
+
+          current_body=$(gh release view "$TAG_NAME" --json body -q '.body')
+          extra=""
+
+          if [ -n "$other_commits" ]; then
+            extra=$(printf '\n## Other Changes\n')
+            while IFS= read -r line; do
+              msg="${line#* }"
+              extra=$(printf '%s\n* %s' "$extra" "$msg")
+            done <<< "$other_commits"
+          fi
+
+          if [ -n "$new_contributors" ]; then
+            extra=$(printf '%s\n\n%s' "$extra" "$new_contributors")
+          fi
+
+          if [ -n "$extra" ]; then
+            gh release edit "$TAG_NAME" --notes "${current_body}${extra}"
+          fi
