@@ -103,7 +103,10 @@ func (a *Aggregate) CreateSnapshot() *eh.Snapshot {
 }
 
 func (a *Aggregate) ApplySnapshot(snapshot *eh.Snapshot) {
-	agg := snapshot.State.(*Aggregate)
+	agg, ok := snapshot.State.(*Aggregate)
+	if !ok {
+		return
+	}
 	a.ID = agg.ID
 	a.Commands = agg.Commands
 }

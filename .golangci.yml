@@ -10,7 +10,6 @@ linters:
     - err113
     - exhaustive
     - exhaustruct
-    - forcetypeassert
     - funcorder
     - funlen
     - gochecknoglobals

@@ -102,8 +102,13 @@ func TestAggregateStore_LoadEvents(t *testing.T) {
 		t.Error("the aggregate version should be 1:", a.AggregateVersion())
 	}
 
-	if a.(*TestAggregate).event != nil {
-		t.Error("the event should be nil:", a.(*TestAggregate).event)
+	ta, ok := a.(*TestAggregate)
+	if !ok {
+		t.Fatal("the aggregate should be *TestAggregate")
+	}
+
+	if ta.event != nil {
+		t.Error("the event should be nil:", ta.event)
 	}
 
 	// Store event.
@@ -134,8 +139,13 @@ func TestAggregateStore_LoadEvents(t *testing.T) {
 		t.Error("the aggregate version should be 1:", a.AggregateVersion())
 	}
 
-	if !reflect.DeepEqual(a.(*TestAggregate).event, event1) {
-		t.Error("the event should be correct:", a.(*TestAggregate).event)
+	ta2, ok := a.(*TestAggregate)
+	if !ok {
+		t.Fatal("the aggregate should be *TestAggregate")
+	}
+
+	if !reflect.DeepEqual(ta2.event, event1) {
+		t.Error("the event should be correct:", ta2.event)
 	}
 
 	// Store error.
@@ -418,6 +428,9 @@ func (a *TestAggregateOther) CreateSnapshot() *eh.Snapshot {
 }
 
 func (a *TestAggregateOther) ApplySnapshot(snapshot *eh.Snapshot) {
-	agg := snapshot.State.(*TestAggregateOther)
+	agg, ok := snapshot.State.(*TestAggregateOther)
+	if !ok {
+		return
+	}
 	a.id = agg.id
 }
