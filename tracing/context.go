@@ -17,6 +17,7 @@ package tracing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 
 	eh "github.com/looplab/eventhorizon"
@@ -73,7 +74,7 @@ func RegisterContext() {
 			}
 
 			parentSpanContext, err := tracer.Extract(opentracing.TextMap, carrier)
-			if err != nil && err != opentracing.ErrSpanContextNotFound {
+			if err != nil && !errors.Is(err, opentracing.ErrSpanContextNotFound) {
 				log.Printf("eventhorizon: could not extract tracing span: %s", err)
 
 				return ctx

@@ -35,12 +35,12 @@ func TestAddHandler(t *testing.T, bus1 eh.EventBus) {
 	ctx := context.Background()
 
 	// Error on nil matcher.
-	if err := bus1.AddHandler(ctx, nil, mocks.NewEventHandler("no-matcher")); err != eh.ErrMissingMatcher {
+	if err := bus1.AddHandler(ctx, nil, mocks.NewEventHandler("no-matcher")); !errors.Is(err, eh.ErrMissingMatcher) {
 		t.Error("the error should be correct:", err)
 	}
 
 	// Error on nil handler.
-	if err := bus1.AddHandler(ctx, eh.MatchAll{}, nil); err != eh.ErrMissingHandler {
+	if err := bus1.AddHandler(ctx, eh.MatchAll{}, nil); !errors.Is(err, eh.ErrMissingHandler) {
 		t.Error("the error should be correct:", err)
 	}
 
@@ -49,7 +49,7 @@ func TestAddHandler(t *testing.T, bus1 eh.EventBus) {
 		t.Fatal("there should be no error:", err)
 	}
 
-	if err := bus1.AddHandler(ctx, eh.MatchAll{}, mocks.NewEventHandler("multi")); err != eh.ErrHandlerAlreadyAdded {
+	if err := bus1.AddHandler(ctx, eh.MatchAll{}, mocks.NewEventHandler("multi")); !errors.Is(err, eh.ErrHandlerAlreadyAdded) {
 		t.Error("the error should be correct:", err)
 	}
 }

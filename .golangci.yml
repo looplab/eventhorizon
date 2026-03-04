@@ -9,7 +9,6 @@ linters:
     - dupl
     - embeddedstructfieldcheck
     - err113
-    - errorlint
     - exhaustive
     - exhaustruct
     - fatcontext

@@ -402,7 +402,7 @@ func (r *Repo) Collection(ctx context.Context, f func(context.Context, *mongo.Co
 func (r *Repo) CreateIndex(ctx context.Context, field string) error {
 	index := mongo.IndexModel{Keys: bson.M{field: 1}}
 	if _, err := r.entities.Indexes().CreateOne(ctx, index); err != nil {
-		return fmt.Errorf("could not create index: %s", err)
+		return fmt.Errorf("could not create index: %w", err)
 	}
 
 	return nil

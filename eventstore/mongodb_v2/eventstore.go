@@ -132,7 +132,7 @@ func newEventStoreWithClient(client *mongo.Client, clientOwnership clientOwnersh
 	// Make sure the $all stream exists.
 	if err := s.streams.FindOne(ctx, bson.M{
 		"_id": "$all",
-	}).Err(); err == mongo.ErrNoDocuments {
+	}).Err(); errors.Is(err, mongo.ErrNoDocuments) {
 		if _, err := s.streams.InsertOne(ctx, bson.M{
 			"_id":      "$all",
 			"position": 0,

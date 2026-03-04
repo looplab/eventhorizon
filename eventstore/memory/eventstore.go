@@ -41,7 +41,7 @@ func NewEventStore(options ...Option) (*EventStore, error) {
 
 	for _, option := range options {
 		if err := option(s); err != nil {
-			return nil, fmt.Errorf("error while applying option: %v", err)
+			return nil, fmt.Errorf("error while applying option: %w", err)
 		}
 	}
 

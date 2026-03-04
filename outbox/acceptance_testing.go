@@ -28,12 +28,12 @@ import (
 
 func TestAddHandler(t *testing.T, o eh.Outbox, ctx context.Context) {
 	// Error on nil matcher.
-	if err := o.AddHandler(ctx, nil, mocks.NewEventHandler("no-matcher")); err != eh.ErrMissingMatcher {
+	if err := o.AddHandler(ctx, nil, mocks.NewEventHandler("no-matcher")); !errors.Is(err, eh.ErrMissingMatcher) {
 		t.Error("the error should be correct:", err)
 	}
 
 	// Error on nil handler.
-	if err := o.AddHandler(ctx, eh.MatchAll{}, nil); err != eh.ErrMissingHandler {
+	if err := o.AddHandler(ctx, eh.MatchAll{}, nil); !errors.Is(err, eh.ErrMissingHandler) {
 		t.Error("the error should be correct:", err)
 	}
 
@@ -42,7 +42,7 @@ func TestAddHandler(t *testing.T, o eh.Outbox, ctx context.Context) {
 		t.Fatal("there should be no error:", err)
 	}
 
-	if err := o.AddHandler(ctx, eh.MatchAll{}, mocks.NewEventHandler("multi")); err != eh.ErrHandlerAlreadyAdded {
+	if err := o.AddHandler(ctx, eh.MatchAll{}, mocks.NewEventHandler("multi")); !errors.Is(err, eh.ErrHandlerAlreadyAdded) {
 		t.Error("the error should be correct:", err)
 	}
 }

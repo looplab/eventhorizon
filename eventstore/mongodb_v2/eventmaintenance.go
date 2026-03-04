@@ -70,7 +70,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 			"version":      event.Version(),
 		})
 		if res.Err() != nil {
-			if res.Err() == mongo.ErrNoDocuments {
+			if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 				return nil, eh.ErrEventNotFound
 			}
 

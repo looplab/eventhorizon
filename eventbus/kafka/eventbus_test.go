@@ -229,8 +229,8 @@ func TestWithTopicPatitions(t *testing.T) {
 	for desc, tc := range testCases {
 		t.Run(desc, func(t *testing.T) {
 			eb, _, err := newTestEventBus("", WithTopicPartitions(tc.numPartitions))
-			if want, got := tc.expectError, err; want != got {
-				t.Fatalf("expected errors to be equal, want %s, got: %s", want, got)
+			if !errors.Is(err, tc.expectError) {
+				t.Fatalf("expected error %v, got: %v", tc.expectError, err)
 			}
 
 			underlyingEb := eb.(*EventBus)
