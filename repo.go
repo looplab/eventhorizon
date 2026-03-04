@@ -58,7 +58,7 @@ type ReadWriteRepo interface {
 // results were delivered without apparent error.
 type Iter interface {
 	Next(context.Context) bool
-	Value() interface{}
+	Value() any
 	// Close must be called after the last Next() to retrieve error if any
 	Close(context.Context) error
 }

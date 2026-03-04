@@ -147,13 +147,15 @@ func (p *GuestListProjector) HandleEvent(ctx context.Context, event eh.Event) er
 	// Load or create the guest list.
 	var g *GuestList
 	m, err := p.repo.Find(ctx, p.eventID)
-	if errors.Is(err, eh.ErrEntityNotFound) {
+
+	switch {
+	case errors.Is(err, eh.ErrEntityNotFound):
 		g = &GuestList{
 			ID: p.eventID,
 		}
-	} else if err != nil {
+	case err != nil:
 		return err
-	} else {
+	default:
 		var ok bool
 		g, ok = m.(*GuestList)
 		if !ok {

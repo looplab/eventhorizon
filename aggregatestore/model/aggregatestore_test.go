@@ -229,7 +229,7 @@ type Aggregate struct {
 
 	ID       uuid.UUID
 	Commands []eh.Command
-	Context  context.Context
+	Context  context.Context //nolint:containedctx
 	// Used to simulate errors in HandleCommand.
 	Err error
 }
@@ -272,7 +272,7 @@ func (a *Aggregate) HandleCommand(ctx context.Context, cmd eh.Command) error {
 type AggregateOther struct {
 	ID       uuid.UUID
 	Commands []eh.Command
-	Context  context.Context
+	Context  context.Context //nolint:containedctx
 	// Used to simulate errors in HandleCommand.
 	Err error
 }

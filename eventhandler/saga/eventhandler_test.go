@@ -42,7 +42,9 @@ func TestEventHandler(t *testing.T) {
 		eh.ForAggregate(mocks.AggregateType, id, 1))
 	saga.commands = []eh.Command{&mocks.Command{ID: uuid.New(), Content: "content"}}
 
-	handler.HandleEvent(ctx, event)
+	if err := handler.HandleEvent(ctx, event); err != nil {
+		t.Fatal(err)
+	}
 
 	if saga.event != event {
 		t.Error("the handled event should be correct:", saga.event)
@@ -76,7 +78,7 @@ const (
 
 type TestSaga struct {
 	event    eh.Event
-	context  context.Context
+	context  context.Context //nolint:containedctx
 	commands []eh.Command
 }
 

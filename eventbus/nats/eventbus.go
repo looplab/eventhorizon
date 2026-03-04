@@ -41,7 +41,7 @@ type EventBus struct {
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan error
-	cctx         context.Context
+	cctx         context.Context //nolint:containedctx
 	cancel       context.CancelFunc
 	wg           sync.WaitGroup
 	codec        eh.EventCodec
@@ -180,7 +180,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	subject := createConsumerSubject(b.streamName, m)
 	consumerName := fmt.Sprintf("%s_%s", b.appID, h.HandlerType())
 
-	sub, err := b.js.QueueSubscribe(subject, consumerName, b.handler(b.cctx, m, h),
+	sub, err := b.js.QueueSubscribe(subject, consumerName, b.handler(b.cctx, m, h), //nolint:contextcheck // bus lifecycle context is intentional here
 		nats.DeliverNew(),
 		nats.ManualAck(),
 		nats.AckExplicit(),
@@ -193,7 +193,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 
 	// capture the subscription of ephemeral consumers so we can unsubscribe when we exit.
 	if b.handlerIsEphemeral(h) {
-		b.unsubscribe = append(b.unsubscribe, func() { sub.Unsubscribe() })
+		b.unsubscribe = append(b.unsubscribe, func() { _ = sub.Unsubscribe() })
 	}
 
 	// Register handler.
@@ -202,7 +202,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	b.wg.Add(1)
 
 	// Handle until context is cancelled.
-	go b.handle(sub)
+	go b.handle()
 
 	return nil
 }
@@ -243,18 +243,13 @@ func (b *EventBus) Close() error {
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(sub *nats.Subscription) {
+func (b *EventBus) handle() {
 	defer b.wg.Done()
 
-	for {
-		select {
-		case <-b.cctx.Done():
-			if b.cctx.Err() != context.Canceled {
-				log.Printf("eventhorizon: context error in NATS event bus: %s", b.cctx.Err())
-			}
+	<-b.cctx.Done()
 
-			return
-		}
+	if b.cctx.Err() != context.Canceled {
+		log.Printf("eventhorizon: context error in NATS event bus: %s", b.cctx.Err())
 	}
 }
 
@@ -268,14 +263,14 @@ func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHan
 			default:
 				log.Printf("eventhorizon: missed error in NATS event bus: %s", err)
 			}
-			msg.Nak()
+			_ = msg.Nak()
 
 			return
 		}
 
 		// Ignore non-matching events.
 		if !m.Match(event) {
-			msg.AckSync()
+			_ = msg.AckSync()
 
 			return
 		}
@@ -289,12 +284,12 @@ func (b *EventBus) handler(ctx context.Context, m eh.EventMatcher, h eh.EventHan
 				log.Printf("eventhorizon: missed error in NATS event bus: %s", err)
 			}
 
-			msg.Nak()
+			_ = msg.Nak()
 
 			return
 		}
 
-		msg.AckSync()
+		_ = msg.AckSync()
 	}
 }
 

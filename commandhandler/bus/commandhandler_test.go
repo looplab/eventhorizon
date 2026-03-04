@@ -25,13 +25,15 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
+type contextKey string
+
 func TestCommandHandler(t *testing.T) {
 	bus := NewCommandHandler()
 	if bus == nil {
 		t.Fatal("there should be a bus")
 	}
 
-	ctx := context.WithValue(context.Background(), "testkey", "testval")
+	ctx := context.WithValue(context.Background(), contextKey("testkey"), "testval")
 
 	t.Log("handle with no handler")
 
@@ -62,7 +64,7 @@ func TestCommandHandler(t *testing.T) {
 		t.Error("the handled command should be correct:", handler.Commands)
 	}
 
-	if val, ok := handler.Context.Value("testkey").(string); !ok || val != "testval" {
+	if val, ok := handler.Context.Value(contextKey("testkey")).(string); !ok || val != "testval" {
 		t.Error("the context should be correct:", handler.Context)
 	}
 

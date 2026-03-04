@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 	"testing"
 	"time"
@@ -35,12 +35,12 @@ func TestAddHandler(t *testing.T, bus1 eh.EventBus) {
 	ctx := context.Background()
 
 	// Error on nil matcher.
-	if err := bus1.AddHandler(ctx, nil, mocks.NewEventHandler("no-matcher")); err != eh.ErrMissingMatcher {
+	if err := bus1.AddHandler(ctx, nil, mocks.NewEventHandler("no-matcher")); !errors.Is(err, eh.ErrMissingMatcher) {
 		t.Error("the error should be correct:", err)
 	}
 
 	// Error on nil handler.
-	if err := bus1.AddHandler(ctx, eh.MatchAll{}, nil); err != eh.ErrMissingHandler {
+	if err := bus1.AddHandler(ctx, eh.MatchAll{}, nil); !errors.Is(err, eh.ErrMissingHandler) {
 		t.Error("the error should be correct:", err)
 	}
 
@@ -49,7 +49,7 @@ func TestAddHandler(t *testing.T, bus1 eh.EventBus) {
 		t.Fatal("there should be no error:", err)
 	}
 
-	if err := bus1.AddHandler(ctx, eh.MatchAll{}, mocks.NewEventHandler("multi")); err != eh.ErrHandlerAlreadyAdded {
+	if err := bus1.AddHandler(ctx, eh.MatchAll{}, mocks.NewEventHandler("multi")); !errors.Is(err, eh.ErrHandlerAlreadyAdded) {
 		t.Error("the error should be correct:", err)
 	}
 }
@@ -58,12 +58,11 @@ func TestAddHandler(t *testing.T, bus1 eh.EventBus) {
 // should pass. It should manually be called from a test case in each
 // implementation:
 //
-//   func TestEventBus(t *testing.T) {
-//       bus1 := NewEventBus()
-//       bus2 := NewEventBus()
-//       eventbus.AcceptanceTest(t, bus1, bus2)
-//   }
-//
+//	func TestEventBus(t *testing.T) {
+//	    bus1 := NewEventBus()
+//	    bus2 := NewEventBus()
+//	    eventbus.AcceptanceTest(t, bus1, bus2)
+//	}
 func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration) {
 	ctx := context.Background()
 	ctx = mocks.WithContextOne(ctx, "testval")
@@ -73,7 +72,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	event1 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event1"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 1),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
+		eh.WithMetadata(map[string]any{"meta": "data", "num": 42.0}),
 	)
 
 	if err := bus1.HandleEvent(ctx, event1); err != nil {
@@ -145,20 +144,20 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 	// Event with data.
 	event2 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event2"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 2),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
+		eh.WithMetadata(map[string]any{"meta": "data", "num": 42.0}),
 	)
 	if err := bus1.HandleEvent(ctx, event2); err != nil {
 		t.Error("there should be no error:", err)
 	}
 
 	// Check for correct event in handler 1 or 2.
-	if !(handlerBus1.Wait(timeout) || handlerBus2.Wait(timeout)) {
+	if !handlerBus1.Wait(timeout) && !handlerBus2.Wait(timeout) {
 		t.Error("did not receive event in time")
 	}
 
 	expectedEvents = []eh.Event{event2}
-	if !(eh.CompareEventSlices(handlerBus1.Events, expectedEvents) ||
-		eh.CompareEventSlices(handlerBus2.Events, expectedEvents)) {
+	if !eh.CompareEventSlices(handlerBus1.Events, expectedEvents) &&
+		!eh.CompareEventSlices(handlerBus2.Events, expectedEvents) {
 		t.Error("the events were incorrect:")
 		t.Log(handlerBus1.Events)
 		t.Log(handlerBus2.Events)
@@ -252,7 +251,7 @@ func AcceptanceTest(t *testing.T, bus1, bus2 eh.EventBus, timeout time.Duration)
 
 	event3 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event3"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 3),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
+		eh.WithMetadata(map[string]any{"meta": "data", "num": 42.0}),
 	)
 	if err := bus1.HandleEvent(ctx, event3); err != nil {
 		t.Error("there should be no error:", err)
@@ -304,9 +303,9 @@ func Benchmark(b *testing.B, bus eh.EventBus) {
 }
 
 type bench interface {
-	Log(args ...interface{})
-	Error(args ...interface{})
-	Fatal(args ...interface{})
+	Log(args ...any)
+	Error(args ...any)
+	Fatal(args ...any)
 
 	ResetTimer()
 	StopTimer()
@@ -370,7 +369,7 @@ func benchmark(t bench, bus eh.EventBus, numAggregates, numHandlers, numEvents i
 		version int
 	}
 
-	for i := 0; i < numAggregates; i++ {
+	for range numAggregates {
 		aggregates = append(aggregates, &struct {
 			id      uuid.UUID
 			version int
@@ -379,8 +378,8 @@ func benchmark(t bench, bus eh.EventBus, numAggregates, numHandlers, numEvents i
 
 	t.ResetTimer()
 
-	for n := 0; n < numEvents; n++ {
-		a := aggregates[rand.Intn(len(aggregates))]
+	for n := range numEvents {
+		a := aggregates[rand.IntN(len(aggregates))] //nolint:gosec
 		a.version++
 
 		timestamp := time.Date(2009, time.November, 10, 23, n, 0, 0, time.UTC)

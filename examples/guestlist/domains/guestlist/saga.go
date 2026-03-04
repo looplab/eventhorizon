@@ -49,11 +49,10 @@ func (s *ResponseSaga) SagaType() saga.Type {
 
 // RunSaga implements the Run saga method of the Saga interface.
 func (s *ResponseSaga) RunSaga(ctx context.Context, event eh.Event, h eh.CommandHandler) error {
-	switch event.EventType() {
-	case InviteAcceptedEvent:
+	if event.EventType() == InviteAcceptedEvent {
 		// Do nothing for already accepted guests.
 		s.acceptedGuestsMu.RLock()
-		ok, _ := s.acceptedGuests[event.AggregateID()]
+		ok := s.acceptedGuests[event.AggregateID()]
 		s.acceptedGuestsMu.RUnlock()
 		if ok {
 			return nil

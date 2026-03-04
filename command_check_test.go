@@ -297,8 +297,7 @@ func (t TestCommandOptional) CommandType() CommandType {
 }
 
 type TestCommandPrivate struct {
-	TestID  uuid.UUID
-	private string
+	TestID uuid.UUID
 }
 
 var _ = Command(TestCommandPrivate{})

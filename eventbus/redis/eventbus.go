@@ -40,7 +40,7 @@ type EventBus struct {
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan error
-	cctx         context.Context
+	cctx         context.Context //nolint:containedctx
 	cancel       context.CancelFunc
 	wg           sync.WaitGroup
 	codec        eh.EventCodec
@@ -129,7 +129,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 
 	args := &redis.XAddArgs{
 		Stream: b.streamName,
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			aggregateTypeKey: event.AggregateType().String(),
 			eventTypeKey:     event.EventType().String(),
 			dataKey:          data,

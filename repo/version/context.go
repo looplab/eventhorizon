@@ -27,13 +27,13 @@ var DefaultMinVersionDeadline = 10 * time.Second
 
 func init() {
 	// Register the version context.
-	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]any) {
 		if v, ok := ctx.Value(minVersionKey).(int); ok {
 			vals[minVersionKeyStr] = v
 		}
 	})
 
-	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]any) context.Context {
 		if v, ok := vals[minVersionKeyStr].(int); ok {
 			return NewContextWithMinVersion(ctx, v)
 		}

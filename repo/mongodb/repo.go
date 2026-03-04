@@ -78,7 +78,7 @@ func NewRepoWithClient(client *mongo.Client, dbName, collection string, options 
 
 func newRepoWithClient(client *mongo.Client, clientOwnership clientOwnership, dbName, collection string, options ...Option) (*Repo, error) {
 	if client == nil {
-		return nil, fmt.Errorf("missing DB client")
+		return nil, errors.New("missing DB client")
 	}
 
 	r := &Repo{
@@ -220,7 +220,7 @@ func (i *iter) Next(ctx context.Context) bool {
 	return true
 }
 
-func (i *iter) Value() interface{} {
+func (i *iter) Value() any {
 	return i.data
 }
 
@@ -267,7 +267,7 @@ func (r *Repo) FindCustomIter(ctx context.Context, f func(context.Context, *mong
 // the query in the callback and returning nil to block a second execution of
 // the same query in FindCustom. Expect a ErrNoCursor if returning a nil
 // query from the callback.
-func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Collection) (*mongo.Cursor, error)) ([]interface{}, error) {
+func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Collection) (*mongo.Cursor, error)) ([]any, error) {
 	if r.newEntity == nil {
 		return nil, &eh.RepoError{
 			Err: ErrModelNotSet,
@@ -290,7 +290,7 @@ func (r *Repo) FindCustom(ctx context.Context, f func(context.Context, *mongo.Co
 		}
 	}
 
-	result := []interface{}{}
+	result := []any{}
 	entity := r.newEntity()
 
 	for cursor.Next(ctx) {
@@ -344,7 +344,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	id := entity.EntityID()
 	if id == uuid.Nil {
 		return &eh.RepoError{
-			Err: fmt.Errorf("missing entity ID"),
+			Err: errors.New("missing entity ID"),
 			Op:  eh.RepoOpSave,
 		}
 	}
@@ -402,7 +402,7 @@ func (r *Repo) Collection(ctx context.Context, f func(context.Context, *mongo.Co
 func (r *Repo) CreateIndex(ctx context.Context, field string) error {
 	index := mongo.IndexModel{Keys: bson.M{field: 1}}
 	if _, err := r.entities.Indexes().CreateOne(ctx, index); err != nil {
-		return fmt.Errorf("could not create index: %s", err)
+		return fmt.Errorf("could not create index: %w", err)
 	}
 
 	return nil

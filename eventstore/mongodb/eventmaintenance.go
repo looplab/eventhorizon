@@ -55,7 +55,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	}
 
 	// Create the event record for the Database.
-	e, err := newEvt(ctx, event)
+	e, err := newEvt(event)
 	if err != nil {
 		return err
 	}

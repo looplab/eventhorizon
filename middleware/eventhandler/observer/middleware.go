@@ -15,7 +15,6 @@
 package observer
 
 import (
-	"fmt"
 	"os"
 
 	eh "github.com/looplab/eventhorizon"
@@ -85,11 +84,11 @@ func (h *eventHandler) InnerHandler() eh.EventHandler {
 // To create handling groups manually use either the NamedGroup or UUIDGroup.
 func NewMiddleware(group Group) func(eh.EventHandler) eh.EventHandler {
 	return func(h eh.EventHandler) eh.EventHandler {
-		return &eventHandler{h, h.HandlerType() + eh.EventHandlerType(fmt.Sprintf("_%s", group.Group()))}
+		return &eventHandler{h, h.HandlerType() + eh.EventHandlerType("_"+group.Group())}
 	}
 }
 
 // Middleware creates an observer middleware with a random group.
 func Middleware(h eh.EventHandler) eh.EventHandler {
-	return &eventHandler{h, h.HandlerType() + eh.EventHandlerType(fmt.Sprintf("_%s", RandomGroup().Group()))}
+	return &eventHandler{h, h.HandlerType() + eh.EventHandlerType("_"+RandomGroup().Group())}
 }

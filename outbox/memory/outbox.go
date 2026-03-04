@@ -35,7 +35,7 @@ type Outbox struct {
 	watchCh        chan *outboxDoc
 	errCh          chan error
 	processingMu   sync.Mutex
-	cctx           context.Context
+	cctx           context.Context //nolint:containedctx
 	cancel         context.CancelFunc
 	wg             sync.WaitGroup
 	codec          eh.EventCodec
@@ -106,7 +106,7 @@ func (o *Outbox) handler(handlerType string) (*matcherHandler, bool) {
 type outboxDoc struct {
 	ID        uuid.UUID
 	Event     eh.Event
-	Ctx       context.Context
+	Ctx       context.Context //nolint:containedctx
 	Handlers  []string
 	CreatedAt time.Time
 	TakenAt   time.Time
@@ -129,7 +129,7 @@ func (o *Outbox) HandleEvent(ctx context.Context, event eh.Event) error {
 	}
 
 	// Create the event record with timestamp.
-	e, err := copyEvent(ctx, event)
+	e, err := copyEvent(event)
 	if err != nil {
 		return fmt.Errorf("could not copy event: %w", err)
 	}
@@ -208,21 +208,14 @@ func (o *Outbox) processWithWatch(ctx context.Context) error {
 			o.dbMu.Lock()
 
 			// Use a new context to let processing finish when canceled.
-			if err := o.processOutboxEvent(context.Background(), r, time.Now()); err != nil {
-				err = fmt.Errorf("could not process outbox event: %w", err)
-				select {
-				case o.errCh <- &eh.OutboxError{Err: err}:
-				default:
-					log.Printf("outbox: missed error in MongoDB outbox: %s", err)
-				}
-			}
+			o.processOutboxEvent(r, time.Now())
 
 			o.dbMu.Unlock()
 		}
 	}
 }
 
-func (o *Outbox) processFullOutbox(ctx context.Context) error {
+func (o *Outbox) processFullOutbox(_ context.Context) error {
 	o.processingMu.Lock()
 	defer o.processingMu.Unlock()
 
@@ -232,23 +225,18 @@ func (o *Outbox) processFullOutbox(ctx context.Context) error {
 	now := time.Now()
 
 	for _, r := range o.db {
-		// Take started but non-finished events after 15 sec,
-		// or non-started events after 10 min.
-		if !(r.TakenAt.Before(now.Add(-PeriodicSweepAge)) ||
-			(r.TakenAt.IsZero() && r.CreatedAt.Before(now.Add(-PeriodicCleanupAge)))) {
+		if !r.TakenAt.Before(now.Add(-PeriodicSweepAge)) &&
+			(!r.TakenAt.IsZero() || !r.CreatedAt.Before(now.Add(-PeriodicCleanupAge))) {
 			continue
 		}
 
-		// Use a new context to let processing finish when canceled.
-		if err := o.processOutboxEvent(context.Background(), r, now); err != nil {
-			return fmt.Errorf("could not process outbox event: %w", err)
-		}
+		o.processOutboxEvent(r, now)
 	}
 
 	return nil
 }
 
-func (o *Outbox) processOutboxEvent(ctx context.Context, r *outboxDoc, now time.Time) error {
+func (o *Outbox) processOutboxEvent(r *outboxDoc, now time.Time) {
 	event := r.Event
 
 	if r.TakenAt.IsZero() ||
@@ -256,10 +244,10 @@ func (o *Outbox) processOutboxEvent(ctx context.Context, r *outboxDoc, now time.
 		(r.TakenAt.IsZero() && r.CreatedAt.Before(now.Add(-PeriodicCleanupAge))) {
 		r.TakenAt = now
 	} else {
-		return nil
+		return
 	}
 
-	var processedHandlers []interface{}
+	var processedHandlers []any
 
 	// Process all handlers without returning handler errors.
 	for _, handlerType := range r.Handlers {
@@ -275,7 +263,7 @@ func (o *Outbox) processOutboxEvent(ctx context.Context, r *outboxDoc, now time.
 		if err := mh.HandleEvent(r.Ctx, event); err != nil {
 			err = fmt.Errorf("could not handle event (%s): %w", mh.HandlerType(), err)
 			select {
-			case o.errCh <- &eh.OutboxError{Err: err, Ctx: ctx, Event: event}:
+			case o.errCh <- &eh.OutboxError{Err: err, Ctx: r.Ctx, Event: event}:
 			default:
 				log.Printf("outbox: missed error in MongoDB outbox: %s", err)
 			}
@@ -298,12 +286,9 @@ func (o *Outbox) processOutboxEvent(ctx context.Context, r *outboxDoc, now time.
 			r.Handlers = r.Handlers[:j]
 		}
 	}
-
-	return nil
 }
 
-// copyEvent duplicates an event.
-func copyEvent(ctx context.Context, event eh.Event) (eh.Event, error) {
+func copyEvent(event eh.Event) (eh.Event, error) {
 	var data eh.EventData
 
 	// Copy data if there is any.
@@ -313,7 +298,9 @@ func copyEvent(ctx context.Context, event eh.Event) (eh.Event, error) {
 			return nil, fmt.Errorf("could not create event data: %w", err)
 		}
 
-		copier.Copy(data, event.Data())
+		if err = copier.Copy(data, event.Data()); err != nil {
+			return nil, fmt.Errorf("could not copy event data: %w", err)
+		}
 	}
 
 	return eh.NewEvent(

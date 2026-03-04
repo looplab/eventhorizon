@@ -44,12 +44,11 @@ const (
 // EventCodec should pass. It should manually be called from a test case in each
 // implementation:
 //
-//   func TestEventCodec(t *testing.T) {
-//       c := EventCodec{}
-//       expectedBytes = []byte("")
-//       codec.EventCodecAcceptanceTest(t, c, expectedBytes)
-//   }
-//
+//	func TestEventCodec(t *testing.T) {
+//	    c := EventCodec{}
+//	    expectedBytes = []byte("")
+//	    codec.EventCodecAcceptanceTest(t, c, expectedBytes)
+//	}
 func EventCodecAcceptanceTest(t *testing.T, c eh.EventCodec, expectedBytes []byte) {
 	// Marshaling.
 	ctx := mocks.WithContextOne(context.Background(), "testval")
@@ -60,7 +59,7 @@ func EventCodecAcceptanceTest(t *testing.T, c eh.EventCodec, expectedBytes []byt
 		String:  "string",
 		Number:  42.0,
 		Slice:   []string{"a", "b"},
-		Map:     map[string]interface{}{"key": "value"}, // NOTE: Just one key to avoid compare issues.
+		Map:     map[string]any{"key": "value"}, // NOTE: Just one key to avoid compare issues.
 		Time:    timestamp,
 		TimeRef: &timestamp,
 		Struct: Nested{
@@ -76,7 +75,7 @@ func EventCodecAcceptanceTest(t *testing.T, c eh.EventCodec, expectedBytes []byt
 	}
 	event := eh.NewEvent(EventType, &eventData, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 1),
-		eh.WithMetadata(map[string]interface{}{"num": 42.0}), // NOTE: Just one key to avoid compare issues.
+		eh.WithMetadata(map[string]any{"num": 42.0}), // NOTE: Just one key to avoid compare issues.
 	)
 
 	b, err := c.MarshalEvent(ctx, event)
@@ -109,7 +108,7 @@ type EventData struct {
 	String     string
 	Number     float64
 	Slice      []string
-	Map        map[string]interface{}
+	Map        map[string]any
 	Time       time.Time
 	TimeRef    *time.Time
 	NullTime   *time.Time
@@ -129,12 +128,11 @@ type Nested struct {
 // CommandCodec should pass. It should manually be called from a test case in each
 // implementation:
 //
-//   func TestCommandCodec(t *testing.T) {
-//       c := CommandCodec{}
-//       expectedBytes = []byte("")
-//       codec.CommandCodecAcceptanceTest(t, c, expectedBytes)
-//   }
-//
+//	func TestCommandCodec(t *testing.T) {
+//	    c := CommandCodec{}
+//	    expectedBytes = []byte("")
+//	    codec.CommandCodecAcceptanceTest(t, c, expectedBytes)
+//	}
 func CommandCodecAcceptanceTest(t *testing.T, c eh.CommandCodec, expectedBytes []byte) {
 	// Marshaling.
 	ctx := mocks.WithContextOne(context.Background(), "testval")
@@ -146,7 +144,7 @@ func CommandCodecAcceptanceTest(t *testing.T, c eh.CommandCodec, expectedBytes [
 		String:  "string",
 		Number:  42.0,
 		Slice:   []string{"a", "b"},
-		Map:     map[string]interface{}{"key": "value"}, // NOTE: Just one key to avoid compare issues.
+		Map:     map[string]any{"key": "value"}, // NOTE: Just one key to avoid compare issues.
 		Time:    timestamp,
 		TimeRef: &timestamp,
 		Struct: Nested{
@@ -192,7 +190,7 @@ type Command struct {
 	String     string
 	Number     float64
 	Slice      []string
-	Map        map[string]interface{}
+	Map        map[string]any
 	Time       time.Time
 	TimeRef    *time.Time
 	NullTime   *time.Time

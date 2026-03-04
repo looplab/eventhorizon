@@ -75,7 +75,7 @@ func TestMiddleware(t *testing.T) {
 
 		err := <-errCh
 
-		if err.Err != handlingErr {
+		if !errors.Is(err.Err, handlingErr) {
 			t.Error("the error should be correct:", err.Err)
 		}
 

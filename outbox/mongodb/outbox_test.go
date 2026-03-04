@@ -2,18 +2,14 @@ package mongodb
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
-	"math/rand"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/looplab/eventhorizon/outbox"
 )
-
-func init() {
-	rand.Seed(time.Now().Unix())
-}
 
 func TestOutboxAddHandler(t *testing.T) {
 	if testing.Short() {

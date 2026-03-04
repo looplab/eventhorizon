@@ -542,7 +542,7 @@ const (
 
 type TestProjector struct {
 	event             eh.Event
-	context           context.Context
+	context           context.Context //nolint:containedctx
 	entity, newEntity eh.Entity
 	// Used to simulate errors in the store.
 	err error

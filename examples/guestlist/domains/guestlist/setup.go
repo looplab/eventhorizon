@@ -40,7 +40,6 @@ func Setup(
 	commandBus *bus.CommandHandler,
 	invitationRepo, guestListRepo eh.ReadWriteRepo,
 	eventID uuid.UUID) error {
-
 	// Create the aggregate repository.
 	aggregateStore, err := events.NewAggregateStore(eventStore)
 	if err != nil {

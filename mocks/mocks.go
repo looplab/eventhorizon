@@ -56,7 +56,7 @@ type EmptyAggregate struct {
 type Aggregate struct {
 	ID       uuid.UUID
 	Commands []eh.Command
-	Context  context.Context
+	Context  context.Context //nolint:containedctx
 	// Used to simulate errors in HandleCommand.
 	Err error
 }
@@ -103,7 +103,10 @@ func (a *Aggregate) CreateSnapshot() *eh.Snapshot {
 }
 
 func (a *Aggregate) ApplySnapshot(snapshot *eh.Snapshot) {
-	agg := snapshot.State.(*Aggregate)
+	agg, ok := snapshot.State.(*Aggregate)
+	if !ok {
+		return
+	}
 	a.ID = agg.ID
 	a.Commands = agg.Commands
 }
@@ -188,7 +191,7 @@ type CommandHandler struct {
 	sync.RWMutex
 
 	Commands []eh.Command
-	Context  context.Context
+	Context  context.Context //nolint:containedctx
 	// Used to simulate errors when handling.
 	Err error
 }
@@ -216,7 +219,7 @@ type EventHandler struct {
 
 	Type    string
 	Events  []eh.Event
-	Context context.Context
+	Context context.Context //nolint:containedctx
 	Time    time.Time
 	Recv    chan eh.Event
 	// Used to simulate errors when publishing.
@@ -282,7 +285,7 @@ func (m *EventHandler) Wait(d time.Duration) bool {
 type AggregateStore struct {
 	Aggregates map[uuid.UUID]eh.Aggregate
 	Snapshots  map[uuid.UUID]eh.Snapshot
-	Context    context.Context
+	Context    context.Context //nolint:containedctx
 	// Used to simulate errors in HandleCommand.
 	Err error
 }
@@ -330,7 +333,7 @@ type EventStore struct {
 	Events   []eh.Event
 	Snapshot eh.Snapshot
 	Loaded   uuid.UUID
-	Context  context.Context
+	Context  context.Context //nolint:containedctx
 	// Used to simulate errors in the store.
 	Err error
 }
@@ -419,7 +422,7 @@ func (m *EventStore) SaveSnapshot(ctx context.Context, id uuid.UUID, snapshot eh
 // EventBus is a mocked eventhorizon.EventBus, useful in testing.
 type EventBus struct {
 	Events  []eh.Event
-	Context context.Context
+	Context context.Context //nolint:containedctx
 	// Used to simulate errors in PublishEvent.
 	Err error
 }
@@ -568,12 +571,12 @@ const (
 
 // Register the marshalers and unmarshalers for ContextOne.
 func init() {
-	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]any) {
 		if val, ok := ContextOne(ctx); ok {
 			vals[contextKeyOneStr] = val
 		}
 	})
-	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]any) context.Context {
 		if val, ok := vals[contextKeyOneStr].(string); ok {
 			return WithContextOne(ctx, val)
 		}

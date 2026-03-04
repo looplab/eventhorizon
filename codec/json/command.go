@@ -27,7 +27,7 @@ import (
 type CommandCodec struct{}
 
 // MarshalCommand marshals a command into bytes in JSON format.
-func (_ CommandCodec) MarshalCommand(ctx context.Context, cmd eh.Command) ([]byte, error) {
+func (CommandCodec) MarshalCommand(ctx context.Context, cmd eh.Command) ([]byte, error) {
 	c := command{
 		CommandType: cmd.CommandType(),
 		Context:     eh.MarshalContext(ctx),
@@ -47,7 +47,7 @@ func (_ CommandCodec) MarshalCommand(ctx context.Context, cmd eh.Command) ([]byt
 }
 
 // UnmarshalCommand unmarshals a command from bytes in JSON format.
-func (_ CommandCodec) UnmarshalCommand(ctx context.Context, b []byte) (eh.Command, context.Context, error) {
+func (CommandCodec) UnmarshalCommand(ctx context.Context, b []byte) (eh.Command, context.Context, error) {
 	var c command
 	if err := json.Unmarshal(b, &c); err != nil {
 		return nil, nil, fmt.Errorf("could not unmarshal command: %w", err)
@@ -69,7 +69,7 @@ func (_ CommandCodec) UnmarshalCommand(ctx context.Context, b []byte) (eh.Comman
 
 // command is the internal structure used on the wire only.
 type command struct {
-	CommandType eh.CommandType         `json:"command_type"`
-	Command     json.RawMessage        `json:"command"`
-	Context     map[string]interface{} `json:"context"`
+	CommandType eh.CommandType  `json:"command_type"`
+	Command     json.RawMessage `json:"command"`
+	Context     map[string]any  `json:"context"`
 }

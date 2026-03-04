@@ -16,7 +16,6 @@ package validate
 
 import (
 	"context"
-	"fmt"
 
 	eh "github.com/looplab/eventhorizon"
 )
@@ -60,7 +59,7 @@ type Error struct {
 
 // Error implements the Error method of the error interface.
 func (e *Error) Error() string {
-	return fmt.Sprintf("invalid command: %s", e.err.Error())
+	return "invalid command: " + e.err.Error()
 }
 
 // Unwrap implements the errors.Unwrap method.

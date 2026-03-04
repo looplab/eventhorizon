@@ -428,7 +428,6 @@ func TestAggregateHandleCommand(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		name, tc := name, tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			err := tc.agg.HandleCommand(context.Background(), tc.cmd)
@@ -659,7 +658,6 @@ func TestAggregateApplyEvent(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		name, tc := name, tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			err := tc.agg.ApplyEvent(context.Background(), tc.event)

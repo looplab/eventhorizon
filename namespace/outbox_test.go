@@ -2,7 +2,6 @@ package namespace
 
 import (
 	"context"
-	"math/rand"
 	"sync"
 	"testing"
 	"time"
@@ -12,10 +11,6 @@ import (
 	"github.com/looplab/eventhorizon/outbox"
 	"github.com/looplab/eventhorizon/outbox/memory"
 )
-
-func init() {
-	rand.Seed(time.Now().Unix())
-}
 
 func TestOutbox(t *testing.T) {
 	usedNamespaces := map[string]struct{}{}

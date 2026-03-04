@@ -92,7 +92,7 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 
 	// Setup the guestlist.
 	eventID := uuid.New()
-	guestlist.Setup(
+	if err := guestlist.Setup(
 		ctx,
 		eventStore,
 		eventBus, // Use the event bus both as local and global handler.
@@ -100,7 +100,9 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 		commandBus,
 		invitationVersionRepo, guestListRepo,
 		eventID,
-	)
+	); err != nil {
+		log.Fatalf("could not setup guestlist: %s", err)
+	}
 
 	// Setup a test utility waiter that waits for all 11 events to occur before
 	// evaluating results.
@@ -190,7 +192,7 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	// Sort the output to be able to compare test results.
 	sort.Strings(invitationStrs)
 	for _, s := range invitationStrs {
-		log.Printf("invitation: %s\n", s)
+		log.Printf("invitation: %s\n", s) //nolint:gosec
 		fmt.Printf("invitation: %s\n", s)
 	}
 
@@ -200,7 +202,7 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 		log.Println("error:", err)
 	}
 	if l, ok := l.(*guestlist.GuestList); ok {
-		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
+		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n", //nolint:gosec
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 		fmt.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)

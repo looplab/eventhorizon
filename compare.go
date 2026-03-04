@@ -95,7 +95,7 @@ func CompareEvents(e1, e2 Event, options ...CompareOption) error {
 	m2 := e2.Metadata()
 
 	if opts.ignorePosition {
-		m1 = map[string]interface{}{}
+		m1 = map[string]any{}
 
 		for k, v := range e1.Metadata() {
 			if k == "position" {
@@ -105,7 +105,7 @@ func CompareEvents(e1, e2 Event, options ...CompareOption) error {
 			m1[k] = v
 		}
 
-		m2 = map[string]interface{}{}
+		m2 = map[string]any{}
 
 		for k, v := range e2.Metadata() {
 			if k == "position" {

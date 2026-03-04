@@ -17,7 +17,7 @@ package outbox
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 	"testing"
 	"time"
@@ -81,7 +81,7 @@ func Benchmark(b *testing.B, o eh.Outbox) {
 		version int
 	}
 
-	for i := 0; i < numAggregates; i++ {
+	for range numAggregates {
 		aggregates = append(aggregates, &struct {
 			id      uuid.UUID
 			version int
@@ -91,8 +91,8 @@ func Benchmark(b *testing.B, o eh.Outbox) {
 	b.Log("setup complete")
 	b.ResetTimer()
 
-	for n := 0; n < numEvents; n++ {
-		a := aggregates[rand.Intn(len(aggregates))]
+	for n := range numEvents {
+		a := aggregates[rand.IntN(len(aggregates))] //nolint:gosec
 		a.version++
 
 		timestamp := time.Date(2009, time.November, 10, 23, n, 0, 0, time.UTC)
