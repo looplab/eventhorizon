@@ -135,6 +135,7 @@ func TestRegisterEventEmptyName(t *testing.T) {
 }
 
 func TestRegisterEventTwice(t *testing.T) {
+	defer UnregisterEventData(TestEventRegisterTwiceType)
 	defer func() {
 		if r := recover(); r == nil || r != "eventhorizon: registering duplicate types for \"TestEventRegisterTwice\"" {
 			t.Error("there should have been a panic:", r)
