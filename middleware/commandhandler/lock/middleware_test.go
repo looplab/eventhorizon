@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
@@ -26,37 +27,36 @@ import (
 )
 
 func TestMiddleware(t *testing.T) {
-	cmd := mocks.Command{
-		ID:      uuid.New(),
-		Content: "content",
-	}
+	synctest.Test(t, func(t *testing.T) {
+		cmd := mocks.Command{
+			ID:      uuid.New(),
+			Content: "content",
+		}
 
-	inner := &LongCommandHandler{}
-	lock := NewLocalLock()
-	m := NewMiddleware(lock)
-	h := eh.UseCommandHandlerMiddleware(inner, m)
+		inner := &LongCommandHandler{}
+		lock := NewLocalLock()
+		m := NewMiddleware(lock)
+		h := eh.UseCommandHandlerMiddleware(inner, m)
 
-	// Start a "long running" command.
-	go func() {
+		go func() {
+			if err := h.HandleCommand(context.Background(), cmd); err != nil {
+				t.Error("there should not be an error:", err)
+			}
+		}()
+
+		synctest.Wait()
+
+		if err := h.HandleCommand(context.Background(), cmd); !errors.Is(err, ErrLockExists) {
+			t.Error("there should be a lock exists error:", err)
+		}
+
+		time.Sleep(100 * time.Millisecond)
+		synctest.Wait()
+
 		if err := h.HandleCommand(context.Background(), cmd); err != nil {
 			t.Error("there should not be an error:", err)
 		}
-	}()
-
-	// Let the goroutine start its work.
-	time.Sleep(10 * time.Millisecond)
-
-	// Try another command with the same ID.
-	if err := h.HandleCommand(context.Background(), cmd); !errors.Is(err, ErrLockExists) {
-		t.Error("there should be a lock exists error:", err)
-	}
-
-	time.Sleep(100 * time.Millisecond)
-
-	// After the initial command is done, it should be possible to issue another.
-	if err := h.HandleCommand(context.Background(), cmd); err != nil {
-		t.Error("there should not be an error:", err)
-	}
+	})
 }
 
 type LongCommandHandler struct{}
