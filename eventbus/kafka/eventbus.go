@@ -44,7 +44,7 @@ type EventBus struct {
 	registered      map[eh.EventHandlerType]struct{}
 	registeredMu    sync.RWMutex
 	errCh           chan error
-	cctx            context.Context
+	cctx            context.Context //nolint:containedctx
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
 	codec           eh.EventCodec

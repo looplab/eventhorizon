@@ -35,7 +35,7 @@ type Outbox struct {
 	watchCh        chan *outboxDoc
 	errCh          chan error
 	processingMu   sync.Mutex
-	cctx           context.Context
+	cctx           context.Context //nolint:containedctx
 	cancel         context.CancelFunc
 	wg             sync.WaitGroup
 	codec          eh.EventCodec
@@ -106,7 +106,7 @@ func (o *Outbox) handler(handlerType string) (*matcherHandler, bool) {
 type outboxDoc struct {
 	ID        uuid.UUID
 	Event     eh.Event
-	Ctx       context.Context
+	Ctx       context.Context //nolint:containedctx
 	Handlers  []string
 	CreatedAt time.Time
 	TakenAt   time.Time

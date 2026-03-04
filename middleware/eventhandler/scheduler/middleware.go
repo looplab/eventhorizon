@@ -38,7 +38,7 @@ func NewMiddleware(ctx context.Context) (eh.EventHandlerMiddleware, *Scheduler) 
 // Scheduler is a event scheduler that periodically inserts events into the event stream.
 // It uses the cron syntax from https://github.com/gorhill/cronexpr.
 type Scheduler struct {
-	ctx      context.Context
+	ctx      context.Context //nolint:containedctx
 	eventChs []chan data
 }
 
@@ -86,7 +86,7 @@ func (s *Scheduler) ScheduleEvent(ctx context.Context, cronLine string, eventFun
 }
 
 type data struct {
-	ctx   context.Context
+	ctx   context.Context //nolint:containedctx
 	event eh.Event
 }
 

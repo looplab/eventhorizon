@@ -96,7 +96,7 @@ type PersistedCommand struct {
 	RawCommand []byte          `json:"command"           bson:"command"`
 	ExecuteAt  time.Time       `json:"timestamp"         bson:"timestamp"`
 	Command    eh.Command      `json:"-"                 bson:"-"`
-	Context    context.Context `json:"-"                 bson:"-"`
+	Context    context.Context `json:"-"                 bson:"-"` //nolint:containedctx
 }
 
 // EntityID implements the EntityID method of the eventhorizon.Entity interface.
@@ -113,7 +113,7 @@ type Scheduler struct {
 	cancelScheduling   map[uuid.UUID]chan struct{}
 	cancelSchedulingMu sync.Mutex
 	errCh              chan error
-	cctx               context.Context
+	cctx               context.Context //nolint:containedctx
 	cancel             context.CancelFunc
 	done               chan struct{}
 	codec              eh.CommandCodec
@@ -187,7 +187,7 @@ func (s *Scheduler) Errors() <-chan error {
 
 type scheduledCommand struct {
 	id        uuid.UUID
-	ctx       context.Context
+	ctx       context.Context //nolint:containedctx
 	cmd       eh.Command
 	executeAt time.Time
 }
@@ -362,7 +362,7 @@ type Error struct {
 	// Err is the error that happened when handling the command.
 	Err error
 	// Ctx is the context used when the error happened.
-	Ctx context.Context
+	Ctx context.Context //nolint:containedctx
 	// Command is the command handeled when the error happened.
 	Command eh.Command
 }

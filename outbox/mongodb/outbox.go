@@ -43,7 +43,7 @@ type Outbox struct {
 	watchToken      string
 	resumeToken     bson.Raw
 	processingMu    sync.Mutex
-	cctx            context.Context
+	cctx            context.Context //nolint:containedctx
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
 	codec           eh.EventCodec

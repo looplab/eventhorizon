@@ -33,7 +33,7 @@ type Outbox struct {
 	handlersMu     sync.RWMutex
 	newOutbox      func(ns string) (eh.Outbox, error)
 	errCh          chan error
-	cctx           context.Context
+	cctx           context.Context //nolint:containedctx
 	cancel         context.CancelFunc
 	wg             sync.WaitGroup
 }

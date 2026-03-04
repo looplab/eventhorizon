@@ -78,7 +78,7 @@ const (
 
 type TestSaga struct {
 	event    eh.Event
-	context  context.Context
+	context  context.Context //nolint:containedctx
 	commands []eh.Command
 }
 
