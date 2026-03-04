@@ -19,7 +19,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-	"time"
+	"testing/synctest"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
@@ -27,44 +27,47 @@ import (
 )
 
 func TestMiddleware(t *testing.T) {
-	cmd := mocks.Command{
-		ID:      uuid.New(),
-		Content: "content",
-	}
+	synctest.Test(t, func(t *testing.T) {
+		cmd := mocks.Command{
+			ID:      uuid.New(),
+			Content: "content",
+		}
 
-	inner := &mocks.CommandHandler{}
-	m, errCh := NewMiddleware()
-	h := eh.UseCommandHandlerMiddleware(inner, m)
+		inner := &mocks.CommandHandler{}
+		m, errCh := NewMiddleware()
+		h := eh.UseCommandHandlerMiddleware(inner, m)
 
-	if err := h.HandleCommand(context.Background(), cmd); err != nil {
-		t.Error("there should never be an error:", err)
-	}
+		if err := h.HandleCommand(context.Background(), cmd); err != nil {
+			t.Error("there should never be an error:", err)
+		}
 
-	select {
-	case err := <-errCh:
-		t.Error("there should not be an error:", err)
-	case <-time.After(time.Millisecond):
-	}
-	inner.RLock()
-	if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
-		t.Error("the command should have been handeled:", inner.Commands)
-	}
-	inner.RUnlock()
+		synctest.Wait()
 
-	// Error handling.
-	inner = &mocks.CommandHandler{}
-	m, errCh = NewMiddleware()
-	h = eh.UseCommandHandlerMiddleware(inner, m)
-	handlingErr := errors.New("handling error")
-	inner.Err = handlingErr
-	ctx := context.Background()
+		select {
+		case err := <-errCh:
+			t.Error("there should not be an error:", err)
+		default:
+		}
 
-	if err := h.HandleCommand(ctx, cmd); err != nil {
-		t.Error("there should never be an error:", err)
-	}
+		if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
+			t.Error("the command should have been handeled:", inner.Commands)
+		}
 
-	select {
-	case err := <-errCh:
+		inner = &mocks.CommandHandler{}
+		m, errCh = NewMiddleware()
+		h = eh.UseCommandHandlerMiddleware(inner, m)
+		handlingErr := errors.New("handling error")
+		inner.Err = handlingErr
+		ctx := context.Background()
+
+		if err := h.HandleCommand(ctx, cmd); err != nil {
+			t.Error("there should never be an error:", err)
+		}
+
+		synctest.Wait()
+
+		err := <-errCh
+
 		if !errors.Is(err, handlingErr) {
 			t.Error("the error should be correct:", err.Err)
 		}
@@ -76,11 +79,9 @@ func TestMiddleware(t *testing.T) {
 		if err.Command != cmd {
 			t.Error("the command should be correct:", err.Command)
 		}
-	case <-time.After(time.Millisecond):
-		t.Error("there should be an error")
-	}
 
-	if !reflect.DeepEqual(inner.Commands, []eh.Command(nil)) {
-		t.Error("the command should not have been handeled:", inner.Commands)
-	}
+		if !reflect.DeepEqual(inner.Commands, []eh.Command(nil)) {
+			t.Error("the command should not have been handeled:", inner.Commands)
+		}
+	})
 }

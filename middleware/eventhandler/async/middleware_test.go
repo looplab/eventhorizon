@@ -19,6 +19,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	eh "github.com/looplab/eventhorizon"
@@ -27,51 +28,53 @@ import (
 )
 
 func TestMiddleware(t *testing.T) {
-	id := uuid.New()
-	eventData := &mocks.EventData{Content: "event1"}
-	timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	event := eh.NewEvent(mocks.EventType, eventData, timestamp,
-		eh.ForAggregate(mocks.AggregateType, id, 1))
+	synctest.Test(t, func(t *testing.T) {
+		id := uuid.New()
+		eventData := &mocks.EventData{Content: "event1"}
+		timestamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+		event := eh.NewEvent(mocks.EventType, eventData, timestamp,
+			eh.ForAggregate(mocks.AggregateType, id, 1))
 
-	inner := mocks.NewEventHandler("test")
-	m, errCh := NewMiddleware()
-	h := eh.UseEventHandlerMiddleware(inner, m)
+		inner := mocks.NewEventHandler("test")
+		m, errCh := NewMiddleware()
+		h := eh.UseEventHandlerMiddleware(inner, m)
 
-	_, ok := h.(eh.EventHandlerChain)
-	if !ok {
-		t.Error("handler is not an EventHandlerChain")
-	}
+		_, ok := h.(eh.EventHandlerChain)
+		if !ok {
+			t.Error("handler is not an EventHandlerChain")
+		}
 
-	if err := h.HandleEvent(context.Background(), event); err != nil {
-		t.Error("there should never be an error:", err)
-	}
+		if err := h.HandleEvent(context.Background(), event); err != nil {
+			t.Error("there should never be an error:", err)
+		}
 
-	select {
-	case err := <-errCh:
-		t.Error("there should not be an error:", err)
-	case <-time.After(time.Millisecond):
-	}
+		synctest.Wait()
 
-	inner.RLock()
-	if !reflect.DeepEqual(inner.Events, []eh.Event{event}) {
-		t.Error("the event should have been handeled:", inner.Events)
-	}
-	inner.RUnlock()
+		select {
+		case err := <-errCh:
+			t.Error("there should not be an error:", err)
+		default:
+		}
 
-	// Error handling.
-	inner = mocks.NewEventHandler("test")
-	m, errCh = NewMiddleware()
-	h = eh.UseEventHandlerMiddleware(inner, m)
-	handlingErr := errors.New("handling error")
-	inner.Err = handlingErr
-	ctx := context.Background()
+		if !reflect.DeepEqual(inner.Events, []eh.Event{event}) {
+			t.Error("the event should have been handeled:", inner.Events)
+		}
 
-	if err := h.HandleEvent(ctx, event); err != nil {
-		t.Error("there should never be an error:", err)
-	}
+		inner = mocks.NewEventHandler("test")
+		m, errCh = NewMiddleware()
+		h = eh.UseEventHandlerMiddleware(inner, m)
+		handlingErr := errors.New("handling error")
+		inner.Err = handlingErr
+		ctx := context.Background()
 
-	select {
-	case err := <-errCh:
+		if err := h.HandleEvent(ctx, event); err != nil {
+			t.Error("there should never be an error:", err)
+		}
+
+		synctest.Wait()
+
+		err := <-errCh
+
 		if err.Err != handlingErr {
 			t.Error("the error should be correct:", err.Err)
 		}
@@ -83,11 +86,9 @@ func TestMiddleware(t *testing.T) {
 		if err.Event != event {
 			t.Error("the event should be correct:", err.Event)
 		}
-	case <-time.After(time.Millisecond):
-		t.Error("there should be an error")
-	}
 
-	if !reflect.DeepEqual(inner.Events, []eh.Event{}) {
-		t.Error("the event should not have been handeled:", inner.Events)
-	}
+		if !reflect.DeepEqual(inner.Events, []eh.Event{}) {
+			t.Error("the event should not have been handeled:", inner.Events)
+		}
+	})
 }
