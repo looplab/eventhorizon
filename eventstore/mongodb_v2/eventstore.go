@@ -599,7 +599,7 @@ func (s *EventStore) SaveSnapshot(ctx context.Context, id uuid.UUID, snapshot eh
 	}
 
 	if record.RawData, err = json.Marshal(snapshot); err != nil {
-		return
+		return err
 	}
 
 	if err = record.compress(); err != nil {

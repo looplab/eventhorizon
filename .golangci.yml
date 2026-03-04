@@ -31,7 +31,6 @@ linters:
     - maintidx
     - mnd
     - musttag
-    - nakedret
     - nestif
     - nilnil
     - nlreturn
