@@ -42,7 +42,6 @@ linters:
     - tagliatelle
     - testpackage
     - thelper
-    - tparallel
     - varnamelen
     - wrapcheck
     - wsl
