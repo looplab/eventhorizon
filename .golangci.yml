@@ -44,7 +44,6 @@ linters:
     - testpackage
     - thelper
     - tparallel
-    - unparam
     - varnamelen
     - wrapcheck
     - wsl

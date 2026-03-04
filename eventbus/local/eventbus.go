@@ -95,7 +95,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 		return fmt.Errorf("could not marshal event: %w", err)
 	}
 
-	return b.group.publish(ctx, data)
+	return b.group.publish(data)
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
@@ -214,7 +214,7 @@ func (g *Group) channel(id string) <-chan []byte {
 	return ch
 }
 
-func (g *Group) publish(ctx context.Context, b []byte) error {
+func (g *Group) publish(b []byte) error {
 	g.busMu.RLock()
 	defer g.busMu.RUnlock()
 

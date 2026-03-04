@@ -202,7 +202,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	b.wg.Add(1)
 
 	// Handle until context is cancelled.
-	go b.handle(sub)
+	go b.handle()
 
 	return nil
 }
@@ -243,7 +243,7 @@ func (b *EventBus) Close() error {
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(sub *nats.Subscription) {
+func (b *EventBus) handle() {
 	defer b.wg.Done()
 
 	<-b.cctx.Done()

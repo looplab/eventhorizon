@@ -43,7 +43,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	s.dbMu.RUnlock()
 
 	// Create the event record for the Database.
-	e, err := copyEvent(ctx, event)
+	e, err := copyEvent(event)
 	if err != nil {
 		return &eh.EventStoreError{
 			Err:         fmt.Errorf("could not copy event: %w", err),

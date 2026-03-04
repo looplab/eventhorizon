@@ -206,7 +206,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		}
 
 		// Create the event record for the DB.
-		e, err := newEvt(ctx, event)
+		e, err := newEvt(event)
 		if err != nil {
 			return &eh.EventStoreError{
 				Err:              fmt.Errorf("could not copy event: %w", err),
@@ -430,7 +430,7 @@ type evt struct {
 }
 
 // newEvt returns a new evt for an event.
-func newEvt(ctx context.Context, event eh.Event) (*evt, error) {
+func newEvt(event eh.Event) (*evt, error) {
 	e := &evt{
 		EventType:     event.EventType(),
 		Timestamp:     event.Timestamp(),

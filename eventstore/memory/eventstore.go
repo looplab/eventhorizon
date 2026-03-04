@@ -63,7 +63,7 @@ func WithEventHandler(h eh.EventHandler) Option {
 
 // Save implements the Save method of the eventhorizon.EventStore interface.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
-	if err := s.save(ctx, events, originalVersion); err != nil {
+	if err := s.save(events, originalVersion); err != nil {
 		return err
 	}
 
@@ -84,7 +84,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 }
 
 // This method needs to be separate from the Save() method to not lock the mutex during publishing.
-func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersion int) error {
+func (s *EventStore) save(events []eh.Event, originalVersion int) error {
 	s.dbMu.Lock()
 	defer s.dbMu.Unlock()
 
@@ -138,7 +138,7 @@ func (s *EventStore) save(ctx context.Context, events []eh.Event, originalVersio
 		}
 
 		// Create the event record with timestamp.
-		e, err := copyEvent(ctx, event)
+		e, err := copyEvent(event)
 		if err != nil {
 			return &eh.EventStoreError{
 				Err:              fmt.Errorf("could not copy event: %w", err),
@@ -214,7 +214,7 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 			continue
 		}
 
-		e, err := copyEvent(ctx, event)
+		e, err := copyEvent(event)
 		if err != nil {
 			return nil, &eh.EventStoreError{
 				Err:              fmt.Errorf("could not copy event: %w", err),
@@ -245,7 +245,7 @@ func (s *EventStore) Close() error {
 }
 
 // copyEvent duplicates an event.
-func copyEvent(ctx context.Context, event eh.Event) (eh.Event, error) {
+func copyEvent(event eh.Event) (eh.Event, error) {
 	var data eh.EventData
 
 	// Copy data if there is any.

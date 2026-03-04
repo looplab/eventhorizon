@@ -359,7 +359,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 		}
 	}()
 
-	handler := b.handler(m, h, r)
+	handler := b.handler(m, h)
 
 	for {
 		select {
@@ -417,7 +417,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 	}
 }
 
-func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) *eh.EventBusError {
+func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx context.Context, msg kafka.Message) *eh.EventBusError {
 	return func(ctx context.Context, msg kafka.Message) *eh.EventBusError {
 		event, ctx, err := b.codec.UnmarshalEvent(ctx, msg.Value)
 		if err != nil {
