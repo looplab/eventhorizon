@@ -195,5 +195,20 @@ func CreateAggregate(aggregateType AggregateType, id uuid.UUID) (Aggregate, erro
 	return nil, ErrAggregateNotRegistered
 }
 
+func UnregisterAggregate(aggregateType AggregateType) {
+	if aggregateType == AggregateType("") {
+		panic("eventhorizon: attempt to unregister empty aggregate type")
+	}
+
+	aggregatesMu.Lock()
+	defer aggregatesMu.Unlock()
+
+	if _, ok := aggregates[aggregateType]; !ok {
+		panic(fmt.Sprintf("eventhorizon: unregister of non-registered type %q", aggregateType))
+	}
+
+	delete(aggregates, aggregateType)
+}
+
 var aggregates = make(map[AggregateType]func(uuid.UUID) Aggregate)
 var aggregatesMu sync.RWMutex
