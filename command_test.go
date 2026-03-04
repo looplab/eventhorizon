@@ -88,8 +88,22 @@ func TestUnregisterCommandTwice(t *testing.T) {
 	UnregisterCommand(TestCommandUnregisterTwiceType)
 }
 
+func TestRegisterCommandType(t *testing.T) {
+	RegisterCommandType[TestCommandRegisterGeneric]()
+	defer UnregisterCommand(TestCommandRegisterGenericType)
+
+	cmd, err := CreateCommand(TestCommandRegisterGenericType)
+	if err != nil {
+		t.Error("there should be no error:", err)
+	}
+
+	if cmd.CommandType() != TestCommandRegisterGenericType {
+		t.Error("the command type should be correct:", cmd.CommandType())
+	}
+}
+
 func TestRegisteredCommands(t *testing.T) {
-	commands = make(map[CommandType]func() Command)
+	commands.reset()
 	RegisterCommand(func() Command { return &TestCommandRegister{} })
 	defer UnregisterCommand(TestCommandRegisterType)
 
@@ -100,6 +114,7 @@ func TestRegisteredCommands(t *testing.T) {
 }
 
 const (
+	TestCommandRegisterGenericType CommandType = "TestCommandRegisterGeneric"
 	TestCommandRegisterType        CommandType = "TestCommandRegister"
 	TestCommandRegisterEmptyType   CommandType = ""
 	TestCommandRegisterTwiceType   CommandType = "TestCommandRegisterTwice"
@@ -132,6 +147,16 @@ var _ = Command(TestCommandRegisterTwice{})
 func (a TestCommandRegisterTwice) AggregateID() uuid.UUID       { return uuid.Nil }
 func (a TestCommandRegisterTwice) AggregateType() AggregateType { return TestAggregateType }
 func (a TestCommandRegisterTwice) CommandType() CommandType     { return TestCommandRegisterTwiceType }
+
+type TestCommandRegisterGeneric struct{}
+
+var _ = Command(&TestCommandRegisterGeneric{})
+
+func (a *TestCommandRegisterGeneric) AggregateID() uuid.UUID       { return uuid.Nil }
+func (a *TestCommandRegisterGeneric) AggregateType() AggregateType { return TestAggregateType }
+func (a *TestCommandRegisterGeneric) CommandType() CommandType {
+	return TestCommandRegisterGenericType
+}
 
 type TestCommandUnregisterTwice struct{}
 

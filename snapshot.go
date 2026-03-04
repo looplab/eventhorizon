@@ -16,8 +16,6 @@ package eventhorizon
 
 import (
 	"errors"
-	"fmt"
-	"sync"
 	"time"
 
 	"github.com/looplab/eventhorizon/uuid"
@@ -37,11 +35,7 @@ type Snapshot struct {
 	State         interface{}
 }
 
-var snapshotDataFactories = make(map[AggregateType]func(uuid2 uuid.UUID) SnapshotData)
-
 type SnapshotData interface{}
-
-var snapshotDataFactoriesMu sync.RWMutex
 
 var ErrSnapshotDataNotRegistered = errors.New("snapshot data not registered")
 
@@ -52,28 +46,16 @@ var ErrSnapshotDataNotRegistered = errors.New("snapshot data not registered")
 //
 //	RegisterSnapshotData("aggregateType1", func() SnapshotData { return &MySnapshotData{} })
 func RegisterSnapshotData(aggregateType AggregateType, factory func(id uuid.UUID) SnapshotData) {
-	if aggregateType == AggregateType("") {
-		panic("eventhorizon: attempt to register empty aggregate type")
-	}
-
-	snapshotDataFactoriesMu.Lock()
-	defer snapshotDataFactoriesMu.Unlock()
-
-	if _, ok := snapshotDataFactories[aggregateType]; ok {
-		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", aggregateType))
-	}
-
-	snapshotDataFactories[aggregateType] = factory
+	snapshotDataFactories.register(aggregateType, factory)
 }
 
 // CreateSnapshotData create a concrete instance using the registered snapshot factories.
 func CreateSnapshotData(AggregateID uuid.UUID, aggregateType AggregateType) (SnapshotData, error) {
-	snapshotDataFactoriesMu.RLock()
-	defer snapshotDataFactoriesMu.RUnlock()
-
-	if factory, ok := snapshotDataFactories[aggregateType]; ok {
+	if factory, ok := snapshotDataFactories.get(aggregateType); ok {
 		return factory(AggregateID), nil
 	}
 
 	return nil, ErrSnapshotDataNotRegistered
 }
+
+var snapshotDataFactories = newTypeRegistry[AggregateType, func(uuid.UUID) SnapshotData]("aggregate")

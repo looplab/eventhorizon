@@ -77,23 +77,23 @@ const (
 
 // AggregateIDFromContext return the command type from the context.
 func AggregateIDFromContext(ctx context.Context) (uuid.UUID, bool) {
-	aggregateID, ok := ctx.Value(aggregateIDKey).(uuid.UUID)
-
-	return aggregateID, ok
+	return fromContext[uuid.UUID](ctx, aggregateIDKey)
 }
 
 // AggregateTypeFromContext return the command type from the context.
 func AggregateTypeFromContext(ctx context.Context) (AggregateType, bool) {
-	aggregateType, ok := ctx.Value(aggregateTypeKey).(AggregateType)
-
-	return aggregateType, ok
+	return fromContext[AggregateType](ctx, aggregateTypeKey)
 }
 
 // CommandTypeFromContext return the command type from the context.
 func CommandTypeFromContext(ctx context.Context) (CommandType, bool) {
-	commandType, ok := ctx.Value(commandTypeKey).(CommandType)
+	return fromContext[CommandType](ctx, commandTypeKey)
+}
 
-	return commandType, ok
+func fromContext[T any](ctx context.Context, key contextKey) (T, bool) {
+	val, ok := ctx.Value(key).(T)
+
+	return val, ok
 }
 
 // NewContextWithAggregateID adds a aggregate ID on the context.
