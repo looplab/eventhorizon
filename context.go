@@ -177,7 +177,7 @@ func UnmarshalContext(ctx context.Context, vals map[string]any) context.Context 
 	}
 
 	for _, f := range contextUnmarshalFuncs {
-		ctx = f(ctx, vals)
+		ctx = f(ctx, vals) //nolint:fatcontext
 	}
 
 	return ctx
