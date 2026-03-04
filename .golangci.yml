@@ -3,7 +3,6 @@ linters:
   default: all
   disable:
     - containedctx
-    - contextcheck
     - cyclop
     - depguard
     - dupl
@@ -58,7 +57,7 @@ linters:
     paths:
       - third_party$
       - builtin$
-      - examples$
+      - examples/
 formatters:
   enable:
     - gofmt
@@ -68,4 +67,4 @@ formatters:
     paths:
       - third_party$
       - builtin$
-      - examples$
+      - examples/

@@ -295,7 +295,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 	defer sess.EndSession(ctx)
 
-	if _, err := sess.WithTransaction(ctx, func(txCtx mongo.SessionContext) (any, error) {
+	if _, err := sess.WithTransaction(ctx, func(txCtx mongo.SessionContext) (any, error) { //nolint:contextcheck // mongo session context is inherited via WithTransaction
 		// Fetch and increment global version in the all-stream.
 		r := s.streams.FindOneAndUpdate(txCtx,
 			bson.M{"_id": "$all"},

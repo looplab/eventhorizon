@@ -313,7 +313,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	b.wg.Add(1)
 
 	// Handle until context is cancelled.
-	go b.handle(m, h, r)
+	go b.handle(b.cctx, m, h, r) //nolint:contextcheck // bus lifecycle context outlives the AddHandler call
 
 	req := &kafka.ListGroupsRequest{
 		Addr: b.client.Addr,
@@ -351,7 +351,7 @@ func (b *EventBus) Close() error {
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) {
+func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) {
 	defer b.wg.Done()
 	defer func() {
 		if err := r.Close(); err != nil {
@@ -363,12 +363,12 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 
 	for {
 		select {
-		case <-b.cctx.Done():
+		case <-ctx.Done():
 			return
 		default:
 		}
 
-		msg, err := r.FetchMessage(b.cctx)
+		msg, err := r.FetchMessage(ctx)
 		if errors.Is(err, context.Canceled) {
 			break
 		} else if err != nil {
@@ -387,12 +387,12 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 
 		for {
 			select {
-			case <-b.cctx.Done():
+			case <-ctx.Done():
 				return
 			default:
 			}
 
-			if err := handler(b.cctx, msg); err != nil {
+			if err := handler(ctx, msg); err != nil {
 				select {
 				case b.errCh <- err:
 				default:
@@ -402,7 +402,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 				time.Sleep(time.Second)
 			} else {
 				// Use a new context to always finish the commit.
-				if err := r.CommitMessages(context.Background(), msg); err != nil {
+				if err := r.CommitMessages(context.Background(), msg); err != nil { //nolint:contextcheck // commit must complete even if bus context is cancelled
 					err = fmt.Errorf("could not commit message: %w", err)
 					select {
 					case b.errCh <- &eh.EventBusError{Err: err}:

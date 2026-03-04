@@ -99,7 +99,7 @@ func (h *eventHandler) run(ctx context.Context) error {
 	for {
 		select {
 		case data := <-h.eventsCh:
-			if err := h.HandleEvent(data.ctx, data.event); err != nil {
+			if err := h.HandleEvent(data.ctx, data.event); err != nil { //nolint:contextcheck // scheduled event uses its stored context
 				return err
 			}
 		case <-ctx.Done():

@@ -311,7 +311,7 @@ func (o *Outbox) processWithWatch(ctx context.Context) error {
 
 	// Watch loop.
 	for stream.Next(gracefulCtx) {
-		if err := o.processStreamEvent(stream.Current); err != nil {
+		if err := o.processStreamEvent(gracefulCtx, stream.Current); err != nil {
 			select {
 			case o.errCh <- &eh.OutboxError{Err: err}:
 			default:
@@ -330,7 +330,7 @@ func (o *Outbox) processWithWatch(ctx context.Context) error {
 	return nil
 }
 
-func (o *Outbox) processStreamEvent(streamEvent bson.Raw) error {
+func (o *Outbox) processStreamEvent(_ context.Context, streamEvent bson.Raw) error {
 	o.processingMu.Lock()
 	defer o.processingMu.Unlock()
 
@@ -344,8 +344,7 @@ func (o *Outbox) processStreamEvent(streamEvent bson.Raw) error {
 		return fmt.Errorf("could not unmarshal outbox event: %w", err)
 	}
 
-	// Use a new context to let processing finish when canceled.
-	if err := o.processOutboxEvent(context.Background(), &r, time.Now()); err != nil {
+	if err := o.processOutboxEvent(context.Background(), &r, time.Now()); err != nil { //nolint:contextcheck // processing must complete even if parent context is cancelled
 		return fmt.Errorf("could not process outbox event: %w", err)
 	}
 
@@ -375,8 +374,7 @@ func (o *Outbox) processFullOutbox(ctx context.Context) error {
 			return fmt.Errorf("could not unmarshal outbox event: %w", err)
 		}
 
-		// Use a new context to let processing finish when canceled.
-		if err := o.processOutboxEvent(context.Background(), &r, now); err != nil {
+		if err := o.processOutboxEvent(context.Background(), &r, now); err != nil { //nolint:contextcheck // processing must complete even if parent context is cancelled
 			return fmt.Errorf("could not process outbox event: %w", err)
 		}
 	}

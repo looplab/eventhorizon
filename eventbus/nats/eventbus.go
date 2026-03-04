@@ -180,7 +180,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	subject := createConsumerSubject(b.streamName, m)
 	consumerName := fmt.Sprintf("%s_%s", b.appID, h.HandlerType())
 
-	sub, err := b.js.QueueSubscribe(subject, consumerName, b.handler(b.cctx, m, h),
+	sub, err := b.js.QueueSubscribe(subject, consumerName, b.handler(b.cctx, m, h), //nolint:contextcheck // bus lifecycle context is intentional here
 		nats.DeliverNew(),
 		nats.ManualAck(),
 		nats.AckExplicit(),

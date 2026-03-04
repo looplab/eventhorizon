@@ -222,7 +222,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	}
 
 	// Run the operation in a transaction if using an outbox, otherwise it's not needed.
-	saveEvents := func(ctx mongo.SessionContext) error {
+	saveEvents := func(ctx mongo.SessionContext) error { //nolint:contextcheck // mongo session context is inherited via WithTransaction
 		// Either insert a new aggregate or append to an existing.
 		if originalVersion == 0 {
 			aggregate := aggregateRecord{
@@ -272,7 +272,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 		defer sess.EndSession(ctx)
 
-		if _, err := sess.WithTransaction(ctx, func(ctx mongo.SessionContext) (any, error) {
+		if _, err := sess.WithTransaction(ctx, func(ctx mongo.SessionContext) (any, error) { //nolint:contextcheck // mongo session context is inherited via WithTransaction
 			if err := saveEvents(ctx); err != nil {
 				return nil, err
 			}

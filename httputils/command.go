@@ -58,7 +58,7 @@ func CommandHandler(commandHandler eh.CommandHandler, commandType eh.CommandType
 		// the HTTP request which will cause projectors etc to fail if they run
 		// async in goroutines past the request.
 		ctx := context.Background()
-		if err := commandHandler.HandleCommand(ctx, cmd); err != nil {
+		if err := commandHandler.HandleCommand(ctx, cmd); err != nil { //nolint:contextcheck // command handling must outlive the HTTP request
 			http.Error(w, "could not handle command: "+err.Error(), http.StatusBadRequest)
 
 			return

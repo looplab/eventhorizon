@@ -140,7 +140,7 @@ func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context, prefix strin
 		t.Log(handler.Events)
 	}
 
-	if val, ok := mocks.ContextOne(handler.Context); !ok || val != "testval" {
+	if val, ok := mocks.ContextOne(handler.Context); !ok || val != "testval" { //nolint:contextcheck // test assertion on stored handler context
 		t.Error("the context should be correct:", handler.Context)
 	}
 
@@ -158,7 +158,7 @@ func AcceptanceTest(t *testing.T, o eh.Outbox, ctx context.Context, prefix strin
 		t.Log(anotherHandler.Events)
 	}
 
-	if val, ok := mocks.ContextOne(anotherHandler.Context); !ok || val != "testval" {
+	if val, ok := mocks.ContextOne(anotherHandler.Context); !ok || val != "testval" { //nolint:contextcheck // test assertion on stored handler context
 		t.Error("the context should be correct:", anotherHandler.Context)
 	}
 

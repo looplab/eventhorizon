@@ -126,7 +126,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	b.wg.Add(1)
 
 	// Handle until context is cancelled.
-	go b.handle(m, h, ch)
+	go b.handle(b.cctx, m, h, ch) //nolint:contextcheck // bus lifecycle context outlives the AddHandler call
 
 	return nil
 }
@@ -146,7 +146,7 @@ func (b *EventBus) Close() error {
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte) {
+func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte) {
 	defer b.wg.Done()
 
 	for {
@@ -155,7 +155,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte
 			// Artificial delay to simulate network.
 			time.Sleep(time.Millisecond)
 
-			event, ctx, err := b.codec.UnmarshalEvent(b.cctx, data)
+			event, ctx, err := b.codec.UnmarshalEvent(ctx, data)
 			if err != nil {
 				err = fmt.Errorf("could not unmarshal event: %w", err)
 				select {
@@ -181,7 +181,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte
 					log.Printf("eventhorizon: missed error in local event bus: %s", err)
 				}
 			}
-		case <-b.cctx.Done():
+		case <-ctx.Done():
 			return
 		}
 	}
