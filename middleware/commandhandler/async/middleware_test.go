@@ -50,7 +50,7 @@ func TestMiddleware(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(inner.Commands, []eh.Command{cmd}) {
-			t.Error("the command should have been handeled:", inner.Commands)
+			t.Error("the command should have been handled:", inner.Commands)
 		}
 
 		inner = &mocks.CommandHandler{}
@@ -81,7 +81,7 @@ func TestMiddleware(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(inner.Commands, []eh.Command(nil)) {
-			t.Error("the command should not have been handeled:", inner.Commands)
+			t.Error("the command should not have been handled:", inner.Commands)
 		}
 	})
 }
