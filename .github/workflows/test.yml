@@ -11,12 +11,12 @@ jobs:
     name: Unit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.23
+          go-version-file: go.mod
 
       - name: Test
         shell: bash
@@ -33,12 +33,12 @@ jobs:
     name: Integration
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.23
+          go-version-file: go.mod
 
       - name: Services
         shell: bash
@@ -61,12 +61,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [unit, integration]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.23
+          go-version-file: go.mod
 
       - name: Load unit coverage
         uses: actions/download-artifact@v4
@@ -81,16 +81,18 @@ jobs:
       - name: Merge coverage
         shell: bash
         run: |
-          make merge_coverage
+          head -1 unit.coverprofile > coverage.out
+          tail -n +2 unit.coverprofile >> coverage.out
+          tail -n +2 integration.coverprofile >> coverage.out
 
       - name: Convert coverage
-        uses: jandelgado/gcov2lcov-action@v1.0.5
+        uses: jandelgado/gcov2lcov-action@v1.0.9
         with:
           infile: coverage.out
           outfile: coverage.lcov
 
       - name: Upload coverage
-        uses: coverallsapp/github-action@master
+        uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.github_token }}
-          path-to-lcov: coverage.lcov
+          file: coverage.lcov
