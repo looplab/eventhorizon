@@ -1,0 +1,7 @@
+{
+  "release-type": "go",
+  "bump-minor-pre-major": true,
+  "packages": {
+    ".": {}
+  }
+}
