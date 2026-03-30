@@ -2,23 +2,89 @@ package mongodb
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
-	"math/rand"
+	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/testcontainers/testcontainers-go"
+	tcMongo "github.com/testcontainers/testcontainers-go/modules/mongodb"
 
 	"github.com/looplab/eventhorizon/outbox"
 )
 
-func init() {
-	rand.Seed(time.Now().Unix())
+var testMongoURL string
+
+func TestMain(m *testing.M) {
+	if addr := os.Getenv("MONGODB_ADDR"); addr != "" {
+		testMongoURL = "mongodb://" + addr
+		os.Exit(m.Run())
+	}
+
+	os.Exit(runWithMongo(m))
+}
+
+func runWithMongo(m *testing.M) int {
+	ctx := context.Background()
+
+	container, err := tcMongo.Run(ctx, "mongo:7", tcMongo.WithReplicaSet("rs0"))
+	defer func() {
+		if err := testcontainers.TerminateContainer(container); err != nil {
+			log.Printf("failed to terminate container: %s", err)
+		}
+	}()
+
+	if err != nil {
+		log.Printf("could not start MongoDB container (skipping integration tests): %s", err)
+		return m.Run()
+	}
+
+	testMongoURL, err = container.ConnectionString(ctx)
+	if err != nil {
+		log.Printf("unable to get MongoDB connection string: %s", err)
+		return m.Run()
+	}
+
+	if !strings.Contains(testMongoURL, "?") {
+		testMongoURL += "?directConnection=true&replicaSet=rs0"
+	} else {
+		testMongoURL += "&directConnection=true&replicaSet=rs0"
+	}
+
+	return m.Run()
+}
+
+func requireMongo(t *testing.T) {
+	t.Helper()
+
+	if testMongoURL == "" {
+		t.Skip("no MongoDB available (Docker not running?)")
+	}
+}
+
+func makeDB(t *testing.T) (string, string) {
+	t.Helper()
+
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+
+	db := "test-" + hex.EncodeToString(b)
+	t.Log("using DB:", db)
+
+	return testMongoURL, db
 }
 
 func TestOutboxAddHandler(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
+
+	requireMongo(t)
 
 	url, db := makeDB(t)
 
@@ -34,6 +100,8 @@ func TestOutboxIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
+
+	requireMongo(t)
 
 	url, db := makeDB(t)
 
@@ -60,6 +128,8 @@ func TestWithCollectionNameIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
+	requireMongo(t)
+
 	url, db := makeDB(t)
 
 	o, err := NewOutbox(url, db, WithCollectionName("foo-outbox"))
@@ -83,6 +153,8 @@ func TestWithCollectionNameInvalidNames(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
+	requireMongo(t)
+
 	url, db := makeDB(t)
 
 	nameWithSpaces := "foo outbox"
@@ -97,35 +169,10 @@ func TestWithCollectionNameInvalidNames(t *testing.T) {
 	}
 }
 
-func makeDB(t *testing.T) (string, string) {
-	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGODB_ADDR")
-	if url == "" {
-		url = "localhost:27017"
-	}
-
-	url = "mongodb://" + url
-
-	// Get a random DB name.
-	bs := make([]byte, 4)
-	if _, err := rand.Read(bs); err != nil {
-		t.Fatal(err)
-	}
-
-	db := "test-" + hex.EncodeToString(bs)
-
-	t.Log("using DB:", db)
-	return url, db
-}
-
 func BenchmarkOutbox(b *testing.B) {
-	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGODB_ADDR")
-	if url == "" {
-		url = "localhost:27017"
+	if testMongoURL == "" {
+		b.Skip("no MongoDB available")
 	}
-
-	url = "mongodb://" + url
 
 	// Get a random DB name.
 	bs := make([]byte, 4)
@@ -134,7 +181,6 @@ func BenchmarkOutbox(b *testing.B) {
 	}
 
 	db := "test-" + hex.EncodeToString(bs)
-
 	b.Log("using DB:", db)
 
 	// Shorter sweeps for testing.
@@ -142,7 +188,7 @@ func BenchmarkOutbox(b *testing.B) {
 	PeriodicSweepAge = 1 * time.Second
 	PeriodicCleanupAge = 5 * time.Second
 
-	o, err := NewOutbox(url, db)
+	o, err := NewOutbox(testMongoURL, db)
 	if err != nil {
 		b.Fatal(err)
 	}

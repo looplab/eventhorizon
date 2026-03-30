@@ -18,9 +18,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/testcontainers/testcontainers-go"
+	tcMongo "github.com/testcontainers/testcontainers-go/modules/mongodb"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventstore"
@@ -28,30 +33,77 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-func TestEventStoreIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
+var testMongoURL string
+
+func TestMain(m *testing.M) {
+	if addr := os.Getenv("MONGODB_ADDR"); addr != "" {
+		testMongoURL = "mongodb://" + addr
+		os.Exit(m.Run())
 	}
 
-	// Use MongoDB in Docker with fallback to localhost.
-	addr := os.Getenv("MONGODB_ADDR")
-	if addr == "" {
-		addr = "localhost:27017"
+	os.Exit(runWithMongo(m))
+}
+
+func runWithMongo(m *testing.M) int {
+	ctx := context.Background()
+
+	container, err := tcMongo.Run(ctx, "mongo:7", tcMongo.WithReplicaSet("rs0"))
+	defer func() {
+		if err := testcontainers.TerminateContainer(container); err != nil {
+			log.Printf("failed to terminate container: %s", err)
+		}
+	}()
+
+	if err != nil {
+		log.Printf("could not start MongoDB container (skipping integration tests): %s", err)
+		return m.Run()
 	}
 
-	url := "mongodb://" + addr
+	testMongoURL, err = container.ConnectionString(ctx)
+	if err != nil {
+		log.Printf("unable to get MongoDB connection string: %s", err)
+		return m.Run()
+	}
 
-	// Get a random DB name.
+	if !strings.Contains(testMongoURL, "?") {
+		testMongoURL += "?directConnection=true&replicaSet=rs0"
+	} else {
+		testMongoURL += "&directConnection=true&replicaSet=rs0"
+	}
+
+	return m.Run()
+}
+
+func requireMongo(t *testing.T) {
+	t.Helper()
+
+	if testMongoURL == "" {
+		t.Skip("no MongoDB available (Docker not running?)")
+	}
+}
+
+func randomDB(t *testing.T) string {
+	t.Helper()
+
 	b := make([]byte, 4)
 	if _, err := rand.Read(b); err != nil {
 		t.Fatal(err)
 	}
 
 	db := "test-" + hex.EncodeToString(b)
-
 	t.Log("using DB:", db)
 
-	store, err := NewEventStore(url, db)
+	return db
+}
+
+func TestEventStoreIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	requireMongo(t)
+
+	store, err := NewEventStore(testMongoURL, randomDB(t))
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -72,26 +124,11 @@ func TestWithCollectionNameIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGODB_ADDR")
-	if url == "" {
-		url = "localhost:27017"
-	}
-
-	url = "mongodb://" + url
-
-	// Get a random DB name.
-	b := make([]byte, 4)
-	if _, err := rand.Read(b); err != nil {
-		t.Fatal(err)
-	}
-
-	db := "test-" + hex.EncodeToString(b)
+	requireMongo(t)
+	db := randomDB(t)
 	collName := "foo_events"
 
-	t.Log("using DB:", db)
-
-	store, err := NewEventStore(url, db,
+	store, err := NewEventStore(testMongoURL, db,
 		WithCollectionName(collName),
 	)
 	if err != nil {
@@ -109,7 +146,7 @@ func TestWithCollectionNameIntegration(t *testing.T) {
 	}
 
 	// providing empty collection names should result in an error
-	_, err = NewEventStore(url, db,
+	_, err = NewEventStore(testMongoURL, db,
 		WithCollectionName(""),
 	)
 	if err == nil || err.Error() != "error while applying option: missing collection name" {
@@ -122,27 +159,11 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGODB_ADDR")
-	if url == "" {
-		url = "localhost:27017"
-	}
-
-	url = "mongodb://" + url
-
-	// Get a random DB name.
-	b := make([]byte, 4)
-	if _, err := rand.Read(b); err != nil {
-		t.Fatal(err)
-	}
-
-	db := "test-" + hex.EncodeToString(b)
-
-	t.Log("using DB:", db)
+	requireMongo(t)
 
 	h := &mocks.EventBus{}
 
-	store, err := NewEventStore(url, db,
+	store, err := NewEventStore(testMongoURL, randomDB(t),
 		WithEventHandler(h),
 	)
 	if err != nil {
@@ -208,25 +229,19 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 }
 
 func BenchmarkEventStore(b *testing.B) {
-	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGODB_ADDR")
-	if url == "" {
-		url = "localhost:27017"
+	if testMongoURL == "" {
+		b.Skip("no MongoDB available")
 	}
 
-	url = "mongodb://" + url
-
-	// Get a random DB name.
 	bs := make([]byte, 4)
 	if _, err := rand.Read(bs); err != nil {
 		b.Fatal(err)
 	}
 
 	db := "test-" + hex.EncodeToString(bs)
-
 	b.Log("using DB:", db)
 
-	store, err := NewEventStore(url, db)
+	store, err := NewEventStore(testMongoURL, db)
 	if err != nil {
 		b.Fatal("there should be no error:", err)
 	}

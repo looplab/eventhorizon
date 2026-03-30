@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"go.mongodb.org/mongo-driver/bson"
+	mongobson "go.mongodb.org/mongo-driver/v2/bson"
 
 	eh "github.com/looplab/eventhorizon"
 )
@@ -34,12 +34,14 @@ func (_ CommandCodec) MarshalCommand(ctx context.Context, cmd eh.Command) ([]byt
 		Context:     eh.MarshalContext(ctx),
 	}
 
+	// Use Marshal from this package (uuid.go) to ensure UUID fields in the
+	// command are encoded as strings for backward compatibility.
 	var err error
-	if c.Command, err = bson.Marshal(cmd); err != nil {
+	if c.Command, err = Marshal(cmd); err != nil {
 		return nil, fmt.Errorf("could not marshal command data: %w", err)
 	}
 
-	b, err := bson.Marshal(c)
+	b, err := Marshal(c)
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal command: %w", err)
 	}
@@ -50,7 +52,7 @@ func (_ CommandCodec) MarshalCommand(ctx context.Context, cmd eh.Command) ([]byt
 // UnmarshalCommand unmarshals a command from bytes in BSON format.
 func (_ CommandCodec) UnmarshalCommand(ctx context.Context, b []byte) (eh.Command, context.Context, error) {
 	var c command
-	if err := bson.Unmarshal(b, &c); err != nil {
+	if err := Unmarshal(b, &c); err != nil {
 		return nil, nil, fmt.Errorf("could not unmarshal command: %w", err)
 	}
 
@@ -59,7 +61,7 @@ func (_ CommandCodec) UnmarshalCommand(ctx context.Context, b []byte) (eh.Comman
 		return nil, nil, fmt.Errorf("could not create command: %w", err)
 	}
 
-	if err := bson.Unmarshal(c.Command, cmd); err != nil {
+	if err := Unmarshal(c.Command, cmd); err != nil {
 		return nil, nil, fmt.Errorf("could not unmarshal command data: %w", err)
 	}
 
@@ -71,6 +73,6 @@ func (_ CommandCodec) UnmarshalCommand(ctx context.Context, b []byte) (eh.Comman
 // command is the internal structure used on the wire only.
 type command struct {
 	CommandType eh.CommandType         `bson:"command_type"`
-	Command     bson.Raw               `bson:"command"`
+	Command     mongobson.Raw          `bson:"command"`
 	Context     map[string]interface{} `bson:"context"`
 }

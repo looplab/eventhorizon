@@ -19,13 +19,17 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"log"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/testcontainers/testcontainers-go"
+	tcMongo "github.com/testcontainers/testcontainers-go/modules/mongodb"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/mocks"
@@ -33,30 +37,77 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-func TestReadRepoIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
+var testMongoURL string
+
+func TestMain(m *testing.M) {
+	if addr := os.Getenv("MONGODB_ADDR"); addr != "" {
+		testMongoURL = "mongodb://" + addr
+		os.Exit(m.Run())
 	}
 
-	// Use MongoDB in Docker with fallback to localhost.
-	addr := os.Getenv("MONGODB_ADDR")
-	if addr == "" {
-		addr = "localhost:27017"
+	os.Exit(runWithMongo(m))
+}
+
+func runWithMongo(m *testing.M) int {
+	ctx := context.Background()
+
+	container, err := tcMongo.Run(ctx, "mongo:7", tcMongo.WithReplicaSet("rs0"))
+	defer func() {
+		if err := testcontainers.TerminateContainer(container); err != nil {
+			log.Printf("failed to terminate container: %s", err)
+		}
+	}()
+
+	if err != nil {
+		log.Printf("could not start MongoDB container (skipping integration tests): %s", err)
+		return m.Run()
 	}
 
-	url := "mongodb://" + addr
+	testMongoURL, err = container.ConnectionString(ctx)
+	if err != nil {
+		log.Printf("unable to get MongoDB connection string: %s", err)
+		return m.Run()
+	}
 
-	// Get a random DB name.
+	if !strings.Contains(testMongoURL, "?") {
+		testMongoURL += "?directConnection=true&replicaSet=rs0"
+	} else {
+		testMongoURL += "&directConnection=true&replicaSet=rs0"
+	}
+
+	return m.Run()
+}
+
+func requireMongo(t *testing.T) {
+	t.Helper()
+
+	if testMongoURL == "" {
+		t.Skip("no MongoDB available (Docker not running?)")
+	}
+}
+
+func randomDB(t *testing.T) string {
+	t.Helper()
+
 	b := make([]byte, 4)
 	if _, err := rand.Read(b); err != nil {
 		t.Fatal(err)
 	}
 
 	db := "test-" + hex.EncodeToString(b)
-
 	t.Log("using DB:", db)
 
-	r, err := NewRepo(url, db, "mocks.Model")
+	return db
+}
+
+func TestReadRepoIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	requireMongo(t)
+
+	r, err := NewRepo(testMongoURL, randomDB(t), "mocks.Model")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}
@@ -210,6 +261,8 @@ func TestIntoRepoIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
+	requireMongo(t)
+
 	if r := IntoRepo(context.Background(), nil); r != nil {
 		t.Error("the repository should be nil:", r)
 	}
@@ -219,25 +272,7 @@ func TestIntoRepoIntegration(t *testing.T) {
 		t.Error("the repository should be correct:", r)
 	}
 
-	// Use MongoDB in Docker with fallback to localhost.
-	addr := os.Getenv("MONGODB_ADDR")
-	if addr == "" {
-		addr = "localhost:27017"
-	}
-
-	url := "mongodb://" + addr
-
-	// Get a random DB name.
-	b := make([]byte, 4)
-	if _, err := rand.Read(b); err != nil {
-		t.Fatal(err)
-	}
-
-	db := "test-" + hex.EncodeToString(b)
-
-	t.Log("using DB:", db)
-
-	inner, err := NewRepo(url, db, "mocks.Model")
+	inner, err := NewRepo(testMongoURL, randomDB(t), "mocks.Model")
 	if err != nil {
 		t.Error("there should be no error:", err)
 	}

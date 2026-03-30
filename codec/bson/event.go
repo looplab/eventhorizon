@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
+	mongobson "go.mongodb.org/mongo-driver/v2/bson"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/uuid"
@@ -41,16 +41,17 @@ func (c *EventCodec) MarshalEvent(ctx context.Context, event eh.Event) ([]byte, 
 		Context:       eh.MarshalContext(ctx),
 	}
 
-	// Marshal event data if there is any.
+	// Use Marshal from this package (uuid.go) to ensure UUID fields in the
+	// event data are encoded as strings for backward compatibility.
 	if event.Data() != nil {
 		var err error
-		if e.RawData, err = bson.Marshal(event.Data()); err != nil {
+		if e.RawData, err = Marshal(event.Data()); err != nil {
 			return nil, fmt.Errorf("could not marshal event data: %w", err)
 		}
 	}
 
-	// Marshal the event (using BSON for now).
-	b, err := bson.Marshal(e)
+	// Marshal the event.
+	b, err := Marshal(e)
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal event: %w", err)
 	}
@@ -62,7 +63,7 @@ func (c *EventCodec) MarshalEvent(ctx context.Context, event eh.Event) ([]byte, 
 func (c *EventCodec) UnmarshalEvent(ctx context.Context, b []byte) (eh.Event, context.Context, error) {
 	// Decode the raw BSON event data.
 	var e evt
-	if err := bson.Unmarshal(b, &e); err != nil {
+	if err := Unmarshal(b, &e); err != nil {
 		return nil, nil, fmt.Errorf("could not unmarshal event: %w", err)
 	}
 
@@ -73,7 +74,7 @@ func (c *EventCodec) UnmarshalEvent(ctx context.Context, b []byte) (eh.Event, co
 			return nil, nil, fmt.Errorf("could not create event data: %w", err)
 		}
 
-		if err := bson.Unmarshal(e.RawData, e.data); err != nil {
+		if err := Unmarshal(e.RawData, e.data); err != nil {
 			return nil, nil, fmt.Errorf("could not unmarshal event data: %w", err)
 		}
 
@@ -107,7 +108,7 @@ func (c *EventCodec) UnmarshalEvent(ctx context.Context, b []byte) (eh.Event, co
 // evt is the internal event used on the wire only.
 type evt struct {
 	EventType     eh.EventType           `bson:"event_type"`
-	RawData       bson.Raw               `bson:"data,omitempty"`
+	RawData       mongobson.Raw          `bson:"data,omitempty"`
 	data          eh.EventData           `bson:"-"`
 	Timestamp     time.Time              `bson:"timestamp"`
 	AggregateType eh.AggregateType       `bson:"aggregate_type"`
