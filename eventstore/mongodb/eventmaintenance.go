@@ -18,10 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"go.mongodb.org/mongo-driver/bson"
-
-	// Register uuid.UUID as BSON type.
-	_ "github.com/looplab/eventhorizon/codec/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 
 	eh "github.com/looplab/eventhorizon"
 )

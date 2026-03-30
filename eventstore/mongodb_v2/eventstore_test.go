@@ -18,9 +18,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/testcontainers/testcontainers-go"
+	tcMongo "github.com/testcontainers/testcontainers-go/modules/mongodb"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventstore"
@@ -28,30 +33,77 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
-func TestEventStoreIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
+var testMongoURL string
+
+func TestMain(m *testing.M) {
+	if addr := os.Getenv("MONGODB_ADDR"); addr != "" {
+		testMongoURL = "mongodb://" + addr
+		os.Exit(m.Run())
 	}
 
-	// Use MongoDB in Docker with fallback to localhost.
-	addr := os.Getenv("MONGODB_ADDR")
-	if addr == "" {
-		addr = "localhost:27017"
+	os.Exit(runWithMongo(m))
+}
+
+func runWithMongo(m *testing.M) int {
+	ctx := context.Background()
+
+	container, err := tcMongo.Run(ctx, "mongo:7", tcMongo.WithReplicaSet("rs0"))
+	defer func() {
+		if err := testcontainers.TerminateContainer(container); err != nil {
+			log.Printf("failed to terminate container: %s", err)
+		}
+	}()
+
+	if err != nil {
+		log.Printf("could not start MongoDB container (skipping integration tests): %s", err)
+		return m.Run()
 	}
 
-	url := "mongodb://" + addr
+	testMongoURL, err = container.ConnectionString(ctx)
+	if err != nil {
+		log.Printf("unable to get MongoDB connection string: %s", err)
+		return m.Run()
+	}
 
-	// Get a random DB name.
+	if !strings.Contains(testMongoURL, "?") {
+		testMongoURL += "?directConnection=true&replicaSet=rs0"
+	} else {
+		testMongoURL += "&directConnection=true&replicaSet=rs0"
+	}
+
+	return m.Run()
+}
+
+func requireMongo(t *testing.T) {
+	t.Helper()
+
+	if testMongoURL == "" {
+		t.Skip("no MongoDB available (Docker not running?)")
+	}
+}
+
+func randomDB(t *testing.T) string {
+	t.Helper()
+
 	b := make([]byte, 4)
 	if _, err := rand.Read(b); err != nil {
 		t.Fatal(err)
 	}
 
 	db := "test-" + hex.EncodeToString(b)
-
 	t.Log("using DB:", db)
 
-	store, err := NewEventStore(url, db)
+	return db
+}
+
+func TestEventStoreIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	requireMongo(t)
+
+	store, err := NewEventStore(testMongoURL, randomDB(t))
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
@@ -69,17 +121,45 @@ func TestEventStoreIntegration(t *testing.T) {
 	}
 }
 
+func TestEventStoreWithSortIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	requireMongo(t)
+
+	store, err := NewEventStore(testMongoURL, randomDB(t), WithSortEventsOnDB())
+	if err != nil {
+		t.Fatal("there should be no error:", err)
+	}
+
+	if store == nil {
+		t.Fatal("there should be a store")
+	}
+
+	if !store.sortEventsOnDB {
+		t.Fatal("sortEventsOnDB should be true")
+	}
+
+	eventstore.AcceptanceTest(t, store, context.Background())
+
+	if err := store.Close(); err != nil {
+		t.Error("there should be no error:", err)
+	}
+}
+
 func TestWithCollectionNamesIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
-	url, db := makeDB(t)
+	requireMongo(t)
+	db := randomDB(t)
 
 	eventsColl := "foo_events"
 	streamsColl := "bar_streams"
 
-	store, err := NewEventStore(url, db,
+	store, err := NewEventStore(testMongoURL, db,
 		WithCollectionNames(eventsColl, streamsColl),
 	)
 	if err != nil {
@@ -101,7 +181,7 @@ func TestWithCollectionNamesIntegration(t *testing.T) {
 	}
 
 	// providing the same collection name should result in an error
-	_, err = NewEventStore(url, db,
+	_, err = NewEventStore(testMongoURL, db,
 		WithCollectionNames("my-collection", "my-collection"),
 	)
 	if err == nil || err.Error() != "error while applying option: custom collection names are equal" {
@@ -109,7 +189,7 @@ func TestWithCollectionNamesIntegration(t *testing.T) {
 	}
 
 	// providing empty collection names should result in an error
-	_, err = NewEventStore(url, db,
+	_, err = NewEventStore(testMongoURL, db,
 		WithCollectionNames("", "my-collection"),
 	)
 	if err == nil || err.Error() != "error while applying option: events collection: missing collection name" {
@@ -117,21 +197,21 @@ func TestWithCollectionNamesIntegration(t *testing.T) {
 	}
 
 	// providing empty collection names should result in an error
-	_, err = NewEventStore(url, db,
+	_, err = NewEventStore(testMongoURL, db,
 		WithCollectionNames("my-collection", ""),
 	)
 	if err == nil || err.Error() != "error while applying option: streams collection: missing collection name" {
 		t.Fatal("there should be an error")
 	}
 	// providing invalid streams collection names should result in an error
-	_, err = NewEventStore(url, db,
+	_, err = NewEventStore(testMongoURL, db,
 		WithCollectionNames("my-collection", "name with spaces"),
 	)
 	if err == nil || err.Error() != "error while applying option: streams collection: invalid char in collection name (space)" {
 		t.Fatal("there should be an error")
 	}
 	// providing invalid events collection names should result in an error
-	_, err = NewEventStore(url, db,
+	_, err = NewEventStore(testMongoURL, db,
 		WithCollectionNames("my collection", "a-good-name"),
 	)
 	if err == nil || err.Error() != "error while applying option: events collection: invalid char in collection name (space)" {
@@ -144,11 +224,12 @@ func TestWithSnapshotCollectionNamesIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	url, db := makeDB(t)
+	requireMongo(t)
+	db := randomDB(t)
 
 	snapshotColl := "foo_snapshots"
 
-	store, err := NewEventStore(url, db,
+	store, err := NewEventStore(testMongoURL, db,
 		WithSnapshotCollectionName(snapshotColl),
 	)
 	if err != nil {
@@ -166,7 +247,7 @@ func TestWithSnapshotCollectionNamesIntegration(t *testing.T) {
 	}
 
 	// providing empty snapshot collection names should result in an error
-	_, err = NewEventStore(url, db,
+	_, err = NewEventStore(testMongoURL, db,
 		WithSnapshotCollectionName(""),
 	)
 	if err == nil || err.Error() != "error while applying option: snapshot collection: missing collection name" {
@@ -174,7 +255,7 @@ func TestWithSnapshotCollectionNamesIntegration(t *testing.T) {
 	}
 
 	// providing invalid snapshot collection names should result in an error
-	_, err = NewEventStore(url, db,
+	_, err = NewEventStore(testMongoURL, db,
 		WithSnapshotCollectionName("no space-allowed"),
 	)
 	if err == nil || err.Error() != "error while applying option: snapshot collection: invalid char in collection name (space)" {
@@ -182,53 +263,16 @@ func TestWithSnapshotCollectionNamesIntegration(t *testing.T) {
 	}
 }
 
-func makeDB(t *testing.T) (string, string) {
-	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGODB_ADDR")
-	if url == "" {
-		url = "localhost:27017"
-	}
-
-	url = "mongodb://" + url
-
-	// Get a random DB name.
-	b := make([]byte, 4)
-	if _, err := rand.Read(b); err != nil {
-		t.Fatal(err)
-	}
-
-	db := "test-" + hex.EncodeToString(b)
-
-	t.Log("using DB:", db)
-	return url, db
-}
-
 func TestWithEventHandlerIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
-	// Use MongoDB in Docker with fallback to localhost.
-	url := os.Getenv("MONGODB_ADDR")
-	if url == "" {
-		url = "localhost:27017"
-	}
-
-	url = "mongodb://" + url
-
-	// Get a random DB name.
-	b := make([]byte, 4)
-	if _, err := rand.Read(b); err != nil {
-		t.Fatal(err)
-	}
-
-	db := "test-" + hex.EncodeToString(b)
-
-	t.Log("using DB:", db)
+	requireMongo(t)
 
 	h := &mocks.EventBus{}
 
-	store, err := NewEventStore(url, db,
+	store, err := NewEventStore(testMongoURL, randomDB(t),
 		WithEventHandler(h),
 	)
 	if err != nil {
@@ -297,25 +341,19 @@ func TestWithEventHandlerIntegration(t *testing.T) {
 }
 
 func BenchmarkEventStore(b *testing.B) {
-	// Use MongoDB in Docker with fallback to localhost.
-	addr := os.Getenv("MONGODB_ADDR")
-	if addr == "" {
-		addr = "localhost:27017"
+	if testMongoURL == "" {
+		b.Skip("no MongoDB available")
 	}
 
-	url := "mongodb://" + addr
-
-	// Get a random DB name.
 	bs := make([]byte, 4)
 	if _, err := rand.Read(bs); err != nil {
 		b.Fatal(err)
 	}
 
 	db := "test-" + hex.EncodeToString(bs)
-
 	b.Log("using DB:", db)
 
-	store, err := NewEventStore(url, db)
+	store, err := NewEventStore(testMongoURL, db)
 	if err != nil {
 		b.Fatal("there should be no error:", err)
 	}
