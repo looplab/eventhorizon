@@ -8,17 +8,16 @@ import (
 	"sync"
 	"time"
 
-	bsonCodec "github.com/looplab/eventhorizon/codec/bson"
-	"github.com/looplab/eventhorizon/mongoutils"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readconcern"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	mongoOptions "go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 
+	bsonCodec "github.com/looplab/eventhorizon/codec/bson"
 	eh "github.com/looplab/eventhorizon"
+	"github.com/looplab/eventhorizon/mongoutils"
 )
 
 var (
@@ -64,11 +63,11 @@ type matcherHandler struct {
 // NewOutbox creates a new Outbox with a MongoDB URI: `mongodb://hostname`.
 func NewOutbox(uri, dbName string, options ...Option) (*Outbox, error) {
 	opts := mongoOptions.Client().ApplyURI(uri)
-	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
+	opts.SetWriteConcern(writeconcern.Majority())
 	opts.SetReadConcern(readconcern.Majority())
 	opts.SetReadPreference(readpref.Primary())
 
-	client, err := mongo.Connect(context.TODO(), opts)
+	client, err := mongo.Connect(opts)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to DB: %w", err)
 	}
@@ -91,7 +90,7 @@ func newOutboxWithClient(client *mongo.Client, clientOwnership clientOwnership, 
 	o := &Outbox{
 		client:          client,
 		clientOwnership: clientOwnership,
-		outbox:          client.Database(dbName).Collection("outbox"),
+		outbox:          client.Database(dbName, mongoOptions.Database().SetRegistry(bsonCodec.Registry)).Collection("outbox"),
 		handlersByType:  map[eh.EventHandlerType]*matcherHandler{},
 		errCh:           make(chan error, 100),
 		cctx:            ctx,
@@ -187,7 +186,7 @@ func (o *Outbox) handler(handlerType string) (*matcherHandler, bool) {
 
 // outboxDoc is the DB representation of an outbox entry.
 type outboxDoc struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty"`
+	ID         bson.ObjectID `bson:"_id,omitempty"`
 	Event      bson.Raw           `bson:"event"`
 	Handlers   []string           `bson:"handlers"`
 	WatchToken string             `bson:"watch_token,omitempty"`
@@ -413,7 +412,7 @@ func (o *Outbox) processOutboxEvent(ctx context.Context, r *outboxDoc, now time.
 		return nil
 	}
 
-	var processedHandlers []interface{}
+	var processedHandlers []any
 
 	// Process all handlers without returning handler errors.
 	for _, handlerType := range r.Handlers {
@@ -454,7 +453,7 @@ func (o *Outbox) processOutboxEvent(ctx context.Context, r *outboxDoc, now time.
 			bson.M{"$pullAll": bson.M{"handlers": bson.A(processedHandlers)}},
 		); err != nil {
 			return &eh.OutboxError{
-				Err:   fmt.Errorf("could not set outbox event as hadeled: %w", err),
+				Err:   fmt.Errorf("could not set outbox event as handled: %w", err),
 				Ctx:   ctx,
 				Event: event,
 			}
