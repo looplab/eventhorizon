@@ -82,16 +82,16 @@ func requireMongo(t *testing.T) {
 	}
 }
 
-func randomDB(t *testing.T) string {
-	t.Helper()
+func randomDB(tb testing.TB) string {
+	tb.Helper()
 
 	b := make([]byte, 4)
 	if _, err := rand.Read(b); err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 
 	db := "test-" + hex.EncodeToString(b)
-	t.Log("using DB:", db)
+	tb.Log("using DB:", db)
 
 	return db
 }
@@ -233,13 +233,7 @@ func BenchmarkEventStore(b *testing.B) {
 		b.Skip("no MongoDB available")
 	}
 
-	bs := make([]byte, 4)
-	if _, err := rand.Read(bs); err != nil {
-		b.Fatal(err)
-	}
-
-	db := "test-" + hex.EncodeToString(bs)
-	b.Log("using DB:", db)
+	db := randomDB(b)
 
 	store, err := NewEventStore(testMongoURL, db)
 	if err != nil {

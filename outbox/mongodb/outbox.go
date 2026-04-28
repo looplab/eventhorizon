@@ -453,7 +453,7 @@ func (o *Outbox) processOutboxEvent(ctx context.Context, r *outboxDoc, now time.
 			bson.M{"$pullAll": bson.M{"handlers": bson.A(processedHandlers)}},
 		); err != nil {
 			return &eh.OutboxError{
-				Err:   fmt.Errorf("could not set outbox event as hadeled: %w", err),
+				Err:   fmt.Errorf("could not set outbox event as handled: %w", err),
 				Ctx:   ctx,
 				Event: event,
 			}
