@@ -3,6 +3,7 @@ package mongodb_v2
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -211,88 +212,203 @@ func TestPerAggregateOrderingBothStrategies(t *testing.T) {
 	}
 }
 
-// BenchmarkSaveStrategiesConcurrent measures throughput and error-rate
-// difference between the two strategies under a workload that mirrors the
-// disbursement webhook burst: many concurrent saves, one event per aggregate,
-// against a constrained connection pool on a real replica-set Mongo.
+// benchConfig parameterizes the strategy benchmark matrix.
+type benchConfig struct {
+	strategy    GlobalPositionStrategy
+	concurrency int
+	poolSize    uint64
+	// loadProfile describes what each goroutine saves. "burst" means a fresh
+	// aggregate per save (matches the disbursement webhook burst pattern);
+	// "append" means saves on pre-existing aggregates (matches the steady
+	// state of state-change saves on disbursements already in flight).
+	loadProfile string
+}
+
+func (c benchConfig) name() string {
+	return fmt.Sprintf("strategy=%s/profile=%s/conc=%d/pool=%d",
+		c.strategy, c.loadProfile, c.concurrency, c.poolSize)
+}
+
+// BenchmarkSaveStrategiesMatrix runs the two strategies across a matrix of
+// concurrency and pool sizes to surface the contention knee, plus two load
+// profiles to cover both the disbursement burst case (new aggregate per save)
+// and the steady-state case (saves appending to existing aggregates).
 //
-// Run with: go test -bench=BenchmarkSaveStrategiesConcurrent -benchtime=10s
-func BenchmarkSaveStrategiesConcurrent(b *testing.B) {
+// Run with: go test -bench=BenchmarkSaveStrategiesMatrix -benchtime=5s ./eventstore/mongodb_v2/...
+//
+// Tip: pipe to benchstat for clean comparison:
+//
+//	go test -bench=BenchmarkSaveStrategiesMatrix -benchtime=5s -count=3 \
+//	  ./eventstore/mongodb_v2/... | tee bench.txt
+//	benchstat -col /strategy bench.txt
+func BenchmarkSaveStrategiesMatrix(b *testing.B) {
 	if testMongoURL == "" {
 		b.Skip("no MongoDB available")
 	}
 
-	const (
-		concurrency = 64
-		poolSize    = 50
+	var configs []benchConfig
+	for _, strategy := range []GlobalPositionStrategy{GlobalPositionInTX, GlobalPositionOutsideTX} {
+		for _, profile := range []string{"burst", "append"} {
+			for _, concurrency := range []int{16, 64, 200} {
+				for _, poolSize := range []uint64{20, 50, 200} {
+					configs = append(configs, benchConfig{
+						strategy:    strategy,
+						concurrency: concurrency,
+						poolSize:    poolSize,
+						loadProfile: profile,
+					})
+				}
+			}
+		}
+	}
+
+	for _, cfg := range configs {
+		b.Run(cfg.name(), func(b *testing.B) { runStrategyBench(b, cfg) })
+	}
+}
+
+// runStrategyBench executes one cell of the strategy matrix. Setup (client,
+// store, optional pre-population, pool warm-up) runs before b.ResetTimer so
+// only the measured work counts.
+func runStrategyBench(b *testing.B, cfg benchConfig) {
+	b.Helper()
+
+	client := newClientWithPool(b, cfg.poolSize)
+	defer func() { _ = client.Disconnect(context.Background()) }()
+
+	dbName := randomDB(&testing.T{})
+	store, err := NewEventStoreWithClient(client, dbName,
+		WithGlobalPositionStrategy(cfg.strategy),
+	)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+	ts := time.Now().UTC().Truncate(time.Millisecond)
+
+	// For the "append" profile, pre-populate aggregates with one event each so
+	// each measured save is an UpdateOne on an existing stream document.
+	const prePopulated = 512
+
+	var (
+		existingAggs     []uuid.UUID
+		existingVersions []*atomic.Int32
+	)
+	if cfg.loadProfile == "append" {
+		existingAggs = make([]uuid.UUID, prePopulated)
+		existingVersions = make([]*atomic.Int32, prePopulated)
+		for i := range existingAggs {
+			existingAggs[i] = uuid.New()
+			existingVersions[i] = &atomic.Int32{}
+			existingVersions[i].Store(1)
+
+			ev := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "seed"}, ts,
+				eh.ForAggregate(mocks.AggregateType, existingAggs[i], 1))
+			if err := store.Save(ctx, []eh.Event{ev}, 0); err != nil {
+				b.Fatalf("pre-populate save failed: %v", err)
+			}
+		}
+	}
+
+	// Warm up the connection pool so the first measured saves don't pay TCP
+	// handshake costs.
+	warmupPool(b, store, ctx, ts, cfg.concurrency)
+
+	var (
+		successes atomic.Int64
+		conflicts atomic.Int64
+		otherErrs atomic.Int64
+		// opCounter drives sequential aggregate selection in the "append"
+		// profile: each save picks the next pre-populated aggregate via the
+		// counter, so concurrent saves usually target distinct aggregates
+		// (matching the real-world pattern where a state machine serializes
+		// changes per aggregate).
+		opCounter atomic.Int64
 	)
 
-	cases := []struct {
-		name     string
-		strategy GlobalPositionStrategy
-	}{
-		{"InTX", GlobalPositionInTX},
-		{"OutsideTX", GlobalPositionOutsideTX},
+	b.ResetTimer()
+
+	work := make(chan struct{}, b.N)
+	for range b.N {
+		work <- struct{}{}
 	}
+	close(work)
 
-	for _, tc := range cases {
-		b.Run(tc.name, func(b *testing.B) {
-			client := newClientWithPool(b, poolSize)
-			defer func() { _ = client.Disconnect(context.Background()) }()
-
-			dbName := randomDB(&testing.T{})
-			store, err := NewEventStoreWithClient(client, dbName,
-				WithGlobalPositionStrategy(tc.strategy),
-			)
-			if err != nil {
-				b.Fatal(err)
+	var wg sync.WaitGroup
+	for range cfg.concurrency {
+		wg.Go(func() {
+			for range work {
+				err := saveOneOp(ctx, store, ts, cfg.loadProfile, existingAggs, existingVersions, &opCounter)
+				switch {
+				case err == nil:
+					successes.Add(1)
+				case isConflictError(err):
+					conflicts.Add(1)
+				default:
+					otherErrs.Add(1)
+				}
 			}
-			defer store.Close()
-
-			ctx := context.Background()
-			ts := time.Now().UTC().Truncate(time.Millisecond)
-
-			var (
-				successes atomic.Int64
-				conflicts atomic.Int64
-				otherErrs atomic.Int64
-			)
-
-			b.ResetTimer()
-
-			var wg sync.WaitGroup
-			work := make(chan struct{}, b.N)
-			for range b.N {
-				work <- struct{}{}
-			}
-			close(work)
-
-			for range concurrency {
-				wg.Go(func() {
-					for range work {
-						agg := uuid.New()
-						ev := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "x"}, ts,
-							eh.ForAggregate(mocks.AggregateType, agg, 1))
-						err := store.Save(ctx, []eh.Event{ev}, 0)
-						switch {
-						case err == nil:
-							successes.Add(1)
-						case isConflictError(err):
-							conflicts.Add(1)
-						default:
-							otherErrs.Add(1)
-						}
-					}
-				})
-			}
-			wg.Wait()
-
-			b.StopTimer()
-			b.ReportMetric(float64(successes.Load()), "ok_ops")
-			b.ReportMetric(float64(conflicts.Load()), "conflicts")
-			b.ReportMetric(float64(otherErrs.Load()), "errors")
 		})
 	}
+	wg.Wait()
+
+	b.StopTimer()
+	b.ReportMetric(float64(successes.Load()), "ok_ops")
+	b.ReportMetric(float64(conflicts.Load()), "conflicts")
+	b.ReportMetric(float64(otherErrs.Load()), "errors")
+}
+
+// saveOneOp performs one save matching the configured load profile.
+//
+//   - "burst": every save creates a fresh aggregate (originalVersion=0). This
+//     matches the disbursement webhook burst — each webhook is a different
+//     disbursement.
+//   - "append": every save appends one event to the next pre-existing
+//     aggregate, selected via a shared atomic counter so concurrent saves
+//     usually target distinct aggregates. This matches the real-world steady
+//     state where a state machine serializes changes per aggregate.
+func saveOneOp(
+	ctx context.Context,
+	store *EventStore,
+	ts time.Time,
+	profile string,
+	existingAggs []uuid.UUID,
+	existingVersions []*atomic.Int32,
+	opCounter *atomic.Int64,
+) error {
+	switch profile {
+	case "append":
+		idx := int(opCounter.Add(1)-1) % len(existingAggs)
+		ver := existingVersions[idx].Add(1)
+		ev := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "x"}, ts,
+			eh.ForAggregate(mocks.AggregateType, existingAggs[idx], int(ver)))
+		return store.Save(ctx, []eh.Event{ev}, int(ver-1))
+
+	default: // "burst"
+		agg := uuid.New()
+		ev := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "x"}, ts,
+			eh.ForAggregate(mocks.AggregateType, agg, 1))
+		return store.Save(ctx, []eh.Event{ev}, 0)
+	}
+}
+
+// warmupPool issues N concurrent saves to force the Mongo client to open
+// connections up to its pool size before measurement starts.
+func warmupPool(b *testing.B, store *EventStore, ctx context.Context, ts time.Time, concurrency int) {
+	b.Helper()
+
+	var wg sync.WaitGroup
+	for range concurrency {
+		wg.Go(func() {
+			agg := uuid.New()
+			ev := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "warmup"}, ts,
+				eh.ForAggregate(mocks.AggregateType, agg, 1))
+			_ = store.Save(ctx, []eh.Event{ev}, 0)
+		})
+	}
+	wg.Wait()
 }
 
 // String makes GlobalPositionStrategy human-readable in test names and logs.
