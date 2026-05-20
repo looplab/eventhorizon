@@ -35,7 +35,7 @@ type EventBus struct {
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan error
-	cctx         context.Context
+	cctx         context.Context //nolint:containedctx
 	cancel       context.CancelFunc
 	wg           sync.WaitGroup
 	codec        eh.EventCodec
@@ -95,7 +95,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 		return fmt.Errorf("could not marshal event: %w", err)
 	}
 
-	return b.group.publish(ctx, data)
+	return b.group.publish(data)
 }
 
 // AddHandler implements the AddHandler method of the eventhorizon.EventBus interface.
@@ -126,7 +126,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	b.wg.Add(1)
 
 	// Handle until context is cancelled.
-	go b.handle(m, h, ch)
+	go b.handle(b.cctx, m, h, ch) //nolint:contextcheck // bus lifecycle context outlives the AddHandler call
 
 	return nil
 }
@@ -145,13 +145,8 @@ func (b *EventBus) Close() error {
 	return nil
 }
 
-type evt struct {
-	ctxVals map[string]interface{}
-	event   eh.Event
-}
-
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte) {
+func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte) {
 	defer b.wg.Done()
 
 	for {
@@ -160,7 +155,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte
 			// Artificial delay to simulate network.
 			time.Sleep(time.Millisecond)
 
-			event, ctx, err := b.codec.UnmarshalEvent(b.cctx, data)
+			event, ctx, err := b.codec.UnmarshalEvent(ctx, data)
 			if err != nil {
 				err = fmt.Errorf("could not unmarshal event: %w", err)
 				select {
@@ -186,7 +181,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, ch <-chan []byte
 					log.Printf("eventhorizon: missed error in local event bus: %s", err)
 				}
 			}
-		case <-b.cctx.Done():
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -219,7 +214,7 @@ func (g *Group) channel(id string) <-chan []byte {
 	return ch
 }
 
-func (g *Group) publish(ctx context.Context, b []byte) error {
+func (g *Group) publish(b []byte) error {
 	g.busMu.RLock()
 	defer g.busMu.RUnlock()
 

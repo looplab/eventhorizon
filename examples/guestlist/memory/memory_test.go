@@ -65,16 +65,18 @@ func Example() {
 	// evaluating results.
 	var wg sync.WaitGroup
 	wg.Add(11)
-	eventBus.AddHandler(ctx, eh.MatchAll{}, eh.EventHandlerFunc(
+	if err := eventBus.AddHandler(ctx, eh.MatchAll{}, eh.EventHandlerFunc(
 		func(ctx context.Context, e eh.Event) error {
 			wg.Done()
 			return nil
 		},
-	))
+	)); err != nil {
+		log.Fatalf("could not add handler: %s", err)
+	}
 
 	// Setup the guestlist.
 	eventID := uuid.New()
-	guestlist.Setup(
+	if err := guestlist.Setup(
 		ctx,
 		eventStore,
 		eventBus, // Use the event bus both as local and global handler.
@@ -82,7 +84,9 @@ func Example() {
 		commandBus,
 		invitationRepo, guestListRepo,
 		eventID,
-	)
+	); err != nil {
+		log.Fatalf("could not setup guestlist: %s", err)
+	}
 
 	// --- Execute commands on the domain --------------------------------------
 

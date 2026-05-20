@@ -46,7 +46,7 @@ func TestContext(t *testing.T) {
 
 	// Marshal via JSON to get more realistic testing.
 
-	vals = map[string]interface{}{}
+	vals = map[string]any{}
 	if err := json.Unmarshal(b, &vals); err != nil {
 		t.Error("could not unmarshal JSON:", err)
 	}

@@ -17,7 +17,7 @@ package httputils
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	eh "github.com/looplab/eventhorizon"
@@ -28,7 +28,7 @@ import (
 // body that will be unmarshaled into the command.
 func CommandHandler(commandHandler eh.CommandHandler, commandType eh.CommandType) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
+		if r.Method != http.MethodPost {
 			http.Error(w, "unsupported method: "+r.Method, http.StatusMethodNotAllowed)
 
 			return
@@ -41,7 +41,7 @@ func CommandHandler(commandHandler eh.CommandHandler, commandType eh.CommandType
 			return
 		}
 
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "could not read command: "+err.Error(), http.StatusBadRequest)
 
@@ -58,7 +58,7 @@ func CommandHandler(commandHandler eh.CommandHandler, commandType eh.CommandType
 		// the HTTP request which will cause projectors etc to fail if they run
 		// async in goroutines past the request.
 		ctx := context.Background()
-		if err := commandHandler.HandleCommand(ctx, cmd); err != nil {
+		if err := commandHandler.HandleCommand(ctx, cmd); err != nil { //nolint:contextcheck // command handling must outlive the HTTP request
 			http.Error(w, "could not handle command: "+err.Error(), http.StatusBadRequest)
 
 			return

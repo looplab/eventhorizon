@@ -17,6 +17,7 @@ package eventhorizon
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 
 	"github.com/looplab/eventhorizon/uuid"
@@ -64,7 +65,8 @@ var ErrCommandNotRegistered = errors.New("command not registered")
 // used to create concrete command types.
 //
 // An example would be:
-//     RegisterCommand(func() Command { return &MyCommand{} })
+//
+//	RegisterCommand(func() Command { return &MyCommand{} })
 func RegisterCommand(factory func() Command) {
 	// Check that the created command matches the type registered.
 	// TODO: Explore the use of reflect/gob for creating concrete types without
@@ -126,9 +128,7 @@ func RegisteredCommands() map[CommandType]func() Command {
 	defer commandsMu.Unlock()
 
 	mapCopy := make(map[CommandType]func() Command)
-	for key, val := range commands {
-		mapCopy[key] = val
-	}
+	maps.Copy(mapCopy, commands)
 
 	return mapCopy
 }

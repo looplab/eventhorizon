@@ -45,7 +45,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 
 	defer sess.EndSession(ctx)
 
-	if _, err := sess.WithTransaction(ctx, func(txCtx context.Context) (interface{}, error) {
+	if _, err := sess.WithTransaction(ctx, func(txCtx context.Context) (any, error) {
 		// First check if the aggregate exists, the not found error in the update
 		// query can mean both that the aggregate or the event is not found.
 		n, err := s.events.CountDocuments(txCtx, bson.M{"aggregate_id": id})
@@ -90,7 +90,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 		}, e); err != nil {
 			return nil, err
 		} else if r.MatchedCount == 0 {
-			return nil, fmt.Errorf("could not find original event to replace")
+			return nil, errors.New("could not find original event to replace")
 		}
 
 		return nil, nil

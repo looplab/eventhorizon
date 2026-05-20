@@ -37,7 +37,7 @@ func TestReadRepo(t *testing.T) {
 
 	r := NewRepo(baseRepo)
 	if r == nil {
-		t.Error("there should be a repository")
+		t.Fatal("there should be a repository")
 	}
 
 	if inner := r.InnerRepo(context.Background()); inner != baseRepo {

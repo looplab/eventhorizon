@@ -145,7 +145,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	id := entity.EntityID()
 	if id == uuid.Nil {
 		return &eh.RepoError{
-			Err: fmt.Errorf("missing entity ID"),
+			Err: errors.New("missing entity ID"),
 			Op:  eh.RepoOpSave,
 		}
 	}

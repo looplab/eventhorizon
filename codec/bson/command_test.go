@@ -66,7 +66,7 @@ func TestCommandCodecBackwardCompatibility(t *testing.T) {
 		String:  "string",
 		Number:  42.0,
 		Slice:   []string{"a", "b"},
-		Map:     map[string]interface{}{"key": "value"},
+		Map:     map[string]any{"key": "value"},
 		Time:    timestamp,
 		TimeRef: &timestamp,
 		Struct: codec.Nested{

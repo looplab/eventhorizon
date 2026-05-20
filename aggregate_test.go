@@ -33,6 +33,7 @@ func TestCreateAggregate(t *testing.T) {
 	RegisterAggregate(func(id uuid.UUID) Aggregate {
 		return &TestAggregateRegister{id: id}
 	})
+	defer UnregisterAggregate(TestAggregateRegisterType)
 
 	aggregate, err := CreateAggregate(TestAggregateRegisterType, id)
 	if err != nil {
@@ -69,6 +70,7 @@ func TestRegisterAggregateNil(t *testing.T) {
 }
 
 func TestRegisterAggregateTwice(t *testing.T) {
+	defer UnregisterAggregate(TestAggregateRegisterTwiceType)
 	defer func() {
 		if r := recover(); r == nil || r != "eventhorizon: registering duplicate types for \"TestAggregateRegisterTwice\"" {
 			t.Error("there should have been a panic:", r)

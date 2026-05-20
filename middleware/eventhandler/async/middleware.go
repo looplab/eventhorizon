@@ -58,7 +58,7 @@ type Error struct {
 	// Err is the error that happened when handling the event.
 	Err error
 	// Ctx is the context used when the error happened.
-	Ctx context.Context
+	Ctx context.Context //nolint:containedctx
 	// Event is the event handeled when the error happened.
 	Event eh.Event
 }

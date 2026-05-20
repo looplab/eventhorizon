@@ -78,7 +78,7 @@ func NewRepoWithClient(client *mongo.Client, dbName, collection string, options 
 
 func newRepoWithClient(client *mongo.Client, clientOwnership clientOwnership, dbName, collection string, options ...Option) (*Repo, error) {
 	if client == nil {
-		return nil, fmt.Errorf("missing DB client")
+		return nil, errors.New("missing DB client")
 	}
 
 	r := &Repo{
@@ -344,7 +344,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 	id := entity.EntityID()
 	if id == uuid.Nil {
 		return &eh.RepoError{
-			Err: fmt.Errorf("missing entity ID"),
+			Err: errors.New("missing entity ID"),
 			Op:  eh.RepoOpSave,
 		}
 	}
@@ -402,7 +402,7 @@ func (r *Repo) Collection(ctx context.Context, f func(context.Context, *mongo.Co
 func (r *Repo) CreateIndex(ctx context.Context, field string) error {
 	index := mongo.IndexModel{Keys: bson.M{field: 1}}
 	if _, err := r.entities.Indexes().CreateOne(ctx, index); err != nil {
-		return fmt.Errorf("could not create index: %s", err)
+		return fmt.Errorf("could not create index: %w", err)
 	}
 
 	return nil

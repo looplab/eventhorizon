@@ -212,7 +212,7 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 	// Sort the output to be able to compare test results.
 	sort.Strings(invitationStrs)
 	for _, s := range invitationStrs {
-		log.Printf("invitation: %s\n", s)
+		log.Println("invitation:", s) //nolint:gosec
 		fmt.Printf("invitation: %s\n", s)
 	}
 
@@ -222,8 +222,7 @@ guest list: 4 invited - 3 accepted, 1 declined - 2 confirmed, 1 denied`)
 		log.Println("error:", err)
 	}
 	if l, ok := l.(*guestlist.GuestList); ok {
-		log.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
-			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
+		log.Println("guest list:", l.NumGuests, "invited -", l.NumAccepted, "accepted,", l.NumDeclined, "declined -", l.NumConfirmed, "confirmed,", l.NumDenied, "denied") //nolint:gosec
 		fmt.Printf("guest list: %d invited - %d accepted, %d declined - %d confirmed, %d denied\n",
 			l.NumGuests, l.NumAccepted, l.NumDeclined, l.NumConfirmed, l.NumDenied)
 	}

@@ -56,7 +56,7 @@ func TestNewEvent(t *testing.T) {
 	event = NewEvent(TestEventType, &TestEventData{"event1"}, timestamp,
 		ForAggregate(TestAggregateType, id, 3),
 		FromCommand(cmd),
-		WithMetadata(map[string]interface{}{"meta": "data", "num": 42}),
+		WithMetadata(map[string]any{"meta": "data", "num": 42}),
 	)
 
 	if event.EventType() != TestEventType {
@@ -83,7 +83,7 @@ func TestNewEvent(t *testing.T) {
 		t.Error("the version should be correct:", event.Version())
 	}
 
-	if !reflect.DeepEqual(event.Metadata(), map[string]interface{}{
+	if !reflect.DeepEqual(event.Metadata(), map[string]any{
 		"meta":         "data",
 		"num":          42,
 		"command_type": cmd.CommandType().String(),
@@ -135,6 +135,7 @@ func TestRegisterEventEmptyName(t *testing.T) {
 }
 
 func TestRegisterEventTwice(t *testing.T) {
+	defer UnregisterEventData(TestEventRegisterTwiceType)
 	defer func() {
 		if r := recover(); r == nil || r != "eventhorizon: registering duplicate types for \"TestEventRegisterTwice\"" {
 			t.Error("there should have been a panic:", r)

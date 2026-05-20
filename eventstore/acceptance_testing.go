@@ -76,7 +76,7 @@ func AcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Context) []eh
 	// Save event, version 2, with metadata.
 	event2 := eh.NewEvent(mocks.EventType, &mocks.EventData{Content: "event2"}, timestamp,
 		eh.ForAggregate(mocks.AggregateType, id, 2),
-		eh.WithMetadata(map[string]interface{}{"meta": "data", "num": 42.0}),
+		eh.WithMetadata(map[string]any{"meta": "data", "num": 42.0}),
 	)
 
 	err = store.Save(ctx, []eh.Event{event2}, 1)
@@ -258,6 +258,10 @@ func SnapshotAcceptanceTest(t *testing.T, store eh.EventStore, ctx context.Conte
 	loaded, err := snapshotStore.LoadSnapshot(ctx, uuid.New())
 	if loaded != nil {
 		t.Error("snapshot should be nil, it doesnt exists")
+	}
+
+	if err != nil {
+		t.Error("there should not be an error:", err)
 	}
 
 	loaded, err = snapshotStore.LoadSnapshot(ctx, id)

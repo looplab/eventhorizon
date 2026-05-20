@@ -9,7 +9,7 @@ import (
 // context has been canceled, but with a grace period to let operations finish.
 // The KeepAlive method should be used to signal that  operations are still ongoing.
 type GracefulContext struct {
-	context.Context
+	context.Context //nolint:containedctx
 
 	doneCh chan struct{}
 }

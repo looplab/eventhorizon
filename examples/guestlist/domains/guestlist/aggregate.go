@@ -16,6 +16,7 @@ package guestlist
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -76,7 +77,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 
 	case *AcceptInvite:
 		if a.name == "" {
-			return fmt.Errorf("invitee does not exist")
+			return errors.New("invitee does not exist")
 		}
 
 		if a.declined {
@@ -92,7 +93,7 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 
 	case *DeclineInvite:
 		if a.name == "" {
-			return fmt.Errorf("invitee does not exist")
+			return errors.New("invitee does not exist")
 		}
 
 		if a.accepted {
@@ -108,11 +109,11 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 
 	case *ConfirmInvite:
 		if a.name == "" {
-			return fmt.Errorf("invitee does not exist")
+			return errors.New("invitee does not exist")
 		}
 
 		if !a.accepted || a.declined {
-			return fmt.Errorf("only accepted invites can be confirmed")
+			return errors.New("only accepted invites can be confirmed")
 		}
 
 		a.AppendEvent(InviteConfirmedEvent, nil, time.Now())
@@ -120,17 +121,17 @@ func (a *InvitationAggregate) HandleCommand(ctx context.Context, cmd eh.Command)
 
 	case *DenyInvite:
 		if a.name == "" {
-			return fmt.Errorf("invitee does not exist")
+			return errors.New("invitee does not exist")
 		}
 
 		if !a.accepted || a.declined {
-			return fmt.Errorf("only accepted invites can be denied")
+			return errors.New("only accepted invites can be denied")
 		}
 
 		a.AppendEvent(InviteDeniedEvent, nil, time.Now())
 		return nil
 	}
-	return fmt.Errorf("couldn't handle command")
+	return errors.New("couldn't handle command")
 }
 
 // ApplyEvent implements the ApplyEvent method of the Aggregate interface.

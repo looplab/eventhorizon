@@ -79,12 +79,14 @@ func (r *Repo) Find(ctx context.Context, id uuid.UUID) (eh.Entity, error) {
 
 	for {
 		entity, err := r.findMinVersion(ctx, id, minVersion)
-		if errors.Is(err, eh.ErrIncorrectEntityVersion) || errors.Is(err, eh.ErrEntityNotFound) {
+
+		switch {
+		case errors.Is(err, eh.ErrIncorrectEntityVersion) || errors.Is(err, eh.ErrEntityNotFound):
 			// Try again for incorrect version or if the entity was not found.
-		} else if err != nil {
+		case err != nil:
 			// Return any real error.
 			return nil, err
-		} else {
+		default:
 			// Return the entity.
 			return entity, nil
 		}

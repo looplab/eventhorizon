@@ -46,8 +46,7 @@ func Unmarshal(data []byte, val any) error {
 
 func newUUIDRegistry() *bson.Registry {
 	reg := bson.NewRegistry()
-	id := uuid.Nil
-	uuidType := reflect.TypeOf(id)
+	uuidType := reflect.TypeFor[uuid.UUID]()
 
 	reg.RegisterTypeEncoder(uuidType, bson.ValueEncoderFunc(
 		func(ec bson.EncodeContext, vw bson.ValueWriter, val reflect.Value) error {

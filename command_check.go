@@ -58,7 +58,7 @@ func CheckCommand(cmd Command) error {
 	rv := reflect.Indirect(reflect.ValueOf(cmd))
 	rt := rv.Type()
 
-	for i := 0; i < rt.NumField(); i++ {
+	for i := range rt.NumField() {
 		field := rt.Field(i)
 		if field.PkgPath != "" {
 			continue // Skip private field.
@@ -95,12 +95,11 @@ func isZero(v reflect.Value) bool {
 		return v.IsNil()
 	case reflect.Array:
 		// Special case to check zero values of UUIDs.
-		switch obj := v.Interface().(type) {
-		case uuid.UUID:
+		if obj, ok := v.Interface().(uuid.UUID); ok {
 			return obj == uuid.Nil
 		}
 
-		for i := 0; i < v.Len(); i++ {
+		for i := range v.Len() {
 			if !isZero(v.Index(i)) {
 				return false
 			}
@@ -113,15 +112,14 @@ func isZero(v reflect.Value) bool {
 		return v.Interface() == z.Interface()
 	case reflect.Struct:
 		// Special case to get zero values by method.
-		switch obj := v.Interface().(type) {
-		case time.Time:
+		if obj, ok := v.Interface().(time.Time); ok {
 			return obj.IsZero()
 		}
 
 		// Check public fields for zero values.
 		z := true
 
-		for i := 0; i < v.NumField(); i++ {
+		for i := range v.NumField() {
 			if v.Type().Field(i).PkgPath != "" {
 				continue // Skip private fields.
 			}
