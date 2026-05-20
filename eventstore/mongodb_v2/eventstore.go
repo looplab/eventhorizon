@@ -780,12 +780,7 @@ type evt struct {
 // newEvt returns a new evt for an event. It clones the metadata map to avoid
 // mutating the caller's event when setting internal fields like position.
 func newEvt(_ context.Context, event eh.Event) (*evt, error) {
-	// Clone metadata to avoid mutating the caller's map.
-	metadata := make(map[string]interface{}, len(event.Metadata()))
-	for k, v := range event.Metadata() {
-		metadata[k] = v
-	}
-
+	metadata := maps.Clone(event.Metadata())
 	e := &evt{
 		EventType:     event.EventType(),
 		Timestamp:     event.Timestamp(),
