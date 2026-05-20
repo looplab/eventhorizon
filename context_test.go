@@ -20,6 +20,13 @@ import (
 )
 
 func TestContextMarshaler(t *testing.T) {
+	savedLen := len(contextMarshalFuncs)
+	defer func() {
+		contextMarshalFuncsMu.Lock()
+		contextMarshalFuncs = contextMarshalFuncs[:savedLen]
+		contextMarshalFuncsMu.Unlock()
+	}()
+
 	if len(contextMarshalFuncs) != 1 {
 		t.Error("there should be one context marshaler")
 	}
@@ -50,6 +57,13 @@ func TestContextMarshaler(t *testing.T) {
 }
 
 func TestContextUnmarshaler(t *testing.T) {
+	savedLen := len(contextUnmarshalFuncs)
+	defer func() {
+		contextUnmarshalFuncsMu.Lock()
+		contextUnmarshalFuncs = contextUnmarshalFuncs[:savedLen]
+		contextUnmarshalFuncsMu.Unlock()
+	}()
+
 	if len(contextUnmarshalFuncs) != 1 {
 		t.Error("there should be one context marshaler")
 	}
@@ -82,13 +96,28 @@ func TestContextUnmarshaler(t *testing.T) {
 }
 
 func TestCopyContext(t *testing.T) {
-	if len(contextMarshalFuncs) != 2 {
-		t.Error("there should be two context marshalers")
-	}
+	marshalSavedLen := len(contextMarshalFuncs)
+	unmarshalSavedLen := len(contextUnmarshalFuncs)
+	defer func() {
+		contextMarshalFuncsMu.Lock()
+		contextMarshalFuncs = contextMarshalFuncs[:marshalSavedLen]
+		contextMarshalFuncsMu.Unlock()
+		contextUnmarshalFuncsMu.Lock()
+		contextUnmarshalFuncs = contextUnmarshalFuncs[:unmarshalSavedLen]
+		contextUnmarshalFuncsMu.Unlock()
+	}()
 
-	if len(contextUnmarshalFuncs) != 2 {
-		t.Error("there should be two context unmarshalers")
-	}
+	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+		if val, ok := ContextTestOne(ctx); ok {
+			vals[contextTestKeyOneStr] = val
+		}
+	})
+	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+		if val, ok := vals[contextTestKeyOneStr].(string); ok {
+			return WithContextTestOne(ctx, val)
+		}
+		return ctx
+	})
 
 	from := WithContextTestOne(context.Background(), "testval")
 

@@ -59,6 +59,7 @@ func TestRegisterCommandNil(t *testing.T) {
 }
 
 func TestRegisterCommandTwice(t *testing.T) {
+	defer UnregisterCommand(TestCommandRegisterTwiceType)
 	defer func() {
 		if r := recover(); r == nil || r != "eventhorizon: registering duplicate types for \"TestCommandRegisterTwice\"" {
 			t.Error("there should have been a panic:", r)
