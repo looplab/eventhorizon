@@ -170,8 +170,9 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:    ":8080",
-		Handler: h,
+		Addr:              ":8080",
+		Handler:           h,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 	srvClosed := make(chan struct{})
 

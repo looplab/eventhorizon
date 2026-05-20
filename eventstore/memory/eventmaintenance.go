@@ -17,6 +17,7 @@ package memory
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/uuid"
@@ -42,7 +43,7 @@ func (s *EventStore) Replace(ctx context.Context, event eh.Event) error {
 	s.dbMu.RUnlock()
 
 	// Create the event record for the Database.
-	e, err := copyEvent(ctx, event)
+	e, err := copyEvent(event)
 	if err != nil {
 		return &eh.EventStoreError{
 			Err:         fmt.Errorf("could not copy event: %w", err),
@@ -113,9 +114,7 @@ func (s *EventStore) RenameEvent(ctx context.Context, from, to eh.EventType) err
 		updated[id] = aggregate
 	}
 
-	for id, aggregate := range updated {
-		s.db[id] = aggregate
-	}
+	maps.Copy(s.db, updated)
 
 	return nil
 }

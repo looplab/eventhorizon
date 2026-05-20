@@ -35,7 +35,6 @@ func (p *Projector) ProjectorType() projector.Type {
 // Project implements the Project method of the eventhorizon.Projector interface.
 func (p *Projector) Project(ctx context.Context,
 	event eh.Event, entity eh.Entity) (eh.Entity, error) {
-
 	model, ok := entity.(*TodoList)
 	if !ok {
 		return nil, errors.New("model is of incorrect type")

@@ -14,8 +14,7 @@ import (
 // Update the default BSON registry to be able to handle UUID types as strings.
 func init() {
 	rb := bson.NewRegistryBuilder()
-	id := uuid.Nil
-	uuidType := reflect.TypeOf(id)
+	uuidType := reflect.TypeFor[uuid.UUID]()
 
 	rb.RegisterTypeEncoder(uuidType, bsoncodec.ValueEncoderFunc(
 		func(ec bsoncodec.EncodeContext, vw bsonrw.ValueWriter, val reflect.Value) error {

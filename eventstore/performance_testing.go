@@ -32,7 +32,7 @@ func Benchmark(b *testing.B, store eh.EventStore) {
 	b.Log("setup complete")
 	b.ResetTimer()
 
-	for n := 0; n < b.N; n++ {
+	for n := range b.N {
 		e := eh.NewEvent(mocks.EventType,
 			&mocks.EventData{Content: "event1"}, time.Now(),
 			eh.ForAggregate(mocks.AggregateType, id, n+1))

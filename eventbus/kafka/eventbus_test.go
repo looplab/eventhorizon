@@ -146,7 +146,10 @@ func TestWithAutoCreateTopic(t *testing.T) {
 				t.Fatalf("expected no error, got: %s", err.Error())
 			}
 
-			underlyingEb := eb.(*EventBus)
+			underlyingEb, ok := eb.(*EventBus)
+			if !ok {
+				t.Fatal("expected eb to be *EventBus")
+			}
 			if want, got := tc.autoCreate, underlyingEb.autoCreateTopic; want != got {
 				t.Fatalf("expected autoCreateTopic to be %t, got: %t", want, got)
 			}
@@ -173,7 +176,10 @@ func TestWithStartOffset(t *testing.T) {
 				t.Fatalf("expected no error, got: %s", err.Error())
 			}
 
-			underlyingEb := eb.(*EventBus)
+			underlyingEb, ok := eb.(*EventBus)
+			if !ok {
+				t.Fatal("expected eb to be *EventBus")
+			}
 			if want, got := tc.startOffset, underlyingEb.startOffset; want != got {
 				t.Fatalf("expected topics to be equal, want %d, got: %d", want, got)
 			}
@@ -200,7 +206,10 @@ func TestWithTopic(t *testing.T) {
 				t.Fatalf("expected no error, got: %s", err.Error())
 			}
 
-			underlyingEb := eb.(*EventBus)
+			underlyingEb, ok := eb.(*EventBus)
+			if !ok {
+				t.Fatal("expected eb to be *EventBus")
+			}
 			if want, got := tc.topic, underlyingEb.topic; want != got {
 				t.Fatalf("expected topics to be equal, want %s, got: %s", want, got)
 			}
@@ -229,11 +238,14 @@ func TestWithTopicPatitions(t *testing.T) {
 	for desc, tc := range testCases {
 		t.Run(desc, func(t *testing.T) {
 			eb, _, err := newTestEventBus("", WithTopicPartitions(tc.numPartitions))
-			if want, got := tc.expectError, err; want != got {
-				t.Fatalf("expected errors to be equal, want %s, got: %s", want, got)
+			if !errors.Is(err, tc.expectError) {
+				t.Fatalf("expected error %v, got: %v", tc.expectError, err)
 			}
 
-			underlyingEb := eb.(*EventBus)
+			underlyingEb, ok := eb.(*EventBus)
+			if !ok {
+				t.Fatal("expected eb to be *EventBus")
+			}
 			if want, got := tc.numPartitions, underlyingEb.topicPartitions; want != got {
 				t.Fatalf("expected number of topic partitions to be equal, want %d, got: %d", want, got)
 			}

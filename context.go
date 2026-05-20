@@ -34,7 +34,7 @@ const (
 )
 
 func init() {
-	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+	RegisterContextMarshaler(func(ctx context.Context, vals map[string]any) {
 		if aggregateID, ok := AggregateIDFromContext(ctx); ok {
 			vals[aggregateIDKeyStr] = aggregateID.String()
 		}
@@ -48,7 +48,7 @@ func init() {
 		}
 	})
 
-	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]any) context.Context {
 		if aggregateIDStr, ok := vals[aggregateIDKeyStr].(string); ok {
 			if aggregateID, err := uuid.Parse(aggregateIDStr); err == nil {
 				ctx = NewContextWithAggregateID(ctx, aggregateID)
@@ -122,7 +122,7 @@ var (
 
 // ContextMarshalFunc is a function that marshalls any context values to a map,
 // used for sending context on the wire.
-type ContextMarshalFunc func(context.Context, map[string]interface{})
+type ContextMarshalFunc func(context.Context, map[string]any)
 
 // RegisterContextMarshaler registers a marshaler function used by MarshalContext.
 func RegisterContextMarshaler(f ContextMarshalFunc) {
@@ -133,14 +133,14 @@ func RegisterContextMarshaler(f ContextMarshalFunc) {
 }
 
 // MarshalContext marshals a context into a map.
-func MarshalContext(ctx context.Context) map[string]interface{} {
+func MarshalContext(ctx context.Context) map[string]any {
 	contextMarshalFuncsMu.RLock()
 	defer contextMarshalFuncsMu.RUnlock()
 
-	allVals := map[string]interface{}{}
+	allVals := map[string]any{}
 
 	for _, f := range contextMarshalFuncs {
-		vals := map[string]interface{}{}
+		vals := map[string]any{}
 		f(ctx, vals)
 
 		for key, val := range vals {
@@ -157,7 +157,7 @@ func MarshalContext(ctx context.Context) map[string]interface{} {
 
 // ContextUnmarshalFunc is a function that marshalls any context values to a map,
 // used for sending context on the wire.
-type ContextUnmarshalFunc func(context.Context, map[string]interface{}) context.Context
+type ContextUnmarshalFunc func(context.Context, map[string]any) context.Context
 
 // RegisterContextUnmarshaler registers a marshaler function used by UnmarshalContext.
 func RegisterContextUnmarshaler(f ContextUnmarshalFunc) {
@@ -168,7 +168,7 @@ func RegisterContextUnmarshaler(f ContextUnmarshalFunc) {
 }
 
 // UnmarshalContext unmarshals a context from a map.
-func UnmarshalContext(ctx context.Context, vals map[string]interface{}) context.Context {
+func UnmarshalContext(ctx context.Context, vals map[string]any) context.Context {
 	contextUnmarshalFuncsMu.RLock()
 	defer contextUnmarshalFuncsMu.RUnlock()
 
@@ -177,7 +177,7 @@ func UnmarshalContext(ctx context.Context, vals map[string]interface{}) context.
 	}
 
 	for _, f := range contextUnmarshalFuncs {
-		ctx = f(ctx, vals)
+		ctx = f(ctx, vals) //nolint:fatcontext
 	}
 
 	return ctx

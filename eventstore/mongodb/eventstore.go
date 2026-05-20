@@ -16,6 +16,7 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -74,7 +75,7 @@ func NewEventStoreWithClient(client *mongo.Client, dbName string, options ...Opt
 
 func newEventStoreWithClient(client *mongo.Client, clientOwnership clientOwnership, dbName string, options ...Option) (*EventStore, error) {
 	if client == nil {
-		return nil, fmt.Errorf("missing DB client")
+		return nil, errors.New("missing DB client")
 	}
 
 	db := client.Database(dbName)
@@ -107,11 +108,11 @@ type Option func(*EventStore) error
 func WithEventHandler(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
 		if s.eventHandlerAfterSave != nil {
-			return fmt.Errorf("another event handler is already set")
+			return errors.New("another event handler is already set")
 		}
 
 		if s.eventHandlerInTX != nil {
-			return fmt.Errorf("another TX event handler is already set")
+			return errors.New("another TX event handler is already set")
 		}
 
 		s.eventHandlerAfterSave = h
@@ -127,11 +128,11 @@ func WithEventHandler(h eh.EventHandler) Option {
 func WithEventHandlerInTX(h eh.EventHandler) Option {
 	return func(s *EventStore) error {
 		if s.eventHandlerAfterSave != nil {
-			return fmt.Errorf("another event handler is already set")
+			return errors.New("another event handler is already set")
 		}
 
 		if s.eventHandlerInTX != nil {
-			return fmt.Errorf("another TX event handler is already set")
+			return errors.New("another TX event handler is already set")
 		}
 
 		s.eventHandlerInTX = h
@@ -144,7 +145,7 @@ func WithEventHandlerInTX(h eh.EventHandler) Option {
 func WithCollectionName(eventsColl string) Option {
 	return func(s *EventStore) error {
 		if eventsColl == "" {
-			return fmt.Errorf("missing collection name")
+			return errors.New("missing collection name")
 		}
 
 		s.aggregates = s.db.Collection(eventsColl)
@@ -205,7 +206,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		}
 
 		// Create the event record for the DB.
-		e, err := newEvt(ctx, event)
+		e, err := newEvt(event)
 		if err != nil {
 			return &eh.EventStoreError{
 				Err:              fmt.Errorf("could not copy event: %w", err),
@@ -221,7 +222,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 	}
 
 	// Run the operation in a transaction if using an outbox, otherwise it's not needed.
-	saveEvents := func(ctx mongo.SessionContext) error {
+	saveEvents := func(ctx mongo.SessionContext) error { //nolint:contextcheck // mongo session context is inherited via WithTransaction
 		// Either insert a new aggregate or append to an existing.
 		if originalVersion == 0 {
 			aggregate := aggregateRecord{
@@ -271,7 +272,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 		defer sess.EndSession(ctx)
 
-		if _, err := sess.WithTransaction(ctx, func(ctx mongo.SessionContext) (interface{}, error) {
+		if _, err := sess.WithTransaction(ctx, func(ctx mongo.SessionContext) (any, error) { //nolint:contextcheck // mongo session context is inherited via WithTransaction
 			if err := saveEvents(ctx); err != nil {
 				return nil, err
 			}
@@ -332,7 +333,7 @@ func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([
 	var aggregate aggregateRecord
 	if err := s.aggregates.FindOne(ctx, bson.M{"_id": id}).Decode(&aggregate); err != nil {
 		// Translate to our own not found error.
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			err = eh.ErrAggregateNotFound
 		}
 
@@ -418,18 +419,18 @@ type aggregateRecord struct {
 // evt is the internal event record for the MongoDB event store used
 // to save and load events from the DB.
 type evt struct {
-	EventType     eh.EventType           `bson:"event_type"`
-	RawData       bson.Raw               `bson:"data,omitempty"`
-	data          eh.EventData           `bson:"-"`
-	Timestamp     time.Time              `bson:"timestamp"`
-	AggregateType eh.AggregateType       `bson:"aggregate_type"`
-	AggregateID   uuid.UUID              `bson:"_id"`
-	Version       int                    `bson:"version"`
-	Metadata      map[string]interface{} `bson:"metadata"`
+	EventType     eh.EventType     `bson:"event_type"`
+	RawData       bson.Raw         `bson:"data,omitempty"`
+	data          eh.EventData     `bson:"-"`
+	Timestamp     time.Time        `bson:"timestamp"`
+	AggregateType eh.AggregateType `bson:"aggregate_type"`
+	AggregateID   uuid.UUID        `bson:"_id"`
+	Version       int              `bson:"version"`
+	Metadata      map[string]any   `bson:"metadata"`
 }
 
 // newEvt returns a new evt for an event.
-func newEvt(ctx context.Context, event eh.Event) (*evt, error) {
+func newEvt(event eh.Event) (*evt, error) {
 	e := &evt{
 		EventType:     event.EventType(),
 		Timestamp:     event.Timestamp(),

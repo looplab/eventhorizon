@@ -106,13 +106,13 @@ func (c *EventCodec) UnmarshalEvent(ctx context.Context, b []byte) (eh.Event, co
 
 // evt is the internal event used on the wire only.
 type evt struct {
-	EventType     eh.EventType           `bson:"event_type"`
-	RawData       bson.Raw               `bson:"data,omitempty"`
-	data          eh.EventData           `bson:"-"`
-	Timestamp     time.Time              `bson:"timestamp"`
-	AggregateType eh.AggregateType       `bson:"aggregate_type"`
-	AggregateID   string                 `bson:"_id"`
-	Version       int                    `bson:"version"`
-	Metadata      map[string]interface{} `bson:"metadata"`
-	Context       map[string]interface{} `bson:"context"`
+	EventType     eh.EventType     `bson:"event_type"`
+	RawData       bson.Raw         `bson:"data,omitempty"`
+	data          eh.EventData     `bson:"-"`
+	Timestamp     time.Time        `bson:"timestamp"`
+	AggregateType eh.AggregateType `bson:"aggregate_type"`
+	AggregateID   string           `bson:"_id"`
+	Version       int              `bson:"version"`
+	Metadata      map[string]any   `bson:"metadata"`
+	Context       map[string]any   `bson:"context"`
 }

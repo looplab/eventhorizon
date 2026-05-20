@@ -97,7 +97,7 @@ func extraRepoTests(t *testing.T, r *Repo) {
 	}
 
 	// FindCustom by content.
-	result, err := r.FindCustom(ctx, func(ctx context.Context, c *mongo.Collection) (*mongo.Cursor, error) {
+	result, _ := r.FindCustom(ctx, func(ctx context.Context, c *mongo.Collection) (*mongo.Cursor, error) {
 		return c.Find(ctx, bson.M{"content": "modelCustom"})
 	})
 	if len(result) != 1 {
@@ -110,6 +110,8 @@ func extraRepoTests(t *testing.T, r *Repo) {
 
 	// FindCustom with no query.
 	repoErr := &eh.RepoError{}
+
+	var err error
 
 	_, err = r.FindCustom(ctx, func(ctx context.Context, c *mongo.Collection) (*mongo.Cursor, error) {
 		return nil, nil

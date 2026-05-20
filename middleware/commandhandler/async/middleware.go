@@ -45,7 +45,7 @@ type Error struct {
 	// Err is the error that happened when handling the command.
 	Err error
 	// Ctx is the context used when the error happened.
-	Ctx context.Context
+	Ctx context.Context //nolint:containedctx
 	// Command is the command handeled when the error happened.
 	Command eh.Command
 }

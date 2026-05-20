@@ -48,11 +48,7 @@ func TestEventHandler(t *testing.T) {
 	}()
 
 	l := h.Listen(func(event eh.Event) bool {
-		if event.EventType() == mocks.EventType {
-			return true
-		}
-
-		return false
+		return event.EventType() == mocks.EventType
 	})
 	defer l.Close()
 

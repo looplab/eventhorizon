@@ -44,7 +44,7 @@ type EventBus struct {
 	registered      map[eh.EventHandlerType]struct{}
 	registeredMu    sync.RWMutex
 	errCh           chan error
-	cctx            context.Context
+	cctx            context.Context //nolint:containedctx
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
 	codec           eh.EventCodec
@@ -110,7 +110,7 @@ func (b *EventBus) createTopic() error {
 	var resp *kafka.CreateTopicsResponse
 	var err error
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		resp, err = b.client.CreateTopics(context.Background(), &kafka.CreateTopicsRequest{
 			Topics: []kafka.TopicConfig{{
 				Topic:             b.topic,
@@ -119,12 +119,13 @@ func (b *EventBus) createTopic() error {
 			}},
 		})
 
-		if errors.Is(err, kafka.BrokerNotAvailable) {
+		switch {
+		case errors.Is(err, kafka.BrokerNotAvailable):
 			time.Sleep(5 * time.Second)
 			continue
-		} else if err != nil {
+		case err != nil:
 			return fmt.Errorf("error creating Kafka topic: %w", err)
-		} else {
+		default:
 			break
 		}
 	}
@@ -147,17 +148,18 @@ func (b *EventBus) verifyTopic() error {
 	var resp *kafka.MetadataResponse
 	var err error
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		resp, err = b.client.Metadata(context.Background(), &kafka.MetadataRequest{
 			Topics: []string{b.topic},
 		})
 
-		if errors.Is(err, kafka.BrokerNotAvailable) {
+		switch {
+		case errors.Is(err, kafka.BrokerNotAvailable):
 			time.Sleep(5 * time.Second)
 			continue
-		} else if err != nil {
+		case err != nil:
 			return fmt.Errorf("error getting Kafka topic: %w", err)
-		} else {
+		default:
 			break
 		}
 	}
@@ -311,13 +313,13 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 	b.wg.Add(1)
 
 	// Handle until context is cancelled.
-	go b.handle(m, h, r)
+	go b.handle(b.cctx, m, h, r) //nolint:contextcheck // bus lifecycle context outlives the AddHandler call
 
 	req := &kafka.ListGroupsRequest{
 		Addr: b.client.Addr,
 	}
 
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		resp, err := b.client.ListGroups(ctx, req)
 		if err != nil || resp.Error != nil {
 			return fmt.Errorf("could not list Kafka groups: %w", err)
@@ -332,7 +334,7 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	return fmt.Errorf("did not join group in time")
+	return errors.New("did not join group in time")
 }
 
 // Errors implements the Errors method of the eventhorizon.EventBus interface.
@@ -349,7 +351,7 @@ func (b *EventBus) Close() error {
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) {
+func (b *EventBus) handle(ctx context.Context, m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) {
 	defer b.wg.Done()
 	defer func() {
 		if err := r.Close(); err != nil {
@@ -357,16 +359,16 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 		}
 	}()
 
-	handler := b.handler(m, h, r)
+	handler := b.handler(m, h)
 
 	for {
 		select {
-		case <-b.cctx.Done():
+		case <-ctx.Done():
 			return
 		default:
 		}
 
-		msg, err := r.FetchMessage(b.cctx)
+		msg, err := r.FetchMessage(ctx)
 		if errors.Is(err, context.Canceled) {
 			break
 		} else if err != nil {
@@ -385,12 +387,12 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 
 		for {
 			select {
-			case <-b.cctx.Done():
+			case <-ctx.Done():
 				return
 			default:
 			}
 
-			if err := handler(b.cctx, msg); err != nil {
+			if err := handler(ctx, msg); err != nil {
 				select {
 				case b.errCh <- err:
 				default:
@@ -400,7 +402,7 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 				time.Sleep(time.Second)
 			} else {
 				// Use a new context to always finish the commit.
-				if err := r.CommitMessages(context.Background(), msg); err != nil {
+				if err := r.CommitMessages(context.Background(), msg); err != nil { //nolint:contextcheck // commit must complete even if bus context is cancelled
 					err = fmt.Errorf("could not commit message: %w", err)
 					select {
 					case b.errCh <- &eh.EventBusError{Err: err}:
@@ -413,10 +415,9 @@ func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader)
 			}
 		}
 	}
-
 }
 
-func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler, r *kafka.Reader) func(ctx context.Context, msg kafka.Message) *eh.EventBusError {
+func (b *EventBus) handler(m eh.EventMatcher, h eh.EventHandler) func(ctx context.Context, msg kafka.Message) *eh.EventBusError {
 	return func(ctx context.Context, msg kafka.Message) *eh.EventBusError {
 		event, ctx, err := b.codec.UnmarshalEvent(ctx, msg.Value)
 		if err != nil {

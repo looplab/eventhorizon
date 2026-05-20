@@ -82,7 +82,7 @@ func (h *EventBusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.chsMu.Unlock()
 
 	for event := range ch {
-		data, err := h.codec.MarshalEvent(context.Background(), event)
+		data, err := h.codec.MarshalEvent(context.Background(), event) //nolint:contextcheck // websocket event marshaling is not tied to the HTTP request lifecycle
 		if err != nil {
 			log.Printf("eventhorizon: could not marshal websocket event: %s", err)
 

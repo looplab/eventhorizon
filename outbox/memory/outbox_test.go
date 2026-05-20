@@ -2,16 +2,11 @@ package memory
 
 import (
 	"context"
-	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/looplab/eventhorizon/outbox"
 )
-
-func init() {
-	rand.Seed(time.Now().Unix())
-}
 
 func TestOutboxAddHandler(t *testing.T) {
 	o, err := NewOutbox()

@@ -34,3 +34,4 @@ coverage.out
 .vscode
 .idea
 /.direnv
+/bin

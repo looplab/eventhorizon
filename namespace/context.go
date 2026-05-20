@@ -29,12 +29,12 @@ const (
 )
 
 func init() {
-	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+	eh.RegisterContextMarshaler(func(ctx context.Context, vals map[string]any) {
 		if ns, ok := ctx.Value(namespaceKey).(string); ok {
 			vals[namespaceKeyStr] = ns
 		}
 	})
-	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+	eh.RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]any) context.Context {
 		if ns, ok := vals[namespaceKeyStr].(string); ok {
 			ctx = NewContext(ctx, ns)
 		}
