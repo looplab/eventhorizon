@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/eventbus"
 )
@@ -147,8 +147,8 @@ func newTestEventBusWithTopicConfig(appID string) (eh.EventBus, string, error) {
 	}
 
 	// Create an empty config. The emulator doesn't support configurable message retention.
-	topicConfig := &pubsub.TopicConfig{
-		// RetentionDuration: 7 * 24 * time.Hour,
+	topicConfig := &pubsubpb.Topic{
+		// MessageRetentionDuration: durationpb.New(7 * 24 * time.Hour),
 	}
 	bus, err := NewEventBus("project_id", appID, WithTopicOptions(topicConfig))
 	if err != nil {
