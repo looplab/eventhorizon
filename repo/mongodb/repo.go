@@ -19,15 +19,15 @@ import (
 	"errors"
 	"fmt"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readconcern"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	mongoOptions "go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 
 	// Register uuid.UUID as BSON type.
-	_ "github.com/looplab/eventhorizon/codec/bson"
+	bsoncodec "github.com/looplab/eventhorizon/codec/bson"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/uuid"
@@ -59,10 +59,10 @@ const (
 // NewRepo creates a new Repo.
 func NewRepo(uri, dbName, collection string, options ...Option) (*Repo, error) {
 	opts := mongoOptions.Client().ApplyURI(uri)
-	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
+	opts.SetWriteConcern(writeconcern.Majority())
 	opts.SetReadConcern(readconcern.Majority())
 	opts.SetReadPreference(readpref.Primary())
-	client, err := mongo.Connect(context.TODO(), opts)
+	client, err := mongo.Connect(opts)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to DB: %w", err)
@@ -84,7 +84,7 @@ func newRepoWithClient(client *mongo.Client, clientOwnership clientOwnership, db
 	r := &Repo{
 		client:          client,
 		clientOwnership: clientOwnership,
-		entities:        client.Database(dbName).Collection(collection),
+		entities:        client.Database(dbName, mongoOptions.Database().SetRegistry(bsoncodec.Registry)).Collection(collection),
 	}
 
 	for _, option := range options {
@@ -356,7 +356,7 @@ func (r *Repo) Save(ctx context.Context, entity eh.Entity) error {
 		bson.M{
 			"$set": entity,
 		},
-		mongoOptions.Update().SetUpsert(true),
+		mongoOptions.UpdateOne().SetUpsert(true),
 	); err != nil {
 		return &eh.RepoError{
 			Err:      fmt.Errorf("could not save/update: %w", err),

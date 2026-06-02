@@ -22,34 +22,68 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"time"
 
-	"github.com/looplab/eventhorizon/mongoutils"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readconcern"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
-
-	// Register uuid.UUID as BSON type.
-	_ "github.com/looplab/eventhorizon/codec/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	mongoOptions "go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 
 	eh "github.com/looplab/eventhorizon"
+	bsoncodec "github.com/looplab/eventhorizon/codec/bson"
+	"github.com/looplab/eventhorizon/mongoutils"
 	"github.com/looplab/eventhorizon/uuid"
+)
+
+// GlobalPositionStrategy controls how the global event position (the `$all`
+// stream document) is incremented during Save. See WithGlobalPositionStrategy
+// for the trade-offs of each mode.
+type GlobalPositionStrategy int
+
+const (
+	// GlobalPositionInTX increments the global position inside the save
+	// transaction. This is the default and matches historical behavior:
+	// positions strictly reflect commit order and there are no gaps, at the
+	// cost of higher write-lock contention on the `$all` document under
+	// concurrent saves across aggregates.
+	GlobalPositionInTX GlobalPositionStrategy = iota
+	// GlobalPositionOutsideTX increments the global position with an atomic
+	// FindOneAndUpdate before opening the save transaction. This removes the
+	// `$all` document as a serialization point and significantly improves
+	// throughput under high-concurrency / many-aggregate workloads. The
+	// trade-off is that positions can have gaps (if the transaction is rolled
+	// back after the position was incremented) and may not strictly reflect
+	// commit order across aggregates. Per-aggregate version ordering is still
+	// guaranteed by the stream-document optimistic lock. Use this only when
+	// consumers tolerate non-contiguous and non-commit-ordered global
+	// positions (for example, when the outbox runs after-save and there are
+	// no cross-aggregate sagas that depend on strict global ordering).
+	GlobalPositionOutsideTX
 )
 
 // EventStore is an eventhorizon.EventStore for MongoDB, using one collection
 // for all events and another to keep track of all aggregates/streams. It also
 // keeps track of the global position of events, stored as metadata.
+//
+// The global position update strategy is configurable via
+// WithGlobalPositionStrategy. The default (GlobalPositionInTX) preserves
+// strict commit-order positions and is safe for all consumers. Workloads with
+// high concurrency across many aggregates can opt in to
+// GlobalPositionOutsideTX for better throughput at the cost of allowing gaps
+// and out-of-commit-order positions cross-aggregate.
 type EventStore struct {
-	client                *mongo.Client
-	clientOwnership       clientOwnership
-	events                *mongo.Collection
-	streams               *mongo.Collection
-	snapshots             *mongo.Collection
-	eventHandlerAfterSave eh.EventHandler
-	eventHandlerInTX      eh.EventHandler
+	client                 *mongo.Client
+	clientOwnership        clientOwnership
+	events                 *mongo.Collection
+	streams                *mongo.Collection
+	snapshots              *mongo.Collection
+	eventHandlerAfterSave  eh.EventHandler
+	eventHandlerInTX       eh.EventHandler
+	sortEventsOnDB         bool
+	globalPositionStrategy GlobalPositionStrategy
 }
 
 type clientOwnership int
@@ -62,11 +96,11 @@ const (
 // NewEventStore creates a new EventStore with a MongoDB URI: `mongodb://hostname`.
 func NewEventStore(uri, dbName string, options ...Option) (*EventStore, error) {
 	opts := mongoOptions.Client().ApplyURI(uri)
-	opts.SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
+	opts.SetWriteConcern(writeconcern.Majority())
 	opts.SetReadConcern(readconcern.Majority())
 	opts.SetReadPreference(readpref.Primary())
 
-	client, err := mongo.Connect(context.TODO(), opts)
+	client, err := mongo.Connect(opts)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to DB: %w", err)
 	}
@@ -84,7 +118,7 @@ func newEventStoreWithClient(client *mongo.Client, clientOwnership clientOwnersh
 		return nil, errors.New("missing DB client")
 	}
 
-	db := client.Database(dbName)
+	db := client.Database(dbName, mongoOptions.Database().SetRegistry(bsoncodec.Registry))
 	s := &EventStore{
 		client:          client,
 		clientOwnership: clientOwnership,
@@ -221,6 +255,32 @@ func WithSnapshotCollectionName(snapshotColl string) Option {
 	}
 }
 
+// WithSortEventsOnDB enables sorting events by version on the database side
+// during Load and LoadFrom operations. Without this option, event order depends
+// on the database's default ordering, which may not be by version. Enabling this
+// adds a sort stage to queries, which may have a minor performance cost on large
+// aggregates but guarantees correct version ordering regardless of insertion order.
+func WithSortEventsOnDB() Option {
+	return func(s *EventStore) error {
+		s.sortEventsOnDB = true
+
+		return nil
+	}
+}
+
+// WithGlobalPositionStrategy selects how the global event position is updated
+// during Save. The default is GlobalPositionInTX (backward-compatible, strict
+// ordering). Use GlobalPositionOutsideTX for higher throughput under
+// concurrent saves across many aggregates; see the constant documentation for
+// the trade-offs.
+func WithGlobalPositionStrategy(strategy GlobalPositionStrategy) Option {
+	return func(s *EventStore) error {
+		s.globalPositionStrategy = strategy
+
+		return nil
+	}
+}
+
 // Save implements the Save method of the eventhorizon.EventStore interface.
 func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersion int) error {
 	if len(events) == 0 {
@@ -281,7 +341,42 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		dbEvents[i] = e
 	}
 
-	sess, err := s.client.StartSession(nil)
+	// Dispatch to the configured global-position strategy.
+	switch s.globalPositionStrategy {
+	case GlobalPositionOutsideTX:
+		if err := s.saveOutsideTX(ctx, events, dbEvents, originalVersion); err != nil {
+			return err
+		}
+	default:
+		if err := s.saveInTX(ctx, events, dbEvents, originalVersion); err != nil {
+			return err
+		}
+	}
+
+	// Let the optional event handler handle the events.
+	if s.eventHandlerAfterSave != nil {
+		for _, e := range events {
+			if err := s.eventHandlerAfterSave.HandleEvent(ctx, e); err != nil {
+				return &eh.EventHandlerError{
+					Err:   err,
+					Event: e,
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// saveInTX implements the backward-compatible Save path where the global
+// position is incremented inside the transaction. This preserves strict
+// commit-order positions with no gaps, at the cost of write-lock contention
+// on the `$all` document under concurrent saves.
+func (s *EventStore) saveInTX(ctx context.Context, events []eh.Event, dbEvents []any, originalVersion int) error {
+	id := events[0].AggregateID()
+	at := events[0].AggregateType()
+
+	sess, err := s.client.StartSession()
 	if err != nil {
 		return &eh.EventStoreError{
 			Err:              fmt.Errorf("could not start transaction: %w", err),
@@ -295,8 +390,8 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 	defer sess.EndSession(ctx)
 
-	if _, err := sess.WithTransaction(ctx, func(txCtx mongo.SessionContext) (any, error) { //nolint:contextcheck // mongo session context is inherited via WithTransaction
-		// Fetch and increment global version in the all-stream.
+	if _, err := sess.WithTransaction(ctx, func(txCtx context.Context) (any, error) {
+		// Fetch and increment global position in the all-stream.
 		r := s.streams.FindOneAndUpdate(txCtx,
 			bson.M{"_id": "$all"},
 			bson.M{"$inc": bson.M{"position": len(dbEvents)}},
@@ -312,8 +407,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			return nil, fmt.Errorf("could not decode global position: %w", err)
 		}
 
-		// Use the global position as ID for the stored events.
-		// This natively prevents duplicate events to be written.
+		// Assign positions and build the stream record for the last event.
 		var strm *stream
 		for i, e := range dbEvents {
 			event, ok := e.(*evt)
@@ -322,10 +416,8 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			}
 
 			event.Position = allStream.Position + i + 1
-			// Also store the position in the event metadata.
 			event.Metadata["position"] = event.Position
 
-			// Use the last event to set the new stream position.
 			if i == len(dbEvents)-1 {
 				strm = &stream{
 					ID:            event.AggregateID,
@@ -343,32 +435,17 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 			return nil, fmt.Errorf("could not insert events: %w", err)
 		}
 
-		// Check that all inserted events got the requested ID (position),
-		// instead of a generated ID by MongoDB.
-		for _, e := range dbEvents {
-			event, ok := e.(*evt)
-			if !ok {
-				return nil, fmt.Errorf("event is of incorrect type %T", e)
-			}
-
-			found := false
-			for _, id := range insert.InsertedIDs {
-				if pos, ok := id.(int32); ok && event.Position == int(pos) {
-					found = true
-
-					break
-				}
-			}
-
-			if !found {
-				return nil, fmt.Errorf("inserted event %s at pos %d not found",
-					event.AggregateID, event.Position)
-			}
+		if err := verifyInsertedPositions(dbEvents, insert.InsertedIDs); err != nil {
+			return nil, err
 		}
 
 		// Update the stream.
 		if originalVersion == 0 {
 			if _, err := s.streams.InsertOne(txCtx, strm); err != nil {
+				if mongo.IsDuplicateKeyError(err) {
+					return nil, eh.ErrEventConflictFromOtherSave
+				}
+
 				return nil, fmt.Errorf("could not insert stream: %w", err)
 			}
 		} else {
@@ -411,15 +488,127 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 		}
 	}
 
-	// Let the optional event handler handle the events.
-	if s.eventHandlerAfterSave != nil {
-		for _, e := range events {
-			if err := s.eventHandlerAfterSave.HandleEvent(ctx, e); err != nil {
-				return &eh.EventHandlerError{
-					Err:   err,
-					Event: e,
+	return nil
+}
+
+// saveOutsideTX implements the higher-throughput Save path where the global
+// position is incremented with an atomic FindOneAndUpdate before the
+// transaction opens. This removes `$all` as a serialization point but allows
+// gaps and out-of-commit-order positions across aggregates.
+func (s *EventStore) saveOutsideTX(ctx context.Context, events []eh.Event, dbEvents []any, originalVersion int) error {
+	id := events[0].AggregateID()
+	at := events[0].AggregateType()
+
+	prevPosition, err := s.updateGlobalPosition(ctx, len(dbEvents))
+	if err != nil {
+		return &eh.EventStoreError{
+			Err:              err,
+			Op:               eh.EventStoreOpSave,
+			AggregateType:    at,
+			AggregateID:      id,
+			AggregateVersion: originalVersion,
+			Events:           events,
+		}
+	}
+
+	for i, e := range dbEvents {
+		event, ok := e.(*evt)
+		if !ok {
+			return &eh.EventStoreError{
+				Err:              fmt.Errorf("event is of incorrect type %T", e),
+				Op:               eh.EventStoreOpSave,
+				AggregateType:    at,
+				AggregateID:      id,
+				AggregateVersion: originalVersion,
+				Events:           events,
+			}
+		}
+
+		event.Position = prevPosition + i + 1
+		event.Metadata["position"] = event.Position
+	}
+
+	sess, err := s.client.StartSession()
+	if err != nil {
+		return &eh.EventStoreError{
+			Err:              fmt.Errorf("could not start transaction: %w", err),
+			Op:               eh.EventStoreOpSave,
+			AggregateType:    at,
+			AggregateID:      id,
+			AggregateVersion: originalVersion,
+			Events:           events,
+		}
+	}
+
+	defer sess.EndSession(ctx)
+
+	if _, err := sess.WithTransaction(ctx, func(txCtx context.Context) (any, error) {
+		// Update the stream first for fail-fast on optimistic locking conflicts.
+		if err := s.updateStreamForEntity(txCtx, dbEvents, originalVersion); err != nil {
+			return nil, err
+		}
+
+		insert, err := s.events.InsertMany(txCtx, dbEvents)
+		if err != nil {
+			return nil, fmt.Errorf("could not insert events: %w", err)
+		}
+
+		if err := verifyInsertedPositions(dbEvents, insert.InsertedIDs); err != nil {
+			return nil, err
+		}
+
+		if s.eventHandlerInTX != nil {
+			for _, e := range events {
+				if err := s.eventHandlerInTX.HandleEvent(txCtx, e); err != nil {
+					return nil, fmt.Errorf("could not handle event in transaction: %w", err)
 				}
 			}
+		}
+
+		return nil, nil
+	}); err != nil {
+		return &eh.EventStoreError{
+			Err:              err,
+			Op:               eh.EventStoreOpSave,
+			AggregateType:    at,
+			AggregateID:      id,
+			AggregateVersion: originalVersion,
+			Events:           events,
+		}
+	}
+
+	return nil
+}
+
+// verifyInsertedPositions checks that every event was inserted with the
+// position assigned to it, rather than a MongoDB-generated ID.
+func verifyInsertedPositions(dbEvents []any, insertedIDs []any) error {
+	for _, e := range dbEvents {
+		event, ok := e.(*evt)
+		if !ok {
+			return fmt.Errorf("event is of incorrect type %T", e)
+		}
+
+		found := false
+		for _, id := range insertedIDs {
+			switch pos := id.(type) {
+			case int32:
+				found = event.Position == int(pos)
+			case int64:
+				found = event.Position == int(pos)
+			default:
+				return fmt.Errorf("unexpected inserted ID type %T (%v) for event %s at pos %d",
+					id, id, event.AggregateID, event.Position)
+			}
+
+			if found {
+				break
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("inserted event %s at pos %d not found in inserted IDs",
+				event.AggregateID, event.Position)
 		}
 	}
 
@@ -428,7 +617,7 @@ func (s *EventStore) Save(ctx context.Context, events []eh.Event, originalVersio
 
 // Load implements the Load method of the eventhorizon.EventStore interface.
 func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error) {
-	cursor, err := s.events.Find(ctx, bson.M{"aggregate_id": id})
+	cursor, err := s.events.Find(ctx, bson.M{"aggregate_id": id}, s.makeFindOptions())
 	if err != nil {
 		return nil, &eh.EventStoreError{
 			Err:         fmt.Errorf("could not find event: %w", err),
@@ -442,7 +631,7 @@ func (s *EventStore) Load(ctx context.Context, id uuid.UUID) ([]eh.Event, error)
 
 // LoadFrom implements LoadFrom method of the eventhorizon.SnapshotStore interface.
 func (s *EventStore) LoadFrom(ctx context.Context, id uuid.UUID, version int) ([]eh.Event, error) {
-	cursor, err := s.events.Find(ctx, bson.M{"aggregate_id": id, "version": bson.M{"$gte": version}})
+	cursor, err := s.events.Find(ctx, bson.M{"aggregate_id": id, "version": bson.M{"$gte": version}}, s.makeFindOptions())
 	if err != nil {
 		return nil, &eh.EventStoreError{
 			Err:         fmt.Errorf("could not find event: %w", err),
@@ -482,7 +671,7 @@ func (s *EventStore) loadFromCursor(ctx context.Context, id uuid.UUID, cursor *m
 				}
 			}
 
-			if err := bson.Unmarshal(e.RawData, e.data); err != nil {
+			if err := bsoncodec.Unmarshal(e.RawData, e.data); err != nil {
 				return nil, &eh.EventStoreError{
 					Err:              fmt.Errorf("could not unmarshal event data: %w", err),
 					Op:               eh.EventStoreOpLoad,
@@ -676,6 +865,84 @@ func (r *SnapshotRecord) compress() error {
 	return nil
 }
 
+// updateGlobalPosition atomically increments the global event position counter
+// and returns the position before the increment. Called outside the transaction
+// to minimize lock contention.
+func (s *EventStore) updateGlobalPosition(ctx context.Context, eventCount int) (int, error) {
+	r := s.streams.FindOneAndUpdate(ctx,
+		bson.M{"_id": "$all"},
+		bson.M{"$inc": bson.M{"position": eventCount}},
+	)
+	if r.Err() != nil {
+		return 0, fmt.Errorf("could not increment global position: %w", r.Err())
+	}
+
+	allStream := struct {
+		Position int
+	}{}
+	if err := r.Decode(&allStream); err != nil {
+		return 0, fmt.Errorf("could not decode global position: %w", err)
+	}
+
+	return allStream.Position, nil
+}
+
+// updateStreamForEntity updates the aggregate stream document within the transaction.
+// It is called first in the transaction for fail-fast detection of optimistic locking conflicts.
+func (s *EventStore) updateStreamForEntity(txCtx context.Context, dbEvents []any, originalVersion int) error {
+	lastEvent, ok := dbEvents[len(dbEvents)-1].(*evt)
+	if !ok {
+		return fmt.Errorf("event is of incorrect type %T", dbEvents[len(dbEvents)-1])
+	}
+
+	if originalVersion == 0 {
+		newStream := &stream{
+			ID:            lastEvent.AggregateID,
+			Position:      lastEvent.Position,
+			AggregateType: lastEvent.AggregateType,
+			Version:       lastEvent.Version,
+			UpdatedAt:     lastEvent.Timestamp,
+		}
+		if _, err := s.streams.InsertOne(txCtx, newStream); err != nil {
+			if mongo.IsDuplicateKeyError(err) {
+				return eh.ErrEventConflictFromOtherSave
+			}
+
+			return fmt.Errorf("could not insert stream: %w", err)
+		}
+	} else {
+		if r, err := s.streams.UpdateOne(txCtx,
+			bson.M{
+				"_id":     lastEvent.AggregateID,
+				"version": originalVersion,
+			},
+			bson.M{
+				"$set": bson.M{
+					"position":   lastEvent.Position,
+					"updated_at": lastEvent.Timestamp,
+				},
+				"$inc": bson.M{"version": len(dbEvents)},
+			},
+		); err != nil {
+			return fmt.Errorf("could not update stream: %w", err)
+		} else if r.MatchedCount == 0 {
+			return eh.ErrEventConflictFromOtherSave
+		}
+	}
+
+	return nil
+}
+
+// makeFindOptions returns find options with optional version-based sorting.
+func (s *EventStore) makeFindOptions() *mongoOptions.FindOptionsBuilder {
+	opts := mongoOptions.Find()
+	if s.sortEventsOnDB {
+		opts.SetSort(bson.D{{Key: "version", Value: 1}})
+	}
+
+	return opts
+}
+
 // stream is a stream of events, often containing the events for an aggregate.
 type stream struct {
 	ID            uuid.UUID        `bson:"_id"`
@@ -699,15 +966,17 @@ type evt struct {
 	Metadata      map[string]any   `bson:"metadata"`
 }
 
-// newEvt returns a new evt for an event.
+// newEvt returns a new evt for an event. It clones the metadata map to avoid
+// mutating the caller's event when setting internal fields like position.
 func newEvt(_ context.Context, event eh.Event) (*evt, error) {
+	metadata := maps.Clone(event.Metadata())
 	e := &evt{
 		EventType:     event.EventType(),
 		Timestamp:     event.Timestamp(),
 		AggregateType: event.AggregateType(),
 		AggregateID:   event.AggregateID(),
 		Version:       event.Version(),
-		Metadata:      event.Metadata(),
+		Metadata:      metadata,
 	}
 
 	if e.Metadata == nil {
@@ -718,7 +987,7 @@ func newEvt(_ context.Context, event eh.Event) (*evt, error) {
 	if event.Data() != nil {
 		var err error
 
-		e.RawData, err = bson.Marshal(event.Data())
+		e.RawData, err = bsoncodec.Marshal(event.Data())
 		if err != nil {
 			return nil, &eh.EventStoreError{
 				Err: fmt.Errorf("could not marshal event data: %w", err),

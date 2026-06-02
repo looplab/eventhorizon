@@ -16,9 +16,6 @@ package mongodb_v2
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"os"
 	"testing"
 
 	"github.com/looplab/eventhorizon/eventstore"
@@ -29,25 +26,9 @@ func TestEventStoreMaintenanceIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	// Use MongoDB in Docker with fallback to localhost.
-	addr := os.Getenv("MONGODB_ADDR")
-	if addr == "" {
-		addr = "localhost:27017"
-	}
+	requireMongo(t)
 
-	url := "mongodb://" + addr
-
-	// Get a random DB name.
-	b := make([]byte, 4)
-	if _, err := rand.Read(b); err != nil {
-		t.Fatal(err)
-	}
-
-	db := "test-" + hex.EncodeToString(b)
-
-	t.Log("using DB:", db)
-
-	store, err := NewEventStore(url, db)
+	store, err := NewEventStore(testMongoURL, randomDB(t))
 	if err != nil {
 		t.Fatal("there should be no error:", err)
 	}
