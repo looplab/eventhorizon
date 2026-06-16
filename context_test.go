@@ -107,12 +107,12 @@ func TestCopyContext(t *testing.T) {
 		contextUnmarshalFuncsMu.Unlock()
 	}()
 
-	RegisterContextMarshaler(func(ctx context.Context, vals map[string]interface{}) {
+	RegisterContextMarshaler(func(ctx context.Context, vals map[string]any) {
 		if val, ok := ContextTestOne(ctx); ok {
 			vals[contextTestKeyOneStr] = val
 		}
 	})
-	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]interface{}) context.Context {
+	RegisterContextUnmarshaler(func(ctx context.Context, vals map[string]any) context.Context {
 		if val, ok := vals[contextTestKeyOneStr].(string); ok {
 			return WithContextTestOne(ctx, val)
 		}

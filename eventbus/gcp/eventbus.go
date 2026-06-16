@@ -22,8 +22,13 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
+	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	eh "github.com/looplab/eventhorizon"
 	"github.com/looplab/eventhorizon/codec/json"
@@ -33,10 +38,12 @@ import (
 // to all matching registered handlers, in order of registration.
 type EventBus struct {
 	appID        string
+	projectID    string
 	client       *pubsub.Client
 	clientOpts   []option.ClientOption
-	topic        *pubsub.Topic
-	topicConfig  *pubsub.TopicConfig
+	publisher    *pubsub.Publisher
+	topicName    string
+	topicConfig  *pubsubpb.Topic
 	registered   map[eh.EventHandlerType]struct{}
 	registeredMu sync.RWMutex
 	errCh        chan error
@@ -52,6 +59,7 @@ func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) 
 
 	b := &EventBus{
 		appID:      appID,
+		projectID:  projectID,
 		registered: map[eh.EventHandlerType]struct{}{},
 		errCh:      make(chan error, 100),
 		cctx:       ctx,
@@ -79,24 +87,30 @@ func NewEventBus(projectID, appID string, options ...Option) (*EventBus, error) 
 	}
 
 	// Get or create the topic.
-	name := appID + "_events"
-	b.topic = b.client.Topic(name)
+	b.topicName = fmt.Sprintf("projects/%s/topics/%s_events", projectID, appID)
 
-	if ok, err := b.topic.Exists(b.cctx); err != nil {
-		return nil, err
-	} else if !ok {
+	if _, err := b.client.TopicAdminClient.GetTopic(b.cctx, &pubsubpb.GetTopicRequest{Topic: b.topicName}); err != nil {
+		if status.Code(err) != codes.NotFound {
+			return nil, err
+		}
+
+		topic := &pubsubpb.Topic{}
 		if b.topicConfig != nil {
-			if b.topic, err = b.client.CreateTopicWithConfig(b.cctx, name, b.topicConfig); err != nil {
-				return nil, err
+			clone, ok := proto.Clone(b.topicConfig).(*pubsubpb.Topic)
+			if !ok {
+				return nil, fmt.Errorf("unexpected topic config type: %T", clone)
 			}
-		} else {
-			if b.topic, err = b.client.CreateTopic(b.cctx, name); err != nil {
-				return nil, err
-			}
+			topic = clone
+		}
+		topic.Name = b.topicName
+
+		if _, err := b.client.TopicAdminClient.CreateTopic(b.cctx, topic); err != nil {
+			return nil, err
 		}
 	}
 
-	b.topic.EnableMessageOrdering = true
+	b.publisher = b.client.Publisher(b.topicName)
+	b.publisher.EnableMessageOrdering = true
 
 	return b, nil
 }
@@ -122,9 +136,9 @@ func WithPubSubOptions(opts ...option.ClientOption) Option {
 	}
 }
 
-// WithTopicOptions adds the options to the pubsub.TopicConfig.
+// WithTopicOptions adds the options to the pubsubpb.Topic used on creation.
 // This allows control over the Topic creation, including message retention.
-func WithTopicOptions(topicConfig *pubsub.TopicConfig) Option {
+func WithTopicOptions(topicConfig *pubsubpb.Topic) Option {
 	return func(b *EventBus) error {
 		b.topicConfig = topicConfig
 
@@ -149,7 +163,7 @@ func (b *EventBus) HandleEvent(ctx context.Context, event eh.Event) error {
 		return fmt.Errorf("could not marshal event: %w", err)
 	}
 
-	res := b.topic.Publish(ctx, &pubsub.Message{
+	res := b.publisher.Publish(ctx, &pubsub.Message{
 		Data: data,
 		Attributes: map[string]string{
 			aggregateTypeAttribute:     event.AggregateType().String(),
@@ -191,36 +205,35 @@ func (b *EventBus) AddHandler(ctx context.Context, m eh.EventMatcher, h eh.Event
 
 	// Get or create the subscription.
 	subscriptionID := b.appID + "_" + h.HandlerType().String()
-	sub := b.client.Subscription(subscriptionID)
+	subName := fmt.Sprintf("projects/%s/subscriptions/%s", b.projectID, subscriptionID)
 
-	if ok, err := sub.Exists(ctx); err != nil {
-		return fmt.Errorf("could not check existing subscription: %w", err)
-	} else if !ok {
-		if sub, err = b.client.CreateSubscription(ctx, subscriptionID,
-			pubsub.SubscriptionConfig{
-				Topic:                 b.topic,
-				AckDeadline:           60 * time.Second,
-				Filter:                filter,
-				EnableMessageOrdering: true,
-				RetryPolicy: &pubsub.RetryPolicy{
-					MinimumBackoff: 3 * time.Second,
-				},
+	if cfg, err := b.client.SubscriptionAdminClient.GetSubscription(ctx, &pubsubpb.GetSubscriptionRequest{Subscription: subName}); err != nil {
+		if status.Code(err) != codes.NotFound {
+			return fmt.Errorf("could not check existing subscription: %w", err)
+		}
+
+		if _, err := b.client.SubscriptionAdminClient.CreateSubscription(ctx, &pubsubpb.Subscription{
+			Name:                  subName,
+			Topic:                 b.topicName,
+			AckDeadlineSeconds:    60,
+			Filter:                filter,
+			EnableMessageOrdering: true,
+			RetryPolicy: &pubsubpb.RetryPolicy{
+				MinimumBackoff: durationpb.New(3 * time.Second),
 			},
-		); err != nil {
+		}); err != nil {
 			return fmt.Errorf("could not create subscription: %w", err)
 		}
-	} else if ok {
-		cfg, err := sub.Config(ctx)
-		if err != nil {
-			return fmt.Errorf("could not get subscription config: %w", err)
-		}
-		if cfg.Filter != filter {
+	} else {
+		if cfg.GetFilter() != filter {
 			return fmt.Errorf("the existing filter for '%s' differs, please remove to recreate", h.HandlerType())
 		}
-		if !cfg.EnableMessageOrdering {
+		if !cfg.GetEnableMessageOrdering() {
 			return fmt.Errorf("message ordering not enabled for subscription '%s', please remove to recreate", h.HandlerType())
 		}
 	}
+
+	sub := b.client.Subscriber(subName)
 
 	// Register handler.
 	b.registered[h.HandlerType()] = struct{}{}
@@ -241,7 +254,7 @@ func (b *EventBus) Errors() <-chan error {
 // Close implements the Close method of the eventhorizon.EventBus interface.
 func (b *EventBus) Close() error {
 	// Stop publishing.
-	b.topic.Stop()
+	b.publisher.Stop()
 
 	// Stop handling.
 	b.cancel()
@@ -251,7 +264,7 @@ func (b *EventBus) Close() error {
 }
 
 // Handles all events coming in on the channel.
-func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, sub *pubsub.Subscription) {
+func (b *EventBus) handle(m eh.EventMatcher, h eh.EventHandler, sub *pubsub.Subscriber) {
 	defer b.wg.Done()
 
 	for {
