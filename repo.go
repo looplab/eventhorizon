@@ -21,6 +21,18 @@ import (
 	"github.com/looplab/eventhorizon/uuid"
 )
 
+func IntoRepo[T any](ctx context.Context, repo ReadRepo) *T {
+	if repo == nil {
+		return nil
+	}
+
+	if r, ok := any(repo).(*T); ok {
+		return r
+	}
+
+	return IntoRepo[T](ctx, repo.InnerRepo(ctx))
+}
+
 // ReadRepo is a read repository for entities.
 type ReadRepo interface {
 	// InnerRepo returns the inner read repository, if there is one.

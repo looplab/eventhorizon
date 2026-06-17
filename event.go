@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"sync"
 	"time"
 
 	"github.com/looplab/eventhorizon/uuid"
@@ -140,7 +139,8 @@ func NewEvent(eventType EventType, data EventData, timestamp time.Time, options 
 // timestamp. It also sets the aggregate data on it.
 // DEPRECATED, use NewEvent() with the WithAggregate() option instead.
 func NewEventForAggregate(eventType EventType, data EventData, timestamp time.Time,
-	aggregateType AggregateType, aggregateID uuid.UUID, version int, options ...EventOption) Event {
+	aggregateType AggregateType, aggregateID uuid.UUID, version int, options ...EventOption,
+) Event {
 	options = append(options, ForAggregate(aggregateType, aggregateID, version))
 
 	return NewEvent(eventType, data, timestamp, options...)
@@ -215,52 +215,33 @@ var ErrEventDataNotRegistered = errors.New("event data not registered")
 //
 //	RegisterEventData(MyEventType, func() Event { return &MyEventData{} })
 func RegisterEventData(eventType EventType, factory func() EventData) {
-	if eventType == EventType("") {
-		panic("eventhorizon: attempt to register empty event type")
-	}
+	eventDataFactories.register(eventType, factory)
+}
 
-	eventDataFactoriesMu.Lock()
-	defer eventDataFactoriesMu.Unlock()
-
-	// TODO: Explore the use of reflect/gob for creating concrete types without
-	// a factory func.
-	if _, ok := eventDataFactories[eventType]; ok {
-		panic(fmt.Sprintf("eventhorizon: registering duplicate types for %q", eventType))
-	}
-
-	eventDataFactories[eventType] = factory
+// RegisterEventDataType registers an event data type using generics.
+//
+// An example would be:
+//
+//	RegisterEventDataType[MyEventData](MyEventType)
+func RegisterEventDataType[T any](eventType EventType) {
+	eventDataFactories.register(eventType, func() EventData { return new(T) })
 }
 
 // UnregisterEventData removes the registration of the event data factory for
 // a type. This is mainly useful in mainenance situations where the event data
 // needs to be switched in a migrations.
 func UnregisterEventData(eventType EventType) {
-	if eventType == EventType("") {
-		panic("eventhorizon: attempt to unregister empty event type")
-	}
-
-	eventDataFactoriesMu.Lock()
-	defer eventDataFactoriesMu.Unlock()
-
-	if _, ok := eventDataFactories[eventType]; !ok {
-		panic(fmt.Sprintf("eventhorizon: unregister of non-registered type %q", eventType))
-	}
-
-	delete(eventDataFactories, eventType)
+	eventDataFactories.unregister(eventType)
 }
 
 // CreateEventData creates an event data of a type using the factory registered
 // with RegisterEventData.
 func CreateEventData(eventType EventType) (EventData, error) {
-	eventDataFactoriesMu.RLock()
-	defer eventDataFactoriesMu.RUnlock()
-
-	if factory, ok := eventDataFactories[eventType]; ok {
+	if factory, ok := eventDataFactories.get(eventType); ok {
 		return factory(), nil
 	}
 
 	return nil, ErrEventDataNotRegistered
 }
 
-var eventDataFactories = make(map[EventType]func() EventData)
-var eventDataFactoriesMu sync.RWMutex
+var eventDataFactories = newTypeRegistry[EventType, func() EventData]("event")
